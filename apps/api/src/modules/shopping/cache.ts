@@ -92,7 +92,12 @@ export async function getCachedItem(
   externalId: string
 ): Promise<any | null> {
   const cached = await prisma.externalCatalogItem.findUnique({
-    where: { external_id: externalId },
+    where: {
+      source_external_id: {
+        source,
+        external_id: externalId,
+      },
+    },
   });
 
   if (!cached) {
@@ -129,7 +134,12 @@ export async function setCachedItem(
   const sourceUrl = itemData.detail_url || itemData.url || itemData.link || null;
 
   await prisma.externalCatalogItem.upsert({
-    where: { external_id: externalId },
+    where: {
+      source_external_id: {
+        source,
+        external_id: externalId,
+      },
+    },
     create: {
       source,
       external_id: externalId,

@@ -2,12 +2,17 @@
 
 ## 🚀 Quick Deployment Steps
 
+### Important: Deploy the ENTIRE Monorepo
+
+**Railway will deploy from the ROOT directory** of your repository. Do NOT set a "root directory" in Railway settings - leave it empty/default.
+
 ### 1. Connect Repository to Railway
 
 1. Go to [Railway Dashboard](https://railway.app)
 2. Click "New Project"
 3. Select "Deploy from GitHub repo"
 4. Choose your `brandchina` repository
+5. **IMPORTANT**: Leave "Root Directory" empty (Railway uses root by default)
 
 ### 2. Add PostgreSQL Database
 

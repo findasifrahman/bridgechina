@@ -720,7 +720,7 @@ export default async function publicRoutes(fastify: FastifyInstance) {
       include: {
         city: true,
         coverAsset: true,
-        tourLinks: {
+        cityPlaces: {
           include: {
             cityPlace: {
               include: {
@@ -1225,7 +1225,7 @@ export default async function publicRoutes(fastify: FastifyInstance) {
           preferences: payload.preferences ? ({ text: payload.preferences } as any) : null,
         },
       });
-    } else if (body.category_key === 'esim') {
+    } else if (body.category_key === 'esim' || body.category_key === 'guide') {
       // eSIM requests store plan_id in request_payload, no separate booking table needed
     }
 
@@ -1428,7 +1428,6 @@ export default async function publicRoutes(fastify: FastifyInstance) {
             { name: { contains: query, mode: 'insensitive' } },
             { description: { contains: query, mode: 'insensitive' } },
           ],
-          verified: true,
         },
         take: 5,
         include: { city: true },
