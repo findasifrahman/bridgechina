@@ -1,0 +1,9 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @bridgechina/api db:generate && pnpm --filter @bridgechina/api build"
+
+[deploy]
+startCommand = "cd apps/api && pnpm start"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+

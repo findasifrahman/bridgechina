@@ -23,15 +23,53 @@ const fastify = Fastify({
 // Register plugins
 await fastify.register(cors, {
   origin: (origin, cb) => {
-    const allowedOrigins = [
-      process.env.APP_BASE_URL || 'http://localhost:5173',
+    // Build allowed origins list
+    const allowedOrigins: string[] = [];
+    
+    // Add APP_BASE_URL if set
+    if (process.env.APP_BASE_URL) {
+      allowedOrigins.push(process.env.APP_BASE_URL);
+    }
+    
+    // Add FRONTEND_URL if set (Railway-specific)
+    if (process.env.FRONTEND_URL) {
+      allowedOrigins.push(process.env.FRONTEND_URL);
+    }
+    
+    // Add local development origins
+    allowedOrigins.push(
       'http://localhost:5173',
       'http://127.0.0.1:5173',
-    ];
-    if (!origin || allowedOrigins.includes(origin)) {
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+    );
+    
+    // In production, allow requests without origin (e.g., Postman, curl)
+    // In development, be more strict
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    if (!origin) {
+      // Allow requests without origin in production (for API testing)
+      if (isProduction) {
+        cb(null, true);
+      } else {
+        cb(null, true); // Allow in dev too for flexibility
+      }
+      return;
+    }
+    
+    if (allowedOrigins.includes(origin)) {
       cb(null, true);
     } else {
-      cb(new Error('Not allowed by CORS'), false);
+      // In production, log but allow (you can make this stricter)
+      if (isProduction) {
+        fastify.log.warn(`CORS: Origin not in allowed list: ${origin}`);
+        // Optionally allow all in production (not recommended for sensitive APIs)
+        // cb(null, true);
+        cb(new Error('Not allowed by CORS'), false);
+      } else {
+        cb(new Error('Not allowed by CORS'), false);
+      }
     }
   },
   credentials: true,
@@ -102,7 +140,7 @@ const shutdown = async (signal: string) => {
     fastify.log.info('Server closed successfully');
     process.exit(0);
   } catch (err) {
-    fastify.log.error('Error during shutdown:', err);
+    fastify.log.error({ err }, 'Error during shutdown');
     process.exit(1);
   }
 };
@@ -113,13 +151,13 @@ process.on('SIGINT', () => shutdown('SIGINT')); // Ctrl+C on Windows
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
-  fastify.log.error('Uncaught Exception:', error);
+  fastify.log.error({ err: error }, 'Uncaught Exception');
   shutdown('uncaughtException');
 });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
-  fastify.log.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  fastify.log.error({ reason, promise }, 'Unhandled Rejection');
   shutdown('unhandledRejection');
 });
 

@@ -1,7 +1,10 @@
 import axios from 'axios';
 
 // Configure axios defaults
-axios.defaults.baseURL = '';
+// In production, use VITE_API_URL environment variable
+// In development, use empty string (Vite proxy will handle it)
+const apiUrl = import.meta.env.VITE_API_URL || '';
+axios.defaults.baseURL = apiUrl;
 axios.defaults.withCredentials = true;
 
 // Request interceptor to add auth token
