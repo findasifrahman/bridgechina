@@ -1,0 +1,1167 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Auth & RBAC
+model User {
+  id            String   @id @default(uuid())
+  email         String?  @unique
+  phone         String?
+  password_hash String
+  status        String   @default("active") // active, inactive, suspended
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  roles            UserRole[]
+  refreshTokens    RefreshToken[]
+  oauthAccounts    OAuthAccount[]
+  customerProfile  CustomerProfile?
+  addresses        Address[]
+  serviceRequests  ServiceRequest[] @relation("UserRequests")
+  assignedRequests ServiceRequest[] @relation("AssignedRequests")
+  leads            Lead[]
+  payments         Payment[]
+  orders           Order[]
+  cart             Cart?
+  products         Product[]        @relation("SellerProducts")
+  activityLogs     ActivityLog[]
+  conversations    Conversation[]
+  blogPosts        BlogPost[]
+  mediaAssets      MediaAsset[]
+  reviews          Review[]
+  guideProfile     GuideProfile?
+
+  @@index([email])
+  @@index([phone])
+  @@map("users")
+}
+
+model Role {
+  id        String   @id @default(uuid())
+  name      String   @unique // ADMIN, OPS, EDITOR, SELLER, PARTNER, USER, GUIDE
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  user_id String
+  role_id String
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, role_id])
+  @@map("user_roles")
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  user_id    String
+  token_hash String
+  expires_at DateTime
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires_at])
+  @@map("refresh_tokens")
+}
+
+model OAuthAccount {
+  id                  String   @id @default(uuid())
+  user_id             String
+  provider            String // google, etc.
+  provider_account_id String
+  created_at          DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([provider, provider_account_id])
+  @@index([user_id])
+  @@map("oauth_accounts")
+}
+
+// Profiles & Addresses
+model CustomerProfile {
+  user_id            String   @id
+  nationality        String?
+  passport_name      String?
+  preferred_language String?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("customer_profiles")
+}
+
+model Address {
+  id           String   @id @default(uuid())
+  user_id      String
+  name         String
+  phone        String
+  city_id      String
+  address_line String
+  geo_lat      Float?
+  geo_lng      Float?
+  notes        String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  user   User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  city   City    @relation(fields: [city_id], references: [id])
+  orders Order[]
+
+  @@index([user_id])
+  @@map("addresses")
+}
+
+// Media & Blog
+model MediaAsset {
+  id            String   @id @default(uuid())
+  r2_key        String   @unique
+  public_url    String
+  thumbnail_key String? // R2 key for thumbnail
+  thumbnail_url String? // Public URL for thumbnail
+  mime_type     String
+  size          Int // Size in bytes
+  width         Int? // Image width in pixels
+  height        Int? // Image height in pixels
+  tags          String[] @default([]) // Array of tags for organization
+  category      String? // Optional category: hotel, restaurant, medical, tour, transport, city, product, esim, cityplace, general
+  uploaded_by   String
+  created_at    DateTime @default(now())
+
+  uploader           User                @relation(fields: [uploaded_by], references: [id])
+  galleryImages      GalleryImage[]
+  esimPlans          EsimPlan[]
+  hotelCovers        Hotel[]             @relation("HotelCover")
+  restaurantCovers   Restaurant[]        @relation("RestaurantCover")
+  medicalCovers      MedicalCenter[]     @relation("MedicalCover")
+  foodItemCovers     FoodItem[]          @relation("FoodItemCover")
+  tourCovers         Tour[]              @relation("TourCover")
+  transportCovers    TransportProduct[]  @relation("TransportCover")
+  productCovers      Product[]           @relation("ProductCover")
+  cityCovers         City[]              @relation("CityCover")
+  cityPlaceCovers    CityPlace[]         @relation("CityPlaceCover")
+  guideCovers        GuideProfile[]      @relation("GuideCover")
+  serviceOfferCovers ServiceBasedOffer[] @relation("ServiceOfferCover")
+  homepageBannerCovers HomepageBanner[] @relation("HomepageBannerCover")
+
+  @@index([uploaded_by])
+  @@index([category])
+  @@index([tags])
+  @@map("media_assets")
+}
+
+model BlogPost {
+  id             String    @id @default(uuid())
+  slug           String    @unique
+  title          String
+  excerpt        String?
+  content_md     String    @db.Text
+  cover_asset_id String?
+  status         String    @default("draft") // draft, published
+  published_at   DateTime?
+  created_by     String
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  author User @relation(fields: [created_by], references: [id])
+
+  @@index([slug])
+  @@index([status])
+  @@index([published_at])
+  @@map("blog_posts")
+}
+
+// Catalog
+model City {
+  id                String  @id @default(uuid())
+  slug              String  @unique
+  name              String
+  country           String  @default("China")
+  is_active         Boolean @default(true)
+  description       String? @db.Text
+  highlights        Json? // array of strings
+  cover_asset_id    String?
+  gallery_asset_ids Json? // Array of MediaAsset.id strings
+
+  addresses         Address[]
+  hotels            Hotel[]
+  restaurants       Restaurant[]
+  medicalCenters    MedicalCenter[]
+  tours             Tour[]
+  transportProducts TransportProduct[]
+  serviceRequests   ServiceRequest[]
+  leads             Lead[]
+  galleryImages     GalleryImage[]
+  cityPlaces        CityPlace[]
+  guideProfiles     GuideProfile[]
+  coverAsset        MediaAsset?        @relation("CityCover", fields: [cover_asset_id], references: [id])
+
+  @@map("cities")
+}
+
+model Hotel {
+  id                String   @id @default(uuid())
+  city_id           String
+  name              String
+  address           String
+  geo_lat           Float?
+  geo_lng           Float?
+  price_from        Float?
+  price_to          Float?
+  currency          String   @default("CNY")
+  verified          Boolean  @default(false)
+  rating            Float? // 0-5 stars
+  review_count      Int      @default(0)
+  star_rating       Int? // 1-5 stars
+  description       String?  @db.Text
+  amenities         Json? // array of strings (wifi, pool, gym, etc.)
+  facilities        Json? // array of strings
+  checkin_time      String? // e.g., "14:00"
+  checkout_time     String? // e.g., "12:00"
+  contact_phone     String?
+  contact_email     String?
+  website           String?
+  cover_asset_id    String?
+  gallery_asset_ids Json? // Array of MediaAsset.id strings
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  city       City        @relation(fields: [city_id], references: [id])
+  coverAsset MediaAsset? @relation("HotelCover", fields: [cover_asset_id], references: [id])
+
+  @@index([city_id])
+  @@index([verified])
+  @@index([rating])
+  @@map("hotels")
+}
+
+model Restaurant {
+  id                 String   @id @default(uuid())
+  city_id            String
+  name               String
+  address            String
+  geo_lat            Float?
+  geo_lng            Float?
+  halal_verified     Boolean  @default(false)
+  delivery_supported Boolean  @default(false)
+  rating             Float? // 0-5 stars
+  review_count       Int      @default(0)
+  cuisine_type       String? // Chinese, Halal, International, etc.
+  price_range        String? // $, $$, $$$, $$$$
+  opening_hours      Json? // object with day: hours
+  description        String?  @db.Text
+  specialties        Json? // array of strings
+  amenities          Json? // array of strings (parking, wifi, etc.)
+  contact_phone      String?
+  contact_email      String?
+  website            String?
+  cover_asset_id     String?
+  gallery_asset_ids  Json? // Array of MediaAsset.id strings
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  city       City        @relation(fields: [city_id], references: [id])
+  coverAsset MediaAsset? @relation("RestaurantCover", fields: [cover_asset_id], references: [id])
+  foodItems  FoodItem[]
+
+  @@index([city_id])
+  @@index([halal_verified])
+  @@index([rating])
+  @@map("restaurants")
+}
+
+model FoodCategory {
+  id          String   @id @default(uuid())
+  name        String
+  name_cn     String? // Chinese name
+  description String?  @db.Text
+  icon        String? // icon name or emoji
+  sort_order  Int      @default(0)
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  foodItems FoodItem[]
+
+  @@index([is_active])
+  @@index([sort_order])
+  @@map("food_categories")
+}
+
+model FoodItem {
+  id                String   @id @default(uuid())
+  restaurant_id     String
+  category_id       String?
+  name              String
+  name_cn           String? // Chinese name
+  description       String?  @db.Text
+  price             Float
+  currency          String   @default("CNY")
+  is_available      Boolean  @default(true)
+  is_vegetarian     Boolean  @default(false)
+  is_vegan          Boolean  @default(false)
+  is_halal          Boolean  @default(true)
+  spicy_level       Int?     @default(0) // 0-5
+  allergens         Json? // array of strings (peanuts, dairy, etc.)
+  ingredients       Json? // array of strings
+  nutrition_info    Json? // {calories, protein, carbs, fat, etc.}
+  preparation_time  Int? // minutes
+  serving_size      String? // e.g., "1 portion", "2-3 people"
+  cover_asset_id    String?
+  gallery_asset_ids Json? // Array of MediaAsset.id strings
+  sort_order        Int      @default(0)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  restaurant Restaurant    @relation(fields: [restaurant_id], references: [id], onDelete: Cascade)
+  category   FoodCategory? @relation(fields: [category_id], references: [id])
+  coverAsset MediaAsset?   @relation("FoodItemCover", fields: [cover_asset_id], references: [id])
+
+  @@index([restaurant_id])
+  @@index([category_id])
+  @@index([is_available])
+  @@index([is_halal])
+  @@index([sort_order])
+  @@map("food_items")
+}
+
+model MedicalCenter {
+  id                  String   @id @default(uuid())
+  city_id             String
+  name                String
+  type                String // hospital, clinic, pharmacy
+  languages           Json? // array of strings
+  verified            Boolean  @default(false)
+  rating              Float? // 0-5 stars
+  review_count        Int      @default(0)
+  address             String
+  geo_lat             Float?
+  geo_lng             Float?
+  specialties         Json? // array of strings
+  services            Json? // array of strings
+  opening_hours       Json? // object with day: hours
+  emergency_available Boolean  @default(false)
+  contact_phone       String?
+  contact_email       String?
+  website             String?
+  description         String?  @db.Text
+  cover_asset_id      String?
+  gallery_asset_ids   Json? // Array of MediaAsset.id strings
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  city       City        @relation(fields: [city_id], references: [id])
+  coverAsset MediaAsset? @relation("MedicalCover", fields: [cover_asset_id], references: [id])
+
+  @@index([city_id])
+  @@index([type])
+  @@index([verified])
+  @@index([rating])
+  @@map("medical_centers")
+}
+
+model Tour {
+  id                  String   @id @default(uuid())
+  city_id             String
+  name                String
+  duration_text       String?
+  duration_hours      Int? // numeric duration
+  price_from          Float?
+  price_to            Float?
+  currency            String   @default("CNY")
+  rating              Float? // 0-5 stars
+  review_count        Int      @default(0)
+  description         String?  @db.Text
+  highlights          Json? // array of strings
+  inclusions          Json? // array of strings
+  exclusions          Json? // array of strings
+  meeting_point       String?
+  cancellation_policy String?  @db.Text
+  languages           Json? // array of strings
+  max_group_size      Int?
+  min_group_size      Int?
+  cover_asset_id      String?
+  gallery_asset_ids   Json? // Array of MediaAsset.id strings
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  city       City            @relation(fields: [city_id], references: [id])
+  coverAsset MediaAsset?     @relation("TourCover", fields: [cover_asset_id], references: [id])
+  cityPlaces TourCityPlace[]
+
+  @@index([city_id])
+  @@index([rating])
+  @@map("tours")
+}
+
+model TransportProduct {
+  id                String   @id @default(uuid())
+  city_id           String
+  type              String // pickup, point_to_point, daily_charter
+  name              String? // e.g., "Airport Pickup - Guangzhou"
+  base_price        Float
+  price_per_km      Float? // for point_to_point
+  currency          String   @default("CNY")
+  vehicle_type      String? // sedan, suv, van, bus
+  capacity          Int? // passenger capacity
+  rating            Float? // 0-5 stars
+  review_count      Int      @default(0)
+  description       String?  @db.Text
+  features          Json? // array of strings (wifi, child_seat, etc.)
+  rules             Json? // object
+  cover_asset_id    String?
+  gallery_asset_ids Json? // Array of MediaAsset.id strings
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  city       City        @relation(fields: [city_id], references: [id])
+  coverAsset MediaAsset? @relation("TransportCover", fields: [cover_asset_id], references: [id])
+
+  @@index([city_id])
+  @@index([type])
+  @@index([rating])
+  @@map("transport_products")
+}
+
+// Operations
+model ServiceCategory {
+  id   String @id @default(uuid())
+  key  String @unique // hotel, transport, halal_food, medical, translation_help, shopping_service, tours, esim, guide
+  name String
+
+  serviceRequests ServiceRequest[]
+
+  @@map("service_categories")
+}
+
+model ServiceRequest {
+  id              String   @id @default(uuid())
+  category_id     String
+  city_id         String
+  user_id         String?
+  lead_id         String?
+  status          String   @default("new") // new, in_progress, quoted, confirmed, paid, booked, done, cancelled
+  assigned_to     String?
+  customer_name   String
+  phone           String
+  whatsapp        String?
+  email           String?
+  request_payload Json // category-specific data
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  category     ServiceCategory @relation(fields: [category_id], references: [id])
+  city         City            @relation(fields: [city_id], references: [id])
+  user         User?           @relation("UserRequests", fields: [user_id], references: [id])
+  lead         Lead?           @relation(fields: [lead_id], references: [id])
+  assignedUser User?           @relation("AssignedRequests", fields: [assigned_to], references: [id])
+
+  hotelBooking     HotelBooking?
+  transportBooking TransportBooking?
+  foodDelivery     FoodDelivery?
+  medicalAssist    MedicalAssist?
+  translationTask  TranslationTask?
+  tourBooking      TourBooking?
+  guideRequest     GuideRequest?
+
+  @@index([category_id])
+  @@index([city_id])
+  @@index([user_id])
+  @@index([status])
+  @@index([assigned_to])
+  @@map("service_requests")
+}
+
+model HotelBooking {
+  request_id     String   @id
+  checkin        DateTime
+  checkout       DateTime
+  guests         Int
+  rooms          Int
+  budget_min     Float?
+  budget_max     Float?
+  preferred_area String?
+  hotel_id       String?
+  booking_status String?
+  quoted_price   Float?
+  currency       String?
+  vendor_notes   String?  @db.Text
+
+  request ServiceRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+
+  @@map("hotel_bookings")
+}
+
+model TransportBooking {
+  request_id     String    @id
+  type           String
+  pickup_text    String
+  dropoff_text   String
+  pickup_time    DateTime?
+  passengers     Int
+  luggage        Int?
+  driver_name    String?
+  driver_phone   String?
+  booking_status String?
+  quoted_price   Float?
+  currency       String?
+
+  request ServiceRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+
+  @@map("transport_bookings")
+}
+
+model FoodDelivery {
+  request_id            String  @id
+  delivery_address_text String
+  geo_lat               Float?
+  geo_lng               Float?
+  meal_type             String?
+  spicy_level           String?
+  allergies             String?
+  people_count          Int
+  restaurant_id         String?
+  delivery_status       String?
+  items_summary         Json?
+  quoted_price          Float?
+  currency              String?
+
+  request ServiceRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+
+  @@map("food_deliveries")
+}
+
+model MedicalAssist {
+  request_id          String    @id
+  urgency             String?
+  symptoms_text       String?   @db.Text
+  preferred_language  String?
+  medical_center_id   String?
+  appointment_time    DateTime?
+  translator_required Boolean   @default(false)
+  assist_status       String?
+  notes               String?   @db.Text
+
+  request ServiceRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+
+  @@map("medical_assists")
+}
+
+model TranslationTask {
+  request_id     String    @id
+  context_text   String?   @db.Text
+  location_text  String?
+  scheduled_time DateTime?
+  task_status    String?
+  quoted_price   Float?
+  currency       String?
+
+  request ServiceRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+
+  @@map("translation_tasks")
+}
+
+model TourBooking {
+  request_id     String    @id
+  tour_id        String?
+  date           DateTime?
+  group_size     Int?
+  preferences    Json?
+  booking_status String?
+  quoted_price   Float?
+  currency       String?
+
+  request ServiceRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+
+  @@map("tour_bookings")
+}
+
+// CRM/Payments/Logs
+model Lead {
+  id         String   @id @default(uuid())
+  name       String
+  phone      String
+  whatsapp   String?
+  email      String?
+  source     String?
+  city_id    String?
+  notes      String?  @db.Text
+  status     String   @default("new") // new, contacted, qualified, converted, lost
+  owner_id   String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  city            City?            @relation(fields: [city_id], references: [id])
+  owner           User?            @relation(fields: [owner_id], references: [id])
+  serviceRequests ServiceRequest[]
+  payments        Payment[]
+  conversations   Conversation[]
+
+  @@index([status])
+  @@index([owner_id])
+  @@map("leads")
+}
+
+model Payment {
+  id           String   @id @default(uuid())
+  user_id      String?
+  lead_id      String?
+  related_type String // service_request, order
+  related_id   String
+  method       String // cash, bkash, nagad, stripe, bank, usdt
+  amount       Float
+  currency     String   @default("CNY")
+  status       String   @default("pending") // pending, received, refunded
+  received_by  String?
+  receipt_no   String?
+  notes        String?  @db.Text
+  created_at   DateTime @default(now())
+
+  user User? @relation(fields: [user_id], references: [id])
+  lead Lead? @relation(fields: [lead_id], references: [id])
+
+  @@index([user_id])
+  @@index([related_type, related_id])
+  @@map("payments")
+}
+
+model ActivityLog {
+  id          String   @id @default(uuid())
+  entity_type String
+  entity_id   String
+  message     String   @db.Text
+  created_by  String
+  created_at  DateTime @default(now())
+
+  user User @relation(fields: [created_by], references: [id])
+
+  @@index([entity_type, entity_id])
+  @@index([created_at])
+  @@map("activity_logs")
+}
+
+// Featured Items (for homepage - max 8 items)
+model FeaturedItem {
+  id                String   @id @default(uuid())
+  entity_type       String // hotel, restaurant, food_item, cityplace, tour, esim_plan, product
+  entity_id         String
+  sort_order        Int      @default(0)
+  is_active         Boolean  @default(true)
+  title_override    String? // Optional custom title for display
+  subtitle_override String? // Optional custom subtitle
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@unique([entity_type, entity_id]) // Prevent duplicates
+  @@index([entity_type])
+  @@index([is_active])
+  @@index([sort_order])
+  @@map("featured_items")
+}
+
+// Service-Based Offers (one offer per service type)
+model ServiceBasedOffer {
+  id                   String    @id @default(uuid())
+  service_type         String    @unique // hotel, restaurant, esim_plan, transport, tour, food_item, product, guide, medical
+  offer_type           String // percentage, fixed_amount
+  value                Float // e.g., 15 for 15% or 20 for 20 RMB
+  currency             String?   @default("CNY") // For fixed_amount offers
+  title                String
+  description          String?   @db.Text
+  terms_and_conditions String?   @db.Text
+  cover_asset_id       String?
+  gallery_asset_ids    Json? // Array of MediaAsset.id strings
+  is_active            Boolean   @default(true)
+  valid_from           DateTime?
+  valid_until          DateTime?
+  min_purchase_amount  Float? // Minimum purchase to qualify
+  max_discount_amount  Float? // Maximum discount cap (for percentage offers)
+  usage_limit          Int? // Maximum number of times offer can be used
+  usage_count          Int       @default(0) // Current usage count
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+
+  coverAsset MediaAsset? @relation("ServiceOfferCover", fields: [cover_asset_id], references: [id])
+
+  @@index([service_type])
+  @@index([is_active])
+  @@index([valid_from, valid_until])
+  @@map("service_based_offers")
+}
+
+// Shopping Marketplace
+model ProductCategory {
+  id         String   @id @default(uuid())
+  parent_id  String?
+  name       String
+  slug       String   @unique
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  parent   ProductCategory?  @relation("CategoryHierarchy", fields: [parent_id], references: [id])
+  children ProductCategory[] @relation("CategoryHierarchy")
+  products Product[]
+
+  @@index([parent_id])
+  @@index([slug])
+  @@map("product_categories")
+}
+
+model Product {
+  id                String   @id @default(uuid())
+  seller_id         String
+  category_id       String
+  title             String
+  description       String?  @db.Text
+  price             Float
+  original_price    Float? // for discounts
+  currency          String   @default("CNY")
+  stock_qty         Int      @default(0)
+  status            String   @default("draft") // draft, active, paused
+  rating            Float? // 0-5 stars
+  review_count      Int      @default(0)
+  sku               String?  @unique // product SKU
+  weight_kg         Float? // for shipping
+  dimensions        Json? // {length, width, height}
+  brand             String?
+  tags              Json? // array of strings
+  specifications    Json? // object with key-value pairs
+  cover_asset_id    String?
+  gallery_asset_ids Json? // Array of MediaAsset.id strings
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  seller     User            @relation("SellerProducts", fields: [seller_id], references: [id])
+  category   ProductCategory @relation(fields: [category_id], references: [id])
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+  coverAsset MediaAsset?     @relation("ProductCover", fields: [cover_asset_id], references: [id])
+
+  @@index([seller_id])
+  @@index([category_id])
+  @@index([status])
+  @@index([rating])
+  @@index([sku])
+  @@map("products")
+}
+
+model Cart {
+  id         String   @id @default(uuid())
+  user_id    String   @unique
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user  User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  items CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id             String   @id @default(uuid())
+  cart_id        String
+  product_id     String
+  qty            Int
+  price_snapshot Float
+  created_at     DateTime @default(now())
+
+  cart    Cart    @relation(fields: [cart_id], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [product_id], references: [id])
+
+  @@index([cart_id])
+  @@map("cart_items")
+}
+
+model Order {
+  id                  String   @id @default(uuid())
+  user_id             String
+  status              String   @default("pending_payment") // pending_payment, paid, processing, shipped, delivered, cancelled, refunded
+  currency            String   @default("CNY")
+  subtotal            Float
+  shipping_fee        Float    @default(0)
+  total               Float
+  shipping_address_id String
+  notes               String?  @db.Text
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  user            User             @relation(fields: [user_id], references: [id])
+  shippingAddress Address          @relation(fields: [shipping_address_id], references: [id])
+  items           OrderItem[]
+  shippingUpdates ShippingUpdate[]
+
+  @@index([user_id])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id             String   @id @default(uuid())
+  order_id       String
+  product_id     String
+  seller_id      String
+  qty            Int
+  price_snapshot Float
+  created_at     DateTime @default(now())
+
+  order   Order   @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [product_id], references: [id])
+
+  @@index([order_id])
+  @@index([seller_id])
+  @@map("order_items")
+}
+
+model ShippingUpdate {
+  id          String   @id @default(uuid())
+  order_id    String
+  status_text String
+  note        String?  @db.Text
+  created_at  DateTime @default(now())
+
+  order Order @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@index([order_id])
+  @@map("shipping_updates")
+}
+
+// Conversations (WhatsApp/AI placeholders)
+model Conversation {
+  id         String   @id @default(uuid())
+  channel    String // web, whatsapp
+  user_id    String?
+  lead_id    String?
+  created_at DateTime @default(now())
+
+  user     User?     @relation(fields: [user_id], references: [id])
+  lead     Lead?     @relation(fields: [lead_id], references: [id])
+  messages Message[]
+
+  @@index([user_id])
+  @@index([lead_id])
+  @@map("conversations")
+}
+
+model Message {
+  id              String   @id @default(uuid())
+  conversation_id String
+  role            String // user, assistant, system
+  content         String   @db.Text
+  meta_json       Json?
+  created_at      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+
+  @@index([conversation_id])
+  @@map("messages")
+}
+
+// Site Configuration
+model SiteSetting {
+  id         String   @id @default(uuid())
+  key        String   @unique
+  value_json Json
+  updated_at DateTime @updatedAt
+  created_at DateTime @default(now())
+
+  @@map("site_settings")
+}
+
+model HomepageBlock {
+  id         String   @id @default(uuid())
+  type       String // offer_strip, featured_service, promo_card, featured_listings
+  title      String?
+  subtitle   String?
+  payload    Json
+  is_active  Boolean  @default(true)
+  sort_order Int      @default(0)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([type, is_active])
+  @@index([sort_order])
+  @@map("homepage_blocks")
+}
+
+// Gallery
+model GalleryImage {
+  id         String   @id @default(uuid())
+  city_id    String?
+  title      String
+  asset_id   String
+  tags       Json? // array of strings
+  is_active  Boolean  @default(true)
+  sort_order Int      @default(0)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  city  City?      @relation(fields: [city_id], references: [id])
+  asset MediaAsset @relation(fields: [asset_id], references: [id])
+
+  @@index([city_id])
+  @@index([is_active])
+  @@index([sort_order])
+  @@map("gallery_images")
+}
+
+// eSIM Service
+model EsimPlan {
+  id                  String   @id @default(uuid())
+  name                String // e.g., "China 2GB/Day"
+  package_code        String?  @unique // e.g., "PQV9J51Q6"
+  provider            String
+  country             String   @default("China")
+  region_text         String // e.g., "China - All Regions"
+  package_type        String   @default("single_country") // single_country, multi_country, regional
+  data_text           String // e.g., "2GB/Day"
+  data_amount_gb      Float? // numeric data amount
+  data_period         String? // daily, total, etc.
+  validity_days       Int
+  price               Float
+  currency            String   @default("USD")
+  is_active           Boolean  @default(true)
+  data_speed          String? // "3G/4G/5G"
+  supported_operators Json? // array of strings (e.g., ["China Mobile", "China Unicom"])
+  sms_enabled         Boolean  @default(false)
+  number_available    Boolean  @default(false) // phone number included
+  description         String?  @db.Text
+  cover_asset_id      String?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  coverAsset        MediaAsset? @relation(fields: [cover_asset_id], references: [id])
+  gallery_asset_ids Json? // Array of MediaAsset.id strings
+
+  @@index([is_active])
+  @@index([provider])
+  @@index([country])
+  @@index([package_type])
+  @@map("esim_plans")
+}
+
+// Reviews - Generic review system for all services
+model Review {
+  id            String   @id @default(uuid())
+  user_id       String
+  entity_type   String // hotel, restaurant, medical, tour, transport, cityplace, product, guide
+  entity_id     String
+  rating        Int // 1-5 stars
+  title         String?
+  comment       String?  @db.Text
+  is_verified   Boolean  @default(false)
+  helpful_count Int      @default(0)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([entity_type, entity_id])
+  @@index([user_id])
+  @@index([rating])
+  @@index([created_at])
+  @@map("reviews")
+}
+
+// City Places - Tourist attractions/places (TripAdvisor style)
+model CityPlace {
+  id                     String   @id @default(uuid())
+  city_id                String
+  name                   String
+  slug                   String   @unique
+  short_description      String?  @db.Text
+  description            String?  @db.Text
+  address                String
+  geo_lat                Float?
+  geo_lng                Float?
+  star_rating            Float? // Average rating from reviews
+  review_count           Int      @default(0)
+  cost_range             String? // e.g., "¥¥" or "$-$$$"
+  opening_hours          Json? // { "mon": "09:00-18:00", ... }
+  customer_support_phone String?
+  is_family_friendly     Boolean  @default(false)
+  is_pet_friendly        Boolean  @default(false)
+  is_active              Boolean  @default(true)
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+
+  city              City            @relation(fields: [city_id], references: [id], onDelete: Cascade)
+  cover_asset_id    String?
+  gallery_asset_ids Json? // Array of MediaAsset.id strings
+  tourLinks         TourCityPlace[] // Many-to-many with tours
+  coverAsset        MediaAsset?     @relation("CityPlaceCover", fields: [cover_asset_id], references: [id])
+
+  @@index([city_id])
+  @@index([slug])
+  @@index([is_active])
+  @@index([star_rating])
+  @@map("city_places")
+}
+
+// Many-to-many relationship between Tours and CityPlaces
+model TourCityPlace {
+  id            String   @id @default(uuid())
+  tour_id       String
+  city_place_id String
+  sort_order    Int      @default(0)
+  is_highlight  Boolean  @default(false)
+  created_at    DateTime @default(now())
+
+  tour      Tour      @relation(fields: [tour_id], references: [id], onDelete: Cascade)
+  cityPlace CityPlace @relation(fields: [city_place_id], references: [id], onDelete: Cascade)
+
+  @@unique([tour_id, city_place_id])
+  @@index([tour_id])
+  @@index([city_place_id])
+  @@map("tour_city_places")
+}
+
+// Guide Service - Marketplace for local guides
+model GuideProfile {
+  user_id        String   @id
+  city_id        String
+  display_name   String
+  bio            String?  @db.Text
+  languages      Json // ["Bangla","English","Chinese"]
+  hourly_rate    Float?
+  daily_rate     Float?
+  verified       Boolean  @default(false)
+  rating         Float?
+  review_count   Int      @default(0)
+  cover_asset_id String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  user       User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  city       City         @relation(fields: [city_id], references: [id])
+  coverAsset MediaAsset?  @relation("GuideCover", fields: [cover_asset_id], references: [id])
+  offers     GuideOffer[]
+
+  @@index([city_id])
+  @@index([verified])
+  @@index([rating])
+  @@map("guide_profiles")
+}
+
+model GuideRequest {
+  request_id    String    @id
+  service_mode  String // hourly | daily | task
+  start_time    DateTime?
+  end_time      DateTime?
+  meeting_point String?
+  places        Json? // array of cityplace ids or text
+  notes         String?   @db.Text
+  people_count  Int?
+  budget_min    Float?
+  budget_max    Float?
+  status        String? // new, quoted, assigned, done, cancelled
+
+  request ServiceRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+  offers  GuideOffer[]
+
+  @@map("guide_requests")
+}
+
+model GuideOffer {
+  id         String   @id @default(uuid())
+  request_id String
+  guide_id   String
+  price      Float
+  currency   String   @default("CNY")
+  message    String?  @db.Text
+  status     String   @default("sent") // sent, accepted, rejected
+  created_at DateTime @default(now())
+
+  request GuideRequest @relation(fields: [request_id], references: [request_id], onDelete: Cascade)
+  guide   GuideProfile @relation(fields: [guide_id], references: [user_id], onDelete: Cascade)
+
+  @@index([request_id])
+  @@index([guide_id])
+  @@map("guide_offers")
+}
+
+model HomepageBanner {
+  id          String    @id @default(uuid())
+  title       String
+  subtitle    String?   @db.Text
+  link        String?   // URL to navigate to
+  cta_text    String?   @default("Learn More")
+  cover_asset_id String?
+  is_active   Boolean   @default(true)
+  sort_order  Int       @default(0)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  coverAsset MediaAsset? @relation("HomepageBannerCover", fields: [cover_asset_id], references: [id], onDelete: SetNull)
+
+  @@index([is_active, sort_order])
+  @@map("homepage_banners")
+}
+
+// TMAPI External Catalog & Caching
+model ExternalCatalogItem {
+  id             String   @id @default(uuid())
+  source         String   // "tmapi_1688"
+  external_id    String
+  title          String?  // Chinese title (title_cn)
+  title_en       String?  // English title (cached translation)
+  price_min      Float?
+  price_max      Float?
+  currency       String   @default("CNY")
+  main_images    Json?
+  skus_json      Json?
+  seller_json    Json?
+  source_url      String?
+  raw_json       Json?
+  last_synced_at DateTime @default(now())
+  expires_at     DateTime
+  updated_at     DateTime @updatedAt
+
+  @@unique([source, external_id])
+  @@index([source])
+  @@index([expires_at])
+  @@map("external_catalog_items")
+}
+
+model ExternalSearchCache {
+  id           String   @id @default(uuid())
+  source       String   // "tmapi_1688"
+  cache_key    String   @unique
+  query_json   Json?
+  results_json Json?
+  created_at   DateTime @default(now())
+  expires_at   DateTime
+
+  @@index([source])
+  @@index([expires_at])
+  @@map("external_search_cache")
+}
+
+model ExternalHotItem {
+  id            String   @id @default(uuid())
+  source        String   // "tmapi_1688"
+  category_slug String
+  external_id   String
+  pinned_rank   Int      @default(0)
+  created_at    DateTime @default(now())
+
+  @@index([category_slug])
+  @@index([external_id])
+  @@map("external_hot_items")
+}
