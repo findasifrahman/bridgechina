@@ -36,7 +36,7 @@
     </div>
 
     <!-- Image Modal -->
-    <Modal v-model="!!selectedImage" title="" @close="selectedImage = null">
+    <Modal v-model="isModalOpen" title="" @close="selectedImage = null">
       <div v-if="selectedImage" class="space-y-4">
         <img :src="selectedImage.asset.public_url" :alt="selectedImage.title" class="w-full rounded-lg" />
         <div>
@@ -65,6 +65,15 @@ const cityOptions = computed(() => [
   { value: '', label: 'All Cities' },
   ...cities.value.map((c) => ({ value: c.id, label: c.name })),
 ]);
+
+const isModalOpen = computed({
+  get: () => !!selectedImage.value,
+  set: (value: boolean) => {
+    if (!value) {
+      selectedImage.value = null;
+    }
+  },
+});
 
 async function loadGeo() {
   try {

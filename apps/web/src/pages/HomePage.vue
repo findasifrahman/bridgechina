@@ -31,19 +31,29 @@
         <div v-else class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <!-- Hotels Tab -->
           <template v-if="activeTab === 'hotels'">
-            <CompactCard
+            <Card
               v-for="item in getFeaturedItemsForTab('hotels')"
               :key="item.id"
-              :item="item.entity"
-              :title="item.title_override || item.entity?.name || 'N/A'"
-              :subtitle="item.subtitle_override || item.entity?.city?.name"
-              :thumbnail="item.entity?.coverAsset?.thumbnail_url || item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
-              :rating="item.entity?.rating"
-              :price="item.entity?.price_from ? `¥${item.entity.price_from}` : undefined"
-              :meta="item.entity?.city?.name"
-              :badge="'Featured'"
+              class="cursor-pointer overflow-hidden"
               @click="handleFeaturedItemClick(item)"
-            />
+            >
+              <div class="aspect-square bg-slate-100">
+                <img
+                  v-if="item.entity?.coverAsset?.thumbnail_url || item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                  :src="item.entity?.coverAsset?.thumbnail_url || item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                  :alt="item.title_override || item.entity?.name"
+                  class="w-full h-full object-cover"
+                />
+              </div>
+              <CardBody class="p-3">
+                <h3 class="font-semibold text-sm mb-1 line-clamp-1">{{ item.title_override || item.entity?.name || 'N/A' }}</h3>
+                <p class="text-xs text-slate-600 mb-1">{{ item.subtitle_override || item.entity?.city?.name }}</p>
+                <div class="flex items-center justify-between">
+                  <span v-if="item.entity?.price_from" class="text-sm font-bold text-teal-600">¥{{ item.entity.price_from }}</span>
+                  <span v-if="item.entity?.rating" class="text-xs text-slate-500">⭐ {{ item.entity.rating }}</span>
+                </div>
+              </CardBody>
+            </Card>
           </template>
 
           <!-- Pickup Tab -->
@@ -66,65 +76,111 @@
 
           <!-- Halal Food Tab -->
           <template v-if="activeTab === 'halal-food'">
-            <CompactCard
+            <Card
               v-for="item in getFeaturedItemsForTab('halal-food')"
               :key="item.id"
-              :item="item.entity"
-              :title="item.title_override || item.entity?.name || 'N/A'"
-              :subtitle="item.subtitle_override || item.entity?.restaurant?.name"
-              :thumbnail="item.entity?.coverAsset?.thumbnail_url || item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
-              :price="`¥${item.entity?.price || 'N/A'}`"
-              :meta="item.entity?.restaurant?.name"
-              :badge="item.entity?.is_halal ? 'Halal' : undefined"
+              class="cursor-pointer overflow-hidden"
               @click="handleFeaturedItemClick(item)"
-            />
+            >
+              <div class="aspect-square bg-slate-100">
+                <img
+                  v-if="item.entity?.coverAsset?.thumbnail_url || item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                  :src="item.entity?.coverAsset?.thumbnail_url || item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                  :alt="item.title_override || item.entity?.name"
+                  class="w-full h-full object-cover"
+                />
+              </div>
+              <CardBody class="p-3">
+                <h3 class="font-semibold text-sm mb-1 line-clamp-1">{{ item.title_override || item.entity?.name || 'N/A' }}</h3>
+                <p class="text-xs text-slate-600 mb-1">{{ item.subtitle_override || item.entity?.restaurant?.name }}</p>
+                <div class="flex items-center justify-between">
+                  <span class="text-sm font-bold text-teal-600">¥{{ item.entity?.price || 'N/A' }}</span>
+                  <Badge v-if="item.entity?.is_halal" variant="success" size="sm">Halal</Badge>
+                </div>
+              </CardBody>
+            </Card>
           </template>
 
           <!-- eSIM Tab -->
           <template v-if="activeTab === 'esim'">
-            <CompactCard
+            <Card
               v-for="item in getFeaturedItemsForTab('esim')"
               :key="item.id"
-              :item="item.entity"
-              :title="item.title_override || item.entity?.name || 'N/A'"
-              :subtitle="item.subtitle_override || item.entity?.region_text"
-              :thumbnail="item.entity?.coverAsset?.thumbnail_url || item.entity?.coverAsset?.public_url"
-              :price="`¥${item.entity?.price || 'N/A'}`"
-              :meta="`${item.entity?.data_text || ''} • ${item.entity?.validity_days || ''} days`"
-              :badge="item.entity?.number_available ? 'With Number' : undefined"
+              class="cursor-pointer overflow-hidden"
               @click="handleFeaturedItemClick(item)"
-            />
+            >
+              <div class="aspect-square bg-slate-100">
+                <img
+                  v-if="item.entity?.coverAsset?.thumbnail_url || item.entity?.coverAsset?.public_url"
+                  :src="item.entity?.coverAsset?.thumbnail_url || item.entity?.coverAsset?.public_url"
+                  :alt="item.title_override || item.entity?.name"
+                  class="w-full h-full object-cover"
+                />
+              </div>
+              <CardBody class="p-3">
+                <h3 class="font-semibold text-sm mb-1 line-clamp-1">{{ item.title_override || item.entity?.name || 'N/A' }}</h3>
+                <p class="text-xs text-slate-600 mb-1">{{ item.subtitle_override || item.entity?.region_text }}</p>
+                <div class="flex items-center justify-between">
+                  <span class="text-sm font-bold text-teal-600">¥{{ item.entity?.price || 'N/A' }}</span>
+                  <Badge v-if="item.entity?.number_available" variant="info" size="sm">With Number</Badge>
+                </div>
+                <p class="text-xs text-slate-500 mt-1">{{ item.entity?.data_text || '' }} • {{ item.entity?.validity_days || '' }} days</p>
+              </CardBody>
+            </Card>
           </template>
 
           <!-- Places Tab -->
           <template v-if="activeTab === 'places'">
-            <CompactCard
+            <Card
               v-for="item in getFeaturedItemsForTab('places')"
               :key="item.id"
-              :item="item.entity"
-              :title="item.title_override || item.entity?.name || 'N/A'"
-              :subtitle="item.subtitle_override || item.entity?.short_description"
-              :thumbnail="item.entity?.coverAsset?.thumbnail_url || item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
-              :rating="item.entity?.star_rating"
-              :meta="item.entity?.city?.name"
-              :tags="getPlaceTags(item.entity)"
+              class="cursor-pointer overflow-hidden"
               @click="handleFeaturedItemClick(item)"
-            />
+            >
+              <div class="aspect-square bg-slate-100">
+                <img
+                  v-if="item.entity?.coverAsset?.thumbnail_url || item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                  :src="item.entity?.coverAsset?.thumbnail_url || item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                  :alt="item.title_override || item.entity?.name"
+                  class="w-full h-full object-cover"
+                />
+              </div>
+              <CardBody class="p-3">
+                <h3 class="font-semibold text-sm mb-1 line-clamp-1">{{ item.title_override || item.entity?.name || 'N/A' }}</h3>
+                <p class="text-xs text-slate-600 mb-1">{{ item.subtitle_override || item.entity?.short_description }}</p>
+                <div class="flex items-center justify-between">
+                  <span v-if="item.entity?.star_rating" class="text-xs text-slate-500">⭐ {{ item.entity.star_rating }}</span>
+                  <span v-if="item.entity?.city?.name" class="text-xs text-slate-500">{{ item.entity.city.name }}</span>
+                </div>
+                <div v-if="getPlaceTags(item.entity).length > 0" class="flex gap-1 mt-2">
+                  <Badge v-for="tag in getPlaceTags(item.entity)" :key="tag" variant="info" size="sm">{{ tag }}</Badge>
+                </div>
+              </CardBody>
+            </Card>
           </template>
 
           <!-- Shopping Tab -->
           <template v-if="activeTab === 'shopping'">
-            <CompactCard
+            <Card
               v-for="item in getFeaturedItemsForTab('shopping')"
               :key="item.id"
-              :item="item.entity"
-              :title="item.title_override || item.entity?.title || 'N/A'"
-              :subtitle="item.subtitle_override || item.entity?.category?.name"
-              :thumbnail="item.entity?.coverAsset?.thumbnail_url || item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
-              :price="`¥${item.entity?.price || 'N/A'}`"
-              :meta="item.entity?.category?.name"
+              class="cursor-pointer overflow-hidden"
               @click="handleFeaturedItemClick(item)"
-            />
+            >
+              <div class="aspect-square bg-slate-100">
+                <img
+                  v-if="item.entity?.coverAsset?.thumbnail_url || item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                  :src="item.entity?.coverAsset?.thumbnail_url || item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                  :alt="item.title_override || item.entity?.title"
+                  class="w-full h-full object-cover"
+                />
+              </div>
+              <CardBody class="p-3">
+                <h3 class="font-semibold text-sm mb-1 line-clamp-1">{{ item.title_override || item.entity?.title || 'N/A' }}</h3>
+                <p class="text-xs text-slate-600 mb-1">{{ item.subtitle_override || item.entity?.category?.name }}</p>
+                <span class="text-sm font-bold text-teal-600">¥{{ item.entity?.price || 'N/A' }}</span>
+              </CardBody>
+            </Card>
           </template>
         </div>
       </div>
@@ -223,19 +279,30 @@
           <p class="text-sm text-slate-600">Top recommended accommodations</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <CompactCard
+          <Card
             v-for="item in featuredItemsByType.hotels"
             :key="item.id"
-            :item="item.entity"
-            :title="item.title_override || item.entity?.name || 'N/A'"
-            :subtitle="item.subtitle_override || getFeaturedSubtitle(item)"
-            :thumbnail="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
-            :rating="item.entity?.rating"
-            :price="item.entity?.price_from ? `¥${item.entity.price_from}` : undefined"
-            :meta="item.entity?.city?.name"
-            :badge="'Featured'"
+            class="cursor-pointer overflow-hidden"
             @click="handleFeaturedItemClick(item)"
-          />
+          >
+            <div class="aspect-square bg-slate-100">
+              <img
+                v-if="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                :src="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                :alt="item.title_override || item.entity?.name"
+                class="w-full h-full object-cover"
+              />
+            </div>
+            <CardBody class="p-3">
+              <h3 class="font-semibold text-sm mb-1 line-clamp-1">{{ item.title_override || item.entity?.name || 'N/A' }}</h3>
+              <p class="text-xs text-slate-600 mb-1">{{ item.subtitle_override || getFeaturedSubtitle(item) }}</p>
+              <div class="flex items-center justify-between">
+                <span v-if="item.entity?.price_from" class="text-sm font-bold text-teal-600">¥{{ item.entity.price_from }}</span>
+                <span v-if="item.entity?.rating" class="text-xs text-slate-500">⭐ {{ item.entity.rating }}</span>
+              </div>
+              <Badge variant="accent" size="sm" class="mt-2">Featured</Badge>
+            </CardBody>
+          </Card>
         </div>
       </section>
 
@@ -246,18 +313,30 @@
           <p class="text-sm text-slate-600">Best halal dining experiences</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <CompactCard
+          <Card
             v-for="item in featuredItemsByType.restaurants"
             :key="item.id"
-            :item="item.entity"
-            :title="item.title_override || item.entity?.name || 'N/A'"
-            :subtitle="item.subtitle_override || getFeaturedSubtitle(item)"
-            :thumbnail="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
-            :rating="item.entity?.rating"
-            :meta="item.entity?.city?.name"
-            :badge="item.entity?.halal_verified ? 'Halal' : undefined"
+            class="cursor-pointer overflow-hidden"
             @click="handleFeaturedItemClick(item)"
-          />
+          >
+            <div class="aspect-square bg-slate-100">
+              <img
+                v-if="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                :src="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                :alt="item.title_override || item.entity?.name"
+                class="w-full h-full object-cover"
+              />
+            </div>
+            <CardBody class="p-3">
+              <h3 class="font-semibold text-sm mb-1 line-clamp-1">{{ item.title_override || item.entity?.name || 'N/A' }}</h3>
+              <p class="text-xs text-slate-600 mb-1">{{ item.subtitle_override || getFeaturedSubtitle(item) }}</p>
+              <div class="flex items-center justify-between">
+                <span v-if="item.entity?.rating" class="text-xs text-slate-500">⭐ {{ item.entity.rating }}</span>
+                <span v-if="item.entity?.city?.name" class="text-xs text-slate-500">{{ item.entity.city.name }}</span>
+              </div>
+              <Badge v-if="item.entity?.halal_verified" variant="success" size="sm" class="mt-2">Halal</Badge>
+            </CardBody>
+          </Card>
         </div>
       </section>
 
@@ -268,18 +347,30 @@
           <p class="text-sm text-slate-600">Popular dishes and meals</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <CompactCard
+          <Card
             v-for="item in featuredItemsByType.food_items"
             :key="item.id"
-            :item="item.entity"
-            :title="item.title_override || item.entity?.name || 'N/A'"
-            :subtitle="item.subtitle_override || getFeaturedSubtitle(item)"
-            :thumbnail="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
-            :price="`¥${item.entity?.price || 'N/A'}`"
-            :meta="item.entity?.restaurant?.name"
-            :badge="item.entity?.is_halal ? 'Halal' : undefined"
+            class="cursor-pointer overflow-hidden"
             @click="handleFeaturedItemClick(item)"
-          />
+          >
+            <div class="aspect-square bg-slate-100">
+              <img
+                v-if="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                :src="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                :alt="item.title_override || item.entity?.name"
+                class="w-full h-full object-cover"
+              />
+            </div>
+            <CardBody class="p-3">
+              <h3 class="font-semibold text-sm mb-1 line-clamp-1">{{ item.title_override || item.entity?.name || 'N/A' }}</h3>
+              <p class="text-xs text-slate-600 mb-1">{{ item.subtitle_override || getFeaturedSubtitle(item) }}</p>
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-bold text-teal-600">¥{{ item.entity?.price || 'N/A' }}</span>
+                <Badge v-if="item.entity?.is_halal" variant="success" size="sm">Halal</Badge>
+              </div>
+              <p v-if="item.entity?.restaurant?.name" class="text-xs text-slate-500 mt-1">{{ item.entity.restaurant.name }}</p>
+            </CardBody>
+          </Card>
         </div>
       </section>
 
@@ -290,18 +381,30 @@
           <p class="text-sm text-slate-600">Best data plans for travelers</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <CompactCard
+          <Card
             v-for="item in featuredItemsByType.esim_plans"
             :key="item.id"
-            :item="item.entity"
-            :title="item.title_override || item.entity?.name || 'N/A'"
-            :subtitle="item.subtitle_override || getFeaturedSubtitle(item)"
-            :thumbnail="item.entity?.coverAsset?.public_url"
-            :price="`¥${item.entity?.price || 'N/A'}`"
-            :meta="`${item.entity?.data_text || ''} • ${item.entity?.validity_days || ''} days`"
-            :badge="item.entity?.number_available ? 'With Number' : undefined"
+            class="cursor-pointer overflow-hidden"
             @click="handleFeaturedItemClick(item)"
-          />
+          >
+            <div class="aspect-square bg-slate-100">
+              <img
+                v-if="item.entity?.coverAsset?.public_url"
+                :src="item.entity?.coverAsset?.public_url"
+                :alt="item.title_override || item.entity?.name"
+                class="w-full h-full object-cover"
+              />
+            </div>
+            <CardBody class="p-3">
+              <h3 class="font-semibold text-sm mb-1 line-clamp-1">{{ item.title_override || item.entity?.name || 'N/A' }}</h3>
+              <p class="text-xs text-slate-600 mb-1">{{ item.subtitle_override || getFeaturedSubtitle(item) }}</p>
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-bold text-teal-600">¥{{ item.entity?.price || 'N/A' }}</span>
+                <Badge v-if="item.entity?.number_available" variant="info" size="sm">With Number</Badge>
+              </div>
+              <p class="text-xs text-slate-500 mt-1">{{ item.entity?.data_text || '' }} • {{ item.entity?.validity_days || '' }} days</p>
+            </CardBody>
+          </Card>
         </div>
       </section>
 
@@ -317,18 +420,30 @@
           </Button>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <CompactCard
+          <Card
             v-for="item in featuredItemsByType.cityplaces"
             :key="item.id"
-            :item="item.entity"
-            :title="item.title_override || item.entity?.name || 'N/A'"
-            :subtitle="item.subtitle_override || getFeaturedSubtitle(item)"
-            :thumbnail="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
-            :rating="item.entity?.star_rating"
-            :meta="item.entity?.city?.name"
-            :badge="'Featured'"
+            class="cursor-pointer overflow-hidden"
             @click="handleFeaturedItemClick(item)"
-          />
+          >
+            <div class="aspect-square bg-slate-100">
+              <img
+                v-if="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                :src="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                :alt="item.title_override || item.entity?.name"
+                class="w-full h-full object-cover"
+              />
+            </div>
+            <CardBody class="p-3">
+              <h3 class="font-semibold text-sm mb-1 line-clamp-1">{{ item.title_override || item.entity?.name || 'N/A' }}</h3>
+              <p class="text-xs text-slate-600 mb-1">{{ item.subtitle_override || getFeaturedSubtitle(item) }}</p>
+              <div class="flex items-center justify-between">
+                <span v-if="item.entity?.star_rating" class="text-xs text-slate-500">⭐ {{ item.entity.star_rating }}</span>
+                <span v-if="item.entity?.city?.name" class="text-xs text-slate-500">{{ item.entity.city.name }}</span>
+              </div>
+              <Badge variant="accent" size="sm" class="mt-2">Featured</Badge>
+            </CardBody>
+          </Card>
         </div>
       </section>
 
@@ -339,18 +454,30 @@
           <p class="text-sm text-slate-600">Curated travel experiences</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <CompactCard
+          <Card
             v-for="item in featuredItemsByType.tours"
             :key="item.id"
-            :item="item.entity"
-            :title="item.title_override || item.entity?.name || 'N/A'"
-            :subtitle="item.subtitle_override || getFeaturedSubtitle(item)"
-            :thumbnail="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
-            :price="item.entity?.price_from ? `¥${item.entity.price_from}` : undefined"
-            :meta="item.entity?.city?.name"
-            :badge="'Featured'"
+            class="cursor-pointer overflow-hidden"
             @click="handleFeaturedItemClick(item)"
-          />
+          >
+            <div class="aspect-square bg-slate-100">
+              <img
+                v-if="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                :src="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                :alt="item.title_override || item.entity?.name"
+                class="w-full h-full object-cover"
+              />
+            </div>
+            <CardBody class="p-3">
+              <h3 class="font-semibold text-sm mb-1 line-clamp-1">{{ item.title_override || item.entity?.name || 'N/A' }}</h3>
+              <p class="text-xs text-slate-600 mb-1">{{ item.subtitle_override || getFeaturedSubtitle(item) }}</p>
+              <div class="flex items-center justify-between">
+                <span v-if="item.entity?.price_from" class="text-sm font-bold text-teal-600">¥{{ item.entity.price_from }}</span>
+                <span v-if="item.entity?.city?.name" class="text-xs text-slate-500">{{ item.entity.city.name }}</span>
+              </div>
+              <Badge variant="accent" size="sm" class="mt-2">Featured</Badge>
+            </CardBody>
+          </Card>
         </div>
       </section>
 
@@ -361,18 +488,30 @@
           <p class="text-sm text-slate-600">Popular shopping items</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <CompactCard
+          <Card
             v-for="item in featuredItemsByType.products"
             :key="item.id"
-            :item="item.entity"
-            :title="item.title_override || item.entity?.title || 'N/A'"
-            :subtitle="item.subtitle_override || getFeaturedSubtitle(item)"
-            :thumbnail="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
-            :price="`¥${item.entity?.price || 'N/A'}`"
-            :meta="item.entity?.category?.name"
-            :badge="'Featured'"
+            class="cursor-pointer overflow-hidden"
             @click="handleFeaturedItemClick(item)"
-          />
+          >
+            <div class="aspect-square bg-slate-100">
+              <img
+                v-if="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                :src="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                :alt="item.title_override || item.entity?.title"
+                class="w-full h-full object-cover"
+              />
+            </div>
+            <CardBody class="p-3">
+              <h3 class="font-semibold text-sm mb-1 line-clamp-1">{{ item.title_override || item.entity?.title || 'N/A' }}</h3>
+              <p class="text-xs text-slate-600 mb-1">{{ item.subtitle_override || getFeaturedSubtitle(item) }}</p>
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-bold text-teal-600">¥{{ item.entity?.price || 'N/A' }}</span>
+                <span v-if="item.entity?.category?.name" class="text-xs text-slate-500">{{ item.entity.category.name }}</span>
+              </div>
+              <Badge variant="accent" size="sm" class="mt-2">Featured</Badge>
+            </CardBody>
+          </Card>
         </div>
       </section>
 
@@ -383,18 +522,30 @@
           <p class="text-sm text-slate-600">Reliable transportation options</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <CompactCard
+          <Card
             v-for="item in featuredItemsByType.transport"
             :key="item.id"
-            :item="item.entity"
-            :title="item.title_override || item.entity?.name || item.entity?.type || 'N/A'"
-            :subtitle="item.subtitle_override || getFeaturedSubtitle(item)"
-            :thumbnail="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
-            :price="item.entity?.base_price ? `¥${item.entity.base_price}` : undefined"
-            :meta="item.entity?.city?.name"
-            :badge="'Featured'"
+            class="cursor-pointer overflow-hidden"
             @click="handleFeaturedItemClick(item)"
-          />
+          >
+            <div class="aspect-square bg-slate-100">
+              <img
+                v-if="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                :src="item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+                :alt="item.title_override || item.entity?.name || item.entity?.type"
+                class="w-full h-full object-cover"
+              />
+            </div>
+            <CardBody class="p-3">
+              <h3 class="font-semibold text-sm mb-1 line-clamp-1">{{ item.title_override || item.entity?.name || item.entity?.type || 'N/A' }}</h3>
+              <p class="text-xs text-slate-600 mb-1">{{ item.subtitle_override || getFeaturedSubtitle(item) }}</p>
+              <div class="flex items-center justify-between">
+                <span v-if="item.entity?.base_price" class="text-sm font-bold text-teal-600">¥{{ item.entity.base_price }}</span>
+                <span v-if="item.entity?.city?.name" class="text-xs text-slate-500">{{ item.entity.city.name }}</span>
+              </div>
+              <Badge variant="accent" size="sm" class="mt-2">Featured</Badge>
+            </CardBody>
+          </Card>
         </div>
       </section>
     </div>
@@ -418,7 +569,7 @@ import {
   Button,
   Input,
   Select,
-  CompactCard,
+  Badge,
   SkeletonLoader,
 } from '@bridgechina/ui';
 import axios from '@/utils/axios';

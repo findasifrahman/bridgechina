@@ -87,9 +87,15 @@ importers:
       axios:
         specifier: ^1.6.5
         version: 1.13.2
+      lucide-vue-next:
+        specifier: ^0.344.0
+        version: 0.344.0(vue@3.5.26(typescript@5.9.3))
       pinia:
         specifier: ^2.1.7
         version: 2.3.1(typescript@5.9.3)(vue@3.5.26(typescript@5.9.3))
+      serve:
+        specifier: ^14.2.3
+        version: 14.2.5
       vue:
         specifier: ^3.4.15
         version: 3.5.26(typescript@5.9.3)
@@ -112,9 +118,6 @@ importers:
       postcss:
         specifier: ^8.4.33
         version: 8.5.6
-      serve:
-        specifier: ^14.2.3
-        version: 14.2.5
       tailwindcss:
         specifier: ^3.4.1
         version: 3.4.19(tsx@4.21.0)
@@ -2122,6 +2125,11 @@ packages:
 
   lucide-vue-next@0.309.0:
     resolution: {integrity: sha512-MRrJOV1uyAxHaCqqgwRcLN/8CwlKCwuz7MNdWo2OG/jjrGI+7wLJeJOYJ8lp/61Fps3Mat/k7+0WIskwbGhqTA==}
+    peerDependencies:
+      vue: '>=3.0.1'
+
+  lucide-vue-next@0.344.0:
+    resolution: {integrity: sha512-YvexWTTzcRScmOKUvbQvexDmIK63x6NT8lV3Cot9TShQyy3PpFxfx5i2wZNhaZfV8bKqTMRXgCs372rnrtPYKQ==}
     peerDependencies:
       vue: '>=3.0.1'
 
@@ -5186,6 +5194,10 @@ snapshots:
   lodash@4.17.21: {}
 
   lucide-vue-next@0.309.0(vue@3.5.26(typescript@5.9.3)):
+    dependencies:
+      vue: 3.5.26(typescript@5.9.3)
+
+  lucide-vue-next@0.344.0(vue@3.5.26(typescript@5.9.3)):
     dependencies:
       vue: 3.5.26(typescript@5.9.3)
 
