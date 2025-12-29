@@ -1,14 +1,15 @@
 {
-  "buildCommand": "cd ../.. && pnpm install && pnpm --filter @bridgechina/web build",
+  "buildCommand": "pnpm install && pnpm --filter @bridgechina/web build",
   "outputDirectory": "apps/web/dist",
-  "installCommand": "cd ../.. && pnpm install",
+  "installCommand": "pnpm install",
   "framework": "vite",
-  "devCommand": "cd ../.. && pnpm --filter @bridgechina/web dev",
+  "devCommand": "pnpm --filter @bridgechina/web dev",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
-  ]
+  ],
+  "cleanUrls": true
 }
 
