@@ -1,0 +1,15 @@
+# Alternative nixpacks config (Railway might look for this name)
+# This ensures pnpm is used and install runs from monorepo root
+
+[phases.setup]
+nixPkgs = ["nodejs_20", "pnpm"]
+
+[phases.install]
+cmds = ["cd ../.. && pnpm install --frozen-lockfile"]
+
+[phases.build]
+cmds = ["cd ../.. && pnpm --filter @bridgechina/web build"]
+
+[start]
+cmd = "npx serve -s dist -l $PORT"
+
