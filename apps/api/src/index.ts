@@ -25,8 +25,11 @@ await fastify.register(cors, {
       process.env.APP_BASE_URL || 'http://localhost:5173',
       'http://localhost:5173',
       'http://127.0.0.1:5173',
+      'https://bridgechina-web.vercel.app',
+      'https://*.vercel.app',
     ];
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allow all Vercel preview deployments
+    if (!origin || allowedOrigins.includes(origin) || origin.includes('.vercel.app')) {
       cb(null, true);
     } else {
       cb(new Error('Not allowed by CORS'), false);
@@ -72,6 +75,24 @@ fastify.get('/', async () => {
 // Health check
 fastify.get('/health', async () => {
   return { status: 'ok', timestamp: new Date().toISOString() };
+});
+
+// API info route
+fastify.get('/api', async () => {
+  return {
+    message: 'BridgeChina API',
+    version: '1.0.0',
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/health',
+      auth: '/api/auth',
+      public: '/api/public',
+      user: '/api/user',
+      admin: '/api/admin',
+      seller: '/api/seller',
+    },
+  };
 });
 
 // Register routes

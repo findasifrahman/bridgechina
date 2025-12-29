@@ -1,7 +1,9 @@
 import axios from 'axios';
 
 // Configure axios defaults
-axios.defaults.baseURL = '';
+// Use VITE_API_URL if set, otherwise use relative paths (for same-origin)
+const apiUrl = import.meta.env.VITE_API_URL || '';
+axios.defaults.baseURL = apiUrl;
 axios.defaults.withCredentials = true;
 
 // Request interceptor to add auth token
