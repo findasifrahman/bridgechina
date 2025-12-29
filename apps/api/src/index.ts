@@ -27,8 +27,14 @@ await fastify.register(cors, {
       process.env.APP_BASE_URL || 'http://localhost:5173',
       'http://localhost:5173',
       'http://127.0.0.1:5173',
+      'https://bridgechina-web.vercel.app',
+      ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),
     ];
-    if (!origin || allowedOrigins.includes(origin)) {
+    
+    // Allow all Vercel preview deployments (bridgechina-web-*.vercel.app)
+    const isVercelPreview = origin && /^https:\/\/bridgechina-web-.*\.vercel\.app$/.test(origin);
+    
+    if (!origin || allowedOrigins.includes(origin) || isVercelPreview) {
       cb(null, true);
     } else {
       cb(new Error('Not allowed by CORS'), false);
