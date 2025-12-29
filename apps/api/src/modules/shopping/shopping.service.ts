@@ -3,7 +3,7 @@
  * Orchestrates TMAPI calls with caching
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import tmapiClient from './tmapi.client.js';
 import {
   normalizeProductCards,
@@ -448,7 +448,7 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
       where: {
         source: SOURCE,
         expires_at: { gt: new Date() }, // Only non-expired cache
-        raw_json: { not: null }, // Must have cached data
+        NOT: { raw_json: Prisma.JsonNull }, // Must have cached data
       },
       orderBy: { last_synced_at: 'desc' }, // Most recently synced first
       take: needed + 20, // Get extra to account for potential duplicates

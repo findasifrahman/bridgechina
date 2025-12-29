@@ -755,7 +755,7 @@ export default async function publicRoutes(fastify: FastifyInstance) {
       include: {
         city: true,
         coverAsset: true,
-        tourLinks: {
+        cityPlaces: {
           include: {
             cityPlace: {
               include: {
@@ -1463,7 +1463,6 @@ export default async function publicRoutes(fastify: FastifyInstance) {
             { name: { contains: query, mode: 'insensitive' } },
             { description: { contains: query, mode: 'insensitive' } },
           ],
-          verified: true,
         },
         take: 5,
         include: { city: true },
