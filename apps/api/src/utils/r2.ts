@@ -6,7 +6,7 @@
  * Cloudflare Dashboard > R2 > Manage R2 API Tokens > Create API Token (S3 API Token)
  */
 
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectsCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 let s3Client: S3Client | null = null;
@@ -90,5 +90,65 @@ export function getPublicUrl(key: string): string {
   const accountId = process.env.R2_ACCOUNT_ID;
   const bucket = process.env.R2_BUCKET;
   return `https://pub-${accountId}.r2.dev/${bucket}/${key}`;
+}
+
+export async function deleteMultipleFromR2(keys: string[]): Promise<void> {
+  const client = getS3Client();
+  const bucket = process.env.R2_BUCKET;
+
+  if (!bucket) {
+    throw new Error('R2_BUCKET not configured');
+  }
+
+  // Delete objects in batches (S3 DeleteObjects supports up to 1000 objects)
+  for (let i = 0; i < keys.length; i += 1000) {
+    const batch = keys.slice(i, i + 1000);
+    const command = new DeleteObjectsCommand({
+      Bucket: bucket,
+      Delete: {
+        Objects: batch.map(key => ({ Key: key })),
+      },
+    });
+    
+    await client.send(command);
+  }
+}
+
+// Image processing functions (stubs - implement with sharp or similar if needed)
+export function validateImageSize(size: number): void {
+  const maxSize = 10 * 1024 * 1024; // 10MB
+  if (size > maxSize) {
+    throw new Error(`Image size exceeds maximum of ${maxSize} bytes`);
+  }
+}
+
+export async function getImageDimensions(buffer: Buffer): Promise<{ width: number; height: number }> {
+  // Stub implementation - use sharp or similar library for production
+  // For now, return default dimensions
+  return { width: 0, height: 0 };
+}
+
+export async function generateThumbnail(buffer: Buffer): Promise<Buffer> {
+  // Stub implementation - use sharp or similar library for production
+  // For now, return original buffer
+  return buffer;
+}
+
+export async function uploadToR2(key: string, buffer: Buffer, contentType: string): Promise<void> {
+  const client = getS3Client();
+  const bucket = process.env.R2_BUCKET;
+
+  if (!bucket) {
+    throw new Error('R2_BUCKET not configured');
+  }
+
+  const command = new PutObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    Body: buffer,
+    ContentType: contentType,
+  });
+
+  await client.send(command);
 }
 

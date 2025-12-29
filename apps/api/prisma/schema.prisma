@@ -1094,3 +1094,73 @@ model GuideOffer {
   @@index([guide_id])
   @@map("guide_offers")
 }
+
+// External Catalog Cache (for TMAPI 1688 products)
+model ExternalSearchCache {
+  id           String   @id @default(uuid())
+  source       String   // e.g., "tmapi_1688"
+  cache_key    String   @unique
+  query_json   Json
+  results_json Json
+  expires_at   DateTime
+  created_at   DateTime @default(now())
+
+  @@index([source, cache_key])
+  @@index([expires_at])
+  @@map("external_search_cache")
+}
+
+model ExternalCatalogItem {
+  id             String    @id @default(uuid())
+  source         String    // e.g., "tmapi_1688"
+  external_id    String
+  title          String?
+  title_en       String?   // English title if available
+  price_min      Float?
+  price_max      Float?
+  currency       String    @default("CNY")
+  main_images    Json?     // Array of image URLs
+  skus_json      Json?     // SKU data
+  seller_json    Json?     // Seller info
+  source_url     String?
+  raw_json       Json?     // Full raw response from external API
+  expires_at     DateTime
+  last_synced_at DateTime  @default(now())
+  created_at     DateTime  @default(now())
+
+  @@unique([source, external_id])
+  @@index([source])
+  @@index([expires_at])
+  @@map("external_catalog_items")
+}
+
+model ExternalHotItem {
+  id             String   @id @default(uuid())
+  source         String   // e.g., "tmapi_1688"
+  external_id    String
+  is_pinned      Boolean  @default(false)
+  sort_order     Int      @default(0)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@unique([source, external_id])
+  @@index([is_pinned, sort_order])
+  @@map("external_hot_items")
+}
+
+// Homepage Banners
+model HomepageBanner {
+  id          String   @id @default(uuid())
+  title       String?
+  subtitle    String?
+  image_url   String
+  link_url    String?
+  link_text   String?
+  is_active   Boolean  @default(true)
+  sort_order  Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([is_active, sort_order])
+  @@map("homepage_banners")
+}

@@ -19,6 +19,15 @@ export interface ProductDetail extends ProductCard {
   description?: string;
   skus?: any;
   raw?: any;
+  rating?: number;
+  ratingCount?: number;
+  totalSold?: number;
+  availableQuantity?: number;
+  stock?: number;
+  tieredPricing?: any[];
+  shippingInfo?: any;
+  productProps?: any;
+  serviceTags?: string[];
 }
 
 /**
@@ -104,14 +113,23 @@ export function normalizeProductCard(item: any): ProductCard {
 /**
  * Normalize TMAPI item detail to ProductDetail
  */
-export function normalizeProductDetail(item: any): ProductDetail {
+export function normalizeProductDetail(item: any, descriptionData?: any): ProductDetail {
   const card = normalizeProductCard(item);
 
   const detail: ProductDetail = {
     ...card,
-    description: item.description || item.desc || item.detail || '',
+    description: descriptionData?.content || descriptionData?.description || item.description || item.desc || item.detail || '',
     skus: item.skus || item.sku_list || null,
     raw: item, // Keep raw data for reference
+    rating: item.rating || item.star_rate || item.avg_star || undefined,
+    ratingCount: item.rating_count || item.review_count || item.comment_count || undefined,
+    totalSold: item.total_sold || item.sold_count || item.sales_count || undefined,
+    availableQuantity: item.available_quantity || item.stock || item.quantity || undefined,
+    stock: item.stock || item.quantity || undefined,
+    tieredPricing: item.quantity_prices || item.tiered_pricing || undefined,
+    shippingInfo: item.shipping_info || item.shipping || undefined,
+    productProps: item.product_props || item.props || item.properties || undefined,
+    serviceTags: item.service_tags || item.tags || undefined,
   };
 
   return detail;
