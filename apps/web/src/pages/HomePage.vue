@@ -122,7 +122,7 @@
                 <p class="text-xs text-slate-600 mb-1">{{ item.subtitle_override || item.entity?.region_text }}</p>
                 <div class="flex items-center justify-between">
                   <span class="text-sm font-bold text-teal-600">¥{{ item.entity?.price || 'N/A' }}</span>
-                  <Badge v-if="item.entity?.number_available" variant="info" size="sm">With Number</Badge>
+                  <Badge v-if="item.entity?.number_available" variant="primary" size="sm">With Number</Badge>
                 </div>
                 <p class="text-xs text-slate-500 mt-1">{{ item.entity?.data_text || '' }} • {{ item.entity?.validity_days || '' }} days</p>
               </CardBody>
@@ -153,7 +153,7 @@
                   <span v-if="item.entity?.city?.name" class="text-xs text-slate-500">{{ item.entity.city.name }}</span>
                 </div>
                 <div v-if="getPlaceTags(item.entity).length > 0" class="flex gap-1 mt-2">
-                  <Badge v-for="tag in getPlaceTags(item.entity)" :key="tag" variant="info" size="sm">{{ tag }}</Badge>
+                  <Badge v-for="tag in getPlaceTags(item.entity)" :key="tag" variant="primary" size="sm">{{ tag }}</Badge>
                 </div>
               </CardBody>
             </Card>
@@ -400,7 +400,7 @@
               <p class="text-xs text-slate-600 mb-1">{{ item.subtitle_override || getFeaturedSubtitle(item) }}</p>
               <div class="flex items-center justify-between">
                 <span class="text-sm font-bold text-teal-600">¥{{ item.entity?.price || 'N/A' }}</span>
-                <Badge v-if="item.entity?.number_available" variant="info" size="sm">With Number</Badge>
+                <Badge v-if="item.entity?.number_available" variant="primary" size="sm">With Number</Badge>
               </div>
               <p class="text-xs text-slate-500 mt-1">{{ item.entity?.data_text || '' }} • {{ item.entity?.validity_days || '' }} days</p>
             </CardBody>
@@ -743,7 +743,7 @@ async function loadHomepageData() {
   }
 }
 
-function handleSearch(query: string) {
+function handleSearch(_query: string) {
   // Search is handled by AiSearchBar component
 }
 
@@ -791,43 +791,6 @@ function getFeaturedSubtitle(item: any): string {
   }
 }
 
-function getFeaturedPrice(item: any): string | undefined {
-  if (!item.entity) return undefined;
-  switch (item.entity_type) {
-    case 'hotel':
-      return item.entity.price_from ? `¥${item.entity.price_from}` : undefined;
-    case 'food_item':
-      return `¥${item.entity.price || 'N/A'}`;
-    case 'tour':
-      return item.entity.price_from ? `¥${item.entity.price_from}` : undefined;
-    case 'esim_plan':
-      return `¥${item.entity.price || 'N/A'}`;
-    case 'product':
-      return `¥${item.entity.price || 'N/A'}`;
-    default:
-      return undefined;
-  }
-}
-
-function getFeaturedMeta(item: any): string | undefined {
-  if (!item.entity) return undefined;
-  switch (item.entity_type) {
-    case 'hotel':
-      return item.entity.city?.name;
-    case 'restaurant':
-      return item.entity.city?.name;
-    case 'food_item':
-      return item.entity.restaurant?.name;
-    case 'cityplace':
-      return item.entity.city?.name;
-    case 'tour':
-      return item.entity.city?.name;
-    case 'product':
-      return item.entity.category?.name;
-    default:
-      return undefined;
-  }
-}
 
 function getFeaturedItemsForTab(tabValue: string): any[] {
   const typeMap: Record<string, keyof typeof featuredItemsByType.value> = {
