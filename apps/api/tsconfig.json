@@ -5,12 +5,13 @@
     "rootDir": "./src",
     "module": "ESNext",
     "target": "ES2022",
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "noEmit": false,
     "declaration": false,
-    "sourceMap": false
+    "sourceMap": false,
+    "allowImportingTsExtensions": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
