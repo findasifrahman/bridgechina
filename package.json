@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@10.26.2",
   "scripts": {
     "dev": "concurrently --kill-others-on-fail --kill-others \"pnpm --filter @bridgechina/api dev\" \"pnpm --filter @bridgechina/web dev\"",
     "dev:kill": "node scripts/kill-port.js 3000",
