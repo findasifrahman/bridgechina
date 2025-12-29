@@ -101,3 +101,4 @@ UPDATE homepage_banners SET is_active = true;
 
 **Note:** This will activate ALL items. If you want to be selective, use Prisma Studio instead.
 
+

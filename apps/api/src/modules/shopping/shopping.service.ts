@@ -448,7 +448,7 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
       where: {
         source: SOURCE,
         expires_at: { gt: new Date() }, // Only non-expired cache
-        NOT: { raw_json: Prisma.JsonNull }, // Must have cached data
+        // raw_json is optional, so we'll filter out nulls after fetching if needed
       },
       orderBy: { last_synced_at: 'desc' }, // Most recently synced first
       take: needed + 20, // Get extra to account for potential duplicates

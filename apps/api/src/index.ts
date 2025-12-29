@@ -102,7 +102,7 @@ const shutdown = async (signal: string) => {
     fastify.log.info('Server closed successfully');
     process.exit(0);
   } catch (err) {
-    fastify.log.error('Error during shutdown:', err instanceof Error ? err.message : String(err));
+    fastify.log.error({ err }, 'Error during shutdown');
     process.exit(1);
   }
 };
@@ -113,14 +113,14 @@ process.on('SIGINT', () => shutdown('SIGINT')); // Ctrl+C on Windows
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
-  fastify.log.error('Uncaught Exception:', error.message || String(error));
+  fastify.log.error({ err: error }, 'Uncaught Exception');
   shutdown('uncaughtException');
 });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
-  const reasonStr = reason instanceof Error ? reason.message : String(reason);
-  fastify.log.error('Unhandled Rejection at:', String(promise), 'reason:', reasonStr);
+  const err = reason instanceof Error ? reason : new Error(String(reason));
+  fastify.log.error({ err, promise: String(promise) }, 'Unhandled Rejection');
   shutdown('unhandledRejection');
 });
 
