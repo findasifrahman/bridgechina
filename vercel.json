@@ -6,7 +6,7 @@
   "devCommand": "pnpm --filter @bridgechina/web dev",
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!api).*)",
       "destination": "/index.html"
     }
   ],
