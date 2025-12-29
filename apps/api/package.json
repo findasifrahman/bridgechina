@@ -10,9 +10,17 @@
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
+    "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
+    "db:check": "tsx scripts/check-database.ts",
+    "db:check-active": "tsx scripts/fix-is-active.ts",
+    "db:connection": "tsx scripts/check-db-connection.ts",
+    "db:check-table": "tsx scripts/check-table-structure.ts",
+    "db:check-catalog": "tsx scripts/check-external-catalog.ts",
+    "db:check-banners": "tsx scripts/check-banners-table.ts",
+    "db:sync-to-railway": "tsx scripts/sync-to-railway.ts",
     "ingest:cityplaces": "tsx scripts/ingest-cityplaces.ts"
   },
   "dependencies": {

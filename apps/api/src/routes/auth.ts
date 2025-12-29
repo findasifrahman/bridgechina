@@ -38,7 +38,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
     const accessToken = fastify.jwt.sign(
       { id: user.id, email: user.email, phone: user.phone },
-      { expiresIn: process.env.JWT_ACCESS_EXPIRES || '15m' }
+      { expiresIn: process.env.JWT_ACCESS_EXPIRES || '12h' }
     );
 
     const refreshToken = fastify.jwt.sign(
@@ -106,7 +106,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
     const accessToken = fastify.jwt.sign(
       { id: user.id, email: user.email, phone: user.phone },
-      { expiresIn: process.env.JWT_ACCESS_EXPIRES || '15m' }
+      { expiresIn: process.env.JWT_ACCESS_EXPIRES || '12h' }
     );
 
     const refreshToken = fastify.jwt.sign(
@@ -217,7 +217,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
       const accessToken = fastify.jwt.sign(
         { id: user.id, email: user.email, phone: user.phone },
-        { expiresIn: process.env.JWT_ACCESS_EXPIRES || '15m' }
+        { expiresIn: process.env.JWT_ACCESS_EXPIRES || '12h' }
       );
 
       reply.setCookie('refreshToken', newRefreshToken, {

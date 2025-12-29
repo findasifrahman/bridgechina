@@ -67,7 +67,15 @@ async function handleRegister() {
       phone: phone.value || undefined,
       password: password.value,
     });
-    router.push('/app');
+    // Determine redirect based on user role
+    const userRoles = authStore.user?.roles || [];
+    if (userRoles.some((role: string) => ['ADMIN', 'OPS', 'EDITOR'].includes(role))) {
+      router.push('/admin');
+    } else if (userRoles.includes('SELLER')) {
+      router.push('/seller');
+    } else {
+      router.push('/app');
+    }
     toast.success('Account created successfully!');
   } catch (error: any) {
     toast.error(error.response?.data?.error || 'Registration failed');

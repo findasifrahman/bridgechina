@@ -20,7 +20,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   // Fix existing media asset URLs (remove bucket name from path)
   fastify.post('/media/fix-urls', async () => {
-    const { getPublicUrl } = await import('../utils/r2.js');
+    const { getPublicUrl } = await import('../utils/image-processor.js');
     
     const allAssets = await prisma.mediaAsset.findMany({
       select: {
@@ -310,6 +310,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   // Catalog management - Cities
   fastify.get('/catalog/cities', async () => {
     const cities = await prisma.city.findMany({ 
+      include: {
+        coverAsset: true,
+      },
       orderBy: { name: 'asc' } 
     });
 
@@ -351,6 +354,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         cover_asset_id: coverAssetId,
         gallery_asset_ids: galleryAssetIds,
       },
+      include: {
+        coverAsset: true,
+      },
     });
 
     // Load gallery assets
@@ -387,6 +393,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         highlights: body.highlights as any,
         cover_asset_id: coverAssetId,
         gallery_asset_ids: galleryAssetIds,
+      },
+      include: {
+        coverAsset: true,
       },
     });
 
@@ -1459,11 +1468,10 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.get('/shopping/hot-items', async (request: FastifyRequest) => {
     const { category_slug, source } = request.query as { category_slug?: string; source?: string };
     const where: any = {};
-    // category_slug removed from ExternalHotItem schema
     if (source) where.source = source;
     return prisma.externalHotItem.findMany({
       where,
-      orderBy: { sort_order: 'asc' },
+      orderBy: { pinned_rank: 'asc' }, // Lower rank = higher priority
     });
   });
 
@@ -1473,7 +1481,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       data: {
         source: body.source || 'tmapi_1688',
         external_id: body.external_id,
-        sort_order: body.sort_order || body.pinned_rank || 0,
+        category_slug: body.category_slug || '',
+        pinned_rank: body.pinned_rank !== undefined ? body.pinned_rank : (body.is_pinned ? 1 : 0), // Support both old and new format
       },
     });
   });
@@ -1485,7 +1494,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       where: { id: params.id },
       data: {
         external_id: body.external_id,
-        sort_order: body.sort_order || body.pinned_rank || 0,
+        category_slug: body.category_slug,
+        pinned_rank: body.pinned_rank !== undefined ? body.pinned_rank : (body.is_pinned ? 1 : 0), // Support both old and new format
       },
     });
   });
@@ -1580,7 +1590,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       
       // Use request.parts() with proper async iteration and timeout
       try {
-        const parts = (request as any).parts();
+        const parts = request.parts();
         console.log('[Upload] Got parts iterator');
         
         // Add timeout to prevent hanging
@@ -1644,7 +1654,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
       console.log('[Upload] File received:', fileData.filename, 'MIME:', fileData.mimetype);
 
-      const { getPublicUrl, validateImageSize, generateThumbnail, getImageDimensions, uploadToR2 } = await import('../utils/r2.js');
+      const { validateImageSize, generateThumbnail, getImageDimensions, uploadToR2, getPublicUrl } = await import('../utils/image-processor.js');
       
       // Read file buffer - use pre-read chunks if available, otherwise read stream
       console.log('[Upload] Reading file buffer...');
@@ -2656,6 +2666,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     const params = request.params as { id: string };
     const plan = await prisma.esimPlan.findUnique({
       where: { id: params.id },
+      include: {
+        coverAsset: true,
+      },
     });
 
     if (!plan) {
@@ -2707,6 +2720,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         cover_asset_id: coverAssetId,
         gallery_asset_ids: galleryAssetIds.length > 0 ? galleryAssetIds : null,
       },
+      include: {
+        coverAsset: true,
+      },
     });
 
     // Load gallery assets
@@ -2755,6 +2771,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         description: body.description,
         cover_asset_id: coverAssetId,
         gallery_asset_ids: galleryAssetIds,
+      },
+      include: {
+        coverAsset: true,
       },
     });
 
@@ -3443,6 +3462,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
     const offers = await prisma.serviceBasedOffer.findMany({
       where,
+      include: {
+        coverAsset: true,
+      },
       orderBy: { created_at: 'desc' },
     });
 
@@ -3469,6 +3491,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { id: string };
     const offer = await prisma.serviceBasedOffer.findUnique({
       where: { id },
+      include: {
+        coverAsset: true,
+      },
     });
 
     if (!offer) {
@@ -3526,6 +3551,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         max_discount_amount: body.max_discount_amount || null,
         usage_limit: body.usage_limit || null,
         usage_count: 0,
+      },
+      include: {
+        coverAsset: true,
       },
     });
 
@@ -3587,6 +3615,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         usage_limit: body.usage_limit !== undefined ? body.usage_limit : undefined,
         usage_count: body.usage_count !== undefined ? body.usage_count : undefined,
       },
+      include: {
+        coverAsset: true,
+      },
     });
 
     // Load gallery assets
@@ -3616,6 +3647,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   // Homepage Banners CRUD
   fastify.get('/homepage-banners', async (request: FastifyRequest) => {
     const banners = await prisma.homepageBanner.findMany({
+      include: {
+        coverAsset: true,
+      },
       orderBy: {
         sort_order: 'asc',
       },
@@ -3628,6 +3662,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     const params = request.params as { id: string };
     const banner = await prisma.homepageBanner.findUnique({
       where: { id: params.id },
+      include: {
+        coverAsset: true,
+      },
     });
 
     if (!banner) {
@@ -3644,11 +3681,14 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       data: {
         title: body.title,
         subtitle: body.subtitle,
-        image_url: body.image_url || body.imageUrl,
-        link_url: body.link || body.link_url,
-        link_text: body.link_text || body.linkText,
+        cover_asset_id: body.cover_asset_id || body.image_url || null, // Support both old and new format
+        link: body.link || body.link_url,
+        cta_text: body.cta_text || body.link_text || body.linkText || 'Learn More',
         is_active: body.is_active !== undefined ? body.is_active : true,
         sort_order: body.sort_order || 0,
+      },
+      include: {
+        coverAsset: true,
       },
     });
 
@@ -3664,11 +3704,14 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       data: {
         title: body.title,
         subtitle: body.subtitle,
-        image_url: body.image_url || body.imageUrl,
-        link_url: body.link || body.link_url,
-        link_text: body.link_text || body.linkText,
+        cover_asset_id: body.cover_asset_id !== undefined ? body.cover_asset_id : (body.image_url || null),
+        link: body.link !== undefined ? body.link : body.link_url,
+        cta_text: body.cta_text !== undefined ? body.cta_text : body.link_text,
         is_active: body.is_active,
         sort_order: body.sort_order,
+      },
+      include: {
+        coverAsset: true,
       },
     });
 

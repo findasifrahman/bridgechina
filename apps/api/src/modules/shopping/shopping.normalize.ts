@@ -19,15 +19,20 @@ export interface ProductDetail extends ProductCard {
   description?: string;
   skus?: any;
   raw?: any;
+  // Additional detail fields
   rating?: number;
   ratingCount?: number;
   totalSold?: number;
   availableQuantity?: number;
-  stock?: number;
-  tieredPricing?: any[];
-  shippingInfo?: any;
-  productProps?: any;
+  tieredPricing?: Array<{ minQty: number; maxQty?: number; price: number }>;
+  shippingInfo?: {
+    areaFrom?: string[];
+    freeShipping?: boolean;
+    shipIn48h?: boolean;
+  };
+  productProps?: any[];
   serviceTags?: string[];
+  stock?: number;
 }
 
 /**
@@ -116,20 +121,121 @@ export function normalizeProductCard(item: any): ProductCard {
 export function normalizeProductDetail(item: any, descriptionData?: any): ProductDetail {
   const card = normalizeProductCard(item);
 
+  // Try to extract description from various possible fields
+  let description = '';
+  if (descriptionData) {
+    // If description data was fetched separately, use it
+    if (typeof descriptionData === 'string') {
+      description = descriptionData;
+    } else if (descriptionData.desc_html) {
+      description = descriptionData.desc_html;
+    } else if (descriptionData.desc_text) {
+      description = descriptionData.desc_text;
+    } else if (descriptionData.description) {
+      description = descriptionData.description;
+    }
+  }
+  
+  // Fallback to item fields
+  if (!description) {
+    description = item.description || item.desc || item.detail || item.desc_html || item.desc_text || '';
+  }
+
+  // Extract rating
+  let rating: number | undefined;
+  if (item.goods_score) {
+    const score = parseFloat(String(item.goods_score));
+    if (!isNaN(score)) {
+      rating = score;
+    }
+  }
+
+  // Extract sales info
+  let totalSold: number | undefined;
+  let ratingCount: number | undefined;
+  if (item.sale_info) {
+    if (item.sale_info.sale_quantity_90days) {
+      totalSold = parseInt(String(item.sale_info.sale_quantity_90days)) || undefined;
+    } else if (item.sale_info.sale_quantity) {
+      const qty = String(item.sale_info.sale_quantity).replace(/[^0-9]/g, '');
+      totalSold = parseInt(qty) || undefined;
+    }
+    if (item.sale_info.orders_count) {
+      ratingCount = parseInt(String(item.sale_info.orders_count)) || undefined;
+    }
+  }
+  if (item.sale_count) {
+    const count = String(item.sale_count).replace(/[^0-9]/g, '');
+    totalSold = parseInt(count) || totalSold;
+  }
+
+  // Extract stock/quantity
+  let availableQuantity: number | undefined;
+  if (item.stock) {
+    availableQuantity = parseInt(String(item.stock)) || undefined;
+  }
+  if (item.quantity_begin) {
+    availableQuantity = parseInt(String(item.quantity_begin)) || availableQuantity;
+  }
+
+  // Extract tiered pricing
+  const tieredPricing: Array<{ minQty: number; maxQty?: number; price: number }> = [];
+  if (item.tiered_price_info?.prices) {
+    for (const tier of item.tiered_price_info.prices) {
+      const minQty = parseInt(String(tier.beginAmount || tier.begin_num || 1)) || 1;
+      const price = parseFloat(String(tier.price));
+      if (!isNaN(price)) {
+        tieredPricing.push({ minQty, price });
+      }
+    }
+  }
+  if (item.quantity_prices && Array.isArray(item.quantity_prices)) {
+    for (const qp of item.quantity_prices) {
+      const minQty = parseInt(String(qp.begin_num || qp.beginAmount || 1)) || 1;
+      const maxQty = qp.end_num ? parseInt(String(qp.end_num).replace(/[^0-9]/g, '')) : undefined;
+      const price = parseFloat(String(qp.price));
+      if (!isNaN(price)) {
+        tieredPricing.push({ minQty, maxQty, price });
+      }
+    }
+  }
+
+  // Extract shipping info
+  const shippingInfo: ProductDetail['shippingInfo'] = {};
+  if (item.delivery_info) {
+    if (item.delivery_info.area_from) {
+      shippingInfo.areaFrom = Array.isArray(item.delivery_info.area_from) 
+        ? item.delivery_info.area_from 
+        : [item.delivery_info.area_from];
+    }
+    if (item.delivery_info.free_shipping !== undefined) {
+      shippingInfo.freeShipping = Boolean(item.delivery_info.free_shipping);
+    }
+    if (item.delivery_info.ship_in_48h !== undefined) {
+      shippingInfo.shipIn48h = Boolean(item.delivery_info.ship_in_48h);
+    }
+  }
+  if (item.free_shipping !== undefined) {
+    shippingInfo.freeShipping = Boolean(item.free_shipping);
+  }
+  if (item.ship_in_48h !== undefined) {
+    shippingInfo.shipIn48h = Boolean(item.ship_in_48h);
+  }
+
   const detail: ProductDetail = {
     ...card,
-    description: descriptionData?.content || descriptionData?.description || item.description || item.desc || item.detail || '',
+    description,
     skus: item.skus || item.sku_list || null,
     raw: item, // Keep raw data for reference
-    rating: item.rating || item.star_rate || item.avg_star || undefined,
-    ratingCount: item.rating_count || item.review_count || item.comment_count || undefined,
-    totalSold: item.total_sold || item.sold_count || item.sales_count || undefined,
-    availableQuantity: item.available_quantity || item.stock || item.quantity || undefined,
-    stock: item.stock || item.quantity || undefined,
-    tieredPricing: item.quantity_prices || item.tiered_pricing || undefined,
-    shippingInfo: item.shipping_info || item.shipping || undefined,
-    productProps: item.product_props || item.props || item.properties || undefined,
-    serviceTags: item.service_tags || item.tags || undefined,
+    rating,
+    ratingCount,
+    totalSold,
+    availableQuantity,
+    tieredPricing: tieredPricing.length > 0 ? tieredPricing : undefined,
+    shippingInfo: Object.keys(shippingInfo).length > 0 ? shippingInfo : undefined,
+    productProps: item.product_props || item.props || null,
+    serviceTags: item.service_tags || item.tags || null,
+    stock: item.stock ? parseInt(String(item.stock)) : undefined,
   };
 
   return detail;

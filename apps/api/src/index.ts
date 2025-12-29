@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
 import jwt from '@fastify/jwt';
+import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
 import { PrismaClient } from '@prisma/client';
 import { authenticate } from './middleware/auth.js';
@@ -11,6 +12,7 @@ import publicRoutes from './routes/public.js';
 import adminRoutes from './routes/admin.js';
 import sellerRoutes from './routes/seller.js';
 import userRoutes from './routes/user.js';
+import guideRoutes from './routes/guide.js';
 
 const prisma = new PrismaClient();
 
@@ -25,11 +27,8 @@ await fastify.register(cors, {
       process.env.APP_BASE_URL || 'http://localhost:5173',
       'http://localhost:5173',
       'http://127.0.0.1:5173',
-      'https://bridgechina-web.vercel.app',
-      'https://*.vercel.app',
     ];
-    // Allow all Vercel preview deployments
-    if (!origin || allowedOrigins.includes(origin) || origin.includes('.vercel.app')) {
+    if (!origin || allowedOrigins.includes(origin)) {
       cb(null, true);
     } else {
       cb(new Error('Not allowed by CORS'), false);
@@ -40,6 +39,12 @@ await fastify.register(cors, {
 
 await fastify.register(cookie, {
   secret: process.env.JWT_REFRESH_SECRET || 'change-me',
+});
+
+await fastify.register(multipart, {
+  limits: {
+    fileSize: 1024 * 1024, // 1MB max
+  },
 });
 
 await fastify.register(jwt, {
@@ -54,51 +59,16 @@ await fastify.register(rateLimit, {
 // Register authenticate middleware
 fastify.decorate('authenticate', authenticate);
 
-// Root route
-fastify.get('/', async () => {
-  return {
-    message: 'BridgeChina API',
-    version: '1.0.0',
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    endpoints: {
-      health: '/health',
-      auth: '/api/auth',
-      public: '/api/public',
-      user: '/api/user',
-      admin: '/api/admin',
-      seller: '/api/seller',
-    },
-  };
-});
-
 // Health check
 fastify.get('/health', async () => {
   return { status: 'ok', timestamp: new Date().toISOString() };
-});
-
-// API info route
-fastify.get('/api', async () => {
-  return {
-    message: 'BridgeChina API',
-    version: '1.0.0',
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    endpoints: {
-      health: '/health',
-      auth: '/api/auth',
-      public: '/api/public',
-      user: '/api/user',
-      admin: '/api/admin',
-      seller: '/api/seller',
-    },
-  };
 });
 
 // Register routes
 await fastify.register(authRoutes, { prefix: '/api/auth' });
 await fastify.register(publicRoutes, { prefix: '/api/public' });
 await fastify.register(userRoutes, { prefix: '/api/user' });
+await fastify.register(guideRoutes, { prefix: '/api/guide' });
 await fastify.register(adminRoutes, { prefix: '/api/admin' });
 await fastify.register(sellerRoutes, { prefix: '/api/seller' });
 
@@ -124,8 +94,32 @@ const start = async () => {
 start();
 
 // Graceful shutdown
-process.on('SIGTERM', async () => {
-  await fastify.close();
-  await prisma.$disconnect();
+const shutdown = async (signal: string) => {
+  fastify.log.info(`Received ${signal}, shutting down gracefully...`);
+  try {
+    await fastify.close();
+    await prisma.$disconnect();
+    fastify.log.info('Server closed successfully');
+    process.exit(0);
+  } catch (err) {
+    fastify.log.error('Error during shutdown:', err);
+    process.exit(1);
+  }
+};
+
+// Handle different shutdown signals
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT')); // Ctrl+C on Windows
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  fastify.log.error('Uncaught Exception:', error);
+  shutdown('uncaughtException');
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  fastify.log.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  shutdown('unhandledRejection');
 });
 

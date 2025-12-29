@@ -68,8 +68,8 @@ const cityOptions = computed(() => [
 
 const isModalOpen = computed({
   get: () => !!selectedImage.value,
-  set: (value: boolean) => {
-    if (!value) {
+  set: (val) => {
+    if (!val) {
       selectedImage.value = null;
     }
   },

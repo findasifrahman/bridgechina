@@ -83,14 +83,25 @@ class TMAPIClient {
         data: response.data,
       });
 
+      // According to TMAPI docs: response structure is { code: 200, msg: "success", data: { image_url: "..." } }
+      // The client returns response.data, so we have { code, msg, data: { image_url } }
       if (response.data?.data?.image_url) {
-        // TMAPI returns relative path, need to construct full URL
         const imageUrl = response.data.data.image_url;
-        if (imageUrl.startsWith('http')) {
+        // If it's already a full URL, return as-is
+        if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
           return imageUrl;
         }
-        return `https://cbu01.alicdn.com${imageUrl}`;
+        // If it's a relative path, construct full Alibaba CDN URL
+        // TMAPI returns paths like "/search/imgextra4/xxx.jpeg"
+        // We need to construct: https://cbu01.alicdn.com/search/imgextra4/xxx.jpeg
+        if (imageUrl.startsWith('/')) {
+          return `https://cbu01.alicdn.com${imageUrl}`;
+        }
+        // If no leading slash, add it
+        return `https://cbu01.alicdn.com/${imageUrl}`;
       }
+      
+      // Fallback to other possible response formats
       if (response.data?.data?.converted_url) {
         return response.data.data.converted_url;
       }
@@ -100,7 +111,13 @@ class TMAPIClient {
       if (response.data?.url) {
         return response.data.url;
       }
-      throw new Error('Invalid response from image-url-convert');
+      
+      console.error('[TMAPI Client] convertImageUrl - Invalid response structure:', {
+        responseKeys: Object.keys(response.data || {}),
+        dataKeys: response.data?.data ? Object.keys(response.data.data) : [],
+        responseSample: JSON.stringify(response.data).substring(0, 500),
+      });
+      throw new Error('Invalid response from image-url-convert: missing image_url field');
     } catch (error: any) {
       console.error('[TMAPI Client] convertImageUrl error:', {
         message: error.message,
@@ -140,7 +157,13 @@ class TMAPIClient {
         baseURL: this.client.defaults.baseURL,
         endpoint: '/1688/search/image',
         method: 'GET',
-        params: { ...params, apiToken: params.apiToken ? '[REDACTED]' : 'MISSING' },
+        imgUrl: imgUrl.substring(0, 100) + '...',
+        params: { 
+          ...params, 
+          apiToken: params.apiToken ? '[REDACTED]' : 'MISSING',
+          img_url: imgUrl.substring(0, 100) + '...',
+        },
+        fullUrl: `${this.client.defaults.baseURL}/1688/search/image?apiToken=${params.apiToken ? '[REDACTED]' : 'MISSING'}&img_url=${encodeURIComponent(imgUrl)}&page=${params.page || 1}&page_size=${params.page_size || 20}`,
       });
 
       const response = await this.client.get('/1688/search/image', { params });
@@ -154,6 +177,8 @@ class TMAPIClient {
         responseKeys: Object.keys(response.data || {}),
         dataKeys: response.data?.data ? Object.keys(response.data.data) : [],
         fullResponse: JSON.stringify(response.data).substring(0, 2000),
+        // Check if there's an error message
+        errorMsg: response.data?.msg !== 'success' ? response.data?.msg : null,
       });
 
       return response.data;
@@ -212,6 +237,8 @@ class TMAPIClient {
         responseKeys: Object.keys(response.data || {}),
         dataKeys: response.data?.data ? Object.keys(response.data.data) : [],
         fullResponse: JSON.stringify(response.data).substring(0, 2000),
+        // Check if there's an error message
+        errorMsg: response.data?.msg !== 'success' ? response.data?.msg : null,
       });
 
       return response.data;

@@ -12,9 +12,12 @@ const pinia = createPinia();
 app.use(pinia);
 app.use(router);
 
-// Initialize auth store
+// Initialize auth store (don't await - let it run in background)
+// This prevents blocking the initial route navigation
 const authStore = useAuthStore();
-authStore.init();
+authStore.init().catch(() => {
+  // Silently fail - user might not be logged in
+});
 
 console.log('[App] Mounting Vue app...');
 app.mount('#app');

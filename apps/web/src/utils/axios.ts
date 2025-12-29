@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 // Configure axios defaults
-// Use VITE_API_URL if set, otherwise use relative paths (for same-origin)
+// For local dev: empty string uses Vite proxy (configured in vite.config.ts)
+// For production: set VITE_API_URL environment variable
 const apiUrl = import.meta.env.VITE_API_URL || '';
 axios.defaults.baseURL = apiUrl;
 axios.defaults.withCredentials = true;
@@ -43,19 +44,25 @@ axios.interceptors.response.use(
         console.error('API Error:', message);
       }
 
-      // Handle 401 - try refresh token
+      // Handle 401 - try refresh token (only for protected endpoints)
       if (error.response.status === 401 && !error.config.url?.includes('/auth/refresh')) {
-        try {
-          const refreshResponse = await axios.post('/api/auth/refresh');
-          const newToken = refreshResponse.data.accessToken;
-          localStorage.setItem('accessToken', newToken);
-          error.config.headers.Authorization = `Bearer ${newToken}`;
-          return axios.request(error.config);
-        } catch (refreshError) {
-          // Refresh failed, clear auth and redirect
-          localStorage.removeItem('accessToken');
-          window.location.href = '/login';
-          return Promise.reject(refreshError);
+        // Skip refresh for public endpoints
+        const isPublicEndpoint = error.config.url?.includes('/public/') || 
+                                 error.config.url?.includes('/auth/login') ||
+                                 error.config.url?.includes('/auth/register');
+        
+        if (!isPublicEndpoint) {
+          try {
+            const refreshResponse = await axios.post('/api/auth/refresh');
+            const newToken = refreshResponse.data.accessToken;
+            localStorage.setItem('accessToken', newToken);
+            error.config.headers.Authorization = `Bearer ${newToken}`;
+            return axios.request(error.config);
+          } catch (refreshError) {
+            // Refresh failed, clear auth - router will handle redirect
+            localStorage.removeItem('accessToken');
+            return Promise.reject(refreshError);
+          }
         }
       }
     } else if (error.request) {

@@ -103,7 +103,7 @@ export default async function sellerRoutes(fastify: FastifyInstance) {
         currency: body.currency || 'CNY',
         stock_qty: body.stock_qty || 0,
         status: body.status || 'draft',
-        gallery_asset_ids: body.images ? (body.images as any) : null,
+        images: body.images ? (body.images as any) : null,
       },
     });
 

@@ -117,7 +117,7 @@ async function main() {
       verified: true,
       description: 'Luxury hotel in the heart of Guangzhou',
       contact_phone: '+86 20 8888 8888',
-      images: ['https://example.com/hotel1.jpg'],
+      gallery_asset_ids: ['https://example.com/hotel1.jpg'],
     },
     {
       city_id: guangzhou.id,
@@ -130,7 +130,7 @@ async function main() {
       verified: true,
       description: 'Comfortable stay with great amenities',
       contact_phone: '+86 20 8888 8889',
-      images: ['https://example.com/hotel2.jpg'],
+      gallery_asset_ids: ['https://example.com/hotel2.jpg'],
     },
   ];
 
@@ -153,7 +153,7 @@ async function main() {
       delivery_supported: true,
       description: 'Authentic halal cuisine',
       contact_phone: '+86 20 8888 7777',
-      images: ['https://example.com/restaurant1.jpg'],
+      gallery_asset_ids: ['https://example.com/restaurant1.jpg'],
     },
   ];
 
@@ -177,7 +177,7 @@ async function main() {
       geo_lng: 113.2700,
       contact_phone: '+86 20 8888 6666',
       description: 'Major hospital with English-speaking staff',
-      images: ['https://example.com/hospital1.jpg'],
+      gallery_asset_ids: ['https://example.com/hospital1.jpg'],
     },
   ];
 
@@ -198,7 +198,7 @@ async function main() {
       currency: 'CNY',
       description: 'Explore the best of Guangzhou',
       meeting_point: 'Canton Tower',
-      images: ['https://example.com/tour1.jpg'],
+      gallery_asset_ids: ['https://example.com/tour1.jpg'],
     },
   ];
 

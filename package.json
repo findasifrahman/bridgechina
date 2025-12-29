@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"pnpm --filter @bridgechina/api dev\" \"pnpm --filter @bridgechina/web dev\"",
+    "dev": "concurrently -n \"API,WEB\" -c \"blue,green\" \"pnpm --filter @bridgechina/api dev\" \"pnpm --filter @bridgechina/web dev\"",
     "build": "pnpm --recursive --filter '@bridgechina/api' --filter '@bridgechina/web' build",
     "lint": "pnpm --recursive lint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,vue,json,md}\"",

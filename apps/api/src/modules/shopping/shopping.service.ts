@@ -3,7 +3,7 @@
  * Orchestrates TMAPI calls with caching
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import tmapiClient from './tmapi.client.js';
 import {
   normalizeProductCards,
@@ -389,10 +389,13 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
     where.category_slug = categorySlug;
   }
 
-  // First, try to get pinned hot items
+  // First, try to get pinned hot items (pinned_rank > 0 means pinned)
   const hotItems = await prisma.externalHotItem.findMany({
-    where,
-    orderBy: { sort_order: 'asc' },
+    where: {
+      ...where,
+      pinned_rank: { gt: 0 }, // Only get pinned items (pinned_rank > 0)
+    },
+    orderBy: { pinned_rank: 'asc' }, // Lower rank = higher priority
     take: 100, // Get more to filter by valid cache
   });
 
@@ -400,7 +403,7 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
 
   if (hotItems.length > 0) {
     // Load from ExternalCatalogItem cache (DB snapshot) for pinned items
-    const externalIds = hotItems.map((h: any) => h.external_id);
+    const externalIds = hotItems.map(h => h.external_id);
     const cachedItems = await prisma.externalCatalogItem.findMany({
       where: {
         source: SOURCE,
@@ -409,11 +412,11 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
       },
     });
 
-    const cachedMap = new Map(cachedItems.map((c: any) => [c.external_id, c]));
+    const cachedMap = new Map(cachedItems.map(c => [c.external_id, c]));
 
     for (const hotItem of hotItems) {
       const cached = cachedMap.get(hotItem.external_id);
-      if (cached && cached.raw_json && typeof cached.raw_json === 'object') {
+      if (cached && cached.raw_json) {
         // Use cached data
         const normalized = normalizeProductDetail(cached.raw_json as any);
         // Override title with English if available
@@ -445,7 +448,7 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
       where: {
         source: SOURCE,
         expires_at: { gt: new Date() }, // Only non-expired cache
-        // raw_json must exist (filtered in JS)
+        raw_json: { not: null }, // Must have cached data
       },
       orderBy: { last_synced_at: 'desc' }, // Most recently synced first
       take: needed + 20, // Get extra to account for potential duplicates

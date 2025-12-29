@@ -376,8 +376,10 @@
           <label class="text-sm font-medium text-slate-700">Highlights (comma-separated)</label>
           <Input v-model="cityForm.highlightsText" placeholder="Tourist attractions, landmarks, etc." />
         </div>
-        <!-- TODO: Replace MultiImagePicker with MediaPickerModal or custom component -->
-        <div class="text-sm text-slate-500 italic">Image picker temporarily disabled</div>
+        <MultiImagePicker
+          v-model="cityForm.image_ids"
+          :available-assets="mediaAssets"
+        />
         <div class="flex items-center space-x-2">
           <Checkbox v-model="cityForm.is_active" label="Active" />
         </div>
@@ -1038,6 +1040,7 @@ import {
   Checkbox,
   FilterBar,
   ConfirmDialog,
+  MultiImagePicker,
 } from '@bridgechina/ui';
 
 const toast = useToast();
