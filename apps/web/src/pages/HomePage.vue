@@ -114,12 +114,16 @@
 
           <!-- Shopping Tab -->
           <template v-if="activeTab === 'shopping'">
-            <ProductCard
-              v-for="product in hotProducts"
-              :key="product.externalId"
-              :product="product"
-              @click="handleShoppingProductClick(product)"
-              @request-buy="handleShoppingRequestBuy(product)"
+            <CompactCard
+              v-for="item in getFeaturedItemsForTab('shopping')"
+              :key="item.id"
+              :item="item.entity"
+              :title="item.title_override || item.entity?.title || 'N/A'"
+              :subtitle="item.subtitle_override || item.entity?.category?.name"
+              :thumbnail="item.entity?.coverAsset?.thumbnail_url || item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+              :price="`¥${item.entity?.price || 'N/A'}`"
+              :meta="item.entity?.category?.name"
+              @click="handleFeaturedItemClick(item)"
             />
           </template>
         </div>
@@ -135,7 +139,7 @@
               <!-- Background Image or Gradient -->
               <img
                 v-if="item.coverAsset?.public_url || item.coverAsset?.thumbnail_url"
-                :src="item.coverAsset?.public_url || item.coverAsset?.thumbnail_url"
+                :src="item.coverAsset?.thumbnail_url || item.coverAsset?.public_url"
                 :alt="item.title"
                 class="absolute inset-0 w-full h-full object-cover object-center"
               />
@@ -401,7 +405,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Search, Car, MapPin, Calendar } from 'lucide-vue-next';
 import {
@@ -418,7 +422,6 @@ import {
   SkeletonLoader,
 } from '@bridgechina/ui';
 import axios from '@/utils/axios';
-import ProductCard from '@/components/shopping/ProductCard.vue';
 
 const router = useRouter();
 
@@ -434,7 +437,6 @@ const topProducts = ref<any[]>([]);
 const topRestaurants = ref<any[]>([]);
 const featuredCards = ref<any[]>([]);
 const featuredItems = ref<any[]>([]);
-const hotProducts = ref<any[]>([]); // TMAPI hot products for shopping tab
 const featuredItemsByType = ref<any>({
   hotels: [],
   restaurants: [],
@@ -676,40 +678,6 @@ function getFeaturedMeta(item: any): string | undefined {
   }
 }
 
-async function loadHotProducts() {
-  try {
-    const response = await axios.get('/api/public/shopping/hot', {
-      params: {
-        page: 1,
-        pageSize: 4, // Show 4 products in homepage tab
-      },
-    });
-    hotProducts.value = response.data || [];
-  } catch (error) {
-    console.error('Failed to load hot products:', error);
-    hotProducts.value = [];
-  }
-}
-
-function handleShoppingProductClick(product: any) {
-  router.push(`/shopping/tmapi/${product.externalId}`);
-}
-
-function handleShoppingRequestBuy(product: any) {
-  router.push({
-    path: '/request',
-    query: {
-      category: 'shopping',
-      external_id: product.externalId,
-      title: product.title,
-      image_url: product.imageUrl,
-      source_url: product.sourceUrl,
-      price_min: product.priceMin,
-      price_max: product.priceMax,
-    },
-  });
-}
-
 function getFeaturedItemsForTab(tabValue: string): any[] {
   const typeMap: Record<string, keyof typeof featuredItemsByType.value> = {
     'hotels': 'hotels',
@@ -755,18 +723,8 @@ function handleFeaturedItemClick(item: any) {
   }
 }
 
-watch(activeTab, (newTab) => {
-  if (newTab === 'shopping' && hotProducts.value.length === 0) {
-    loadHotProducts();
-  }
-});
-
 onMounted(() => {
   loadHomepageData();
   loadBanners();
-  // Load hot products if shopping tab is initially selected
-  if (activeTab.value === 'shopping') {
-    loadHotProducts();
-  }
 });
 </script>

@@ -28,16 +28,9 @@ export { default as PromoCard } from './components/PromoCard.vue';
 export { default as CompactTable } from './components/CompactTable.vue';
 export { default as FilterBar } from './components/FilterBar.vue';
 export { default as MediaPickerModal } from './components/MediaPickerModal.vue';
-export { default as MultiImagePicker } from './components/MultiImagePicker.vue';
 export { default as Carousel } from './components/Carousel.vue';
 export { default as FloatingChatWidget } from './components/FloatingChatWidget.vue';
 export { default as AiSearchBar } from './components/AiSearchBar.vue';
-export { default as ImageCarousel } from './components/ImageCarousel.vue';
-export { default as CompactCard } from './components/CompactCard.vue';
-export { default as ImageCard } from './components/ImageCard.vue';
-export { default as CrossSellWidget } from './components/CrossSellWidget.vue';
-export { default as RightRailOffers } from './components/RightRailOffers.vue';
-export { default as OffersCarousel } from './components/OffersCarousel.vue';
 
 export { default as MarketingLayout } from './layouts/MarketingLayout.vue';
 export { default as AppLayout } from './layouts/AppLayout.vue';

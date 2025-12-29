@@ -1,399 +1,56 @@
-/**
- * User Routes
- * 
- * Routes for authenticated users:
- * - Request guide service
- * - Request transport from CityPlace
- * - Accept guide offers
- * - Submit reviews
- */
-
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { PrismaClient } from '@prisma/client';
-import { z } from 'zod';
 
 const prisma = new PrismaClient();
 
-// All user routes require authentication
-async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
-  const req = request as any;
-  try {
-    await req.jwtVerify();
-  } catch (err) {
-    reply.status(401).send({ error: 'Unauthorized' });
-  }
-}
-
 export default async function userRoutes(fastify: FastifyInstance) {
-  fastify.addHook('onRequest', requireAuth);
-
-  // Request guide service (from CityPlace or manual)
-  fastify.post('/guide-request', async (request: FastifyRequest, reply: FastifyReply) => {
+  // Get user's service requests
+  fastify.get('/requests', {
+    preHandler: [fastify.authenticate as any],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
     const req = request as any;
-    const body = request.body as any;
-
-    // Find or create service category
-    let category = await prisma.serviceCategory.findUnique({
-      where: { key: 'guide' },
-    });
-
-    if (!category) {
-      category = await prisma.serviceCategory.create({
-        data: { key: 'guide', name: 'Guide Service' },
-      });
-    }
-
-    // Create service request
-    const serviceRequest = await prisma.serviceRequest.create({
-      data: {
-        category_id: category.id,
-        city_id: body.city_id,
-        user_id: req.user.id,
-        status: 'new',
-        customer_name: body.customer_name || req.user.email || 'User',
-        phone: body.phone || req.user.phone || '',
-        whatsapp: body.whatsapp || null,
-        email: body.email || req.user.email || null,
-        request_payload: {
-          cityplace_id: body.cityplace_id || null,
-          service_mode: body.service_mode || 'hourly',
-          start_time: body.start_time || null,
-          end_time: body.end_time || null,
-          meeting_point: body.meeting_point || null,
-          places: body.places || [],
-          notes: body.notes || null,
-          people_count: body.people_count || null,
-          budget_min: body.budget_min || null,
-          budget_max: body.budget_max || null,
-        } as any,
-      },
-    });
-
-    // Create guide request
-    const guideRequest = await prisma.guideRequest.create({
-      data: {
-        request_id: serviceRequest.id,
-        service_mode: body.service_mode || 'hourly',
-        start_time: body.start_time ? new Date(body.start_time) : null,
-        end_time: body.end_time ? new Date(body.end_time) : null,
-        meeting_point: body.meeting_point || null,
-        places: body.places || null,
-        notes: body.notes || null,
-        people_count: body.people_count || null,
-        budget_min: body.budget_min || null,
-        budget_max: body.budget_max || null,
-        status: 'new',
-      },
-    });
-
-    return {
-      serviceRequest,
-      guideRequest,
-    };
-  });
-
-  // Request transport from CityPlace
-  fastify.post('/request-transport-from-cityplace', async (request: FastifyRequest, reply: FastifyReply) => {
-    const req = request as any;
-    const body = request.body as any;
-
-    // Find cityplace
-    const cityplace = await prisma.cityPlace.findUnique({
-      where: { id: body.cityplace_id },
-      include: { city: true },
-    });
-
-    if (!cityplace) {
-      return reply.status(404).send({ error: 'City place not found' });
-    }
-
-    // Find or create transport category
-    let category = await prisma.serviceCategory.findUnique({
-      where: { key: 'transport' },
-    });
-
-    if (!category) {
-      category = await prisma.serviceCategory.create({
-        data: { key: 'transport', name: 'Transport' },
-      });
-    }
-
-    // Create service request
-    const serviceRequest = await prisma.serviceRequest.create({
-      data: {
-        category_id: category.id,
-        city_id: cityplace.city_id,
-        user_id: req.user.id,
-        status: 'new',
-        customer_name: body.customer_name || req.user.email || 'User',
-        phone: body.phone || req.user.phone || '',
-        whatsapp: body.whatsapp || null,
-        email: body.email || req.user.email || null,
-        request_payload: {
-          cityplace_id: body.cityplace_id,
-          type: body.type || 'point_to_point',
-          pickup_text: body.pickup_text || cityplace.address,
-          dropoff_text: body.dropoff_text || null,
-          pickup_time: body.pickup_time || null,
-          passengers: body.passengers || 1,
-          luggage: body.luggage || 0,
-        } as any,
-      },
-    });
-
-    // Create transport booking
-    const transportBooking = await prisma.transportBooking.create({
-      data: {
-        request_id: serviceRequest.id,
-        type: body.type || 'point_to_point',
-        pickup_text: body.pickup_text || cityplace.address,
-        dropoff_text: body.dropoff_text || null,
-        pickup_time: body.pickup_time ? new Date(body.pickup_time) : null,
-        passengers: body.passengers || 1,
-        luggage: body.luggage || 0,
-      },
-    });
-
-    return {
-      serviceRequest,
-      transportBooking,
-    };
-  });
-
-  // Get user's guide requests
-  fastify.get('/guide-requests', async (request: FastifyRequest) => {
-    const req = request as any;
-    const { status } = request.query as { status?: string };
-
-    const where: any = {
-      request: {
-        user_id: req.user.id,
-      },
-    };
-
-    if (status) {
-      where.status = status;
-    }
-
-    const requests = await prisma.guideRequest.findMany({
-      where,
+    const requests = await prisma.serviceRequest.findMany({
+      where: { user_id: req.user.id },
       include: {
-        request: {
-          include: {
-            category: true,
-            city: true,
-          },
-        },
-        offers: {
-          include: {
-            guide: {
-              include: {
-                city: true,
-                coverAsset: true,
-              },
-            },
-          },
-          orderBy: { created_at: 'asc' },
-        },
+        category: true,
+        city: true,
       },
-      orderBy: { request: { created_at: 'desc' } },
+      orderBy: { created_at: 'desc' },
     });
-
     return requests;
   });
 
-  // Accept a guide offer
-  fastify.post('/guide-offers/:id/accept', async (request: FastifyRequest, reply: FastifyReply) => {
+  // Get user's orders
+  fastify.get('/orders', {
+    preHandler: [fastify.authenticate as any],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
     const req = request as any;
-    const { id } = request.params as { id: string };
-
-    const offer = await prisma.guideOffer.findUnique({
-      where: { id },
+    const orders = await prisma.order.findMany({
+      where: { user_id: req.user.id },
       include: {
-        request: {
+        items: {
           include: {
-            request: {
-              include: { user: true },
-            },
+            product: true,
           },
         },
+        shippingAddress: true,
       },
-    });
-
-    if (!offer) {
-      return reply.status(404).send({ error: 'Offer not found' });
-    }
-
-    // Verify user owns the request
-    if (offer.request.request.user_id !== req.user.id) {
-      return reply.status(403).send({ error: 'Not authorized' });
-    }
-
-    if (offer.status !== 'sent') {
-      return reply.status(400).send({ error: 'Offer is not available for acceptance' });
-    }
-
-    // Accept the offer
-    await prisma.guideOffer.update({
-      where: { id },
-      data: { status: 'accepted' },
-    });
-
-    // Reject other offers for the same request
-    await prisma.guideOffer.updateMany({
-      where: {
-        request_id: offer.request_id,
-        id: { not: id },
-        status: 'sent',
-      },
-      data: { status: 'rejected' },
-    });
-
-    // Update guide request status
-    await prisma.guideRequest.update({
-      where: { request_id: offer.request_id },
-      data: { status: 'assigned' },
-    });
-
-    // Update service request status
-    await prisma.serviceRequest.update({
-      where: { id: offer.request_id },
-      data: {
-        status: 'confirmed',
-        assigned_to: offer.guide_id,
-      },
-    });
-
-    return { message: 'Offer accepted', offer };
-  });
-
-  // Submit a review
-  fastify.post('/reviews', async (request: FastifyRequest, reply: FastifyReply) => {
-    const req = request as any;
-    const body = request.body as any;
-
-    // Validate entity_type
-    const validTypes = ['hotel', 'restaurant', 'medical', 'tour', 'transport', 'cityplace', 'product', 'guide'];
-    if (!validTypes.includes(body.entity_type)) {
-      return reply.status(400).send({ error: 'Invalid entity_type' });
-    }
-
-    // Validate rating
-    if (!body.rating || body.rating < 1 || body.rating > 5) {
-      return reply.status(400).send({ error: 'Rating must be between 1 and 5' });
-    }
-
-    // Check if user already reviewed this entity
-    const existingReview = await prisma.review.findFirst({
-      where: {
-        user_id: req.user.id,
-        entity_type: body.entity_type,
-        entity_id: body.entity_id,
-      },
-    });
-
-    if (existingReview) {
-      return reply.status(400).send({ error: 'You have already reviewed this item' });
-    }
-
-    // Create review
-    const review = await prisma.review.create({
-      data: {
-        user_id: req.user.id,
-        entity_type: body.entity_type,
-        entity_id: body.entity_id,
-        rating: body.rating,
-        title: body.title || null,
-        comment: body.comment || null,
-      },
-      include: {
-        user: {
-          select: { id: true, email: true },
-        },
-      },
-    });
-
-    // Update entity rating and review count
-    await updateEntityRating(body.entity_type, body.entity_id);
-
-    return review;
-  });
-
-  // Get user's reviews
-  fastify.get('/reviews', async (request: FastifyRequest) => {
-    const req = request as any;
-    const reviews = await prisma.review.findMany({
-      where: { user_id: req.user.id },
       orderBy: { created_at: 'desc' },
     });
+    return orders;
+  });
 
-    return reviews;
+  // Get user's addresses
+  fastify.get('/addresses', {
+    preHandler: [fastify.authenticate as any],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const req = request as any;
+    const addresses = await prisma.address.findMany({
+      where: { user_id: req.user.id },
+      include: { city: true },
+      orderBy: { created_at: 'desc' },
+    });
+    return addresses;
   });
 }
 
-// Helper function to update entity rating
-async function updateEntityRating(entityType: string, entityId: string) {
-  const reviews = await prisma.review.findMany({
-    where: {
-      entity_type: entityType,
-      entity_id: entityId,
-    },
-  });
-
-  if (reviews.length === 0) return;
-
-  const avgRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
-  const reviewCount = reviews.length;
-
-  // Update the appropriate entity table
-  switch (entityType) {
-    case 'hotel':
-      await prisma.hotel.update({
-        where: { id: entityId },
-        data: { rating: avgRating, review_count: reviewCount },
-      });
-      break;
-    case 'restaurant':
-      await prisma.restaurant.update({
-        where: { id: entityId },
-        data: { rating: avgRating, review_count: reviewCount },
-      });
-      break;
-    case 'medical':
-      await prisma.medicalCenter.update({
-        where: { id: entityId },
-        data: { rating: avgRating, review_count: reviewCount },
-      });
-      break;
-    case 'tour':
-      await prisma.tour.update({
-        where: { id: entityId },
-        data: { rating: avgRating, review_count: reviewCount },
-      });
-      break;
-    case 'transport':
-      await prisma.transportProduct.update({
-        where: { id: entityId },
-        data: { rating: avgRating, review_count: reviewCount },
-      });
-      break;
-    case 'cityplace':
-      await prisma.cityPlace.update({
-        where: { id: entityId },
-        data: { star_rating: avgRating, review_count: reviewCount },
-      });
-      break;
-    case 'product':
-      await prisma.product.update({
-        where: { id: entityId },
-        data: { rating: avgRating, review_count: reviewCount },
-      });
-      break;
-    case 'guide':
-      await prisma.guideProfile.update({
-        where: { user_id: entityId },
-        data: { rating: avgRating, review_count: reviewCount },
-      });
-      break;
-  }
-}

@@ -1,20 +1,15 @@
 # Nixpacks configuration for Railway frontend service
-# This ensures pnpm is used instead of npm
-# Note: Railway sets working directory to /apps/web (root directory)
-# So we need to go up two levels to reach the monorepo root
+# IMPORTANT: Set Root Directory to "." (repo root) in Railway dashboard, NOT "apps/web"
 
 [phases.setup]
 nixPkgs = ["nodejs_20", "pnpm"]
 
-# Disable auto-install and use custom install from monorepo root
 [phases.install]
-cmds = ["cd ../.. && pnpm install --frozen-lockfile"]
-dependsOn = ["setup"]
+cmds = ["pnpm install --frozen-lockfile"]
 
 [phases.build]
-cmds = ["cd ../.. && pnpm --filter @bridgechina/web build"]
-dependsOn = ["install"]
+cmds = ["pnpm --filter @bridgechina/web build"]
 
 [start]
-cmd = "npx serve -s dist -l $PORT"
+cmd = "bash apps/web/start.sh"
 

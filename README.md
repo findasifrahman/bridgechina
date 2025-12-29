@@ -80,7 +80,7 @@ Create `.env` files in `apps/api/`:
 DATABASE_URL="postgresql://postgres:your_password@localhost:5432/bridgechina?schema=public"
 JWT_ACCESS_SECRET="your-secure-random-string-here"
 JWT_REFRESH_SECRET="your-secure-random-string-here"
-JWT_ACCESS_EXPIRES="12h"
+JWT_ACCESS_EXPIRES="15m"
 JWT_REFRESH_EXPIRES="14d"
 APP_BASE_URL="http://localhost:5173"
 PORT=3000
@@ -145,8 +145,8 @@ pnpm dev
 - ✅ Role-based redirects after login (admin → /admin, seller → /seller, user → /app)
 
 #### Database Schema
-- ✅ Complete Prisma schema with 45+ tables
-- ✅ Image tables for all services (HotelImage, RestaurantImage, MedicalImage, TourImage, TransportImage, CityImage, ProductImage, EsimImage, CityPlaceImage)
+- ✅ Complete Prisma schema with 40+ tables
+- ✅ Image tables for all services (HotelImage, RestaurantImage, MedicalImage, TourImage, TransportImage, CityImage, ProductImage, EsimImage)
 - ✅ Trip.com-style service fields:
   - Hotels: ratings, reviews, star ratings, amenities, facilities, check-in/out times
   - Restaurants: ratings, cuisine types, price ranges, opening hours, specialties
@@ -162,25 +162,13 @@ pnpm dev
   - Ratings, reviews, SKU, brand, tags
   - Original price (for discounts), weight, dimensions
   - Specifications (key-value pairs)
-- ✅ City Places (Tourist Attractions):
-  - TripAdvisor-style places linked to cities
-  - Star ratings, review counts, cost ranges
-  - Opening hours, addresses, geo coordinates
-  - Family/pet friendly flags
-  - Multiple images per place
-  - Many-to-many relationship with tours
-- ✅ Review System:
-  - Generic review model for all services (hotels, restaurants, medical, tours, transport, cityplaces, products)
-  - User ratings (1-5 stars), comments, verified reviews
-  - Helpful count for community engagement
 
 #### Admin Panel
 - ✅ Dashboard with KPIs (leads, requests, orders)
 - ✅ Catalog Management (Full CRUD):
-  - Cities, Hotels, Restaurants, Medical Centers, Tours, Transport Products, City Places
+  - Cities, Hotels, Restaurants, Medical Centers, Tours, Transport Products
   - Searchable tables with filters
   - Create/Edit modals with all fields
-  - Multi-image picker for all services
   - Delete confirmation dialogs
   - Tour linking for City Places
 - ✅ Shopping Management (Full CRUD):
@@ -246,11 +234,6 @@ pnpm dev
 - ✅ Contact page
 - ✅ Gallery (location-based images)
 - ✅ Help page
-- ✅ City Places:
-  - Public listing page with city filtering
-  - Detail pages with images, descriptions, ratings
-  - Integration with tours (shows tours that visit each place)
-  - Featured on homepage
 
 #### Service Request Flow
 - ✅ 3-step wizard:
@@ -298,9 +281,7 @@ pnpm dev
 
 ### Public Endpoints
 - `GET /api/public/cities` - List active cities
-- `GET /api/public/catalog/*` - Catalog listings (hotels, restaurants, medical, tours, transport, cityplaces)
-- `GET /api/public/catalog/cityplaces` - List city places (with city filter)
-- `GET /api/public/catalog/cityplaces/:id` - City place detail
+- `GET /api/public/catalog/*` - Catalog listings (hotels, restaurants, medical, tours, transport)
 - `GET /api/public/shopping/categories` - Product categories
 - `GET /api/public/shopping/products` - Products (with search/filters)
 - `GET /api/public/shopping/products/:id` - Product detail
@@ -329,7 +310,7 @@ pnpm dev
 - `GET /api/admin/requests` - List service requests
 - `GET /api/admin/requests/:id` - Request detail
 - `PUT /api/admin/requests/:id` - Update request
-- `GET /api/admin/catalog/*` - Catalog CRUD (cities, hotels, restaurants, medical, tours, transport, cityplaces)
+- `GET /api/admin/catalog/*` - Catalog CRUD
 - `POST /api/admin/catalog/*` - Create catalog item
 - `PUT /api/admin/catalog/*/:id` - Update catalog item
 - `DELETE /api/admin/catalog/*/:id` - Delete catalog item
@@ -372,7 +353,6 @@ pnpm dev
 - `city_images` - Multiple images per city
 - `product_images` - Multiple images per product
 - `esim_images` - Multiple images per eSIM plan
-- `city_place_images` - Multiple images per city place
 
 ### eSIM Plans
 - `esim_plans` - eSIM packages with:
@@ -390,18 +370,6 @@ pnpm dev
 - `order_items` - Order items
 - `shipping_updates` - Shipping tracking
 
-### City Places & Reviews
-- `city_places` - Tourist attractions/places (TripAdvisor style)
-  - Linked to cities and tours
-  - Star ratings, review counts, cost ranges
-  - Opening hours, addresses, geo coordinates
-  - Family/pet friendly flags
-- `city_place_images` - Multiple images per city place
-- `tour_city_places` - Many-to-many relationship between tours and city places
-- `reviews` - Generic review system for all services
-  - Supports hotels, restaurants, medical, tours, transport, cityplaces, products
-  - User ratings (1-5 stars), comments, verified reviews
-
 ## Scripts
 
 ```bash
@@ -416,49 +384,6 @@ pnpm db:migrate
 
 # Seed database
 pnpm db:seed
-
-## Troubleshooting
-
-### Migration Advisory Lock Error
-
-If you see `Error: P1002` with "advisory lock" timeout:
-
-**Option 1: Wait and Retry (Recommended)**
-```bash
-# Wait 1-2 minutes, then retry
-pnpm db:migrate
-```
-
-**Option 2: Restart PostgreSQL**
-- **Windows**: Restart PostgreSQL service from Services (services.msc)
-- **macOS**: `brew services restart postgresql@14`
-- **Linux**: `sudo systemctl restart postgresql`
-
-**Option 3: Manually Release Lock**
-Connect to PostgreSQL and run:
-```sql
--- Connect to your database
-psql -U postgres -d bridgechina
-
--- Release all advisory locks for your session
-SELECT pg_advisory_unlock_all();
-
--- Check for active locks (optional)
-SELECT locktype, objid, pid, mode, granted
-FROM pg_locks
-WHERE locktype = 'advisory' AND objid = 72707369;
-
--- If locks exist, you may need to kill the process (use PID from above)
--- On Windows: taskkill /PID <pid> /F
--- On Unix: kill -9 <pid>
-```
-
-**Option 4: Use Migration Reset (⚠️ Development Only)**
-```bash
-# WARNING: This will drop all tables and recreate them
-# Only use in development with no important data
-pnpm --filter @bridgechina/api db:reset
-```
 
 # Start development servers
 pnpm dev

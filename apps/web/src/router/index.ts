@@ -61,11 +61,6 @@ const router = createRouter({
           component: () => import('@/pages/ProductDetailPage.vue'),
         },
         {
-          path: 'shopping/tmapi/:externalId',
-          name: 'tmapi-product-detail',
-          component: () => import('@/pages/TmapiProductDetailPage.vue'),
-        },
-        {
           path: 'login',
           name: 'login',
           component: () => import('@/pages/LoginPage.vue'),
@@ -104,36 +99,6 @@ const router = createRouter({
           path: 'places/:id',
           name: 'cityplace-detail',
           component: () => import('@/pages/CityPlaceDetailPage.vue'),
-        },
-        {
-          path: 'services/guide/:id',
-          name: 'guide-detail',
-          component: () => import('@/pages/GuideDetailPage.vue'),
-        },
-        {
-          path: 'services/hotel/:id',
-          name: 'hotel-detail',
-          component: () => import('@/pages/HotelDetailPage.vue'),
-        },
-        {
-          path: 'services/tours/:id',
-          name: 'tour-detail',
-          component: () => import('@/pages/TourDetailPage.vue'),
-        },
-        {
-          path: 'services/halal-food/restaurant/:id',
-          name: 'restaurant-detail',
-          component: () => import('@/pages/RestaurantDetailPage.vue'),
-        },
-        {
-          path: 'services/halal-food/item/:id',
-          name: 'food-item-detail',
-          component: () => import('@/pages/FoodItemDetailPage.vue'),
-        },
-        {
-          path: 'services/restaurants',
-          name: 'restaurants-list',
-          component: () => import('@/pages/RestaurantsListPage.vue'),
         },
       ],
     },

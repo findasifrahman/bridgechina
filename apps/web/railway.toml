@@ -1,9 +1,11 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "cd ../.. && pnpm install --frozen-lockfile && pnpm --filter @bridgechina/web build"
-installCommand = "cd ../.. && pnpm install --frozen-lockfile"
+# Don't use cd ../.. - instead, Railway should set root directory to repo root
+# If root directory is set to "apps/web", change it to "." (repo root) in Railway dashboard
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @bridgechina/web build"
 
 [deploy]
-startCommand = "npx serve -s dist -l $PORT"
+startCommand = "bash apps/web/start.sh"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
+

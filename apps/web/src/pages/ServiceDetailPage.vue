@@ -1,14 +1,11 @@
 <template>
-  <div class="py-6 px-4 sm:px-6 lg:px-8">
-    <!-- List Views for Hotels, Halal Food, Tours, Guide, Restaurants -->
-    <HotelsListPage v-if="route.params.slug === 'hotel'" />
-    <HalalFoodListPage v-else-if="route.params.slug === 'halal-food'" />
-    <ToursListPage v-else-if="route.params.slug === 'tours'" />
-    <GuidesListPage v-else-if="route.params.slug === 'guide'" />
-    <RestaurantsListPage v-else-if="route.params.slug === 'restaurants'" />
-    
-    <!-- Detail View for other services -->
-    <div v-else-if="!loading && service" class="max-w-7xl mx-auto">
+  <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div v-if="loading" class="space-y-6">
+      <SkeletonLoader class="h-8 w-64" />
+      <SkeletonLoader class="h-4 w-full" />
+    </div>
+
+    <div v-else-if="service">
       <PageHeader :title="service.name" :subtitle="service.description" />
       
       <div class="grid md:grid-cols-3 gap-6 mt-8">
@@ -94,11 +91,6 @@ import {
   EmptyState,
 } from '@bridgechina/ui';
 import axios from '@/utils/axios';
-import HotelsListPage from './HotelsListPage.vue';
-import HalalFoodListPage from './HalalFoodListPage.vue';
-import ToursListPage from './ToursListPage.vue';
-import GuidesListPage from './GuidesListPage.vue';
-import RestaurantsListPage from './RestaurantsListPage.vue';
 
 const route = useRoute();
 const router = useRouter();

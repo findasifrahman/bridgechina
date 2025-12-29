@@ -1,10 +1,7 @@
 import axios from 'axios';
 
 // Configure axios defaults
-// In production, use VITE_API_URL environment variable
-// In development, use empty string (Vite proxy will handle it)
-const apiUrl = import.meta.env.VITE_API_URL || '';
-axios.defaults.baseURL = apiUrl;
+axios.defaults.baseURL = '';
 axios.defaults.withCredentials = true;
 
 // Request interceptor to add auth token
@@ -44,25 +41,19 @@ axios.interceptors.response.use(
         console.error('API Error:', message);
       }
 
-      // Handle 401 - try refresh token (only for protected endpoints)
+      // Handle 401 - try refresh token
       if (error.response.status === 401 && !error.config.url?.includes('/auth/refresh')) {
-        // Skip refresh for public endpoints
-        const isPublicEndpoint = error.config.url?.includes('/public/') || 
-                                 error.config.url?.includes('/auth/login') ||
-                                 error.config.url?.includes('/auth/register');
-        
-        if (!isPublicEndpoint) {
-          try {
-            const refreshResponse = await axios.post('/api/auth/refresh');
-            const newToken = refreshResponse.data.accessToken;
-            localStorage.setItem('accessToken', newToken);
-            error.config.headers.Authorization = `Bearer ${newToken}`;
-            return axios.request(error.config);
-          } catch (refreshError) {
-            // Refresh failed, clear auth - router will handle redirect
-            localStorage.removeItem('accessToken');
-            return Promise.reject(refreshError);
-          }
+        try {
+          const refreshResponse = await axios.post('/api/auth/refresh');
+          const newToken = refreshResponse.data.accessToken;
+          localStorage.setItem('accessToken', newToken);
+          error.config.headers.Authorization = `Bearer ${newToken}`;
+          return axios.request(error.config);
+        } catch (refreshError) {
+          // Refresh failed, clear auth and redirect
+          localStorage.removeItem('accessToken');
+          window.location.href = '/login';
+          return Promise.reject(refreshError);
         }
       }
     } else if (error.request) {

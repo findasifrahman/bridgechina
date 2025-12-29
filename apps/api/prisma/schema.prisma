@@ -159,7 +159,6 @@ model MediaAsset {
   cityPlaceCovers    CityPlace[]         @relation("CityPlaceCover")
   guideCovers        GuideProfile[]      @relation("GuideCover")
   serviceOfferCovers ServiceBasedOffer[] @relation("ServiceOfferCover")
-  homepageBannerCovers HomepageBanner[] @relation("HomepageBannerCover")
 
   @@index([uploaded_by])
   @@index([category])
@@ -1094,74 +1093,4 @@ model GuideOffer {
   @@index([request_id])
   @@index([guide_id])
   @@map("guide_offers")
-}
-
-model HomepageBanner {
-  id          String    @id @default(uuid())
-  title       String
-  subtitle    String?   @db.Text
-  link        String?   // URL to navigate to
-  cta_text    String?   @default("Learn More")
-  cover_asset_id String?
-  is_active   Boolean   @default(true)
-  sort_order  Int       @default(0)
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
-
-  coverAsset MediaAsset? @relation("HomepageBannerCover", fields: [cover_asset_id], references: [id], onDelete: SetNull)
-
-  @@index([is_active, sort_order])
-  @@map("homepage_banners")
-}
-
-// TMAPI External Catalog & Caching
-model ExternalCatalogItem {
-  id             String   @id @default(uuid())
-  source         String   // "tmapi_1688"
-  external_id    String
-  title          String?  // Chinese title (title_cn)
-  title_en       String?  // English title (cached translation)
-  price_min      Float?
-  price_max      Float?
-  currency       String   @default("CNY")
-  main_images    Json?
-  skus_json      Json?
-  seller_json    Json?
-  source_url      String?
-  raw_json       Json?
-  last_synced_at DateTime @default(now())
-  expires_at     DateTime
-  updated_at     DateTime @updatedAt
-
-  @@unique([source, external_id])
-  @@index([source])
-  @@index([expires_at])
-  @@map("external_catalog_items")
-}
-
-model ExternalSearchCache {
-  id           String   @id @default(uuid())
-  source       String   // "tmapi_1688"
-  cache_key    String   @unique
-  query_json   Json?
-  results_json Json?
-  created_at   DateTime @default(now())
-  expires_at   DateTime
-
-  @@index([source])
-  @@index([expires_at])
-  @@map("external_search_cache")
-}
-
-model ExternalHotItem {
-  id            String   @id @default(uuid())
-  source        String   // "tmapi_1688"
-  category_slug String
-  external_id   String
-  pinned_rank   Int      @default(0)
-  created_at    DateTime @default(now())
-
-  @@index([category_slug])
-  @@index([external_id])
-  @@map("external_hot_items")
 }

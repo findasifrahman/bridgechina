@@ -3,19 +3,15 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@10.26.2",
   "scripts": {
-    "dev": "concurrently --kill-others-on-fail --kill-others \"pnpm --filter @bridgechina/api dev\" \"pnpm --filter @bridgechina/web dev\"",
-    "dev:kill": "node scripts/kill-port.js 3000",
-    "dev:clean": "pnpm dev:kill && pnpm dev",
+    "dev": "concurrently \"pnpm --filter @bridgechina/api dev\" \"pnpm --filter @bridgechina/web dev\"",
     "build": "pnpm --recursive --filter '@bridgechina/api' --filter '@bridgechina/web' build",
     "lint": "pnpm --recursive lint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,vue,json,md}\"",
     "db:generate": "pnpm --filter @bridgechina/api db:generate",
     "db:migrate": "pnpm --filter @bridgechina/api db:migrate",
     "db:seed": "pnpm --filter @bridgechina/api db:seed",
-    "db:studio": "pnpm --filter @bridgechina/api db:studio",
-    "ingest:cityplaces": "pnpm --filter @bridgechina/api ingest:cityplaces"
+    "db:studio": "pnpm --filter @bridgechina/api db:studio"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

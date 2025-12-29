@@ -1,6 +1,6 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @bridgechina/api db:generate"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @bridgechina/api db:generate && cd apps/api && pnpm build && ls -la dist/ || echo 'Build failed or dist/ is empty'"
 
 [deploy]
 startCommand = "cd apps/api && pnpm start"

@@ -7,7 +7,7 @@ async function main() {
   console.log('Seeding database...');
 
   // Create roles
-  const roles = ['ADMIN', 'OPS', 'EDITOR', 'SELLER', 'PARTNER', 'USER', 'GUIDE'];
+  const roles = ['ADMIN', 'OPS', 'EDITOR', 'SELLER', 'PARTNER', 'USER'];
   for (const roleName of roles) {
     await prisma.role.upsert({
       where: { name: roleName },
@@ -27,7 +27,6 @@ async function main() {
     { key: 'shopping_service', name: 'Shopping Service' },
     { key: 'tours', name: 'Tours' },
     { key: 'esim', name: 'eSIM Plans' },
-    { key: 'guide', name: 'Guide Service' },
   ];
 
   for (const cat of categories) {
@@ -118,8 +117,7 @@ async function main() {
       verified: true,
       description: 'Luxury hotel in the heart of Guangzhou',
       contact_phone: '+86 20 8888 8888',
-      // Note: Images should be uploaded via admin panel or ingestion script
-      // cover_asset_id and gallery_asset_ids are set to null for now
+      images: ['https://example.com/hotel1.jpg'],
     },
     {
       city_id: guangzhou.id,
@@ -132,6 +130,7 @@ async function main() {
       verified: true,
       description: 'Comfortable stay with great amenities',
       contact_phone: '+86 20 8888 8889',
+      images: ['https://example.com/hotel2.jpg'],
     },
   ];
 
@@ -154,6 +153,7 @@ async function main() {
       delivery_supported: true,
       description: 'Authentic halal cuisine',
       contact_phone: '+86 20 8888 7777',
+      images: ['https://example.com/restaurant1.jpg'],
     },
   ];
 
@@ -177,6 +177,7 @@ async function main() {
       geo_lng: 113.2700,
       contact_phone: '+86 20 8888 6666',
       description: 'Major hospital with English-speaking staff',
+      images: ['https://example.com/hospital1.jpg'],
     },
   ];
 
@@ -197,6 +198,7 @@ async function main() {
       currency: 'CNY',
       description: 'Explore the best of Guangzhou',
       meeting_point: 'Canton Tower',
+      images: ['https://example.com/tour1.jpg'],
     },
   ];
 

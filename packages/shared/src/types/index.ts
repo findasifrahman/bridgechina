@@ -56,7 +56,6 @@ export interface User {
   status: UserStatus;
   created_at: Date;
   updated_at: Date;
-  roles?: string[]; // Array of role names (ADMIN, OPS, EDITOR, SELLER, etc.)
 }
 
 export interface ServiceRequest {

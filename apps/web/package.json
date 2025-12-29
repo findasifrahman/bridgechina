@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@10.26.2",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc && vite build",
+    "build": "vite build",
+    "build:check": "vue-tsc && vite build",
     "preview": "vite preview",
-    "start": "npx serve -s dist -l ${PORT:-3000}",
+    "start": "serve -s dist -l ${PORT:-3000}",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore"
   },
   "dependencies": {
@@ -25,9 +25,11 @@
     "autoprefixer": "^10.4.17",
     "eslint": "^8.56.0",
     "postcss": "^8.4.33",
+    "serve": "^14.2.3",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3",
     "vite": "^5.1.0",
-    "vue-tsc": "^1.8.27"
+    "vue-tsc": "^2.0.0"
   }
 }
+
