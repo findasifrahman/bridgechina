@@ -3644,7 +3644,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       data: {
         title: body.title,
         subtitle: body.subtitle,
+        image_url: body.image_url || body.imageUrl,
         link_url: body.link || body.link_url,
+        link_text: body.link_text || body.linkText,
         is_active: body.is_active !== undefined ? body.is_active : true,
         sort_order: body.sort_order || 0,
       },
@@ -3662,7 +3664,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       data: {
         title: body.title,
         subtitle: body.subtitle,
+        image_url: body.image_url || body.imageUrl,
         link_url: body.link || body.link_url,
+        link_text: body.link_text || body.linkText,
         is_active: body.is_active,
         sort_order: body.sort_order,
       },
