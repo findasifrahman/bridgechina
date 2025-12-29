@@ -7,16 +7,10 @@
 nixPkgs = ["nodejs_20", "pnpm"]
 
 [phases.install]
-cmds = [
-  "cd ../..",
-  "pnpm install --frozen-lockfile"
-]
+cmds = ["cd ../.. && pnpm install --frozen-lockfile"]
 
 [phases.build]
-cmds = [
-  "cd ../..",
-  "pnpm --filter @bridgechina/web build"
-]
+cmds = ["cd ../.. && pnpm --filter @bridgechina/web build"]
 
 [start]
 cmd = "npx serve -s dist -l $PORT"
