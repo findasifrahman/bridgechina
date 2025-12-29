@@ -97,6 +97,21 @@ await fastify.register(rateLimit, {
 // Register authenticate middleware
 fastify.decorate('authenticate', authenticate);
 
+// Root route
+fastify.get('/', async () => {
+  return {
+    message: 'BridgeChina API',
+    version: '1.0.0',
+    status: 'running',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/health',
+      api: '/api',
+      docs: 'API documentation available at /api endpoints'
+    }
+  };
+});
+
 // Health check
 fastify.get('/health', async () => {
   return { status: 'ok', timestamp: new Date().toISOString() };
