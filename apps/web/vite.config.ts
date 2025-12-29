@@ -4,6 +4,7 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [vue()],
+  base: '/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -13,6 +14,7 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: false,
+    emptyOutDir: true,
   },
   server: {
     port: 5173,
