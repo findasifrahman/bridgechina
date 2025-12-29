@@ -637,5 +637,189 @@ export default async function publicRoutes(fastify: FastifyInstance) {
       orderBy: { sort_order: 'asc' },
     });
   });
+
+  // Homepage data endpoint
+  fastify.get('/home', async (request: FastifyRequest) => {
+    const { city_slug } = request.query as { city_slug?: string };
+    
+    // Get city by slug or default to Guangzhou
+    const city = await prisma.city.findFirst({
+      where: {
+        ...(city_slug ? { slug: city_slug } : { slug: 'guangzhou' }),
+        is_active: true,
+      },
+    });
+
+    const cityId = city?.id;
+
+    // Get top hotels
+    const topHotels = await prisma.hotel.findMany({
+      where: {
+        ...(cityId ? { city_id: cityId } : {}),
+        verified: true,
+      },
+      include: {
+        city: true,
+        coverAsset: true,
+      },
+      orderBy: { rating: 'desc' },
+      take: 10,
+    });
+
+    // Get top restaurants
+    const topRestaurants = await prisma.restaurant.findMany({
+      where: {
+        ...(cityId ? { city_id: cityId } : {}),
+        halal_verified: true,
+      },
+      include: {
+        city: true,
+        coverAsset: true,
+      },
+      orderBy: { rating: 'desc' },
+      take: 10,
+    });
+
+    // Get top city places
+    const topCityPlaces = await prisma.cityPlace.findMany({
+      where: {
+        ...(cityId ? { city_id: cityId } : {}),
+        is_active: true,
+      },
+      include: {
+        city: true,
+        coverAsset: true,
+      },
+      orderBy: { star_rating: 'desc' },
+      take: 10,
+    });
+
+    // Get top eSIM plans
+    const topEsimPlans = await prisma.esimPlan.findMany({
+      where: { is_active: true },
+      include: { coverAsset: true },
+      orderBy: { price: 'asc' },
+      take: 10,
+    });
+
+    // Get top products
+    const topProducts = await prisma.product.findMany({
+      where: { status: 'active' },
+      include: {
+        category: true,
+        coverAsset: true,
+      },
+      orderBy: { created_at: 'desc' },
+      take: 10,
+    });
+
+    // Get featured items (from FeaturedItem model)
+    const featuredItemsRaw = await prisma.featuredItem.findMany({
+      where: { is_active: true },
+      orderBy: { sort_order: 'asc' },
+      take: 50,
+    });
+
+    // Load entities for featured items
+    const featuredItems = await Promise.all(
+      featuredItemsRaw.map(async (item) => {
+        let entity: any = null;
+        try {
+          switch (item.entity_type) {
+            case 'hotel':
+              entity = await prisma.hotel.findUnique({ where: { id: item.entity_id }, include: { city: true, coverAsset: true } });
+              break;
+            case 'restaurant':
+              entity = await prisma.restaurant.findUnique({ where: { id: item.entity_id }, include: { city: true, coverAsset: true } });
+              break;
+            case 'food_item':
+              entity = await prisma.foodItem.findUnique({ where: { id: item.entity_id }, include: { restaurant: true, coverAsset: true } });
+              break;
+            case 'cityplace':
+              entity = await prisma.cityPlace.findUnique({ where: { id: item.entity_id }, include: { city: true, coverAsset: true } });
+              break;
+            case 'tour':
+              entity = await prisma.tour.findUnique({ where: { id: item.entity_id }, include: { city: true, coverAsset: true } });
+              break;
+            case 'esim_plan':
+              entity = await prisma.esimPlan.findUnique({ where: { id: item.entity_id }, include: { coverAsset: true } });
+              break;
+            case 'product':
+              entity = await prisma.product.findUnique({ where: { id: item.entity_id }, include: { category: true, coverAsset: true } });
+              break;
+            case 'transport':
+              entity = await prisma.transportProduct.findUnique({ where: { id: item.entity_id }, include: { city: true, coverAsset: true } });
+              break;
+          }
+        } catch (e) {
+          console.error(`Failed to load entity for featured item ${item.id}:`, e);
+        }
+        return { ...item, entity };
+      })
+    );
+
+    // Filter out items with null entities and group by type
+    const featuredItemsByType: any = {
+      hotels: [],
+      restaurants: [],
+      food_items: [],
+      esim_plans: [],
+      cityplaces: [],
+      tours: [],
+      products: [],
+      transport: [],
+    };
+
+    featuredItems.filter(item => item.entity).forEach((item) => {
+      const type = item.entity_type;
+      if (featuredItemsByType[type]) {
+        featuredItemsByType[type].push(item);
+      }
+    });
+
+    // Get featured cards (from HomepageBlock)
+    const featuredCards = await prisma.homepageBlock.findMany({
+      where: { is_active: true },
+      orderBy: { sort_order: 'asc' },
+      take: 10,
+    });
+
+    return {
+      city: city || null,
+      top_hotels: topHotels,
+      top_restaurants: topRestaurants,
+      top_city_places: topCityPlaces,
+      top_esim_plans: topEsimPlans,
+      top_products: topProducts,
+      featured_items: featuredItems,
+      featured_items_by_type: featuredItemsByType,
+      featured_cards: featuredCards,
+    };
+  });
+
+  // Get service offers
+  fastify.get('/offers', async () => {
+    return prisma.serviceBasedOffer.findMany({
+      where: {
+        is_active: true,
+        valid_from: { lte: new Date() },
+        valid_until: { gte: new Date() },
+      },
+      include: {
+        coverAsset: true,
+      },
+      orderBy: { created_at: 'desc' },
+      take: 10,
+    });
+  });
+
+  // Get homepage banners
+  fastify.get('/banners', async () => {
+    return prisma.homepageBanner.findMany({
+      where: { is_active: true },
+      orderBy: { sort_order: 'asc' },
+      take: 10,
+    });
+  });
 }
 
