@@ -67,21 +67,55 @@ export async function setCachedSearch(
   const expiresAt = new Date();
   expiresAt.setMinutes(expiresAt.getMinutes() + SEARCH_CACHE_TTL_MINUTES);
 
-  await prisma.externalSearchCache.upsert({
-    where: { cache_key: cacheKey },
-    create: {
-      source,
-      cache_key: cacheKey,
-      query_json: queryJson,
-      results_json: resultsJson,
-      expires_at: expiresAt,
-    },
-    update: {
-      query_json: queryJson,
-      results_json: resultsJson,
-      expires_at: expiresAt,
-    },
-  });
+  try {
+    // Try upsert first (if unique constraint exists)
+    await prisma.externalSearchCache.upsert({
+      where: { cache_key: cacheKey },
+      create: {
+        source,
+        cache_key: cacheKey,
+        query_json: queryJson,
+        results_json: resultsJson,
+        expires_at: expiresAt,
+      },
+      update: {
+        query_json: queryJson,
+        results_json: resultsJson,
+        expires_at: expiresAt,
+      },
+    });
+  } catch (error: any) {
+    // If upsert fails due to missing unique constraint, use findFirst + create/update
+    if (error.code === 'P2025' || error.message?.includes('ON CONFLICT')) {
+      const existing = await prisma.externalSearchCache.findFirst({
+        where: { cache_key: cacheKey },
+      });
+
+      if (existing) {
+        await prisma.externalSearchCache.update({
+          where: { id: existing.id },
+          data: {
+            query_json: queryJson,
+            results_json: resultsJson,
+            expires_at: expiresAt,
+          },
+        });
+      } else {
+        await prisma.externalSearchCache.create({
+          data: {
+            source,
+            cache_key: cacheKey,
+            query_json: queryJson,
+            results_json: resultsJson,
+            expires_at: expiresAt,
+          },
+        });
+      }
+    } else {
+      // Re-throw if it's a different error
+      throw error;
+    }
+  }
 }
 
 /**

@@ -243,7 +243,6 @@ async function cacheProductItem(item: ProductCard): Promise<void> {
         main_images: item.images ? JSON.parse(JSON.stringify(item.images)) : null,
         source_url: item.sourceUrl,
         expires_at: expiresAt,
-        // created_at and updated_at are handled by @default(now()) and @updatedAt in schema
       },
       update: {
         title: item.title,
@@ -253,18 +252,16 @@ async function cacheProductItem(item: ProductCard): Promise<void> {
         source_url: item.sourceUrl,
         expires_at: expiresAt,
         last_synced_at: new Date(),
-        // updated_at is handled by @updatedAt in schema
       },
     });
   } catch (error: any) {
-    // If the error is about missing created_at/updated_at, the Prisma client needs regeneration
-    // But we'll log it and continue - the item will be cached on next sync
-    if (error.code === 'P2011' && error.meta?.constraint?.includes('updated_at')) {
-      console.warn(`[Shopping] Prisma client out of sync - need to regenerate. Error: ${error.message}`);
-      // Try to regenerate Prisma client (this might fail if server is running, but worth trying)
-      console.warn('[Shopping] Please run: pnpm --filter @bridgechina/api db:generate');
-    }
-    throw error; // Re-throw to be caught by the caller
+    // Log error but don't fail the entire search - caching is best effort
+    console.error(`[Shopping] Failed to cache item ${item.externalId}:`, {
+      error: error.message,
+      code: error.code,
+      meta: error.meta,
+    });
+    // Don't re-throw - allow search to continue even if caching fails
   }
 }
 
