@@ -1729,6 +1729,22 @@ export default async function publicRoutes(fastify: FastifyInstance) {
     });
   });
 
+  // Get single eSIM plan by ID
+  fastify.get('/catalog/esim/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const plan = await prisma.esimPlan.findUnique({
+      where: { id },
+      include: { coverAsset: true },
+    });
+
+    if (!plan) {
+      reply.status(404).send({ error: 'eSIM plan not found' });
+      return;
+    }
+
+    return plan;
+  });
+
   // Get homepage blocks (public read-only)
   fastify.get('/homepage/blocks', async () => {
     return prisma.homepageBlock.findMany({

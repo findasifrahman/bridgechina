@@ -1,11 +1,12 @@
 <template>
   <div class="py-6 px-4 sm:px-6 lg:px-8">
-    <!-- List Views for Hotels, Halal Food, Tours, Guide, Restaurants -->
+    <!-- List Views for Hotels, Halal Food, Tours, Guide, Restaurants, eSIM -->
     <HotelsListPage v-if="route.params.slug === 'hotel'" />
     <HalalFoodListPage v-else-if="route.params.slug === 'halal-food'" />
     <ToursListPage v-else-if="route.params.slug === 'tours'" />
     <GuidesListPage v-else-if="route.params.slug === 'guide'" />
     <RestaurantsListPage v-else-if="route.params.slug === 'restaurants'" />
+    <EsimListPage v-else-if="route.params.slug === 'esim'" />
     
     <!-- Detail View for other services -->
     <div v-else-if="!loading && service" class="max-w-7xl mx-auto">
@@ -20,41 +21,9 @@
             </CardBody>
           </Card>
 
-          <Card v-if="service.key === 'esim'">
-            <CardHeader>
-              <h3 class="font-semibold text-slate-900">Available Plans</h3>
-            </CardHeader>
-            <CardBody>
-              <div v-if="esimPlans.length === 0" class="text-center py-8 text-slate-500">
-                No plans available
-              </div>
-              <div v-else class="space-y-4">
-                <div
-                  v-for="plan in esimPlans"
-                  :key="plan.id"
-                  class="border border-slate-200 rounded-lg p-4 hover:border-teal-300 transition-colors"
-                >
-                  <div class="flex justify-between items-start mb-2">
-                    <div>
-                      <h4 class="font-semibold text-slate-900">{{ plan.name }}</h4>
-                      <p class="text-sm text-slate-600">{{ plan.provider }} • {{ plan.region_text }}</p>
-                    </div>
-                    <div class="text-right">
-                      <div class="text-lg font-bold text-teal-600">¥{{ plan.price }}</div>
-                      <div class="text-xs text-slate-500">{{ plan.validity_days }} days</div>
-                    </div>
-                  </div>
-                  <p class="text-sm text-slate-700 mb-3">{{ plan.data_text }}</p>
-                  <Button variant="primary" size="sm" @click="requestEsim(plan)">
-                    Request This Plan
-                  </Button>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
         </div>
 
-        <div>
+        <div v-if="service.key !== 'esim'">
           <Card class="sticky top-4">
             <CardBody class="p-6">
               <h3 class="font-semibold text-slate-900 mb-4">Request Service</h3>
@@ -82,29 +51,25 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { MessageCircle } from 'lucide-vue-next';
 import {
   PageHeader,
   Card,
-  CardHeader,
   CardBody,
   Button,
-  SkeletonLoader,
   EmptyState,
 } from '@bridgechina/ui';
-import axios from '@/utils/axios';
 import HotelsListPage from './HotelsListPage.vue';
 import HalalFoodListPage from './HalalFoodListPage.vue';
 import ToursListPage from './ToursListPage.vue';
 import GuidesListPage from './GuidesListPage.vue';
 import RestaurantsListPage from './RestaurantsListPage.vue';
+import EsimListPage from './EsimListPage.vue';
 
 const route = useRoute();
-const router = useRouter();
 
 const service = ref<any>(null);
-const esimPlans = ref<any[]>([]);
 const loading = ref(true);
 
 const serviceContent = computed(() => {
@@ -136,11 +101,6 @@ async function loadService() {
       esim: { name: 'eSIM Plans', description: 'Stay connected with eSIM data plans' },
     };
     service.value = { ...services[route.params.slug as string], key: route.params.slug };
-
-    if (route.params.slug === 'esim') {
-      const res = await axios.get('/api/public/catalog/esim');
-      esimPlans.value = res.data;
-    }
   } catch (error) {
     console.error('Failed to load service', error);
   } finally {
@@ -148,12 +108,6 @@ async function loadService() {
   }
 }
 
-function requestEsim(plan: any) {
-  router.push({
-    path: '/request',
-    query: { category: 'esim', plan_id: plan.id },
-  });
-}
 
 function openWhatsApp() {
   window.open('https://wa.me/1234567890', '_blank');

@@ -329,6 +329,83 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
     return reviews;
   });
+
+  // Purchase eSIM plan
+  fastify.post('/esim/purchase', async (request: FastifyRequest, reply: FastifyReply) => {
+    const req = request as any;
+    const body = request.body as {
+      plan_id: string;
+      customer_name: string;
+      phone: string;
+      email?: string;
+    };
+
+    try {
+      // Find or create esim service category
+      let category = await prisma.serviceCategory.findUnique({
+        where: { key: 'esim' },
+      });
+
+      if (!category) {
+        category = await prisma.serviceCategory.create({
+          data: { key: 'esim', name: 'eSIM Plan' },
+        });
+      }
+
+      // Get the esim plan
+      const esimPlan = await prisma.esimPlan.findUnique({
+        where: { id: body.plan_id },
+      });
+
+      if (!esimPlan) {
+        reply.status(404).send({ error: 'eSIM plan not found' });
+        return;
+      }
+
+      // Get default city (Guangzhou) or use first city
+      const defaultCity = await prisma.city.findFirst({
+        where: { slug: 'guangzhou' },
+      }) || await prisma.city.findFirst();
+
+      if (!defaultCity) {
+        reply.status(500).send({ error: 'No city configured' });
+        return;
+      }
+
+      // Create service request
+      const serviceRequest = await prisma.serviceRequest.create({
+        data: {
+          category_id: category.id,
+          city_id: defaultCity.id,
+          user_id: req.user.id,
+          status: 'new',
+          customer_name: body.customer_name,
+          phone: body.phone,
+          email: body.email || req.user.email || null,
+          request_payload: {
+            type: 'esim_purchase',
+            plan_id: body.plan_id,
+            plan_name: esimPlan.name,
+            plan_price: esimPlan.price,
+            plan_currency: esimPlan.currency,
+            plan_data: esimPlan.data_text,
+            plan_validity_days: esimPlan.validity_days,
+            plan_region: esimPlan.region_text,
+            plan_provider: esimPlan.provider,
+          },
+        },
+      });
+
+      return {
+        success: true,
+        message: 'eSIM purchase request submitted successfully',
+        request_id: serviceRequest.id,
+      };
+    } catch (error: any) {
+      fastify.log.error({ error, body }, '[User Route] /esim/purchase error');
+      reply.status(500).send({ error: error.message || 'Failed to process purchase' });
+    }
+  });
 }
 
 // Helper function to update entity rating

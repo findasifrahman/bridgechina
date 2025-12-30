@@ -131,6 +131,11 @@ const router = createRouter({
           component: () => import('@/pages/FoodItemDetailPage.vue'),
         },
         {
+          path: 'services/esim/:id',
+          name: 'esim-detail',
+          component: () => import('@/pages/EsimDetailPage.vue'),
+        },
+        {
           path: 'services/restaurants',
           name: 'restaurants-list',
           component: () => import('@/pages/RestaurantsListPage.vue'),
