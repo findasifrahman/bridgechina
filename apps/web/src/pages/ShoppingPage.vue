@@ -466,9 +466,10 @@ async function loadCategories() {
 async function loadHotItems() {
   loading.value = true;
   try {
+    console.log('[ShoppingPage] Loading hot items from database...');
     const params: any = {
       page: 1,
-      pageSize: 20,
+      pageSize: 12, // Show max 12 items on shopping page
     };
     if (selectedCategory.value) {
       params.category = selectedCategory.value;
@@ -477,10 +478,12 @@ async function loadHotItems() {
     console.log('[ShoppingPage] Hot items response:', {
       data: response.data,
       dataLength: Array.isArray(response.data) ? response.data.length : 'not array',
+      dataType: typeof response.data,
     });
     hotItems.value = Array.isArray(response.data) ? response.data : [];
+    console.log('[ShoppingPage] Loaded', hotItems.value.length, 'hot items');
   } catch (error) {
-    console.error('Failed to load hot items', error);
+    console.error('[ShoppingPage] Failed to load hot items:', error);
     hotItems.value = [];
   } finally {
     loading.value = false;

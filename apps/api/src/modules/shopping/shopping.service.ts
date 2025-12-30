@@ -83,12 +83,25 @@ export async function searchByKeyword(
   const cached = await getCachedSearch(SOURCE, cacheKey);
   if (cached) {
     console.log('[Shopping Service] Using cached search results');
-    // Cached response structure: { code: 200, msg: "success", data: { items: [...] } }
-    // The cached response is the full TMAPI response, so we need cached.results_json.data.items
-    const items = cached.results_json?.data?.items || cached.results_json?.items || [];
+    console.log('[Shopping Service] Cached data structure:', {
+      hasData: !!cached?.data,
+      hasItems: !!cached?.data?.items,
+      cachedKeys: Object.keys(cached || {}),
+      dataKeys: cached?.data ? Object.keys(cached.data) : [],
+      itemsType: Array.isArray(cached?.data?.items) ? 'array' : typeof cached?.data?.items,
+      itemsLength: Array.isArray(cached?.data?.items) ? cached.data.items.length : 'not array',
+    });
+    // getCachedSearch returns cached.results_json, which is the full TMAPI response
+    // Structure: { code: 200, msg: "success", data: { items: [...], total_count: ... } }
+    const items = cached?.data?.items || cached?.items || [];
     const normalized = normalizeProductCards(items);
-    const totalCount = cached.results_json?.data?.total_count || normalized.length;
+    const totalCount = cached?.data?.total_count || normalized.length;
     const totalPages = Math.ceil(totalCount / pageSize);
+    console.log('[Shopping Service] Cached results:', {
+      itemsCount: normalized.length,
+      totalCount,
+      totalPages,
+    });
     return {
       items: normalized,
       totalCount,
@@ -226,6 +239,7 @@ async function cacheProductItem(item: ProductCard): Promise<void> {
   expiresAt.setDate(expiresAt.getDate() + 1); // 24 hour TTL
 
   try {
+    // Try upsert first (if unique constraint exists)
     await prisma.externalCatalogItem.upsert({
       where: {
         source_external_id: {
@@ -255,12 +269,70 @@ async function cacheProductItem(item: ProductCard): Promise<void> {
       },
     });
   } catch (error: any) {
-    // Log error but don't fail the entire search - caching is best effort
-    console.error(`[Shopping] Failed to cache item ${item.externalId}:`, {
-      error: error.message,
-      code: error.code,
-      meta: error.meta,
-    });
+    // Check if upsert failed due to missing unique constraint
+    // Error can be in message, or in the string representation
+    const errorStr = String(error.message || error || '');
+    const isConstraintError = 
+      errorStr.includes('ON CONFLICT') || 
+      errorStr.includes('42P10') ||
+      errorStr.includes('unique or exclusion constraint') ||
+      error.code === 'P2025';
+    
+    if (isConstraintError) {
+      // Use findFirst + create/update fallback
+      try {
+        const existing = await prisma.externalCatalogItem.findFirst({
+          where: {
+            source: SOURCE,
+            external_id: item.externalId,
+          },
+        });
+
+        if (existing) {
+          await prisma.externalCatalogItem.update({
+            where: { id: existing.id },
+            data: {
+              title: item.title,
+              price_min: item.priceMin,
+              price_max: item.priceMax,
+              main_images: item.images ? JSON.parse(JSON.stringify(item.images)) : null,
+              source_url: item.sourceUrl,
+              expires_at: expiresAt,
+              last_synced_at: new Date(),
+            },
+          });
+        } else {
+          await prisma.externalCatalogItem.create({
+            data: {
+              source: SOURCE,
+              external_id: item.externalId,
+              title: item.title,
+              price_min: item.priceMin,
+              price_max: item.priceMax,
+              currency: item.currency,
+              main_images: item.images ? JSON.parse(JSON.stringify(item.images)) : null,
+              source_url: item.sourceUrl,
+              expires_at: expiresAt,
+            },
+          });
+        }
+        // Successfully cached using fallback
+        return;
+      } catch (fallbackError: any) {
+        // Log error but don't fail the entire search - caching is best effort
+        console.error(`[Shopping] Failed to cache item ${item.externalId} (fallback also failed):`, {
+          error: fallbackError.message,
+          code: fallbackError.code,
+        });
+      }
+    } else {
+      // Log error but don't fail the entire search - caching is best effort
+      console.error(`[Shopping] Failed to cache item ${item.externalId}:`, {
+        error: error.message,
+        code: error.code,
+        meta: error.meta,
+      });
+    }
     // Don't re-throw - allow search to continue even if caching fails
   }
 }
@@ -328,14 +400,30 @@ export async function searchByImage(
  */
 export async function getItemDetail(externalId: string): Promise<ProductDetail | null> {
   // Check DB cache (ExternalCatalogItem)
-  const cached = await prisma.externalCatalogItem.findUnique({
-    where: {
-      source_external_id: {
-        source: SOURCE,
-        external_id: externalId,
+  let cached;
+  try {
+    cached = await prisma.externalCatalogItem.findUnique({
+      where: {
+        source_external_id: {
+          source: SOURCE,
+          external_id: externalId,
+        },
       },
-    },
-  });
+    });
+  } catch (error: any) {
+    // If findUnique fails due to missing unique constraint, use findFirst
+    const errorStr = String(error.message || error || '');
+    if (errorStr.includes('unique') || errorStr.includes('constraint')) {
+      cached = await prisma.externalCatalogItem.findFirst({
+        where: {
+          source: SOURCE,
+          external_id: externalId,
+        },
+      });
+    } else {
+      throw error;
+    }
+  }
 
   if (cached && cached.raw_json && cached.expires_at > new Date()) {
     // Try to fetch additional data for cached items
@@ -451,49 +539,116 @@ export async function getItemDetail(externalId: string): Promise<ProductDetail |
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 1); // 24 hour TTL
 
-  await prisma.externalCatalogItem.upsert({
-    where: {
-      source_external_id: {
+  try {
+    await prisma.externalCatalogItem.upsert({
+      where: {
+        source_external_id: {
+          source: SOURCE,
+          external_id: externalId,
+        },
+      },
+      create: {
         source: SOURCE,
         external_id: externalId,
+        title: normalized.title, // Chinese title
+        price_min: normalized.priceMin,
+        price_max: normalized.priceMax,
+        currency: normalized.currency,
+        main_images: normalized.images ? JSON.parse(JSON.stringify(normalized.images)) : null,
+        source_url: normalized.sourceUrl,
+        raw_json: itemData as any,
+        expires_at: expiresAt,
       },
-    },
-    create: {
-      source: SOURCE,
-      external_id: externalId,
-      title: normalized.title, // Chinese title
-      price_min: normalized.priceMin,
-      price_max: normalized.priceMax,
-      currency: normalized.currency,
-      main_images: normalized.images ? JSON.parse(JSON.stringify(normalized.images)) : null,
-      source_url: normalized.sourceUrl,
-      raw_json: itemData as any,
-      expires_at: expiresAt,
-    },
-    update: {
-      title: normalized.title,
-      price_min: normalized.priceMin,
-      price_max: normalized.priceMax,
-      main_images: normalized.images ? JSON.parse(JSON.stringify(normalized.images)) : null,
-      source_url: normalized.sourceUrl,
-      raw_json: itemData as any,
-      expires_at: expiresAt,
-      last_synced_at: new Date(),
-    },
-  });
+      update: {
+        title: normalized.title,
+        price_min: normalized.priceMin,
+        price_max: normalized.priceMax,
+        main_images: normalized.images ? JSON.parse(JSON.stringify(normalized.images)) : null,
+        source_url: normalized.sourceUrl,
+        raw_json: itemData as any,
+        expires_at: expiresAt,
+        last_synced_at: new Date(),
+      },
+    });
+  } catch (error: any) {
+    // Check if upsert failed due to missing unique constraint
+    const errorStr = String(error.message || error || '');
+    const isConstraintError = 
+      errorStr.includes('ON CONFLICT') || 
+      errorStr.includes('42P10') ||
+      errorStr.includes('unique or exclusion constraint') ||
+      error.code === 'P2025';
+    
+    if (isConstraintError) {
+      // Use findFirst + create/update fallback
+      try {
+        const existing = await prisma.externalCatalogItem.findFirst({
+          where: {
+            source: SOURCE,
+            external_id: externalId,
+          },
+        });
+
+        if (existing) {
+          await prisma.externalCatalogItem.update({
+            where: { id: existing.id },
+            data: {
+              title: normalized.title,
+              price_min: normalized.priceMin,
+              price_max: normalized.priceMax,
+              main_images: normalized.images ? JSON.parse(JSON.stringify(normalized.images)) : null,
+              source_url: normalized.sourceUrl,
+              raw_json: itemData as any,
+              expires_at: expiresAt,
+              last_synced_at: new Date(),
+            },
+          });
+        } else {
+          await prisma.externalCatalogItem.create({
+            data: {
+              source: SOURCE,
+              external_id: externalId,
+              title: normalized.title,
+              price_min: normalized.priceMin,
+              price_max: normalized.priceMax,
+              currency: normalized.currency,
+              main_images: normalized.images ? JSON.parse(JSON.stringify(normalized.images)) : null,
+              source_url: normalized.sourceUrl,
+              raw_json: itemData as any,
+              expires_at: expiresAt,
+            },
+          });
+        }
+      } catch (fallbackError: any) {
+        console.error(`[Shopping] Failed to cache item detail ${externalId} (fallback also failed):`, {
+          error: fallbackError.message,
+          code: fallbackError.code,
+        });
+      }
+    } else {
+      console.error(`[Shopping] Failed to cache item detail ${externalId}:`, {
+        error: error.message,
+        code: error.code,
+      });
+    }
+  }
 
   return normalized;
 }
 
 /**
- * Get hot items for a category - loads from DB cache (ExternalCatalogItem)
- * Priority: 1) Pinned items from ExternalHotItem, 2) Recent items from ExternalCatalogItem
+ * Get hot items for a category - loads from search cache (ExternalSearchCache)
+ * Priority: 1) Pinned items from ExternalHotItem, 2) Recent search results from ExternalSearchCache
  */
 export async function getHotItems(categorySlug?: string, page: number = 1, pageSize: number = 20): Promise<ProductCard[]> {
+  console.log('[Shopping Service] getHotItems called:', { categorySlug, page, pageSize });
   const where: any = { source: SOURCE };
   if (categorySlug) {
     where.category_slug = categorySlug;
   }
+
+  const items: ProductCard[] = [];
+  const existingIds = new Set<string>();
 
   // First, try to get pinned hot items (pinned_rank > 0 means pinned)
   const hotItems = await prisma.externalHotItem.findMany({
@@ -504,8 +659,6 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
     orderBy: { pinned_rank: 'asc' }, // Lower rank = higher priority
     take: 100, // Get more to filter by valid cache
   });
-
-  const items: ProductCard[] = [];
 
   if (hotItems.length > 0) {
     // Load from ExternalCatalogItem cache (DB snapshot) for pinned items
@@ -530,12 +683,14 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
           normalized.title = cached.title_en;
         }
         items.push(normalized);
+        existingIds.add(normalized.externalId);
       } else {
         // Cache miss - fetch from TMAPI and cache it
         try {
           const detail = await getItemDetail(hotItem.external_id);
           if (detail) {
             items.push(detail);
+            existingIds.add(detail.externalId);
           }
         } catch (error) {
           console.error(`[Shopping] Failed to fetch hot item ${hotItem.external_id}:`, error);
@@ -547,7 +702,111 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
     }
   }
 
-  // If we don't have enough items from pinned list, fallback to recent items from ExternalCatalogItem
+  // If we don't have enough items, load from recent search cache (ExternalSearchCache)
+  // This shows products from recent searches, which is more relevant for homepage
+  if (items.length < pageSize) {
+    const needed = pageSize - items.length;
+    
+    // Get recent search cache entries (most recent searches first)
+    // Try ordering by created_at, fallback to id if created_at doesn't exist
+    let recentSearches: any[] = [];
+    try {
+      // First, try without expires_at filter to see all entries
+      const allSearches = await prisma.externalSearchCache.findMany({
+        where: {
+          source: SOURCE,
+        },
+        take: 20, // Get more to check expiration
+      });
+      
+      console.log(`[Shopping Service] Found ${allSearches.length} total search cache entries`);
+      
+      // Filter non-expired and sort by created_at
+      const now = new Date();
+      recentSearches = allSearches
+        .filter(s => new Date(s.expires_at) > now)
+        .sort((a, b) => {
+          // Sort by created_at if available, otherwise by id
+          try {
+            const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return bTime - aTime; // Descending
+          } catch {
+            return 0;
+          }
+        })
+        .slice(0, 10); // Take top 10
+      
+      console.log(`[Shopping Service] ${recentSearches.length} non-expired entries after filtering`);
+      
+      if (recentSearches.length === 0 && allSearches.length > 0) {
+        console.warn('[Shopping Service] All cache entries are expired! Using expired entries anyway...');
+        // Use expired entries if no non-expired ones found
+        recentSearches = allSearches
+          .sort((a, b) => {
+            try {
+              const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+              const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+              return bTime - aTime;
+            } catch {
+              return 0;
+            }
+          })
+          .slice(0, 10);
+      }
+    } catch (error: any) {
+      console.error('[Shopping Service] Error fetching search cache:', error);
+      recentSearches = [];
+    }
+
+    console.log(`[Shopping Service] Found ${recentSearches.length} recent search cache entries`);
+    console.log(`[Shopping Service] Current items count: ${items.length}, needed: ${needed}`);
+
+    // Extract items from search cache results_json
+    for (const searchCache of recentSearches) {
+      if (items.length >= pageSize) break;
+
+      try {
+        const resultsJson = searchCache.results_json as any;
+        console.log(`[Shopping Service] Processing search cache ${searchCache.id}:`, {
+          hasResultsJson: !!resultsJson,
+          hasData: !!resultsJson?.data,
+          hasItems: !!resultsJson?.data?.items,
+          itemsCount: Array.isArray(resultsJson?.data?.items) ? resultsJson.data.items.length : 0,
+        });
+        
+        // Extract items from TMAPI response structure: { code: 200, msg: "success", data: { items: [...] } }
+        const searchItems = resultsJson?.data?.items || resultsJson?.items || [];
+        
+        if (Array.isArray(searchItems) && searchItems.length > 0) {
+          console.log(`[Shopping Service] Found ${searchItems.length} items in search cache ${searchCache.id}`);
+          // Normalize items from search cache
+          const normalized = normalizeProductCards(searchItems);
+          console.log(`[Shopping Service] Normalized ${normalized.length} items`);
+          
+          for (const item of normalized) {
+            if (existingIds.has(item.externalId)) {
+              continue; // Skip duplicates
+            }
+            
+            items.push(item);
+            existingIds.add(item.externalId);
+            console.log(`[Shopping Service] Added item ${item.externalId}, total: ${items.length}`);
+            
+            if (items.length >= pageSize) break;
+          }
+        } else {
+          console.log(`[Shopping Service] No items found in search cache ${searchCache.id}`);
+        }
+      } catch (error) {
+        console.error(`[Shopping] Failed to extract items from search cache ${searchCache.id}:`, error);
+      }
+    }
+    
+    console.log(`[Shopping Service] After processing search cache, items count: ${items.length}`);
+  }
+
+  // Final fallback: If still not enough, try ExternalCatalogItem
   if (items.length < pageSize) {
     const needed = pageSize - items.length;
     const recentItems = await prisma.externalCatalogItem.findMany({
@@ -556,35 +815,65 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
         expires_at: { gt: new Date() }, // Only non-expired cache
       },
       orderBy: { last_synced_at: 'desc' }, // Most recently synced first
-      take: needed + 20, // Get extra to account for potential duplicates
+      take: needed + 20,
     });
 
-    const existingIds = new Set(items.map(i => i.externalId));
-    
     for (const cached of recentItems) {
       if (existingIds.has(cached.external_id)) {
-        continue; // Skip if already in the list
+        continue; // Skip duplicates
       }
       
-      if (cached.raw_json) {
-        try {
-          const normalized = normalizeProductDetail(cached.raw_json as any);
+      try {
+        let normalized: ProductCard;
+        
+        if (cached.raw_json) {
+          normalized = normalizeProductDetail(cached.raw_json as any);
           if (cached.title_en) {
             normalized.title = cached.title_en;
           }
-          items.push(normalized);
-          existingIds.add(normalized.externalId);
+        } else {
+          // Fallback: Create basic ProductCard from available fields
+          normalized = {
+            source: 'tmapi_1688',
+            externalId: cached.external_id,
+            title: cached.title_en || cached.title || 'Product',
+            priceMin: cached.price_min || undefined,
+            priceMax: cached.price_max || undefined,
+            currency: (cached.currency as 'CNY') || 'CNY',
+            sourceUrl: cached.source_url || undefined,
+          };
           
-          if (items.length >= pageSize) break;
-        } catch (error) {
-          console.error(`[Shopping] Failed to normalize cached item ${cached.external_id}:`, error);
+          if (cached.main_images) {
+            try {
+              const mainImages = typeof cached.main_images === 'string' 
+                ? JSON.parse(cached.main_images) 
+                : cached.main_images;
+              if (Array.isArray(mainImages) && mainImages.length > 0) {
+                normalized.imageUrl = mainImages[0];
+                normalized.images = mainImages;
+              } else if (typeof mainImages === 'string') {
+                normalized.imageUrl = mainImages;
+              }
+            } catch (e) {
+              // Ignore image parsing errors
+            }
+          }
         }
+        
+        items.push(normalized);
+        existingIds.add(normalized.externalId);
+        
+        if (items.length >= pageSize) break;
+      } catch (error) {
+        console.error(`[Shopping] Failed to process cached item ${cached.external_id}:`, error);
       }
     }
   }
 
   // Apply pagination
   const start = (page - 1) * pageSize;
-  return items.slice(start, start + pageSize);
+  const paginated = items.slice(start, start + pageSize);
+  console.log(`[Shopping Service] getHotItems returning ${paginated.length} items (total: ${items.length}, page: ${page}, pageSize: ${pageSize})`);
+  return paginated;
 }
 

@@ -695,15 +695,23 @@ function getFeaturedMeta(item: any): string | undefined {
 
 async function loadHotProducts() {
   try {
+    console.log('[HomePage] Loading hot products...');
     const response = await axios.get('/api/public/shopping/hot', {
       params: {
         page: 1,
         pageSize: 4, // Show 4 products in homepage tab
       },
     });
-    hotProducts.value = response.data || [];
+    console.log('[HomePage] Hot products response:', {
+      data: response.data,
+      dataType: typeof response.data,
+      isArray: Array.isArray(response.data),
+      length: Array.isArray(response.data) ? response.data.length : 'not array',
+    });
+    hotProducts.value = Array.isArray(response.data) ? response.data : [];
+    console.log('[HomePage] hotProducts.value set to:', hotProducts.value);
   } catch (error) {
-    console.error('Failed to load hot products:', error);
+    console.error('[HomePage] Failed to load hot products:', error);
     hotProducts.value = [];
   }
 }
