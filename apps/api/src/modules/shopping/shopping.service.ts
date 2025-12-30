@@ -8,6 +8,7 @@ import tmapiClient from './tmapi.client.js';
 import {
   normalizeProductCards,
   normalizeProductDetail,
+  getProxiedImageUrl,
   ProductCard,
   ProductDetail,
 } from './shopping.normalize.js';
@@ -936,10 +937,10 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
                 ? JSON.parse(cached.main_images) 
                 : cached.main_images;
               if (Array.isArray(mainImages) && mainImages.length > 0) {
-                normalized.imageUrl = mainImages[0];
-                normalized.images = mainImages;
+                normalized.imageUrl = getProxiedImageUrl(mainImages[0]);
+                normalized.images = mainImages.map(getProxiedImageUrl);
               } else if (typeof mainImages === 'string') {
-                normalized.imageUrl = mainImages;
+                normalized.imageUrl = getProxiedImageUrl(mainImages);
               }
             } catch (e) {
               // Ignore image parsing errors

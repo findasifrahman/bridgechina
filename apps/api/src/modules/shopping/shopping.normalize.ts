@@ -2,6 +2,32 @@
  * Normalize TMAPI responses to our ProductCard format
  */
 
+/**
+ * Helper function to get proxied image URL (shared across normalization functions)
+ */
+export function getProxiedImageUrl(url: string): string {
+  if (!url) return '';
+  // If it's already a proxy URL, return as is
+  if (url.includes('/api/public/image-proxy')) return url;
+  // If it's already an absolute URL to our API, return as is
+  if (url.startsWith('http') && url.includes('/api/public/image-proxy')) return url;
+  // If it's an external URL (Alibaba CDN), proxy it
+  if (url.includes('alicdn.com') || url.includes('1688.com')) {
+    // Use API_BASE_URL environment variable for absolute URLs (needed for Vercel frontend)
+    // Railway provides RAILWAY_PUBLIC_DOMAIN (e.g., "bridgechina-production.up.railway.app")
+    let apiBaseUrl = process.env.API_BASE_URL;
+    if (!apiBaseUrl && process.env.RAILWAY_PUBLIC_DOMAIN) {
+      // Railway domain might already include protocol, or just be the domain
+      const domain = process.env.RAILWAY_PUBLIC_DOMAIN;
+      apiBaseUrl = domain.startsWith('http') ? domain : `https://${domain}`;
+    }
+    const proxyPath = `/api/public/image-proxy?url=${encodeURIComponent(url)}`;
+    // If we have an API base URL, make it absolute; otherwise use relative (for local dev)
+    return apiBaseUrl ? `${apiBaseUrl}${proxyPath}` : proxyPath;
+  }
+  return url;
+}
+
 export interface ProductCard {
   source: 'tmapi_1688';
   externalId: string;
@@ -84,16 +110,6 @@ export function normalizeProductCard(item: any): ProductCard {
 
   // Image handling - TMAPI uses 'img' field
   // Proxy external images through our API to avoid CORS issues
-  const getProxiedImageUrl = (url: string): string => {
-    if (!url) return '';
-    // If it's already a proxy URL, return as is
-    if (url.includes('/api/public/image-proxy')) return url;
-    // If it's an external URL (Alibaba CDN), proxy it
-    if (url.includes('alicdn.com') || url.includes('1688.com')) {
-      return `/api/public/image-proxy?url=${encodeURIComponent(url)}`;
-    }
-    return url;
-  };
 
   if (item.img) {
     card.imageUrl = getProxiedImageUrl(item.img);
