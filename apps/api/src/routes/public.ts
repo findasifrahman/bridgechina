@@ -1283,9 +1283,9 @@ export default async function publicRoutes(fastify: FastifyInstance) {
           preferences: payload.preferences ? ({ text: payload.preferences } as any) : null,
         },
       });
-    } else if (body.category_key === 'esim') {
-      // eSIM requests store plan_id in request_payload, no separate booking table needed
     }
+    // Note: eSIM requests store plan_id in request_payload, no separate booking table needed
+    // 'esim' is not a valid category_key in the schema, so no check needed
 
     return serviceRequest;
   });
