@@ -14,6 +14,20 @@ function detectCity(request: FastifyRequest): string {
 }
 
 export default async function publicRoutes(fastify: FastifyInstance) {
+  // Shopping - Import shopping service modules at the top (needed for multiple endpoints)
+  const {
+    getCategories: getShoppingCategories,
+    searchByKeyword,
+    searchByImage,
+    getItemDetail,
+    getHotItems,
+  } = await import('../modules/shopping/shopping.service.js');
+  const {
+    searchByKeywordSchema,
+    searchByImageSchema,
+    getHotItemsSchema,
+  } = await import('../modules/shopping/shopping.schemas.js');
+
   // Upload image for shopping search (server-side upload to avoid CORS)
   fastify.post(
     '/shopping/upload-image',
@@ -152,40 +166,15 @@ export default async function publicRoutes(fastify: FastifyInstance) {
       where: {
         is_active: true,
       },
+      include: {
+        coverAsset: true,
+      },
       orderBy: {
         sort_order: 'asc',
       },
-      take: 10,
     });
 
-    // Fetch cover assets separately if cover_asset_id exists
-    const coverAssetIds = banners
-      .map(b => b.cover_asset_id)
-      .filter((id): id is string => id !== null && id !== undefined);
-    
-    const coverAssets = coverAssetIds.length > 0
-      ? await prisma.mediaAsset.findMany({
-          where: { id: { in: coverAssetIds } },
-        })
-      : [];
-    
-    const coverAssetMap = new Map(coverAssets.map(asset => [asset.id, asset]));
-
-    // Map to match frontend expectations
-    return banners.map(banner => {
-      const coverAsset = banner.cover_asset_id ? coverAssetMap.get(banner.cover_asset_id) : null;
-      return {
-        id: banner.id,
-        title: banner.title,
-        subtitle: banner.subtitle,
-        link: banner.link,
-        cta_text: banner.cta_text || 'Learn More',
-        coverAsset: coverAsset ? {
-          public_url: coverAsset.public_url,
-          thumbnail_url: coverAsset.thumbnail_url || coverAsset.public_url,
-        } : null,
-      };
-    });
+    return banners;
   });
   // Homepage data endpoint
   fastify.get('/home', async (request: FastifyRequest) => {
@@ -519,15 +508,6 @@ export default async function publicRoutes(fastify: FastifyInstance) {
       }
     });
 
-    // Get hot products for shopping tab
-    let hotProducts: any[] = [];
-    try {
-      const { getHotItems } = await import('../modules/shopping/shopping.service.js');
-      hotProducts = await getHotItems(undefined, 1, 4);
-    } catch (error) {
-      console.error('Failed to load hot products:', error);
-    }
-
     return {
       city: city ? { id: city.id, name: city.name, slug: city.slug } : null,
       top_hotels: hotels,
@@ -538,7 +518,6 @@ export default async function publicRoutes(fastify: FastifyInstance) {
       featured_cards: featuredCards.slice(0, 2), // Max 2 cards
       featured_items: featuredItemsWithData.filter(item => item.entity !== null), // Only return items with valid entities
       featured_items_by_type: groupedFeaturedItems,
-      hot_products: hotProducts, // Add hot products for shopping tab
     };
   });
 
@@ -923,20 +902,6 @@ export default async function publicRoutes(fastify: FastifyInstance) {
   });
 
   // Shopping - Public endpoints (TMAPI Integration)
-  // Import shopping service modules
-  const {
-    getCategories: getShoppingCategories,
-    searchByKeyword,
-    searchByImage,
-    getItemDetail,
-    getHotItems,
-  } = await import('../modules/shopping/shopping.service.js');
-  const {
-    searchByKeywordSchema,
-    searchByImageSchema,
-    getHotItemsSchema,
-  } = await import('../modules/shopping/shopping.schemas.js');
-
   // Get shopping categories (TMAPI categories)
   fastify.get('/shopping/categories', async () => {
     return getShoppingCategories();

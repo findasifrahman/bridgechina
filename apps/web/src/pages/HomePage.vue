@@ -64,6 +64,23 @@
             </Card>
           </template>
 
+          <!-- Restaurants Tab -->
+          <template v-if="activeTab === 'restaurants'">
+            <CompactCard
+              v-for="item in getFeaturedItemsForTab('restaurants')"
+              :key="item.id"
+              :item="item.entity"
+              :title="item.title_override || item.entity?.name || 'N/A'"
+              :subtitle="item.subtitle_override || item.entity?.city?.name"
+              :thumbnail="item.entity?.coverAsset?.thumbnail_url || item.entity?.coverAsset?.public_url || item.entity?.galleryAssets?.[0]?.public_url"
+              :rating="item.entity?.rating"
+              :price="item.entity?.price_from ? `¥${item.entity.price_from}` : undefined"
+              :meta="item.entity?.city?.name"
+              :badge="item.entity?.halal_verified ? 'Halal Verified' : undefined"
+              @click="handleFeaturedItemClick(item)"
+            />
+          </template>
+
           <!-- Halal Food Tab -->
           <template v-if="activeTab === 'halal-food'">
             <CompactCard

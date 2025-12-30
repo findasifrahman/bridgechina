@@ -118,7 +118,61 @@ export async function searchByKeyword(
       response: error.response?.data,
       status: error.response?.status,
     });
-    throw error;
+    
+    // Fallback to cached items from ExternalCatalogItem when TMAPI fails
+    console.log('[Shopping Service] Falling back to cached items from database...');
+    try {
+      const pageSize = opts?.pageSize || 20;
+      const page = opts?.page || 1;
+      
+      // Search cached items by keyword in title (case-insensitive)
+      const where: any = {
+        source: SOURCE,
+        expires_at: { gt: new Date() },
+      };
+      
+      // If keyword provided, search in title
+      if (searchKeyword && searchKeyword !== 'products') {
+        where.title = { contains: searchKeyword, mode: 'insensitive' };
+      }
+      
+      const cachedItems = await prisma.externalCatalogItem.findMany({
+        where,
+        orderBy: { last_synced_at: 'desc' },
+        take: pageSize * 2, // Get more to account for filtering
+      });
+      
+      const normalized: ProductCard[] = [];
+      for (const cached of cachedItems) {
+        if (cached.raw_json) {
+          try {
+            const item = normalizeProductDetail(cached.raw_json as any);
+            if (cached.title_en) {
+              item.title = cached.title_en;
+            }
+            normalized.push(item);
+            if (normalized.length >= pageSize) break;
+          } catch (err) {
+            console.error(`[Shopping] Failed to normalize cached item ${cached.external_id}:`, err);
+          }
+        }
+      }
+      
+      // Apply pagination
+      const start = (page - 1) * pageSize;
+      const paginated = normalized.slice(start, start + pageSize);
+      
+      if (paginated.length > 0) {
+        console.log(`[Shopping Service] Returning ${paginated.length} cached items as fallback`);
+        return paginated;
+      }
+    } catch (fallbackError) {
+      console.error('[Shopping Service] Fallback to cached items also failed:', fallbackError);
+    }
+    
+    // If all else fails, return empty array instead of throwing
+    console.warn('[Shopping Service] No cached items available, returning empty array');
+    return [];
   }
 }
 
@@ -448,7 +502,6 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
       where: {
         source: SOURCE,
         expires_at: { gt: new Date() }, // Only non-expired cache
-        // raw_json is optional, so we'll filter out nulls after fetching if needed
       },
       orderBy: { last_synced_at: 'desc' }, // Most recently synced first
       take: needed + 20, // Get extra to account for potential duplicates
