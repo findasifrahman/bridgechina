@@ -217,12 +217,7 @@ function handlePageChange(page: number) {
 function getHotelImageUrl(hotel: any): string | null {
   if (!hotel.coverAsset) return null;
   
-  // Use proxied media endpoint to avoid CORS issues
-  if (hotel.coverAsset.id) {
-    return `/api/public/media/${hotel.coverAsset.id}`;
-  }
-  
-  // Fallback to direct URLs if no ID
+  // Use direct URLs like other pages (thumbnail_url preferred, fallback to public_url)
   return hotel.coverAsset.thumbnail_url || hotel.coverAsset.public_url || null;
 }
 
