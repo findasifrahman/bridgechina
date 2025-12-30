@@ -79,19 +79,23 @@ export default async function publicRoutes(fastify: FastifyInstance) {
 
   // Public image proxy endpoint - proxy external images to avoid CORS
   fastify.get('/image-proxy', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { url } = request.query as { url?: string };
+    const { url: urlParam } = request.query as { url?: string };
     
-    if (!url) {
+    if (!urlParam) {
       reply.status(400).send({ error: 'Missing url parameter' });
       return;
     }
 
     try {
+      // Decode URL parameter (it comes URL-encoded from the query string)
+      const decodedUrl = decodeURIComponent(urlParam);
+      
       // Validate URL to prevent SSRF
       let imageUrl: URL;
       try {
-        imageUrl = new URL(url);
-      } catch {
+        imageUrl = new URL(decodedUrl);
+      } catch (err) {
+        fastify.log.warn({ urlParam, decodedUrl, error: err }, '[Public Route] /image-proxy invalid URL');
         reply.status(400).send({ error: 'Invalid URL' });
         return;
       }
@@ -101,16 +105,28 @@ export default async function publicRoutes(fastify: FastifyInstance) {
         'cbu01.alicdn.com',
         'img.alicdn.com',
         'detail.1688.com',
+        'alicdn.com', // Allow any alicdn.com subdomain
+        '1688.com', // Allow any 1688.com subdomain
       ];
       
-      if (!allowedDomains.some(domain => imageUrl.hostname.includes(domain))) {
-        reply.status(403).send({ error: 'Domain not allowed' });
+      const hostname = imageUrl.hostname.toLowerCase();
+      // Check if hostname ends with or contains any allowed domain
+      const isAllowed = allowedDomains.some(domain => {
+        const domainLower = domain.toLowerCase();
+        return hostname === domainLower || hostname.endsWith('.' + domainLower) || hostname.includes(domainLower);
+      });
+      
+      if (!isAllowed) {
+        fastify.log.warn({ hostname, decodedUrl, allowedDomains }, '[Public Route] /image-proxy domain not allowed');
+        reply.status(403).send({ error: `Domain not allowed: ${hostname}` });
         return;
       }
 
       // Fetch the image
-      const response = await fetch(url);
+      fastify.log.debug({ decodedUrl, hostname }, '[Public Route] /image-proxy fetching image');
+      const response = await fetch(decodedUrl);
       if (!response.ok) {
+        fastify.log.warn({ decodedUrl, status: response.status, statusText: response.statusText }, '[Public Route] /image-proxy fetch failed');
         reply.status(response.status).send({ error: 'Failed to fetch image' });
         return;
       }
@@ -124,7 +140,7 @@ export default async function publicRoutes(fastify: FastifyInstance) {
       reply.header('Access-Control-Allow-Origin', '*');
       reply.send(buffer);
     } catch (error: any) {
-      fastify.log.error({ error, url }, '[Public Route] /image-proxy error');
+      fastify.log.error({ error, urlParam, stack: error.stack }, '[Public Route] /image-proxy error');
       reply.status(500).send({ error: 'Failed to proxy image' });
     }
   });
