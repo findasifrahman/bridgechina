@@ -141,6 +141,11 @@
         </div>
       </div>
 
+      <!-- Reviews Section -->
+      <div class="mt-12">
+        <ReviewsSection entity-type="hotel" :entity-id="hotel.id" />
+      </div>
+
       <!-- Similar Hotels -->
       <section v-if="similarHotels.length > 0" class="mt-12">
         <h2 class="text-2xl font-bold text-slate-900 mb-6">You May Also Like</h2>
@@ -202,6 +207,7 @@ import {
   CrossSellWidget,
 } from '@bridgechina/ui';
 import axios from '@/utils/axios';
+import ReviewsSection from '@/components/reviews/ReviewsSection.vue';
 
 const route = useRoute();
 const router = useRouter();

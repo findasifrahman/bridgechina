@@ -273,7 +273,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     const body = request.body as any;
 
     // Validate entity_type
-    const validTypes = ['hotel', 'restaurant', 'medical', 'tour', 'transport', 'cityplace', 'product', 'guide'];
+    const validTypes = ['hotel', 'restaurant', 'medical', 'tour', 'transport', 'cityplace', 'product', 'guide', 'food', 'esim'];
     if (!validTypes.includes(body.entity_type)) {
       return reply.status(400).send({ error: 'Invalid entity_type' });
     }
@@ -435,6 +435,12 @@ async function updateEntityRating(entityType: string, entityId: string) {
         where: { id: entityId },
         data: { rating: avgRating, review_count: reviewCount },
       });
+      break;
+    case 'food':
+      // Food items don't have rating/review_count fields, skip
+      break;
+    case 'esim':
+      // eSIM plans don't have rating/review_count fields, skip
       break;
     case 'medical':
       await prisma.medicalCenter.update({

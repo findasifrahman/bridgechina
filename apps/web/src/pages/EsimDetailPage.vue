@@ -151,6 +151,11 @@
           </Card>
         </div>
       </div>
+
+      <!-- Reviews Section -->
+      <div class="mt-12">
+        <ReviewsSection entity-type="esim" :entity-id="plan.id" />
+      </div>
     </div>
 
     <div v-else class="text-center py-12">
@@ -192,6 +197,7 @@ import {
 } from '@bridgechina/ui';
 import axios from '@/utils/axios';
 import EsimPurchaseModal from '@/components/esim/EsimPurchaseModal.vue';
+import ReviewsSection from '@/components/reviews/ReviewsSection.vue';
 
 const route = useRoute();
 const router = useRouter();

@@ -1540,7 +1540,7 @@ export default async function publicRoutes(fastify: FastifyInstance) {
       return { reviews: [], total: 0 };
     }
 
-    const validTypes = ['hotel', 'restaurant', 'medical', 'tour', 'transport', 'cityplace', 'product', 'guide'];
+    const validTypes = ['hotel', 'restaurant', 'medical', 'tour', 'transport', 'cityplace', 'product', 'guide', 'food', 'esim'];
     if (!validTypes.includes(entity_type)) {
       return { reviews: [], total: 0 };
     }

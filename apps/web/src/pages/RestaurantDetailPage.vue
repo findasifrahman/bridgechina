@@ -145,6 +145,11 @@
         </div>
       </div>
 
+      <!-- Reviews Section -->
+      <div class="mt-12">
+        <ReviewsSection entity-type="restaurant" :entity-id="restaurant.id" />
+      </div>
+
       <!-- Cross-sell Widget -->
       <div class="mt-12">
         <CrossSellWidget 
@@ -190,6 +195,7 @@ import {
   CrossSellWidget,
 } from '@bridgechina/ui';
 import axios from '@/utils/axios';
+import ReviewsSection from '@/components/reviews/ReviewsSection.vue';
 
 const route = useRoute();
 const router = useRouter();

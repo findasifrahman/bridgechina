@@ -255,6 +255,11 @@
         </div>
       </div>
 
+      <!-- Reviews Section -->
+      <div class="mt-12">
+        <ReviewsSection entity-type="cityplace" :entity-id="place.id" />
+      </div>
+
       <!-- Cross-Sell -->
       <div class="mt-8">
         <CrossSellWidget :items="relatedServices" title="You may also need" />
@@ -290,6 +295,7 @@ import {
   ImageCarousel,
   CrossSellWidget,
 } from '@bridgechina/ui';
+import ReviewsSection from '@/components/reviews/ReviewsSection.vue';
 
 const route = useRoute();
 const router = useRouter();

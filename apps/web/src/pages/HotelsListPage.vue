@@ -60,10 +60,11 @@
       >
         <div class="relative aspect-video bg-slate-200 rounded-t-2xl overflow-hidden">
           <img
-            v-if="hotel.coverAsset?.thumbnail_url || hotel.coverAsset?.public_url"
-            :src="hotel.coverAsset?.thumbnail_url || hotel.coverAsset?.public_url"
+            v-if="getHotelImageUrl(hotel)"
+            :src="getHotelImageUrl(hotel)"
             :alt="hotel.name"
             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            @error="handleImageError"
           />
           <div v-else class="w-full h-full flex items-center justify-center bg-gradient-to-br from-teal-100 to-amber-100">
             <Hotel class="h-12 w-12 text-teal-400" />
@@ -197,20 +198,8 @@ async function loadHotels() {
 
     const response = await axios.get('/api/public/catalog/hotels', { params });
     const data = response.data || [];
-    // Load cover assets for hotels
-    hotels.value = await Promise.all(
-      data.map(async (hotel: any) => {
-        if (hotel.cover_asset_id) {
-          try {
-            const assetResponse = await axios.get(`/api/public/media/${hotel.cover_asset_id}`);
-            hotel.coverAsset = assetResponse.data;
-          } catch (e) {
-            // Ignore errors, hotel will have no coverAsset
-          }
-        }
-        return hotel;
-      })
-    );
+    // coverAsset is already included in the API response
+    hotels.value = data;
     totalPages.value = 1; // API doesn't paginate yet
   } catch (error) {
     console.error('Failed to load hotels', error);
@@ -223,6 +212,23 @@ function handlePageChange(page: number) {
   currentPage.value = page;
   loadHotels();
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function getHotelImageUrl(hotel: any): string | null {
+  if (!hotel.coverAsset) return null;
+  
+  // Use proxied media endpoint to avoid CORS issues
+  if (hotel.coverAsset.id) {
+    return `/api/public/media/${hotel.coverAsset.id}`;
+  }
+  
+  // Fallback to direct URLs if no ID
+  return hotel.coverAsset.thumbnail_url || hotel.coverAsset.public_url || null;
+}
+
+function handleImageError(event: Event) {
+  const img = event.target as HTMLImageElement;
+  img.style.display = 'none';
 }
 
 function handleRequestBooking(hotel: any) {
