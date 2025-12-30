@@ -37,44 +37,44 @@
           <!-- Plan Details Card -->
           <Card>
             <CardHeader>
-              <h2 class="text-2xl font-bold text-slate-900">Plan Details</h2>
+              <h2 class="text-xl font-bold text-slate-900">Plan Details</h2>
             </CardHeader>
-            <CardBody class="p-6">
-              <div class="grid grid-cols-2 gap-6">
-                <div class="flex items-start gap-4">
-                  <div class="bg-purple-100 rounded-xl p-3">
-                    <Database class="h-6 w-6 text-purple-600" />
+            <CardBody class="p-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div class="flex items-center gap-3">
+                  <div class="bg-purple-100 rounded-lg p-2 flex-shrink-0">
+                    <Database class="h-5 w-5 text-purple-600" />
                   </div>
-                  <div>
-                    <div class="text-sm text-slate-600 mb-1">Data</div>
-                    <div class="font-semibold text-slate-900">{{ plan.data_text }}</div>
-                  </div>
-                </div>
-                <div class="flex items-start gap-4">
-                  <div class="bg-pink-100 rounded-xl p-3">
-                    <Calendar class="h-6 w-6 text-pink-600" />
-                  </div>
-                  <div>
-                    <div class="text-sm text-slate-600 mb-1">Validity</div>
-                    <div class="font-semibold text-slate-900">{{ plan.validity_days }} days</div>
+                  <div class="min-w-0">
+                    <div class="text-xs text-slate-600 mb-0.5">Data</div>
+                    <div class="font-semibold text-slate-900 text-sm truncate">{{ plan.data_text }}</div>
                   </div>
                 </div>
-                <div class="flex items-start gap-4">
-                  <div class="bg-orange-100 rounded-xl p-3">
-                    <Globe class="h-6 w-6 text-orange-600" />
+                <div class="flex items-center gap-3">
+                  <div class="bg-pink-100 rounded-lg p-2 flex-shrink-0">
+                    <Calendar class="h-5 w-5 text-pink-600" />
                   </div>
-                  <div>
-                    <div class="text-sm text-slate-600 mb-1">Region</div>
-                    <div class="font-semibold text-slate-900">{{ plan.region_text }}</div>
+                  <div class="min-w-0">
+                    <div class="text-xs text-slate-600 mb-0.5">Validity</div>
+                    <div class="font-semibold text-slate-900 text-sm">{{ plan.validity_days }} days</div>
                   </div>
                 </div>
-                <div class="flex items-start gap-4">
-                  <div class="bg-teal-100 rounded-xl p-3">
-                    <Building2 class="h-6 w-6 text-teal-600" />
+                <div class="flex items-center gap-3">
+                  <div class="bg-orange-100 rounded-lg p-2 flex-shrink-0">
+                    <Globe class="h-5 w-5 text-orange-600" />
                   </div>
-                  <div>
-                    <div class="text-sm text-slate-600 mb-1">Provider</div>
-                    <div class="font-semibold text-slate-900">{{ plan.provider }}</div>
+                  <div class="min-w-0">
+                    <div class="text-xs text-slate-600 mb-0.5">Region</div>
+                    <div class="font-semibold text-slate-900 text-sm truncate">{{ plan.region_text }}</div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3">
+                  <div class="bg-teal-100 rounded-lg p-2 flex-shrink-0">
+                    <Building2 class="h-5 w-5 text-teal-600" />
+                  </div>
+                  <div class="min-w-0">
+                    <div class="text-xs text-slate-600 mb-0.5">Provider</div>
+                    <div class="font-semibold text-slate-900 text-sm truncate">{{ plan.provider }}</div>
                   </div>
                 </div>
               </div>
@@ -84,35 +84,35 @@
           <!-- Description -->
           <Card v-if="plan.description">
             <CardHeader>
-              <h2 class="text-2xl font-bold text-slate-900">Description</h2>
+              <h2 class="text-xl font-bold text-slate-900">Description</h2>
             </CardHeader>
-            <CardBody class="p-6">
-              <p class="text-slate-700 whitespace-pre-line">{{ plan.description }}</p>
+            <CardBody class="p-4">
+              <p class="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{{ plan.description }}</p>
             </CardBody>
           </Card>
 
           <!-- Features -->
           <Card>
             <CardHeader>
-              <h2 class="text-2xl font-bold text-slate-900">Features</h2>
+              <h2 class="text-xl font-bold text-slate-900">Features</h2>
             </CardHeader>
-            <CardBody class="p-6">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="flex items-center gap-3">
-                  <CheckCircle class="h-5 w-5 text-green-500" />
-                  <span class="text-slate-700">Instant activation</span>
+            <CardBody class="p-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="flex items-center gap-2">
+                  <CheckCircle class="h-4 w-4 text-green-500 flex-shrink-0" />
+                  <span class="text-sm text-slate-700">Instant activation</span>
                 </div>
-                <div class="flex items-center gap-3">
-                  <CheckCircle class="h-5 w-5 text-green-500" />
-                  <span class="text-slate-700">No SIM card swap needed</span>
+                <div class="flex items-center gap-2">
+                  <CheckCircle class="h-4 w-4 text-green-500 flex-shrink-0" />
+                  <span class="text-sm text-slate-700">No SIM card swap needed</span>
                 </div>
-                <div class="flex items-center gap-3">
-                  <CheckCircle class="h-5 w-5 text-green-500" />
-                  <span class="text-slate-700">Works on all eSIM-compatible devices</span>
+                <div class="flex items-center gap-2">
+                  <CheckCircle class="h-4 w-4 text-green-500 flex-shrink-0" />
+                  <span class="text-sm text-slate-700">Works on all eSIM-compatible devices</span>
                 </div>
-                <div class="flex items-center gap-3">
-                  <CheckCircle class="h-5 w-5 text-green-500" />
-                  <span class="text-slate-700">Keep your original number</span>
+                <div class="flex items-center gap-2">
+                  <CheckCircle class="h-4 w-4 text-green-500 flex-shrink-0" />
+                  <span class="text-sm text-slate-700">Keep your original number</span>
                 </div>
               </div>
             </CardBody>
@@ -122,10 +122,10 @@
         <!-- Sidebar -->
         <div>
           <Card class="sticky top-4">
-            <CardBody class="p-6">
-              <div class="text-center mb-6">
-                <div class="text-4xl font-bold text-purple-600 mb-2">${{ plan.price }}</div>
-                <div class="text-sm text-slate-600">{{ plan.currency }}</div>
+            <CardBody class="p-5">
+              <div class="text-center mb-5">
+                <div class="text-3xl font-bold text-purple-600 mb-1">¥{{ plan.price }}</div>
+                <div class="text-xs text-slate-600">CNY</div>
               </div>
               <Button
                 variant="primary"
@@ -134,16 +134,16 @@
                 class="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 mb-4"
                 @click="handlePurchase"
               >
-                <ShoppingCart class="h-5 w-5 mr-2" />
+                <ShoppingCart class="h-4 w-4 mr-2" />
                 Purchase Now
               </Button>
-              <div class="text-center text-sm text-slate-600">
-                <div class="flex items-center justify-center gap-2 mb-2">
-                  <Shield class="h-4 w-4" />
+              <div class="text-center text-xs text-slate-600 space-y-1.5">
+                <div class="flex items-center justify-center gap-1.5">
+                  <Shield class="h-3.5 w-3.5" />
                   <span>Secure payment</span>
                 </div>
-                <div class="flex items-center justify-center gap-2">
-                  <Clock class="h-4 w-4" />
+                <div class="flex items-center justify-center gap-1.5">
+                  <Clock class="h-3.5 w-3.5" />
                   <span>Instant activation</span>
                 </div>
               </div>

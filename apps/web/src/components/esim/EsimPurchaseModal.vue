@@ -59,7 +59,7 @@
               </div>
               <div class="flex justify-between items-center pt-2 border-t border-slate-200">
                 <span class="text-lg font-semibold text-slate-900">Total</span>
-                <span class="text-2xl font-bold text-purple-600">${{ plan?.price }}</span>
+                <span class="text-2xl font-bold text-purple-600">¥{{ plan?.price }}</span>
               </div>
             </div>
 

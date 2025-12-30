@@ -107,7 +107,7 @@
               </Badge>
             </div>
             <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
-              <div class="text-white font-bold text-xl">${{ plan.price }}</div>
+              <div class="text-white font-bold text-xl">¥{{ plan.price }}</div>
               <div class="text-white/90 text-sm">{{ plan.validity_days }} days</div>
             </div>
           </div>
@@ -180,10 +180,10 @@ const regionOptions = [
 
 const priceRangeOptions = [
   { value: '', label: 'Any Price' },
-  { value: '0-10', label: 'Under $10' },
-  { value: '10-25', label: '$10 - $25' },
-  { value: '25-50', label: '$25 - $50' },
-  { value: '50+', label: 'Over $50' },
+  { value: '0-50', label: 'Under ¥50' },
+  { value: '50-100', label: '¥50 - ¥100' },
+  { value: '100-200', label: '¥100 - ¥200' },
+  { value: '200+', label: 'Over ¥200' },
 ];
 
 const dataAmountOptions = [
@@ -203,7 +203,7 @@ async function loadPlans() {
     }
     if (filters.value.price_range) {
       const [min, max] = filters.value.price_range.split('-');
-      if (min) params.min_price = min === '50+' ? '50' : min;
+      if (min) params.min_price = min === '200+' ? '200' : min;
       if (max && max !== '+') params.max_price = max;
     }
     

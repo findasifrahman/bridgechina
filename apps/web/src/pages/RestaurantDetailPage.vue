@@ -147,7 +147,11 @@
 
       <!-- Cross-sell Widget -->
       <div class="mt-12">
-        <CrossSellWidget />
+        <CrossSellWidget 
+          :items="relatedRestaurants" 
+          title="You might also like"
+          @click="handleRelatedRestaurantClick"
+        />
       </div>
     </div>
 
@@ -191,6 +195,8 @@ const route = useRoute();
 const router = useRouter();
 const loading = ref(true);
 const restaurant = ref<any>(null);
+const relatedRestaurants = ref<any[]>([]);
+const loadingRelated = ref(false);
 
 function getImageUrls(): string[] {
   if (!restaurant.value) return [];
@@ -227,6 +233,8 @@ async function loadRestaurant() {
   try {
     const response = await axios.get(`/api/public/catalog/restaurants/${route.params.id}`);
     restaurant.value = response.data;
+    // Load related restaurants after current restaurant is loaded
+    await loadRelatedRestaurants();
   } catch (error: any) {
     console.error('Failed to load restaurant', error);
     if (error.response?.status === 404) {
@@ -235,6 +243,54 @@ async function loadRestaurant() {
   } finally {
     loading.value = false;
   }
+}
+
+async function loadRelatedRestaurants() {
+  if (!restaurant.value) return;
+  
+  loadingRelated.value = true;
+  try {
+    const params: any = {
+      limit: 4,
+    };
+    
+    // Exclude current restaurant
+    if (restaurant.value.id) {
+      params.exclude_id = restaurant.value.id;
+    }
+    
+    // If restaurant has a city, try to get restaurants from same city
+    if (restaurant.value.city_id) {
+      params.city_id = restaurant.value.city_id;
+    }
+    
+    // If restaurant has a cuisine type, we could filter by that too
+    // But for now, just get restaurants from same city
+    
+    try {
+      const response = await axios.get('/api/public/catalog/restaurants', { params });
+      relatedRestaurants.value = response.data || [];
+    } catch (e) {
+      // If endpoint fails, try without filters
+      try {
+        const response = await axios.get('/api/public/catalog/restaurants', { 
+          params: { limit: 4, exclude_id: restaurant.value.id } 
+        });
+        relatedRestaurants.value = response.data || [];
+      } catch (e2) {
+        relatedRestaurants.value = [];
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load related restaurants', error);
+    relatedRestaurants.value = [];
+  } finally {
+    loadingRelated.value = false;
+  }
+}
+
+function handleRelatedRestaurantClick(item: any) {
+  router.push(`/services/halal-food/restaurant/${item.id}`);
 }
 
 function handleOrderDelivery() {

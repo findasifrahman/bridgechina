@@ -1,10 +1,10 @@
 <template>
   <div class="min-h-screen bg-white">
-    <!-- Top Header (Sticky) with Shared Grid -->
+    <!-- Top Header (Sticky) -->
     <header class="sticky top-0 z-50 bg-gradient-to-r from-teal-50/80 to-white backdrop-blur-sm border-b border-teal-100 shadow-sm">
-      <div class="w-full px-4 sm:px-6">
+      <div class="w-full">
         <!-- Mobile: Simple flex layout -->
-        <div class="lg:hidden flex justify-between items-center h-16">
+        <div class="lg:hidden flex justify-between items-center h-16 px-4 sm:px-6">
           <router-link to="/" class="flex items-center space-x-2">
             <span class="text-xl font-bold text-teal-700">BridgeChina</span>
           </router-link>
@@ -17,58 +17,60 @@
           </button>
         </div>
         
-        <!-- Desktop: Shared Grid Layout -->
-        <div class="hidden lg:grid grid-cols-[260px,1fr,320px] gap-x-6 items-center h-16">
-          <!-- Column 1: Empty spacer for sidebar -->
-          <div></div>
+        <!-- Desktop: Full width flex layout -->
+        <div class="hidden lg:flex items-center justify-between h-16 px-6">
+          <!-- Left: Brand (completely left-aligned) -->
+          <router-link to="/" class="flex items-center space-x-2 flex-shrink-0">
+            <span class="text-xl font-bold text-teal-700">BridgeChina</span>
+          </router-link>
           
-          <!-- Column 2: Brand + Center Nav -->
-          <div class="flex items-center justify-between">
-            <router-link to="/" class="flex items-center space-x-2">
-              <span class="text-xl font-bold text-teal-700">BridgeChina</span>
+          <!-- Center: Navigation Links -->
+          <nav class="flex items-center space-x-5 mx-6 flex-1 justify-center">
+            <router-link
+              to="/services"
+              class="text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium whitespace-nowrap"
+            >
+              Services
             </router-link>
-            
-            <nav class="hidden md:flex items-center space-x-6">
-              <router-link
-                to="/services"
-                class="text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium"
-              >
-                Services
-              </router-link>
-              <router-link
-                to="/cities"
-                class="text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium"
-              >
-                Cities
-              </router-link>
-              <router-link
-                to="/places"
-                class="text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium"
-              >
-                Places
-              </router-link>
-              <router-link
-                to="/blog"
-                class="text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium"
-              >
-                Blog
-              </router-link>
-              <router-link
-                to="/help"
-                class="text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium"
-              >
-                Help
-              </router-link>
-            </nav>
-          </div>
+            <router-link
+              to="/cities"
+              class="text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium whitespace-nowrap"
+            >
+              Cities
+            </router-link>
+            <router-link
+              to="/places"
+              class="text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium whitespace-nowrap"
+            >
+              Places
+            </router-link>
+            <router-link
+              to="/blog"
+              class="text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium whitespace-nowrap"
+            >
+              Blog
+            </router-link>
+            <router-link
+              to="/help"
+              class="text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium whitespace-nowrap"
+            >
+              Help
+            </router-link>
+            <router-link
+              to="/contact"
+              class="text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium whitespace-nowrap"
+            >
+              Contact
+            </router-link>
+          </nav>
           
-          <!-- Column 3: Right Actions -->
-          <div class="flex items-center justify-end space-x-3">
+          <!-- Right: Actions -->
+          <div class="flex items-center gap-2 flex-shrink-0">
             <!-- WhatsApp (Desktop) -->
             <a
               href="https://wa.me/1234567890"
               target="_blank"
-              class="hidden md:flex items-center space-x-2 px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
+              class="flex items-center gap-1.5 px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm whitespace-nowrap"
             >
               <MessageCircle class="h-4 w-4" />
               <span>WhatsApp</span>
@@ -78,29 +80,39 @@
             <template v-if="!isAuthenticated">
               <router-link
                 to="/login"
-                class="flex items-center space-x-1 text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium"
+                class="flex items-center gap-1 text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium whitespace-nowrap"
               >
                 <LogIn class="h-4 w-4" />
-                <span class="hidden sm:inline">Sign In</span>
+                <span>Sign In</span>
               </router-link>
             </template>
             <template v-else>
               <router-link
-                to="/app"
-                class="flex items-center space-x-1 text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium"
+                :to="userRoles.includes('ADMIN') ? '/admin' : '/app'"
+                class="flex items-center gap-1 text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium whitespace-nowrap"
               >
-                <User class="h-4 w-4" />
-                <span class="hidden sm:inline">Dashboard</span>
+                <User class="h-4 w-4 flex-shrink-0" />
+                <span>Dashboard</span>
               </router-link>
-              <Button variant="ghost" size="sm" @click="$emit('signOut')" class="flex items-center space-x-1 text-slate-700 hover:text-teal-700">
-                <LogOut class="h-4 w-4" />
-                <span class="hidden sm:inline">Sign Out</span>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                @click="$emit('signOut')" 
+                class="flex items-center gap-1 text-slate-700 hover:text-teal-700 whitespace-nowrap px-2"
+              >
+                <LogOut class="h-4 w-4 flex-shrink-0" />
+                <span class="whitespace-nowrap">Sign Out</span>
               </Button>
             </template>
 
-            <Button variant="primary" size="sm" @click="router.push('/request')" class="flex items-center space-x-1 bg-teal-600 hover:bg-teal-700 text-white shadow-sm">
+            <Button 
+              variant="primary" 
+              size="sm" 
+              @click="router.push('/request')" 
+              class="flex items-center gap-1 bg-teal-600 hover:bg-teal-700 text-white shadow-sm whitespace-nowrap"
+            >
               <Sparkles class="h-4 w-4" />
-              <span class="hidden sm:inline">Request</span>
+              <span>Request</span>
             </Button>
           </div>
         </div>
@@ -110,21 +122,21 @@
     <!-- Mobile Offers Carousel -->
     <OffersCarousel v-if="offers.length > 0" :offers="offers" />
 
-    <!-- Main Layout: Sidebar + Content + Right Rail with Shared Grid -->
+    <!-- Main Layout: Sidebar + Content + Right Rail -->
     <div class="w-full">
-      <div class="lg:grid lg:grid-cols-[260px,1fr,320px] lg:gap-x-6 lg:px-6 px-4 sm:px-6">
+      <div class="lg:flex lg:gap-x-6 lg:px-6 px-4 sm:px-6">
         <!-- Fixed Sidebar (Desktop) -->
         <aside class="hidden lg:block fixed left-6 top-16 w-[260px] h-[calc(100vh-4rem)] overflow-y-auto no-scrollbar border-r border-slate-200 bg-white z-30">
           <SidebarNav />
         </aside>
 
         <!-- Main Content Area (with sidebar offset on desktop) -->
-        <main class="lg:col-start-2 min-w-0 py-6">
+        <main class="lg:ml-[272px] lg:flex-1 min-w-0 py-6">
           <slot />
         </main>
 
         <!-- Right Offers Rail (Desktop only, xl+) -->
-        <aside class="hidden xl:block col-start-3 sticky top-20 h-[calc(100vh-5rem)] overflow-hidden">
+        <aside class="hidden xl:block w-[320px] flex-shrink-0 sticky top-20 h-[calc(100vh-5rem)] overflow-hidden">
           <RightRailOffers :offers="offers" :loading="loadingOffers" />
         </aside>
       </div>
@@ -133,12 +145,12 @@
     <!-- Footer -->
     <footer class="mt-16 border-t border-slate-200 bg-slate-50">
       <div class="w-full">
-        <div class="lg:grid lg:grid-cols-[260px,1fr,320px] lg:gap-x-6 lg:px-6 px-4 sm:px-6">
+        <div class="lg:flex lg:gap-x-6 lg:px-6 px-4 sm:px-6">
           <!-- Spacer for sidebar column on desktop -->
-          <div class="hidden lg:block"></div>
+          <div class="hidden lg:block w-[260px] flex-shrink-0"></div>
           
           <!-- Footer Content (aligned with main content) -->
-          <div class="lg:col-start-2 py-12">
+          <div class="lg:flex-1 py-12">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
               <div>
                 <h3 class="text-teal-700 font-bold text-lg mb-4">BridgeChina</h3>
@@ -175,7 +187,7 @@
           </div>
           
           <!-- Spacer for right rail column on desktop -->
-          <div class="hidden xl:block"></div>
+          <div class="hidden xl:block w-[320px] flex-shrink-0"></div>
         </div>
       </div>
     </footer>
@@ -210,7 +222,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { LogIn, User, LogOut, Menu, MessageCircle, HelpCircle, Phone, Sparkles, Hotel, Car, UtensilsCrossed, HeartPulse } from 'lucide-vue-next';
 import Button from '../components/Button.vue';
@@ -219,8 +231,9 @@ import Drawer from '../components/Drawer.vue';
 import RightRailOffers from '../components/RightRailOffers.vue';
 import OffersCarousel from '../components/OffersCarousel.vue';
 
-defineProps<{
+const props = defineProps<{
   isAuthenticated?: boolean;
+  userRoles?: string[];
 }>();
 
 const emit = defineEmits<{
@@ -233,6 +246,9 @@ const route = useRoute();
 const mobileDrawerOpen = ref(false);
 const offers = ref<any[]>([]);
 const loadingOffers = ref(false);
+
+// Computed for user roles
+const userRoles = computed(() => props.userRoles || []);
 
 // Close drawer on navigation
 watch(() => route.path, () => {

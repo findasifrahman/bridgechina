@@ -2,6 +2,7 @@
   <MarketingLayoutComponent
     ref="layoutRef"
     :is-authenticated="authStore.isAuthenticated"
+    :user-roles="authStore.user?.roles || []"
     @sign-out="handleSignOut"
     @load-offers="handleLoadOffers"
   >

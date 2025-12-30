@@ -10,7 +10,7 @@ export interface Toast {
 const toasts = ref<Toast[]>([]);
 
 export function useToast() {
-  const addToast = (message: string, type: Toast['type'] = 'info', duration = 5000) => {
+  const addToast = (message: string, type: Toast['type'] = 'info', duration = 8000) => {
     const id = Math.random().toString(36).substring(7);
     const toast: Toast = { id, message, type, duration };
     toasts.value.push(toast);

@@ -133,7 +133,11 @@
 
       <!-- Cross-sell Widget -->
       <div class="mt-12">
-        <CrossSellWidget />
+        <CrossSellWidget 
+          :items="relatedFoodItems" 
+          title="You might also like"
+          @click="handleRelatedItemClick"
+        />
       </div>
     </div>
 
@@ -145,6 +149,61 @@
         <Button variant="primary" @click="router.push('/services/halal-food')">Browse Food Items</Button>
       </EmptyState>
     </div>
+
+    <!-- Login Modal -->
+    <Modal v-model="showLoginModal" title="Login Required">
+      <div class="p-6">
+        <p class="text-center text-lg text-slate-700 mb-6">Please log in to order food.</p>
+        <div class="flex gap-3">
+          <Button variant="ghost" full-width @click="showLoginModal = false">Cancel</Button>
+          <Button variant="primary" full-width @click="router.push('/login')">Log In</Button>
+        </div>
+        <p class="text-center text-sm text-slate-600 mt-4">
+          Don't have an account? 
+          <router-link to="/register" class="text-teal-600 hover:underline">Register here</router-link>
+        </p>
+      </div>
+    </Modal>
+
+    <!-- Confirmation Modal -->
+    <Modal v-model="showConfirmModal" title="Confirm Order">
+      <div class="p-6">
+        <div v-if="foodItem" class="space-y-4">
+          <div class="text-center">
+            <CheckCircle class="h-16 w-16 text-green-500 mx-auto mb-4" />
+            <h3 class="text-2xl font-bold text-slate-900 mb-2">Thank you for your order, sir!</h3>
+            <p class="text-slate-700 mb-4">
+              A representative will contact you within 5 minutes. You can see the status on your account page.
+            </p>
+          </div>
+          
+          <Card class="bg-slate-50">
+            <CardBody class="p-4">
+              <div class="flex items-center gap-3 mb-2">
+                <img
+                  v-if="foodItem.coverAsset?.thumbnail_url || foodItem.coverAsset?.public_url"
+                  :src="foodItem.coverAsset?.thumbnail_url || foodItem.coverAsset?.public_url"
+                  :alt="foodItem.name"
+                  class="w-16 h-16 object-cover rounded-lg"
+                />
+                <div class="flex-1">
+                  <h4 class="font-semibold text-slate-900">{{ foodItem.name }}</h4>
+                  <p class="text-sm text-slate-600">{{ foodItem.restaurant?.name }}</p>
+                  <p class="text-lg font-bold text-teal-600 mt-1">¥{{ foodItem.price }}</p>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          <div class="flex gap-3">
+            <Button variant="ghost" full-width @click="showConfirmModal = false" :disabled="submitting">No, Cancel</Button>
+            <Button variant="primary" full-width @click="createFoodOrder" :loading="submitting">
+              Yes, Confirm Order
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Modal>
   </div>
 </template>
 
@@ -155,6 +214,7 @@ import {
   ChevronRight,
   UtensilsCrossed,
   MessageCircle,
+  CheckCircle,
 } from 'lucide-vue-next';
 import {
   Card,
@@ -164,13 +224,24 @@ import {
   SkeletonLoader,
   EmptyState,
   CrossSellWidget,
+  Modal,
+  useToast,
 } from '@bridgechina/ui';
 import axios from '@/utils/axios';
+import { useAuthStore } from '@/stores/auth';
 
 const route = useRoute();
 const router = useRouter();
+const authStore = useAuthStore();
+const toast = useToast();
 const loading = ref(true);
 const foodItem = ref<any>(null);
+const showLoginModal = ref(false);
+const showConfirmModal = ref(false);
+const submitting = ref(false);
+const cities = ref<any[]>([]);
+const relatedFoodItems = ref<any[]>([]);
+const loadingRelated = ref(false);
 
 function getSpicyLabel(level: number): string {
   if (level === 0) return 'Not Spicy';
@@ -186,6 +257,8 @@ async function loadFoodItem() {
   try {
     const response = await axios.get(`/api/public/catalog/food-items/${route.params.id}`);
     foodItem.value = response.data;
+    // Load related items after current item is loaded
+    await loadRelatedFoodItems();
   } catch (error: any) {
     console.error('Failed to load food item', error);
     if (error.response?.status === 404) {
@@ -197,16 +270,114 @@ async function loadFoodItem() {
 }
 
 function handleOrderItem() {
-  router.push({
-    path: '/request',
-    query: {
-      category: 'food_delivery',
-      food_item_id: foodItem.value?.id,
-      food_item_name: foodItem.value?.name,
-      restaurant_id: foodItem.value?.restaurant?.id,
-      restaurant_name: foodItem.value?.restaurant?.name,
-    },
-  });
+  if (!authStore.isAuthenticated) {
+    showLoginModal.value = true;
+    return;
+  }
+  
+  // Show confirmation dialog
+  showConfirmModal.value = true;
+}
+
+async function createFoodOrder() {
+  if (!foodItem.value) return;
+  
+  submitting.value = true;
+  try {
+    // Get default city (use first city or foodItem's city)
+    const defaultCityId = foodItem.value.restaurant?.city_id || cities.value[0]?.id || '';
+    
+    if (!defaultCityId) {
+      toast.error('Please select a city first');
+      return;
+    }
+
+    const response = await axios.post('/api/public/service-request', {
+      category_key: 'halal_food',
+      city_id: defaultCityId,
+      customer_name: authStore.user?.email || authStore.user?.phone || 'User',
+      phone: authStore.user?.phone || '',
+      email: authStore.user?.email || null,
+      request_payload: {
+        food_item_id: foodItem.value.id,
+        food_item_name: foodItem.value.name,
+        food_item_price: foodItem.value.price,
+        restaurant_id: foodItem.value.restaurant_id,
+        restaurant_name: foodItem.value.restaurant?.name,
+      },
+    });
+
+    toast.success('Order placed successfully! A representative will contact you within 5 minutes.');
+    showConfirmModal.value = false;
+    
+    // Optionally redirect to account page
+    setTimeout(() => {
+      router.push('/app/requests');
+    }, 2000);
+  } catch (error: any) {
+    toast.error(error.response?.data?.error || 'Failed to place order. Please try again.');
+  } finally {
+    submitting.value = false;
+  }
+}
+
+async function loadCities() {
+  try {
+    const response = await axios.get('/api/public/cities');
+    cities.value = response.data || [];
+  } catch (error) {
+    console.error('Failed to load cities', error);
+  }
+}
+
+async function loadRelatedFoodItems() {
+  if (!foodItem.value) return;
+  
+  loadingRelated.value = true;
+  try {
+    const params: any = {
+      limit: 4,
+    };
+    
+    // Exclude current item
+    if (foodItem.value.id) {
+      params.exclude_id = foodItem.value.id;
+    }
+    
+    // If food item has a category, try to get items from same category
+    if (foodItem.value.category_id) {
+      params.category_id = foodItem.value.category_id;
+    }
+    
+    // If food item has a restaurant, try to get items from same restaurant
+    if (foodItem.value.restaurant_id) {
+      params.restaurant_id = foodItem.value.restaurant_id;
+    }
+    
+    try {
+      const response = await axios.get('/api/public/catalog/food-items', { params });
+      relatedFoodItems.value = response.data?.data || response.data || [];
+    } catch (e) {
+      // If endpoint fails, try without filters
+      try {
+        const response = await axios.get('/api/public/catalog/food-items', { 
+          params: { limit: 4, exclude_id: foodItem.value.id } 
+        });
+        relatedFoodItems.value = response.data?.data || response.data || [];
+      } catch (e2) {
+        relatedFoodItems.value = [];
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load related food items', error);
+    relatedFoodItems.value = [];
+  } finally {
+    loadingRelated.value = false;
+  }
+}
+
+function handleRelatedItemClick(item: any) {
+  router.push(`/services/halal-food/item/${item.id}`);
 }
 
 function openWhatsApp() {
@@ -214,8 +385,9 @@ function openWhatsApp() {
   window.open(`https://wa.me/1234567890?text=${message}`, '_blank');
 }
 
-onMounted(() => {
-  loadFoodItem();
+onMounted(async () => {
+  await loadCities();
+  await loadFoodItem();
 });
 </script>
 

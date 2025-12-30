@@ -9,18 +9,20 @@
         v-for="toast in toasts"
         :key="toast.id"
         :class="toastClasses(toast.type)"
+        class="animate-in slide-in-from-right"
       >
-        <div class="flex items-start">
+        <div class="flex items-start p-4">
           <div class="flex-shrink-0">
-            <component :is="iconComponent(toast.type)" class="h-5 w-5" />
+            <component :is="iconComponent(toast.type)" class="h-6 w-6" />
           </div>
-          <div class="ml-3 w-0 flex-1">
-            <p class="text-sm font-medium">{{ toast.message }}</p>
+          <div class="ml-3 flex-1 min-w-0">
+            <p class="text-base font-semibold leading-5">{{ toast.message }}</p>
           </div>
           <div class="ml-4 flex-shrink-0 flex">
             <button
-              class="inline-flex text-slate-400 hover:text-slate-500 focus:outline-none"
+              class="inline-flex text-slate-400 hover:text-slate-600 focus:outline-none rounded-md p-1 hover:bg-slate-100 transition-colors"
               @click="removeToast(toast.id)"
+              aria-label="Close"
             >
               <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -55,12 +57,12 @@ const emit = defineEmits<{
 }>();
 
 const toastClasses = (type: string) => {
-  const base = 'max-w-sm w-full rounded-lg shadow-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden';
+  const base = 'max-w-md w-full rounded-xl shadow-xl pointer-events-auto ring-2 ring-opacity-20 overflow-hidden border';
   const types = {
-    success: 'bg-green-50 text-green-800',
-    error: 'bg-red-50 text-red-800',
-    warning: 'bg-amber-50 text-amber-800',
-    info: 'bg-blue-50 text-blue-800',
+    success: 'bg-green-50 text-green-900 border-green-200 ring-green-500',
+    error: 'bg-red-50 text-red-900 border-red-200 ring-red-500',
+    warning: 'bg-amber-50 text-amber-900 border-amber-200 ring-amber-500',
+    info: 'bg-blue-50 text-blue-900 border-blue-200 ring-blue-500',
   };
   return [base, types[type as keyof typeof types]].join(' ');
 };
