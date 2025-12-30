@@ -219,12 +219,6 @@ function getHotelImageUrl(hotel: any): string | null {
   
   // Use proxied media endpoint to avoid CORS issues
   if (hotel.coverAsset.id) {
-    const apiUrl = import.meta.env.VITE_API_URL || '';
-    // On localhost: use relative URL (Vite proxy handles it)
-    // On Vercel: use absolute URL with Railway backend
-    if (apiUrl) {
-      return `${apiUrl}/api/public/media/${hotel.coverAsset.id}`;
-    }
     return `/api/public/media/${hotel.coverAsset.id}`;
   }
   
