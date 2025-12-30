@@ -122,17 +122,66 @@ export default async function publicRoutes(fastify: FastifyInstance) {
         return;
       }
 
-      // Fetch the image
+      // Fetch the image with proper headers to avoid blocking
       fastify.log.debug({ decodedUrl, hostname }, '[Public Route] /image-proxy fetching image');
-      const response = await fetch(decodedUrl);
+      let response: Response;
+      try {
+        // Create abort controller for timeout (fallback for older Node.js)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        
+        try {
+          response = await fetch(decodedUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+              'Accept-Language': 'en-US,en;q=0.9',
+              'Referer': 'https://detail.1688.com/',
+            },
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+        } catch (fetchErr: any) {
+          clearTimeout(timeoutId);
+          throw fetchErr;
+        }
+      } catch (fetchError: any) {
+        fastify.log.error({ 
+          decodedUrl, 
+          hostname, 
+          error: fetchError.message, 
+          name: fetchError.name,
+          code: fetchError.code,
+          stack: fetchError.stack 
+        }, '[Public Route] /image-proxy fetch error (network/timeout)');
+        reply.status(500).send({ error: `Failed to fetch image: ${fetchError.message || 'Network error'}` });
+        return;
+      }
+      
       if (!response.ok) {
-        fastify.log.warn({ decodedUrl, status: response.status, statusText: response.statusText }, '[Public Route] /image-proxy fetch failed');
-        reply.status(response.status).send({ error: 'Failed to fetch image' });
+        fastify.log.warn({ 
+          decodedUrl, 
+          status: response.status, 
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries())
+        }, '[Public Route] /image-proxy fetch failed (non-ok response)');
+        reply.status(response.status).send({ error: `Failed to fetch image: ${response.statusText}` });
         return;
       }
 
       const contentType = response.headers.get('content-type') || 'image/jpeg';
-      const buffer = Buffer.from(await response.arrayBuffer());
+      let buffer: Buffer;
+      try {
+        buffer = Buffer.from(await response.arrayBuffer());
+      } catch (bufferError: any) {
+        fastify.log.error({ 
+          decodedUrl, 
+          error: bufferError.message,
+          stack: bufferError.stack 
+        }, '[Public Route] /image-proxy buffer conversion error');
+        reply.status(500).send({ error: 'Failed to process image data' });
+        return;
+      }
 
       // Set headers
       reply.header('Content-Type', contentType);
