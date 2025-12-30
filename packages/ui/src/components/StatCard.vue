@@ -3,7 +3,9 @@
     <div class="flex items-center">
       <div class="flex-shrink-0">
         <div :class="iconBgClasses" class="rounded-lg p-3">
-          <component :is="icon" :class="iconClasses" class="h-6 w-6" />
+          <slot name="icon">
+            <component v-if="icon" :is="icon" :class="iconClasses" class="h-6 w-6" />
+          </slot>
         </div>
       </div>
       <div class="ml-4 w-0 flex-1">
@@ -33,13 +35,14 @@ import Card from './Card.vue';
 interface Props {
   label: string;
   value: string | number;
-  icon: any;
+  icon?: any;
   change?: number;
   iconColor?: 'teal' | 'amber' | 'blue' | 'green' | 'red';
 }
 
 const props = withDefaults(defineProps<Props>(), {
   iconColor: 'teal',
+  icon: undefined,
 });
 
 const iconBgClasses = computed(() => {

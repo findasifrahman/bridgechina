@@ -2,8 +2,8 @@
   <Card class="cursor-pointer group" :hover="true" @click="$emit('click', item)">
     <div class="relative aspect-video bg-slate-200 rounded-t-2xl overflow-hidden">
       <img
-        v-if="thumbnail"
-        :src="thumbnail"
+        v-if="imageUrl"
+        :src="imageUrl"
         :alt="title"
         class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         @error="handleImageError"
@@ -14,8 +14,14 @@
       <div v-if="badge" class="absolute top-2 right-2">
         <Badge :variant="badgeVariant" size="sm">{{ badge }}</Badge>
       </div>
+      <div v-if="overlay" class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end">
+        <div class="p-3 text-white w-full">
+          <h3 class="font-semibold text-sm mb-1">{{ title }}</h3>
+          <p v-if="subtitle" class="text-xs text-white/90">{{ subtitle }}</p>
+        </div>
+      </div>
     </div>
-    <CardBody class="p-4">
+    <CardBody v-if="!overlay" class="p-4">
       <h3 class="font-semibold text-slate-900 mb-1 line-clamp-2 text-sm">{{ title }}</h3>
       <p v-if="subtitle" class="text-xs text-slate-600 mb-2 line-clamp-1">{{ subtitle }}</p>
       <div class="flex items-center justify-between">
@@ -36,17 +42,19 @@
 </template>
 
 <script setup lang="ts">
-import { Image as ImageIcon } from 'lucide-vue-next';
+import { computed } from 'vue';
+import { Image as ImageIcon, Star } from 'lucide-vue-next';
 import Card from './Card.vue';
 import CardBody from './CardBody.vue';
 import Badge from './Badge.vue';
-import { Star } from 'lucide-vue-next';
 
-defineProps<{
-  item: any;
+const props = defineProps<{
+  item?: any;
   title: string;
   subtitle?: string;
   thumbnail?: string | null;
+  coverAsset?: any;
+  galleryAssets?: any[];
   rating?: number;
   price?: string;
   meta?: string;
@@ -54,16 +62,28 @@ defineProps<{
   badgeVariant?: 'default' | 'primary' | 'success' | 'warning' | 'danger' | 'accent' | 'secondary';
   tags?: string[];
   icon?: any;
+  overlay?: boolean;
 }>();
 
 defineEmits<{
   click: [item: any];
 }>();
 
+// Prefer thumbnail_url, fallback to public_url, then gallery, then null
+const imageUrl = computed(() => {
+  if (props.thumbnail) return props.thumbnail;
+  if (props.coverAsset?.thumbnail_url) return props.coverAsset.thumbnail_url;
+  if (props.coverAsset?.public_url) return props.coverAsset.public_url;
+  if (props.galleryAssets && props.galleryAssets.length > 0) {
+    const first = props.galleryAssets[0];
+    return first.thumbnail_url || first.public_url;
+  }
+  return null;
+});
+
 function handleImageError(event: Event) {
   const img = event.target as HTMLImageElement;
-  img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23e2e8f0" width="400" height="300"/%3E%3C/svg%3E';
+  img.style.display = 'none';
 }
 </script>
-
 

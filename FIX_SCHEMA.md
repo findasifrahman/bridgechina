@@ -93,3 +93,5 @@ SELECT table_name FROM information_schema.tables WHERE table_schema = 'pubdlic';
 But since your data is in `public` schema, you just need to fix the connection string!
 
 
+
+

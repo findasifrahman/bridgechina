@@ -1,6 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import { createServiceRequestSchema, createLeadSchema } from '@bridgechina/shared';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { getS3Client } from '../utils/r2.js';
 
 const prisma = new PrismaClient();
 
@@ -61,7 +63,7 @@ export default async function publicRoutes(fastify: FastifyInstance) {
     }
   );
 
-  // Public media endpoint - serve media asset by ID
+  // Public media endpoint - serve media asset by ID (proxy to avoid CORS)
   fastify.get('/media/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     const params = request.params as { id: string };
     
@@ -75,15 +77,71 @@ export default async function publicRoutes(fastify: FastifyInstance) {
         return;
       }
 
-      // Redirect to the public URL if available
+      // If we have r2_key, fetch directly from R2 to avoid CORS
+      if (asset.r2_key) {
+        try {
+          const client = getS3Client();
+          const bucket = process.env.R2_BUCKET;
+          
+          if (!bucket) {
+            throw new Error('R2_BUCKET not configured');
+          }
+
+          const command = new GetObjectCommand({
+            Bucket: bucket,
+            Key: asset.r2_key,
+          });
+
+          const response = await client.send(command);
+          
+          // Set appropriate headers
+          const contentType = asset.mime_type || response.ContentType || 'application/octet-stream';
+          reply.header('Content-Type', contentType);
+          reply.header('Cache-Control', 'public, max-age=31536000, immutable');
+          reply.header('Access-Control-Allow-Origin', '*');
+          
+          // Stream the body
+          if (response.Body) {
+            const chunks: Uint8Array[] = [];
+            for await (const chunk of response.Body as any) {
+              chunks.push(chunk);
+            }
+            const buffer = Buffer.concat(chunks);
+            reply.send(buffer);
+            return;
+          }
+        } catch (r2Error: any) {
+          fastify.log.warn({ error: r2Error, assetId: params.id }, '[Public Route] Failed to fetch from R2, falling back to public URL');
+        }
+      }
+
+      // Fallback: proxy from public URL if available
       if (asset.public_url) {
-        reply.redirect(asset.public_url);
-        return;
+        try {
+          const response = await fetch(asset.public_url);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch image: ${response.statusText}`);
+          }
+
+          const contentType = asset.mime_type || response.headers.get('content-type') || 'application/octet-stream';
+          const buffer = Buffer.from(await response.arrayBuffer());
+
+          reply.header('Content-Type', contentType);
+          reply.header('Cache-Control', 'public, max-age=31536000, immutable');
+          reply.header('Access-Control-Allow-Origin', '*');
+          reply.send(buffer);
+          return;
+        } catch (fetchError: any) {
+          fastify.log.error({ error: fetchError, url: asset.public_url }, '[Public Route] Failed to proxy image from public URL');
+          reply.status(500).send({ error: 'Failed to fetch image' });
+          return;
+        }
       }
 
       // If no public URL, return the asset metadata
       return asset;
     } catch (error: any) {
+      fastify.log.error({ error, stack: error.stack }, '[Public Route] /media/:id error');
       reply.status(500).send({ error: error.message || 'Failed to fetch media asset' });
     }
   });

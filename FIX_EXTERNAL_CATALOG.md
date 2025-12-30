@@ -40,3 +40,5 @@ pnpm --filter @bridgechina/api db:check-catalog
 This will show you the actual columns in your database so we can match the Prisma schema exactly.
 
 
+
+

@@ -65,3 +65,5 @@ async function checkTableStructure() {
 checkTableStructure();
 
 
+
+
