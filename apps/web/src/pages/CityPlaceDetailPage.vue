@@ -58,9 +58,9 @@
               </div>
 
               <div class="flex flex-col gap-2">
-                <Button variant="primary" full-width @click="handleRequestGuide" class="flex items-center justify-center gap-2">
+                <Button variant="primary" full-width @click="handleRequestTour" class="flex items-center justify-center gap-2">
                   <User class="h-4 w-4" />
-                  Request Guide
+                  Request Tour
                 </Button>
                 <Button variant="secondary" full-width @click="handleRequestTransport" class="flex items-center justify-center gap-2">
                   <Car class="h-4 w-4" />
@@ -175,11 +175,52 @@
           </Card>
 
           <!-- Related Services -->
-          <CrossSellWidget
-            title="Related Services"
-            :items="relatedServices"
-            @click="handleServiceClick"
-          />
+          <Card v-if="relatedServices.length > 0">
+            <CardBody>
+              <h2 class="text-xl font-semibold mb-4">Related Services</h2>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div
+                  v-for="service in relatedServices"
+                  :key="service.id"
+                  class="cursor-pointer group"
+                  @click="handleServiceClick(service)"
+                >
+                  <Card class="h-full hover:shadow-lg transition-shadow">
+                    <div class="relative aspect-video bg-slate-200 rounded-t-2xl overflow-hidden">
+                      <img
+                        v-if="getServiceThumbnail(service)"
+                        :src="getServiceThumbnail(service)"
+                        :alt="service.name || service.title"
+                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        @error="handleImageError"
+                      />
+                      <div v-else class="w-full h-full flex items-center justify-center bg-gradient-to-br from-teal-100 to-amber-100">
+                        <Building2 class="h-12 w-12 text-teal-400" />
+                      </div>
+                    </div>
+                    <CardBody class="p-4">
+                      <h3 class="font-semibold text-slate-900 mb-1 line-clamp-2">{{ service.name || service.title }}</h3>
+                      <p v-if="service.description || service.short_description" class="text-sm text-slate-600 mb-2 line-clamp-2">
+                        {{ service.description || service.short_description }}
+                      </p>
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                          <div v-if="service.star_rating || service.rating" class="flex items-center gap-1">
+                            <Star class="h-4 w-4 fill-amber-400 text-amber-400" />
+                            <span class="text-sm font-medium">{{ (service.star_rating || service.rating).toFixed(1) }}</span>
+                          </div>
+                          <span v-if="service.city?.name" class="text-xs text-slate-500">{{ service.city.name }}</span>
+                        </div>
+                        <div v-if="service.price_from || service.price" class="text-sm font-semibold text-teal-600">
+                          {{ service.price_from ? `From ¥${service.price_from}` : service.price ? `¥${service.price}` : '' }}
+                        </div>
+                      </div>
+                    </CardBody>
+                  </Card>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
         </div>
 
         <!-- Right: Sidebar -->
@@ -202,10 +243,10 @@
                   <Button
                     variant="primary"
                     class="w-full"
-                    @click="handleRequestGuide"
+                    @click="handleRequestTour"
                   >
                     <User class="h-4 w-4 mr-2" />
-                    Request Guide
+                    Request Tour
                   </Button>
                   <Button
                     variant="secondary"
@@ -260,10 +301,6 @@
         <ReviewsSection entity-type="cityplace" :entity-id="place.id" />
       </div>
 
-      <!-- Cross-Sell -->
-      <div class="mt-8">
-        <CrossSellWidget :items="relatedServices" title="You may also need" />
-      </div>
     </div>
 
     <div v-else class="px-4 sm:px-6 lg:px-8 py-12 text-center">
@@ -276,6 +313,34 @@
         </template>
       </EmptyState>
     </div>
+
+    <!-- Login Modal -->
+    <Modal v-model="showLoginModal" title="Login Required">
+      <div class="p-6">
+        <p class="text-slate-700 mb-4">
+          Thank you for choosing this place. Please log in to request this tour service.
+        </p>
+        <div class="flex gap-3 justify-end">
+          <Button variant="ghost" @click="showLoginModal = false">Cancel</Button>
+          <Button variant="primary" @click="router.push('/login'); showLoginModal = false">Login</Button>
+        </div>
+      </div>
+    </Modal>
+
+    <!-- Confirmation Modal -->
+    <Modal v-model="showConfirmModal" title="Confirm Tour Request">
+      <div class="p-6">
+        <p class="text-slate-700 mb-4">
+          Thank you for choosing this place. Please press OK to confirm and one of our operators will contact you within an hour.
+        </p>
+        <div class="flex gap-3 justify-end">
+          <Button variant="ghost" @click="showConfirmModal = false" :disabled="submitting">Cancel</Button>
+          <Button variant="primary" @click="createTourRequest" :disabled="submitting">
+            {{ submitting ? 'Submitting...' : 'OK' }}
+          </Button>
+        </div>
+      </div>
+    </Modal>
   </div>
 </template>
 
@@ -285,6 +350,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { MapPin, Star, Clock, Building2, ChevronRight, User, Car, Phone } from 'lucide-vue-next';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
+import { useAuthStore } from '@/stores/auth';
 import {
   Card,
   CardBody,
@@ -293,19 +359,23 @@ import {
   SkeletonLoader,
   EmptyState,
   ImageCarousel,
-  CrossSellWidget,
+  Modal,
 } from '@bridgechina/ui';
 import ReviewsSection from '@/components/reviews/ReviewsSection.vue';
 
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
+const authStore = useAuthStore();
 
 const place = ref<any>(null);
 const nearbyPlaces = ref<any[]>([]);
 const relatedServices = ref<any[]>([]);
 const reviews = ref<any[]>([]);
 const loading = ref(true);
+const showLoginModal = ref(false);
+const showConfirmModal = ref(false);
+const submitting = ref(false);
 
 function getImageUrls(): string[] {
   if (!place.value) return [];
@@ -388,15 +458,74 @@ function openMap() {
   }
 }
 
-function handleRequestGuide() {
-  router.push({
-    path: '/request',
-    query: {
-      category: 'guide',
-      place_id: place.value.id,
-      place_name: place.value.name,
-    },
-  });
+function handleRequestTour() {
+  if (!authStore.isAuthenticated) {
+    showLoginModal.value = true;
+    return;
+  }
+  
+  // Show confirmation dialog
+  showConfirmModal.value = true;
+}
+
+async function createTourRequest() {
+  if (!place.value) return;
+  
+  submitting.value = true;
+  try {
+    // Get default city (use place's city or first available)
+    let cityId = place.value.city_id;
+    if (!cityId) {
+      try {
+        const citiesRes = await axios.get('/api/public/cities');
+        if (citiesRes.data && citiesRes.data.length > 0) {
+          cityId = citiesRes.data[0].id;
+        }
+      } catch (e) {
+        console.error('Failed to load cities', e);
+      }
+    }
+    
+    if (!cityId) {
+      toast.error('Unable to determine city. Please try again.');
+      submitting.value = false;
+      return;
+    }
+    
+    await axios.post('/api/public/service-request', {
+      category_key: 'tours',
+      city_id: cityId,
+      customer_name: authStore.user?.email?.split('@')[0] || authStore.user?.phone || 'User',
+      phone: authStore.user?.phone || '',
+      email: authStore.user?.email || null,
+      request_payload: {
+        place_id: place.value.id,
+        place_name: place.value.name,
+        place_address: place.value.address,
+        date: null,
+        group_size: 1,
+        preferences: null,
+      },
+    });
+    
+    toast.success('Tour request submitted successfully! We will contact you within an hour.');
+    showConfirmModal.value = false;
+  } catch (error: any) {
+    console.error('Failed to create tour request', error);
+    toast.error(error.response?.data?.error || 'Failed to submit tour request');
+  } finally {
+    submitting.value = false;
+  }
+}
+
+function getServiceThumbnail(service: any): string | null {
+  if (service.coverAsset?.public_url) return service.coverAsset.public_url;
+  if (service.coverAsset?.thumbnail_url) return service.coverAsset.thumbnail_url;
+  if (service.galleryAssets && service.galleryAssets.length > 0) {
+    return service.galleryAssets[0].public_url || service.galleryAssets[0].thumbnail_url;
+  }
+  if (service.image) return service.image;
+  return null;
 }
 
 function handleRequestTransport() {

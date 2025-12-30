@@ -1,58 +1,78 @@
 <template>
-  <Card class="group cursor-pointer hover:shadow-lg transition-all h-full flex flex-col" @click="handleClick">
-    <div class="relative aspect-video overflow-hidden rounded-t-lg flex-shrink-0 bg-slate-200">
+  <Card class="group cursor-pointer hover:shadow-2xl transition-all duration-300 h-full flex flex-col border-2 border-slate-200 hover:border-teal-400 overflow-hidden" @click="handleClick">
+    <div class="relative aspect-[4/3] overflow-hidden flex-shrink-0 bg-gradient-to-br from-teal-100 via-blue-100 to-purple-100">
       <img
         v-if="getPlaceImage() && !imageError"
         :src="getPlaceImage()"
         :alt="place.name"
-        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+        class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
         loading="lazy"
         @error="handleImageError"
       />
-      <div v-else class="w-full h-full bg-gradient-to-br from-teal-100 to-amber-100 flex items-center justify-center">
-        <MapPin class="h-12 w-12 text-teal-400" />
+      <div v-else class="w-full h-full bg-gradient-to-br from-teal-200 via-blue-200 to-purple-200 flex items-center justify-center">
+        <MapPin class="h-16 w-16 text-teal-500" />
       </div>
-      <div class="absolute top-2 right-2 flex gap-1">
-        <Badge v-if="place.is_family_friendly" variant="success" size="sm">Family</Badge>
-        <Badge v-if="place.is_pet_friendly" variant="success" size="sm">Pet</Badge>
+      
+      <!-- Overlay Gradient -->
+      <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+      
+      <!-- Badges -->
+      <div class="absolute top-3 right-3 flex flex-col gap-2">
+        <Badge v-if="place.is_family_friendly" variant="success" size="sm" class="shadow-lg backdrop-blur-sm bg-green-500/90">
+          👨‍👩‍👧 Family
+        </Badge>
+        <Badge v-if="place.is_pet_friendly" variant="success" size="sm" class="shadow-lg backdrop-blur-sm bg-green-500/90">
+          🐾 Pet Friendly
+        </Badge>
       </div>
-      <div v-if="place.star_rating" class="absolute bottom-2 left-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded flex items-center gap-1">
+      
+      <!-- Rating Badge -->
+      <div v-if="place.star_rating" class="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-lg border border-amber-200">
         <Star :class="place.star_rating >= 4 ? 'fill-amber-400 text-amber-400' : 'fill-slate-300 text-slate-300'" class="h-4 w-4" />
-        <span class="text-sm font-semibold">{{ place.star_rating.toFixed(1) }}</span>
-        <span v-if="place.review_count" class="text-xs text-slate-500">({{ place.review_count }})</span>
+        <span class="text-sm font-bold text-slate-900">{{ place.star_rating.toFixed(1) }}</span>
+        <span v-if="place.review_count" class="text-xs text-slate-600">({{ place.review_count }})</span>
       </div>
     </div>
-    <CardBody class="p-4 flex-1 flex flex-col">
-      <h3 class="font-semibold text-base mb-1 line-clamp-1">{{ place.name }}</h3>
-      <p v-if="place.short_description" class="text-xs text-slate-600 mb-2 line-clamp-2 flex-1">
+    
+    <CardBody class="p-5 flex-1 flex flex-col bg-white">
+      <h3 class="font-bold text-lg mb-2 line-clamp-2 text-slate-900 group-hover:text-teal-600 transition-colors">
+        {{ place.name }}
+      </h3>
+      <p v-if="place.short_description" class="text-sm text-slate-600 mb-3 line-clamp-3 flex-1 leading-relaxed">
         {{ place.short_description }}
       </p>
-      <div class="flex items-center gap-2 text-sm text-slate-500 mb-2">
-        <MapPin class="h-4 w-4" />
-        <span class="line-clamp-1">{{ place.address }}</span>
+      
+      <div class="flex items-start gap-2 text-sm text-slate-600 mb-3 bg-slate-50 rounded-lg p-2">
+        <MapPin class="h-4 w-4 text-teal-600 flex-shrink-0 mt-0.5" />
+        <span class="line-clamp-2 text-xs">{{ place.address }}</span>
       </div>
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <span v-if="place.cost_range" class="text-sm font-medium text-teal-600">{{ place.cost_range }}</span>
-          <span v-if="place.city" class="text-xs text-slate-400">{{ place.city.name }}</span>
+      
+      <div class="flex items-center justify-between mb-3 pt-2 border-t border-slate-200">
+        <div class="flex flex-col gap-1">
+          <span v-if="place.cost_range" class="text-base font-bold text-teal-600">{{ place.cost_range }}</span>
+          <span v-if="place.city" class="text-xs text-slate-500 flex items-center gap-1">
+            <MapPin class="h-3 w-3" />
+            {{ place.city.name }}
+          </span>
         </div>
-        <Button variant="ghost" size="sm" @click="$emit('view', place)">
-          View Details
+        <Button variant="primary" size="sm" class="bg-gradient-to-r from-teal-500 to-blue-500 hover:from-teal-600 hover:to-blue-600 shadow-md">
+          Explore →
         </Button>
       </div>
-      <div v-if="place.tourLinks && place.tourLinks.length > 0" class="mt-2 pt-2 border-t border-slate-200">
-        <p class="text-xs text-slate-500 mb-1">Available Tours:</p>
-        <div class="flex flex-wrap gap-1">
+      
+      <div v-if="place.tourLinks && place.tourLinks.length > 0" class="mt-2 pt-3 border-t border-slate-200">
+        <p class="text-xs font-semibold text-slate-700 mb-2">Available Tours:</p>
+        <div class="flex flex-wrap gap-1.5">
           <Badge
             v-for="link in place.tourLinks.slice(0, 2)"
             :key="link.tour.id"
-            variant="default"
+            variant="secondary"
             size="sm"
-            class="text-xs"
+            class="text-xs bg-blue-50 text-blue-700 border-blue-200"
           >
             {{ link.tour.name }}
           </Badge>
-          <span v-if="place.tourLinks.length > 2" class="text-xs text-slate-400">+{{ place.tourLinks.length - 2 }} more</span>
+          <span v-if="place.tourLinks.length > 2" class="text-xs text-slate-500 self-center">+{{ place.tourLinks.length - 2 }} more</span>
         </div>
       </div>
     </CardBody>
