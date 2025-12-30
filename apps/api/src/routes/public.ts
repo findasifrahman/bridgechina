@@ -945,7 +945,12 @@ export default async function publicRoutes(fastify: FastifyInstance) {
           sort: query.sort,
         });
         
-        console.log('[Public Route] Returning results:', results.length);
+        console.log('[Public Route] Returning results:', {
+          itemsCount: results.items.length,
+          totalCount: results.totalCount,
+          page: results.page,
+          totalPages: results.totalPages,
+        });
         return results;
       } catch (error: any) {
         console.error('[Public Route] /shopping/search error:', {

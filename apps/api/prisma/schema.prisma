@@ -1059,6 +1059,8 @@ model ExternalCatalogItem {
   last_synced_at DateTime @default(now())
   expires_at     DateTime
   title_en       String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
 
   @@unique([source, external_id])
   @@index([source])

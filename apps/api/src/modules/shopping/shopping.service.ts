@@ -42,6 +42,17 @@ export async function getCategories() {
 }
 
 /**
+ * Search result with pagination metadata
+ */
+export interface SearchResult {
+  items: ProductCard[];
+  totalCount?: number;
+  page?: number;
+  pageSize?: number;
+  totalPages?: number;
+}
+
+/**
  * Search by keyword with caching - also caches individual items to ExternalCatalogItem
  */
 export async function searchByKeyword(
@@ -52,7 +63,7 @@ export async function searchByKeyword(
     pageSize?: number;
     sort?: string;
   }
-): Promise<ProductCard[]> {
+): Promise<SearchResult> {
   // If no keyword but category provided, use category name as keyword
   const searchKeyword = keyword?.trim() || opts?.category || 'products';
   
@@ -65,6 +76,9 @@ export async function searchByKeyword(
   const cacheKey = generateCacheKey('keyword', { keyword: searchKeyword, ...opts });
   console.log('[Shopping Service] Cache key:', cacheKey);
 
+  const page = opts?.page || 1;
+  const pageSize = opts?.pageSize || 20;
+
   // Check search cache
   const cached = await getCachedSearch(SOURCE, cacheKey);
   if (cached) {
@@ -72,7 +86,16 @@ export async function searchByKeyword(
     // Cached response structure: { code: 200, msg: "success", data: { items: [...] } }
     // The cached response is the full TMAPI response, so we need cached.results_json.data.items
     const items = cached.results_json?.data?.items || cached.results_json?.items || [];
-    return normalizeProductCards(items);
+    const normalized = normalizeProductCards(items);
+    const totalCount = cached.results_json?.data?.total_count || normalized.length;
+    const totalPages = Math.ceil(totalCount / pageSize);
+    return {
+      items: normalized,
+      totalCount,
+      page,
+      pageSize,
+      totalPages,
+    };
   }
 
   console.log('[Shopping Service] Calling TMAPI...');
@@ -100,6 +123,8 @@ export async function searchByKeyword(
     const items = response.data?.items || response.items || response.result || [];
     console.log('[Shopping Service] Extracted items count:', items.length);
     const normalized = normalizeProductCards(items);
+    const totalCount = response.data?.total_count || normalized.length;
+    const totalPages = Math.ceil(totalCount / pageSize);
 
     // Cache each item to ExternalCatalogItem (async, don't wait)
     normalized.forEach((item) => {
@@ -110,7 +135,13 @@ export async function searchByKeyword(
     });
 
     console.log('[Shopping Service] Normalized items count:', normalized.length);
-    return normalized;
+    return {
+      items: normalized,
+      totalCount,
+      page,
+      pageSize,
+      totalPages,
+    };
   } catch (error: any) {
     console.error('[Shopping Service] TMAPI error:', {
       message: error.message,
@@ -122,9 +153,6 @@ export async function searchByKeyword(
     // Fallback to cached items from ExternalCatalogItem when TMAPI fails
     console.log('[Shopping Service] Falling back to cached items from database...');
     try {
-      const pageSize = opts?.pageSize || 20;
-      const page = opts?.page || 1;
-      
       // Search cached items by keyword in title (case-insensitive)
       const where: any = {
         source: SOURCE,
@@ -161,18 +189,32 @@ export async function searchByKeyword(
       // Apply pagination
       const start = (page - 1) * pageSize;
       const paginated = normalized.slice(start, start + pageSize);
+      const totalCount = normalized.length;
+      const totalPages = Math.ceil(totalCount / pageSize);
       
       if (paginated.length > 0) {
         console.log(`[Shopping Service] Returning ${paginated.length} cached items as fallback`);
-        return paginated;
+        return {
+          items: paginated,
+          totalCount,
+          page,
+          pageSize,
+          totalPages,
+        };
       }
     } catch (fallbackError) {
       console.error('[Shopping Service] Fallback to cached items also failed:', fallbackError);
     }
     
-    // If all else fails, return empty array instead of throwing
-    console.warn('[Shopping Service] No cached items available, returning empty array');
-    return [];
+    // If all else fails, return empty result instead of throwing
+    console.warn('[Shopping Service] No cached items available, returning empty result');
+    return {
+      items: [],
+      totalCount: 0,
+      page,
+      pageSize,
+      totalPages: 0,
+    };
   }
 }
 
@@ -183,34 +225,47 @@ async function cacheProductItem(item: ProductCard): Promise<void> {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 1); // 24 hour TTL
 
-  await prisma.externalCatalogItem.upsert({
-    where: {
-      source_external_id: {
+  try {
+    await prisma.externalCatalogItem.upsert({
+      where: {
+        source_external_id: {
+          source: SOURCE,
+          external_id: item.externalId,
+        },
+      },
+      create: {
         source: SOURCE,
         external_id: item.externalId,
+        title: item.title, // Chinese title
+        price_min: item.priceMin,
+        price_max: item.priceMax,
+        currency: item.currency,
+        main_images: item.images ? JSON.parse(JSON.stringify(item.images)) : null,
+        source_url: item.sourceUrl,
+        expires_at: expiresAt,
+        // created_at and updated_at are handled by @default(now()) and @updatedAt in schema
       },
-    },
-    create: {
-      source: SOURCE,
-      external_id: item.externalId,
-      title: item.title, // Chinese title
-      price_min: item.priceMin,
-      price_max: item.priceMax,
-      currency: item.currency,
-      main_images: item.images ? JSON.parse(JSON.stringify(item.images)) : null,
-      source_url: item.sourceUrl,
-      expires_at: expiresAt,
-    },
-    update: {
-      title: item.title,
-      price_min: item.priceMin,
-      price_max: item.priceMax,
-      main_images: item.images ? JSON.parse(JSON.stringify(item.images)) : null,
-      source_url: item.sourceUrl,
-      expires_at: expiresAt,
-      last_synced_at: new Date(),
-    },
-  });
+      update: {
+        title: item.title,
+        price_min: item.priceMin,
+        price_max: item.priceMax,
+        main_images: item.images ? JSON.parse(JSON.stringify(item.images)) : null,
+        source_url: item.sourceUrl,
+        expires_at: expiresAt,
+        last_synced_at: new Date(),
+        // updated_at is handled by @updatedAt in schema
+      },
+    });
+  } catch (error: any) {
+    // If the error is about missing created_at/updated_at, the Prisma client needs regeneration
+    // But we'll log it and continue - the item will be cached on next sync
+    if (error.code === 'P2011' && error.meta?.constraint?.includes('updated_at')) {
+      console.warn(`[Shopping] Prisma client out of sync - need to regenerate. Error: ${error.message}`);
+      // Try to regenerate Prisma client (this might fail if server is running, but worth trying)
+      console.warn('[Shopping] Please run: pnpm --filter @bridgechina/api db:generate');
+    }
+    throw error; // Re-throw to be caught by the caller
+  }
 }
 
 /**

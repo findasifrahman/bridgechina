@@ -309,11 +309,28 @@ async function handleImageSearch() {
 
     console.log('[ShoppingPage] Image search response:', {
       data: searchRes.data,
-      dataLength: Array.isArray(searchRes.data) ? searchRes.data.length : 'not array',
+      dataLength: Array.isArray(searchRes.data?.items) ? searchRes.data.items.length : 'not array',
       dataType: typeof searchRes.data,
+      pagination: searchRes.data?.totalCount ? {
+        totalCount: searchRes.data.totalCount,
+        page: searchRes.data.page,
+        totalPages: searchRes.data.totalPages,
+      } : 'no pagination',
     });
-    searchResults.value = Array.isArray(searchRes.data) ? searchRes.data : [];
-    toast.success(`Found ${searchResults.value.length} products`);
+    
+    // Handle both old format (array) and new format (object with items)
+    if (Array.isArray(searchRes.data)) {
+      searchResults.value = searchRes.data;
+      totalPages.value = 1; // Old format, no pagination info
+    } else if (searchRes.data?.items) {
+      searchResults.value = searchRes.data.items;
+      totalPages.value = searchRes.data.totalPages || 1;
+    } else {
+      searchResults.value = [];
+      totalPages.value = 1;
+    }
+    
+    toast.success(`Found ${searchRes.data?.totalCount || searchResults.value.length} products`);
   } catch (error: any) {
     console.error('Image search failed:', error);
     toast.error(error.response?.data?.error || 'Failed to search by image');
@@ -358,15 +375,31 @@ async function handleKeywordSearch() {
     
     console.log('[ShoppingPage] Keyword search response:', {
       data: response.data,
-      dataLength: Array.isArray(response.data) ? response.data.length : 'not array',
+      dataLength: Array.isArray(response.data?.items) ? response.data.items.length : 'not array',
       dataType: typeof response.data,
+      pagination: response.data?.totalCount ? {
+        totalCount: response.data.totalCount,
+        page: response.data.page,
+        totalPages: response.data.totalPages,
+      } : 'no pagination',
     });
-    searchResults.value = Array.isArray(response.data) ? response.data : [];
+    
+    // Handle both old format (array) and new format (object with items)
+    if (Array.isArray(response.data)) {
+      searchResults.value = response.data;
+      totalPages.value = 1; // Old format, no pagination info
+    } else if (response.data?.items) {
+      searchResults.value = response.data.items;
+      totalPages.value = response.data.totalPages || 1;
+    } else {
+      searchResults.value = [];
+      totalPages.value = 1;
+    }
     
     if (searchResults.value.length === 0) {
       toast.info('No products found. Try different keywords or category.');
     } else {
-      toast.success(`Found ${searchResults.value.length} products`);
+      toast.success(`Found ${response.data?.totalCount || searchResults.value.length} products`);
     }
   } catch (error: any) {
     console.error('Keyword search failed:', error);
