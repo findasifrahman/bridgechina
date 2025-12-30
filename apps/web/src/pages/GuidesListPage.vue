@@ -47,7 +47,7 @@
         :key="guide.id"
         class="cursor-pointer group"
         :hover="true"
-        @click="router.push(`/services/guide/${guide.id}`)"
+        @click="router.push(`/services/guide/${guide.user_id}`)"
       >
         <div class="relative aspect-square bg-slate-200 rounded-t-2xl overflow-hidden">
           <img
@@ -65,7 +65,7 @@
           </div>
         </div>
         <CardBody class="p-4">
-          <h3 class="font-semibold text-slate-900 mb-1">{{ guide.name || 'Guide' }}</h3>
+          <h3 class="font-semibold text-slate-900 mb-1">{{ guide.display_name || guide.name || 'Guide' }}</h3>
           <p v-if="guide.bio" class="text-xs text-slate-600 mb-2 line-clamp-2">{{ guide.bio }}</p>
           <div class="flex items-center justify-between mb-2">
             <div v-if="guide.rating" class="flex items-center gap-1">
@@ -188,8 +188,8 @@ function handleRequestGuide(guide: any) {
     path: '/request',
     query: {
       category: 'guide',
-      guide_id: guide.id,
-      guide_name: guide.name,
+      guide_id: guide.user_id,
+      guide_name: guide.display_name || guide.name,
     },
   });
 }

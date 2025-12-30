@@ -1295,13 +1295,29 @@ export default async function publicRoutes(fastify: FastifyInstance) {
     const body = createServiceRequestSchema.parse(request.body);
     const req = request as any;
 
-    const category = await prisma.serviceCategory.findUnique({
+    let category = await prisma.serviceCategory.findUnique({
       where: { key: body.category_key },
     });
 
+    // Create category if it doesn't exist (for guide, etc.)
     if (!category) {
-      reply.status(400).send({ error: 'Invalid category' });
-      return;
+      const categoryNames: Record<string, string> = {
+        guide: 'Guide Service',
+        hotel: 'Hotel Booking',
+        transport: 'Transport',
+        halal_food: 'Halal Food',
+        medical: 'Medical Assistance',
+        translation_help: 'Translation & Help',
+        shopping_service: 'Shopping Service',
+        tours: 'Tours',
+        esim: 'eSIM Plans',
+      };
+      category = await prisma.serviceCategory.create({
+        data: {
+          key: body.category_key,
+          name: categoryNames[body.category_key] || body.category_key,
+        },
+      });
     }
 
     // Create lead if guest user

@@ -38,7 +38,7 @@
                   </div>
                 </div>
                 <div class="flex-1">
-                  <h1 class="text-2xl font-bold text-slate-900 mb-2">{{ guide.name || 'Guide' }}</h1>
+                  <h1 class="text-2xl font-bold text-slate-900 mb-2">{{ guide.display_name || guide.name || 'Guide' }}</h1>
                   <div class="flex items-center gap-4 mb-3">
                     <div v-if="guide.rating" class="flex items-center gap-1">
                       <Star class="h-5 w-5 fill-amber-400 text-amber-400" />
@@ -88,40 +88,10 @@
             </CardBody>
           </Card>
 
-          <!-- Reviews -->
-          <Card v-if="reviews.length > 0">
-            <CardBody>
-              <h2 class="text-xl font-semibold mb-4">Reviews</h2>
-              <div class="space-y-4">
-                <div
-                  v-for="review in reviews"
-                  :key="review.id"
-                  class="border-b border-slate-200 pb-4 last:border-0"
-                >
-                  <div class="flex items-center justify-between mb-2">
-                    <div class="flex items-center gap-2">
-                      <div class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center">
-                        <User class="h-5 w-5 text-slate-400" />
-                      </div>
-                      <div>
-                        <div class="font-semibold text-sm">{{ review.user?.email || 'Anonymous' }}</div>
-                        <div class="flex items-center gap-1">
-                          <Star
-                            v-for="i in 5"
-                            :key="i"
-                            class="h-3 w-3"
-                            :class="i <= review.rating ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <span class="text-xs text-slate-500">{{ formatDate(review.created_at) }}</span>
-                  </div>
-                  <p v-if="review.comment" class="text-sm text-slate-700">{{ review.comment }}</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
+          <!-- Reviews Section -->
+          <div class="mt-12">
+            <ReviewsSection entity-type="guide" :entity-id="guide.user_id" />
+          </div>
         </div>
 
         <!-- Right: Booking Card -->
@@ -133,7 +103,7 @@
                 <div class="text-2xl font-bold text-teal-600">¥{{ guide.hourly_rate }}</div>
                 <div class="text-sm text-slate-500">per hour</div>
               </div>
-              <Button variant="primary" full-width @click="handleRequestGuide" class="mb-4">
+              <Button variant="primary" full-width @click="handleRequestGuide" class="mb-4" :disabled="submitting">
                 Request Guide
               </Button>
               <div class="pt-4 border-t border-slate-200">
@@ -167,6 +137,32 @@
     <div v-else class="text-center py-12">
       <EmptyState title="Guide not found" description="The guide you're looking for doesn't exist" />
     </div>
+
+    <!-- Login Modal -->
+    <Modal v-model="showLoginModal" title="Login Required">
+      <div class="p-6 text-center">
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-6">
+          <p class="text-slate-700 mb-4">Thank you for choosing. Please log in to request this guide's service.</p>
+          <div class="flex gap-3 justify-center">
+            <Button variant="ghost" @click="showLoginModal = false">Cancel</Button>
+            <Button variant="primary" @click="router.push('/login')">Log In</Button>
+          </div>
+        </div>
+      </div>
+    </Modal>
+
+    <!-- Confirmation Modal -->
+    <Modal v-model="showConfirmModal" title="Confirm Request">
+      <div class="p-6">
+        <div class="bg-teal-50 border border-teal-200 rounded-xl p-6">
+          <p class="text-slate-700 mb-4">Thank you for choosing this guide. Press OK and we will contact you within 1 hour.</p>
+          <div class="flex gap-3">
+            <Button variant="ghost" full-width @click="showConfirmModal = false" :disabled="submitting">Cancel</Button>
+            <Button variant="primary" full-width @click="createGuideRequest" :loading="submitting">OK</Button>
+          </div>
+        </div>
+      </div>
+    </Modal>
   </div>
 </template>
 
@@ -182,16 +178,26 @@ import {
   SkeletonLoader,
   EmptyState,
   CrossSellWidget,
+  Modal,
+  useToast,
 } from '@bridgechina/ui';
 import axios from '@/utils/axios';
+import { useAuthStore } from '@/stores/auth';
+import ReviewsSection from '@/components/reviews/ReviewsSection.vue';
 
 const route = useRoute();
 const router = useRouter();
+const authStore = useAuthStore();
+const toast = useToast();
 
 const loading = ref(true);
 const guide = ref<any>(null);
 const reviews = ref<any[]>([]);
 const relatedServices = ref<any[]>([]);
+const showLoginModal = ref(false);
+const showConfirmModal = ref(false);
+const submitting = ref(false);
+const cities = ref<any[]>([]);
 
 function getGuideImageUrl(guide: any): string | null {
   // Use coverAsset URLs (direct R2 URLs)
@@ -226,14 +232,12 @@ async function loadGuide() {
       const response = await axios.get(`/api/public/catalog/guides/${guideId}`);
       guide.value = response.data;
       
-      // Load reviews
+      // Load cities for service request
       try {
-        const reviewsResponse = await axios.get(`/api/public/reviews`, {
-          params: { entity_type: 'guide', entity_id: guideId },
-        });
-        reviews.value = reviewsResponse.data || [];
+        const citiesResponse = await axios.get('/api/public/cities');
+        cities.value = citiesResponse.data || [];
       } catch (e) {
-        reviews.value = [];
+        cities.value = [];
       }
 
       // Load related services (transport, food, hotels)
@@ -258,14 +262,55 @@ async function loadGuide() {
 }
 
 function handleRequestGuide() {
-  router.push({
-    path: '/request',
-    query: {
-      category: 'guide',
-      guide_id: guide.value?.id,
-      guide_name: guide.value?.name,
-    },
-  });
+  if (!authStore.isAuthenticated) {
+    showLoginModal.value = true;
+    return;
+  }
+  
+  // Show confirmation dialog
+  showConfirmModal.value = true;
+}
+
+async function createGuideRequest() {
+  if (!guide.value) return;
+  
+  submitting.value = true;
+  try {
+    // Get default city (use guide's city or first city)
+    const defaultCityId = guide.value.city_id || cities.value[0]?.id || '';
+    
+    if (!defaultCityId) {
+      toast.error('City information is missing. Please try again.');
+      return;
+    }
+
+    const response = await axios.post('/api/public/service-request', {
+      category_key: 'guide',
+      city_id: defaultCityId,
+      customer_name: authStore.user?.email?.split('@')[0] || authStore.user?.phone || 'User',
+      phone: authStore.user?.phone || '',
+      email: authStore.user?.email || null,
+      request_payload: {
+        guide_id: guide.value.user_id,
+        guide_name: guide.value.display_name || guide.value.name,
+        guide_hourly_rate: guide.value.hourly_rate,
+        guide_daily_rate: guide.value.daily_rate,
+        guide_languages: guide.value.languages,
+      },
+    });
+
+    toast.success('Request submitted successfully! We will contact you within 1 hour.');
+    showConfirmModal.value = false;
+    
+    // Optionally redirect to account page
+    setTimeout(() => {
+      router.push('/app/requests');
+    }, 2000);
+  } catch (error: any) {
+    toast.error(error.response?.data?.error || 'Failed to submit request. Please try again.');
+  } finally {
+    submitting.value = false;
+  }
 }
 
 onMounted(() => {

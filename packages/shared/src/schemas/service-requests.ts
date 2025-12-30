@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const createServiceRequestSchema = z.object({
-  category_key: z.enum(['hotel', 'transport', 'halal_food', 'medical', 'translation_help', 'shopping_service', 'tours']),
+  category_key: z.enum(['hotel', 'transport', 'halal_food', 'medical', 'translation_help', 'shopping_service', 'tours', 'guide']),
   city_id: z.string().uuid(),
   customer_name: z.string().min(2),
   phone: z.string().min(10),
