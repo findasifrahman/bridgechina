@@ -393,20 +393,47 @@ export async function searchByImage(
     sort?: string;
   }
 ): Promise<ProductCard[]> {
-  // Step 1: Convert R2 URL to Alibaba URL
-  const convertedUrl = await tmapiClient.convertImageUrl(r2PublicUrl);
+  console.log('[Shopping Service] searchByImage called:', {
+    originalUrl: r2PublicUrl.substring(0, 100) + (r2PublicUrl.length > 100 ? '...' : ''),
+    opts,
+  });
+
+  // Step 1: Convert image URL to Alibaba-affiliated URL (REQUIRED for non-Ali images)
+  // According to TMAPI docs: Non-Ali images MUST be converted first
+  // https://tmapi.top/docs/ali/tool-apis/image-url-convert
+  let convertedUrl: string;
+  try {
+    console.log('[Shopping Service] Step 1: Converting image URL...');
+    convertedUrl = await tmapiClient.convertImageUrl(r2PublicUrl);
+    console.log('[Shopping Service] Image URL converted successfully:', {
+      originalUrl: r2PublicUrl.substring(0, 100) + '...',
+      convertedUrl: convertedUrl.substring(0, 100) + (convertedUrl.length > 100 ? '...' : ''),
+    });
+  } catch (error: any) {
+    console.error('[Shopping Service] Image URL conversion failed:', {
+      error: error.message,
+      stack: error.stack,
+      originalUrl: r2PublicUrl.substring(0, 100) + '...',
+    });
+    throw new Error(`Failed to convert image URL for search: ${error.message}`);
+  }
 
   // Step 2: Check cache
   const cacheKey = generateCacheKey('image', { imgUrl: convertedUrl, ...opts });
   const cached = await getCachedSearch(SOURCE, cacheKey);
   if (cached) {
+    console.log('[Shopping Service] Using cached image search results');
     // Cached response structure: { code: 200, msg: "success", data: { items: [...] } }
     // The cached response is the full TMAPI response, so we need cached.results_json.data.items
     const items = cached.results_json?.data?.items || cached.results_json?.items || [];
     return normalizeProductCards(items);
   }
 
-  // Step 3: Call TMAPI image search
+  // Step 3: Call TMAPI image search with converted URL
+  // Note: According to TMAPI docs, the converted URL from the conversion API should be used directly
+  // The conversion API returns a path like "/search/imgextra4/xxx.jpeg" which is already on Alibaba CDN
+  // We use it as-is (path format) as that's what TMAPI returns and expects
+  console.log('[Shopping Service] Step 3: Calling TMAPI image search with converted URL...');
   const response = await tmapiClient.searchByImage(convertedUrl, opts);
 
   console.log('[Shopping Service] Image search response:', {

@@ -53,16 +53,20 @@ class TMAPIClient {
   }
 
   /**
-   * Convert R2 image URL to Alibaba-affiliated URL for image search
+   * Convert image URL to Alibaba-affiliated URL for image search
    * Based on TMAPI docs: POST /1688/tools/image/convert_url
    * https://tmapi.top/docs/ali/tool-apis/image-url-convert
+   * 
+   * IMPORTANT: Non-Ali images MUST be converted first before using image search API
+   * The converted URL is valid for 24 hours
    */
   async convertImageUrl(url: string): Promise<string> {
     try {
       console.log('[TMAPI Client] convertImageUrl request:', {
         baseURL: this.client.defaults.baseURL,
         endpoint: '/1688/tools/image/convert_url',
-        url,
+        originalUrl: url.substring(0, 100) + (url.length > 100 ? '...' : ''),
+        hasToken: !!this.apiToken,
       });
 
       const response = await this.client.post(
@@ -80,50 +84,95 @@ class TMAPIClient {
 
       console.log('[TMAPI Client] convertImageUrl response:', {
         status: response.status,
-        data: response.data,
+        statusText: response.statusText,
+        code: response.data?.code,
+        msg: response.data?.msg,
+        hasData: !!response.data?.data,
+        dataKeys: response.data?.data ? Object.keys(response.data.data) : [],
+        fullResponse: JSON.stringify(response.data).substring(0, 1000),
       });
 
       // According to TMAPI docs: response structure is { code: 200, msg: "success", data: { image_url: "..." } }
       // The client returns response.data, so we have { code, msg, data: { image_url } }
+      if (response.data?.code !== 200) {
+        const errorMsg = response.data?.msg || 'Unknown error';
+        console.error('[TMAPI Client] convertImageUrl - API returned error code:', {
+          code: response.data?.code,
+          msg: errorMsg,
+          fullResponse: response.data,
+        });
+        throw new Error(`Image URL conversion failed: ${errorMsg} (code: ${response.data?.code})`);
+      }
+
+      // Check for image_url in data.data
       if (response.data?.data?.image_url) {
         const imageUrl = response.data.data.image_url;
+        console.log('[TMAPI Client] convertImageUrl - extracted image_url:', {
+          imageUrl: imageUrl.substring(0, 100) + (imageUrl.length > 100 ? '...' : ''),
+          isFullUrl: imageUrl.startsWith('http'),
+          isPath: imageUrl.startsWith('/'),
+        });
+        
+        // According to TMAPI docs, the converted URL should be used directly
         // If it's already a full URL, return as-is
         if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+          console.log('[TMAPI Client] convertImageUrl - returning full URL as-is');
           return imageUrl;
         }
-        // If it's a relative path, construct full Alibaba CDN URL
-        // TMAPI returns paths like "/search/imgextra4/xxx.jpeg"
-        // We need to construct: https://cbu01.alicdn.com/search/imgextra4/xxx.jpeg
+        
+        // If it's a path (starts with /), TMAPI might expect:
+        // Option 1: The path as-is (relative path) - according to docs, use converted URL directly
+        // Option 2: Full Alibaba CDN URL
+        // Based on TMAPI docs: "The converted URL are valid for 24 hours" and should be used directly
+        // Let's try the path as-is first, as that's what TMAPI returns from conversion
         if (imageUrl.startsWith('/')) {
-          return `https://cbu01.alicdn.com${imageUrl}`;
+          console.log('[TMAPI Client] convertImageUrl - returning path as-is (TMAPI format):', {
+            path: imageUrl,
+            note: 'TMAPI docs say to use converted URL directly',
+          });
+          // Return path as-is - TMAPI should handle it
+          return imageUrl;
         }
-        // If no leading slash, add it
-        return `https://cbu01.alicdn.com/${imageUrl}`;
+        
+        // If no leading slash, construct full URL
+        const fullUrl = `https://cbu01.alicdn.com/${imageUrl}`;
+        console.log('[TMAPI Client] convertImageUrl - constructed full URL (no leading slash):', {
+          originalPath: imageUrl,
+          fullUrl: fullUrl.substring(0, 100) + '...',
+        });
+        return fullUrl;
       }
       
       // Fallback to other possible response formats
       if (response.data?.data?.converted_url) {
+        console.log('[TMAPI Client] convertImageUrl - using converted_url field');
         return response.data.data.converted_url;
       }
       if (response.data?.converted_url) {
+        console.log('[TMAPI Client] convertImageUrl - using top-level converted_url field');
         return response.data.converted_url;
       }
       if (response.data?.url) {
+        console.log('[TMAPI Client] convertImageUrl - using url field');
         return response.data.url;
       }
       
       console.error('[TMAPI Client] convertImageUrl - Invalid response structure:', {
         responseKeys: Object.keys(response.data || {}),
         dataKeys: response.data?.data ? Object.keys(response.data.data) : [],
-        responseSample: JSON.stringify(response.data).substring(0, 500),
+        responseSample: JSON.stringify(response.data).substring(0, 1000),
       });
-      throw new Error('Invalid response from image-url-convert: missing image_url field');
+      throw new Error('Invalid response from image-url-convert: missing image_url or converted_url field');
     } catch (error: any) {
       console.error('[TMAPI Client] convertImageUrl error:', {
         message: error.message,
+        name: error.name,
         status: error.response?.status,
-        data: error.response?.data,
-        url: error.config?.url,
+        statusText: error.response?.statusText,
+        responseData: error.response?.data,
+        requestUrl: error.config?.url,
+        requestMethod: error.config?.method,
+        stack: error.stack,
       });
       throw new Error(`Failed to convert image URL: ${error.message}`);
     }
