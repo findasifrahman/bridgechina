@@ -319,11 +319,54 @@ async function cacheProductItem(item: ProductCard): Promise<void> {
         // Successfully cached using fallback
         return;
       } catch (fallbackError: any) {
-        // Log error but don't fail the entire search - caching is best effort
-        console.error(`[Shopping] Failed to cache item ${item.externalId} (fallback also failed):`, {
-          error: fallbackError.message,
-          code: fallbackError.code,
-        });
+        // Check if it's an updated_at constraint error - database has it but schema doesn't
+        const errorStr = String(fallbackError.message || fallbackError || '');
+        if (errorStr.includes('updated_at') || fallbackError.code === 'P2011') {
+          // Try one more time with explicit updated_at using raw SQL (if database has it)
+          try {
+            const existingItem = await prisma.externalCatalogItem.findFirst({
+              where: {
+                source: SOURCE,
+                external_id: item.externalId,
+              },
+            });
+            
+            const now = new Date();
+            if (existingItem) {
+              await prisma.$executeRawUnsafe(`
+                UPDATE external_catalog_items 
+                SET title = $1, price_min = $2, price_max = $3, 
+                    main_images = $4, source_url = $5, expires_at = $6, 
+                    last_synced_at = $7, updated_at = $8
+                WHERE id = $9
+              `, item.title, item.priceMin, item.priceMax, 
+                 item.images ? JSON.stringify(item.images) : null,
+                 item.sourceUrl, expiresAt, new Date(), now, existingItem.id);
+            } else {
+              await prisma.$executeRawUnsafe(`
+                INSERT INTO external_catalog_items 
+                (id, source, external_id, title, price_min, price_max, currency, 
+                 main_images, source_url, expires_at, created_at, updated_at)
+                VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+              `, SOURCE, item.externalId, item.title, item.priceMin, item.priceMax,
+                 item.currency || 'CNY',
+                 item.images ? JSON.stringify(item.images) : null,
+                 item.sourceUrl, expiresAt, now, now);
+            }
+            return; // Success
+          } catch (rawError: any) {
+            console.error(`[Shopping] Failed to cache item ${item.externalId} (raw SQL also failed):`, {
+              error: rawError.message,
+              code: rawError.code,
+            });
+          }
+        } else {
+          // Log other errors
+          console.error(`[Shopping] Failed to cache item ${item.externalId} (fallback also failed):`, {
+            error: fallbackError.message,
+            code: fallbackError.code,
+          });
+        }
       }
     } else {
       // Log error but don't fail the entire search - caching is best effort
@@ -620,10 +663,54 @@ export async function getItemDetail(externalId: string): Promise<ProductDetail |
           });
         }
       } catch (fallbackError: any) {
-        console.error(`[Shopping] Failed to cache item detail ${externalId} (fallback also failed):`, {
-          error: fallbackError.message,
-          code: fallbackError.code,
-        });
+        // Check if it's an updated_at constraint error
+        const errorStr = String(fallbackError.message || fallbackError || '');
+        if (errorStr.includes('updated_at') || fallbackError.code === 'P2011') {
+          // Try raw SQL with explicit updated_at
+          try {
+            const existingItem = await prisma.externalCatalogItem.findFirst({
+              where: {
+                source: SOURCE,
+                external_id: externalId,
+              },
+            });
+            
+            const now = new Date();
+            if (existingItem) {
+              await prisma.$executeRawUnsafe(`
+                UPDATE external_catalog_items 
+                SET title = $1, price_min = $2, price_max = $3, 
+                    main_images = $4, source_url = $5, raw_json = $6, expires_at = $7, 
+                    last_synced_at = $8, updated_at = $9
+                WHERE id = $10
+              `, normalized.title, normalized.priceMin, normalized.priceMax,
+                 normalized.images ? JSON.stringify(normalized.images) : null,
+                 normalized.sourceUrl, itemData ? JSON.stringify(itemData) : null,
+                 expiresAt, new Date(), now, existingItem.id);
+            } else {
+              await prisma.$executeRawUnsafe(`
+                INSERT INTO external_catalog_items 
+                (id, source, external_id, title, price_min, price_max, currency, 
+                 main_images, source_url, raw_json, expires_at, created_at, updated_at)
+                VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+              `, SOURCE, externalId, normalized.title, normalized.priceMin, normalized.priceMax,
+                 normalized.currency || 'CNY',
+                 normalized.images ? JSON.stringify(normalized.images) : null,
+                 normalized.sourceUrl, itemData ? JSON.stringify(itemData) : null,
+                 expiresAt, now, now);
+            }
+          } catch (rawError: any) {
+            console.error(`[Shopping] Failed to cache item detail ${externalId} (raw SQL also failed):`, {
+              error: rawError.message,
+              code: rawError.code,
+            });
+          }
+        } else {
+          console.error(`[Shopping] Failed to cache item detail ${externalId} (fallback also failed):`, {
+            error: fallbackError.message,
+            code: fallbackError.code,
+          });
+        }
       }
     } else {
       console.error(`[Shopping] Failed to cache item detail ${externalId}:`, {

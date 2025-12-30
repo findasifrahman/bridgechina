@@ -83,16 +83,28 @@ export function normalizeProductCard(item: any): ProductCard {
   }
 
   // Image handling - TMAPI uses 'img' field
+  // Proxy external images through our API to avoid CORS issues
+  const getProxiedImageUrl = (url: string): string => {
+    if (!url) return '';
+    // If it's already a proxy URL, return as is
+    if (url.includes('/api/public/image-proxy')) return url;
+    // If it's an external URL (Alibaba CDN), proxy it
+    if (url.includes('alicdn.com') || url.includes('1688.com')) {
+      return `/api/public/image-proxy?url=${encodeURIComponent(url)}`;
+    }
+    return url;
+  };
+
   if (item.img) {
-    card.imageUrl = item.img;
+    card.imageUrl = getProxiedImageUrl(item.img);
   }
   if (item.main_image || item.image_url) {
-    card.imageUrl = item.main_image || item.image_url;
+    card.imageUrl = getProxiedImageUrl(item.main_image || item.image_url);
   }
   if (item.main_imgs && Array.isArray(item.main_imgs)) {
-    card.images = item.main_imgs;
+    card.images = item.main_imgs.map(getProxiedImageUrl);
     if (!card.imageUrl && item.main_imgs[0]) {
-      card.imageUrl = item.main_imgs[0];
+      card.imageUrl = getProxiedImageUrl(item.main_imgs[0]);
     }
   }
 

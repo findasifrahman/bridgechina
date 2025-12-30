@@ -77,6 +77,58 @@ export default async function publicRoutes(fastify: FastifyInstance) {
     }
   );
 
+  // Public image proxy endpoint - proxy external images to avoid CORS
+  fastify.get('/image-proxy', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { url } = request.query as { url?: string };
+    
+    if (!url) {
+      reply.status(400).send({ error: 'Missing url parameter' });
+      return;
+    }
+
+    try {
+      // Validate URL to prevent SSRF
+      let imageUrl: URL;
+      try {
+        imageUrl = new URL(url);
+      } catch {
+        reply.status(400).send({ error: 'Invalid URL' });
+        return;
+      }
+
+      // Only allow specific domains (Alibaba CDN, etc.)
+      const allowedDomains = [
+        'cbu01.alicdn.com',
+        'img.alicdn.com',
+        'detail.1688.com',
+      ];
+      
+      if (!allowedDomains.some(domain => imageUrl.hostname.includes(domain))) {
+        reply.status(403).send({ error: 'Domain not allowed' });
+        return;
+      }
+
+      // Fetch the image
+      const response = await fetch(url);
+      if (!response.ok) {
+        reply.status(response.status).send({ error: 'Failed to fetch image' });
+        return;
+      }
+
+      const contentType = response.headers.get('content-type') || 'image/jpeg';
+      const buffer = Buffer.from(await response.arrayBuffer());
+
+      // Set headers
+      reply.header('Content-Type', contentType);
+      reply.header('Cache-Control', 'public, max-age=31536000, immutable');
+      reply.header('Access-Control-Allow-Origin', '*');
+      reply.send(buffer);
+    } catch (error: any) {
+      fastify.log.error({ error, url }, '[Public Route] /image-proxy error');
+      reply.status(500).send({ error: 'Failed to proxy image' });
+    }
+  });
+
   // Public media endpoint - serve media asset by ID (proxy to avoid CORS)
   fastify.get('/media/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     const params = request.params as { id: string };
