@@ -51,10 +51,11 @@
       >
         <div class="relative aspect-square bg-slate-200 rounded-t-2xl overflow-hidden">
           <img
-            v-if="guide.profile_photo_url"
-            :src="guide.profile_photo_url"
+            v-if="getGuideImageUrl(guide)"
+            :src="getGuideImageUrl(guide)"
             :alt="guide.name || 'Guide'"
             class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            @error="handleImageError"
           />
           <div v-else class="w-full h-full flex items-center justify-center bg-gradient-to-br from-teal-100 to-amber-100">
             <User class="h-12 w-12 text-teal-400" />
@@ -166,6 +167,20 @@ async function loadGuides() {
   } finally {
     loading.value = false;
   }
+}
+
+function getGuideImageUrl(guide: any): string | null {
+  // Use coverAsset URLs (direct R2 URLs)
+  if (guide.coverAsset) {
+    return guide.coverAsset.thumbnail_url || guide.coverAsset.public_url || null;
+  }
+  // Fallback to profile_photo_url if it exists
+  return guide.profile_photo_url || null;
+}
+
+function handleImageError(event: Event) {
+  const img = event.target as HTMLImageElement;
+  img.style.display = 'none';
 }
 
 function handleRequestGuide(guide: any) {

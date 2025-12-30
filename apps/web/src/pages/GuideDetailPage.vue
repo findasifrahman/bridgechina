@@ -24,10 +24,11 @@
               <div class="flex items-start gap-6">
                 <div class="relative">
                   <img
-                    v-if="guide.profile_photo_url"
-                    :src="guide.profile_photo_url"
+                    v-if="getGuideImageUrl(guide)"
+                    :src="getGuideImageUrl(guide)"
                     :alt="guide.name"
                     class="w-24 h-24 rounded-full object-cover"
+                    @error="handleImageError"
                   />
                   <div v-else class="w-24 h-24 rounded-full bg-gradient-to-br from-teal-100 to-amber-100 flex items-center justify-center">
                     <User class="h-12 w-12 text-teal-400" />
@@ -191,6 +192,20 @@ const loading = ref(true);
 const guide = ref<any>(null);
 const reviews = ref<any[]>([]);
 const relatedServices = ref<any[]>([]);
+
+function getGuideImageUrl(guide: any): string | null {
+  // Use coverAsset URLs (direct R2 URLs)
+  if (guide?.coverAsset) {
+    return guide.coverAsset.thumbnail_url || guide.coverAsset.public_url || null;
+  }
+  // Fallback to profile_photo_url if it exists
+  return guide?.profile_photo_url || null;
+}
+
+function handleImageError(event: Event) {
+  const img = event.target as HTMLImageElement;
+  img.style.display = 'none';
+}
 
 function formatDate(date: string | Date): string {
   const d = new Date(date);
