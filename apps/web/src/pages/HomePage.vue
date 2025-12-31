@@ -1,14 +1,14 @@
 <template>
   <div class="bg-slate-50 min-h-screen">
     <!-- Offer Strip -->
-    <OfferStrip :offer="spotlightOffer" />
+    <OfferStrip :offer="spotlightOffer" @click="handleOfferClick" />
 
     <!-- Top Area: Search + Tabs + Results -->
     <section class="bg-white border-b border-slate-200 py-6">
       <div class="px-4 sm:px-6 lg:px-8">
         <!-- Title and Subtitle -->
         <div class="mb-4">
-          <h1 class="text-xl font-bold text-slate-900 mb-1">Find everything you need in China</h1>
+          <h1 class="text-xl font-bold bg-gradient-to-r from-teal-600 to-amber-500 bg-clip-text text-transparent mb-1">Find everything you need in China</h1>
           <p class="text-sm text-slate-600">Hotels, transport, food, medical help, eSIM, and more</p>
         </div>
 
@@ -143,41 +143,70 @@
       </div>
     </section>
 
-    <!-- Holiday Banner Carousel -->
-    <section v-if="holidayBanners.length > 0" class="py-6 bg-white border-b border-slate-200">
+    <!-- Holiday Banner Carousel + Service Offers Carousel (Desktop: 2/3 + 1/3) -->
+    <section v-if="holidayBanners.length > 0 || serviceOffers.length > 0" class="py-6 bg-white border-b border-slate-200">
       <div class="px-4 sm:px-6 lg:px-8">
-        <Carousel :items="holidayBanners" :autoplay="true" :show-dots="true" :show-controls="true">
-          <template #default="{ item }">
-            <div class="relative h-48 md:h-64 rounded-2xl overflow-hidden bg-slate-100">
-              <!-- Background Image or Gradient -->
-              <img
-                v-if="item.coverAsset?.public_url || item.coverAsset?.thumbnail_url"
-                :src="item.coverAsset?.public_url || item.coverAsset?.thumbnail_url"
-                :alt="item.title"
-                class="absolute inset-0 w-full h-full object-cover object-center"
-              />
-              <div
-                v-else
-                class="absolute inset-0 bg-gradient-to-r from-teal-500 to-amber-400"
-              ></div>
-              
-              <!-- Content Overlay -->
-              <div class="absolute inset-0 flex items-center justify-center p-8">
-                <div class="text-center text-white">
-                  <h2 class="text-2xl md:text-3xl font-bold mb-2 drop-shadow-lg">{{ item.title }}</h2>
-                  <p v-if="item.subtitle" class="text-lg mb-4 drop-shadow-md">{{ item.subtitle }}</p>
-                  <Button
-                    v-if="item.cta_text || item.link"
-                    variant="accent"
-                    @click="item.link ? router.push(item.link) : null"
-                  >
-                    {{ item.cta_text || 'Learn More' }}
-                  </Button>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <!-- Main Banner (2/3 width on desktop) -->
+          <div class="lg:col-span-2">
+            <Carousel v-if="holidayBanners.length > 0" :items="holidayBanners" :autoplay="true" :show-dots="true" :show-controls="true">
+              <template #default="{ item }">
+                <div class="relative h-48 md:h-64 rounded-2xl overflow-hidden bg-slate-100">
+                  <!-- Background Image or Gradient -->
+                  <img
+                    v-if="item.coverAsset?.public_url || item.coverAsset?.thumbnail_url"
+                    :src="item.coverAsset?.public_url || item.coverAsset?.thumbnail_url"
+                    :alt="item.title"
+                    class="absolute inset-0 w-full h-full object-cover object-center"
+                  />
+                  <div
+                    v-else
+                    class="absolute inset-0 bg-gradient-to-r from-teal-500 to-amber-400"
+                  ></div>
+                  
+                  <!-- Content Overlay -->
+                  <div class="absolute inset-0 flex items-center justify-center p-8">
+                    <div class="text-center text-white">
+                      <h2 class="text-2xl md:text-3xl font-bold mb-2 drop-shadow-lg">{{ item.title }}</h2>
+                      <p v-if="item.subtitle" class="text-lg mb-4 drop-shadow-md">{{ item.subtitle }}</p>
+                      <Button
+                        v-if="item.cta_text || item.link"
+                        variant="accent"
+                        @click="item.link ? router.push(item.link) : null"
+                      >
+                        {{ item.cta_text || 'Learn More' }}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </template>
+            </Carousel>
+          </div>
+          
+          <!-- Service Offers Carousel (1/3 width on desktop, same height) -->
+          <div class="lg:col-span-1">
+            <div v-if="serviceOffers.length > 0" class="relative h-48 md:h-64 rounded-2xl overflow-hidden bg-slate-100">
+              <Carousel :items="serviceOffers" :autoplay="true" :show-dots="true" :show-controls="true">
+                <template #default="{ item }">
+                  <div class="relative h-48 md:h-64 cursor-pointer group" @click.stop="handleOfferClick(item)">
+                    <img
+                      v-if="item.coverAsset?.public_url || item.coverAsset?.thumbnail_url"
+                      :src="item.coverAsset?.public_url || item.coverAsset?.thumbnail_url"
+                      :alt="item.title"
+                      class="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300 pointer-events-none"
+                    />
+                    <div
+                      v-else
+                      class="absolute inset-0 bg-gradient-to-br from-teal-400 to-amber-300 pointer-events-none"
+                    ></div>
+                    <!-- Optional: Add a subtle overlay for better text readability if needed -->
+                    <div class="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors pointer-events-none"></div>
+                  </div>
+                </template>
+              </Carousel>
             </div>
-          </template>
-        </Carousel>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -232,7 +261,7 @@
       <!-- Top Hotels -->
       <section v-if="featuredItemsByType.hotels.length > 0">
         <div class="mb-4">
-          <h2 class="text-xl font-bold text-slate-900 mb-1">Top Hotels</h2>
+          <h2 class="text-xl font-bold text-teal-600 mb-1">Top Hotels</h2>
           <p class="text-sm text-slate-600">Top recommended accommodations</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -255,7 +284,7 @@
       <!-- Popular Restaurants -->
       <section v-if="featuredItemsByType.restaurants.length > 0">
         <div class="mb-4">
-          <h2 class="text-xl font-bold text-slate-900 mb-1">Popular Restaurants</h2>
+          <h2 class="text-xl font-bold text-teal-600 mb-1">Popular Restaurants</h2>
           <p class="text-sm text-slate-600">Best halal dining experiences</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -277,7 +306,7 @@
       <!-- Top Halal Food Items -->
       <section v-if="featuredItemsByType.food_items.length > 0">
         <div class="mb-4">
-          <h2 class="text-xl font-bold text-slate-900 mb-1">Top Halal Food Items</h2>
+          <h2 class="text-xl font-bold text-teal-600 mb-1">Top Halal Food Items</h2>
           <p class="text-sm text-slate-600">Popular dishes and meals</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -299,7 +328,7 @@
       <!-- Top eSIM Plans -->
       <section v-if="featuredItemsByType.esim_plans.length > 0">
         <div class="mb-4">
-          <h2 class="text-xl font-bold text-slate-900 mb-1">Top eSIM Plans</h2>
+          <h2 class="text-xl font-bold text-teal-600 mb-1">Top eSIM Plans</h2>
           <p class="text-sm text-slate-600">Best data plans for travelers</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -322,7 +351,7 @@
       <section v-if="featuredItemsByType.cityplaces.length > 0">
         <div class="mb-3 flex items-center justify-between">
           <div>
-            <h2 class="text-lg font-bold text-slate-900 mb-1">Must-Visit Places</h2>
+            <h2 class="text-lg font-bold text-teal-600 mb-1">Must-Visit Places</h2>
             <p class="text-xs text-slate-600">Top attractions and landmarks</p>
           </div>
           <Button variant="ghost" size="sm" @click="router.push('/places')" class="text-sm">
@@ -348,7 +377,7 @@
       <!-- Featured Tours -->
       <section v-if="featuredItemsByType.tours.length > 0">
         <div class="mb-4">
-          <h2 class="text-xl font-bold text-slate-900 mb-1">Featured Tours</h2>
+          <h2 class="text-xl font-bold text-teal-600 mb-1">Featured Tours</h2>
           <p class="text-sm text-slate-600">Curated travel experiences</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -370,7 +399,7 @@
       <!-- Top Shopping Picks -->
       <section v-if="featuredItemsByType.products.length > 0">
         <div class="mb-4">
-          <h2 class="text-xl font-bold text-slate-900 mb-1">Top Shopping Picks</h2>
+          <h2 class="text-xl font-bold text-teal-600 mb-1">Top Shopping Picks</h2>
           <p class="text-sm text-slate-600">Popular shopping items</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -392,7 +421,7 @@
       <!-- Featured Transport -->
       <section v-if="featuredItemsByType.transport.length > 0">
         <div class="mb-4">
-          <h2 class="text-xl font-bold text-slate-900 mb-1">Featured Transport</h2>
+          <h2 class="text-xl font-bold text-teal-600 mb-1">Featured Transport</h2>
           <p class="text-sm text-slate-600">Reliable transportation options</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -415,6 +444,56 @@
     <!-- Full Width Sections -->
     <!-- Removed duplicate sections: Must-Visit Places, Top Hotels, Top eSIM Plans are already shown above in Featured Items Sections -->
   </div>
+
+  <!-- Service Offer Detail Modal -->
+  <Modal v-model="showOfferModal" :title="selectedOffer?.title || 'Special Offer'">
+    <div v-if="selectedOffer" class="p-6">
+      <div v-if="selectedOffer.coverAsset?.public_url || selectedOffer.coverAsset?.thumbnail_url" class="mb-4">
+        <img
+          :src="selectedOffer.coverAsset?.public_url || selectedOffer.coverAsset?.thumbnail_url"
+          :alt="selectedOffer.title"
+          class="w-full h-48 object-cover rounded-lg"
+        />
+      </div>
+      <div class="space-y-4">
+        <div v-if="selectedOffer.subtitle">
+          <h3 class="text-lg font-semibold text-teal-600 mb-2">Description</h3>
+          <p class="text-slate-700">{{ selectedOffer.subtitle }}</p>
+        </div>
+        <div v-if="selectedOffer.description">
+          <h3 class="text-lg font-semibold text-teal-600 mb-2">Details</h3>
+          <p class="text-slate-700 whitespace-pre-line">{{ selectedOffer.description }}</p>
+        </div>
+        <div v-if="selectedOffer.discount_percentage || selectedOffer.discount_amount">
+          <h3 class="text-lg font-semibold text-teal-600 mb-2">Discount</h3>
+          <p class="text-2xl font-bold text-amber-600">
+            <span v-if="selectedOffer.discount_percentage">{{ selectedOffer.discount_percentage }}% OFF</span>
+            <span v-else-if="selectedOffer.discount_amount">¥{{ selectedOffer.discount_amount }} OFF</span>
+          </p>
+        </div>
+        <div v-if="selectedOffer.valid_from || selectedOffer.valid_until">
+          <h3 class="text-lg font-semibold text-teal-600 mb-2">Valid Period</h3>
+          <p class="text-slate-700">
+            <span v-if="selectedOffer.valid_from">
+              From: {{ new Date(selectedOffer.valid_from).toLocaleDateString() }}
+            </span>
+            <span v-if="selectedOffer.valid_from && selectedOffer.valid_until"> • </span>
+            <span v-if="selectedOffer.valid_until">
+              Until: {{ new Date(selectedOffer.valid_until).toLocaleDateString() }}
+            </span>
+          </p>
+        </div>
+        <div v-if="selectedOffer.service_type">
+          <h3 class="text-lg font-semibold text-teal-600 mb-2">Service Type</h3>
+          <Badge variant="primary">{{ selectedOffer.service_type }}</Badge>
+        </div>
+      </div>
+      <div class="mt-6 flex gap-3 justify-end">
+        <Button variant="ghost" @click="showOfferModal = false">Close</Button>
+        <Button variant="primary" @click="handleRequestOffer">Request This Offer</Button>
+      </div>
+    </div>
+  </Modal>
 </template>
 
 <script setup lang="ts">
@@ -433,6 +512,8 @@ import {
   Select,
   CompactCard,
   SkeletonLoader,
+  Modal,
+  Badge,
 } from '@bridgechina/ui';
 import axios from '@/utils/axios';
 import ProductCard from '@/components/shopping/ProductCard.vue';
@@ -515,6 +596,9 @@ const transportOptions = [
 ];
 
 const holidayBanners = ref<any[]>([]);
+const serviceOffers = ref<any[]>([]);
+const selectedOffer = ref<any>(null);
+const showOfferModal = ref(false);
 
 async function loadBanners() {
   try {
@@ -600,6 +684,8 @@ async function loadHomepageData() {
     // Set spotlight offer (first active offer)
     const offers = offersResponse.data || [];
     spotlightOffer.value = offers.length > 0 ? offers[0] : null;
+    // Set service offers for carousel (exclude the spotlight offer)
+    serviceOffers.value = offers.length > 1 ? offers.slice(1) : offers;
   } catch (error) {
     console.error('Failed to load homepage data', error);
   } finally {
@@ -733,6 +819,24 @@ function handleShoppingRequestBuy(product: any) {
       price_max: product.priceMax,
     },
   });
+}
+
+function handleOfferClick(offer: any) {
+  selectedOffer.value = offer;
+  showOfferModal.value = true;
+}
+
+function handleRequestOffer() {
+  if (selectedOffer.value) {
+    router.push({
+      path: '/request',
+      query: {
+        offer_id: selectedOffer.value.id,
+        service_type: selectedOffer.value.service_type,
+      },
+    });
+    showOfferModal.value = false;
+  }
 }
 
 function getFeaturedItemsForTab(tabValue: string): any[] {

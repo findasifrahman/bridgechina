@@ -1,11 +1,14 @@
 <template>
   <div>
     <div class="border-b border-slate-200">
-      <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+      <nav 
+        class="tabs-nav -mb-px flex space-x-4 md:space-x-8 overflow-x-auto scroll-smooth" 
+        aria-label="Tabs"
+      >
         <button
           v-for="tab in tabs"
           :key="tab.value"
-          :class="tabButtonClasses(tab.value)"
+          :class="[tabButtonClasses(tab.value), 'flex-shrink-0']"
           @click="$emit('update:modelValue', tab.value)"
         >
           {{ tab.label }}
@@ -45,4 +48,15 @@ const tabButtonClasses = (value: string | number) => {
   return [base, active].join(' ');
 };
 </script>
+
+<style scoped>
+.tabs-nav {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.tabs-nav::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+</style>
 
