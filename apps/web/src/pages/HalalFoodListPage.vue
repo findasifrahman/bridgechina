@@ -1,82 +1,144 @@
 <template>
-  <div class="py-6 px-4 sm:px-6 lg:px-8">
+  <div class="min-h-screen bg-gradient-to-b from-slate-50 to-amber-50">
+    <!-- Hero Banner -->
+    <div class="relative bg-gradient-to-br from-amber-500 via-orange-600 to-red-600 overflow-hidden">
+      <div class="absolute inset-0 opacity-20">
+        <img
+          src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3"
+          alt="Halal Food"
+          class="w-full h-full object-cover"
+        />
+      </div>
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        <div class="flex flex-col md:flex-row items-center gap-6">
+          <div class="flex-1 text-center md:text-left text-white">
+            <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold mb-3 drop-shadow-lg">
+              Halal Food
+            </h1>
+            <p class="text-lg md:text-xl text-white/90 mb-4 drop-shadow-md">
+              Authentic halal cuisine and restaurants across China
+            </p>
+            <div class="flex flex-wrap gap-2 justify-center md:justify-start">
+              <Badge variant="secondary" size="lg" class="bg-white/20 backdrop-blur-sm text-white border-white/30">
+                🍽️ Restaurants
+              </Badge>
+              <Badge variant="secondary" size="lg" class="bg-white/20 backdrop-blur-sm text-white border-white/30">
+                🥘 Halal Certified
+              </Badge>
+              <Badge variant="secondary" size="lg" class="bg-white/20 backdrop-blur-sm text-white border-white/30">
+                🚚 Delivery
+              </Badge>
+              <Badge variant="secondary" size="lg" class="bg-white/20 backdrop-blur-sm text-white border-white/30">
+                🌍 Authentic
+              </Badge>
+            </div>
+          </div>
+          <div class="flex-shrink-0">
+            <div class="relative w-32 h-32 md:w-40 md:h-40">
+              <UtensilsCrossed class="w-full h-full text-white drop-shadow-2xl" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Category Tabs -->
-    <div class="mb-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
       <Tabs v-model="activeCategory" :tabs="categoryTabs" />
     </div>
 
-    <!-- Search/Filter Bar -->
-    <Card class="mb-6">
-      <CardBody class="p-4">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label class="block text-xs font-medium text-slate-700 mb-1">City</label>
-            <Select
-              v-model="filters.city_id"
-              :options="cityOptions"
-              placeholder="All Cities"
-              @update:model-value="loadData"
-            />
+    <!-- Filters and Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Filter Bar -->
+      <Card class="mb-8 shadow-lg border-2 border-amber-200">
+        <CardBody class="p-4">
+          <div class="flex flex-col md:flex-row gap-4 items-end">
+            <div class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Filter by City</label>
+                <Select
+                  v-model="filters.city_id"
+                  :options="cityOptions"
+                  placeholder="All Cities"
+                  class="w-full"
+                  @update:model-value="loadData"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Search</label>
+                <Input
+                  v-model="filters.search"
+                  placeholder="Search restaurants or dishes..."
+                  @input="debouncedSearch"
+                />
+              </div>
+              <div class="flex items-end">
+                <Button variant="primary" @click="loadData" class="w-full">Search</Button>
+              </div>
+            </div>
+            <div v-if="foodItems.length > 0" class="text-sm text-slate-600 whitespace-nowrap">
+              {{ foodItems.length }} {{ foodItems.length === 1 ? 'item' : 'items' }} found
+            </div>
           </div>
-          <div>
-            <label class="block text-xs font-medium text-slate-700 mb-1">Search</label>
-            <Input
-              v-model="filters.search"
-              placeholder="Search restaurants or dishes..."
-              @input="debouncedSearch"
-            />
-          </div>
-          <div class="flex items-end">
-            <Button variant="primary" @click="loadData" class="w-full">Search</Button>
-          </div>
-        </div>
-      </CardBody>
-    </Card>
+        </CardBody>
+      </Card>
 
-    <!-- Food Items Section -->
-    <div>
-      <h2 class="text-lg font-semibold text-slate-900 mb-4">
-        {{ activeCategory === 'all' ? 'All Food Items' : `Food Items - ${getCategoryName(activeCategory)}` }}
-      </h2>
-      <div v-if="loadingFoodItems" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <SkeletonLoader v-for="i in 8" :key="i" class="h-64" />
+      <!-- Loading State -->
+      <div v-if="loadingFoodItems" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <SkeletonLoader v-for="i in 8" :key="i" class="h-80" />
       </div>
+
+      <!-- Empty State -->
       <div v-else-if="foodItems.length === 0" class="text-center py-12">
-        <EmptyState title="No food items found" description="Try selecting a different category" />
+        <EmptyState
+          title="No food items found"
+          description="Try adjusting your filters or check back later"
+        />
       </div>
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card
+
+      <!-- Food Items List with Framed Images -->
+      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div
           v-for="item in foodItems"
           :key="item.id"
           class="cursor-pointer group"
-          :hover="true"
           @click="router.push(`/services/halal-food/item/${item.id}`)"
         >
-          <div class="relative aspect-square bg-slate-200 rounded-t-2xl overflow-hidden">
-            <img
-              v-if="item.coverAsset?.thumbnail_url || item.coverAsset?.public_url"
-              :src="item.coverAsset?.thumbnail_url || item.coverAsset?.public_url"
-              :alt="item.name"
-              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-            <div v-else class="w-full h-full flex items-center justify-center bg-gradient-to-br from-teal-100 to-amber-100">
-              <UtensilsCrossed class="h-12 w-12 text-teal-400" />
+          <!-- Framed Image Card -->
+          <Card class="h-full hover:shadow-xl transition-all duration-300">
+            <div class="relative bg-white p-3 rounded-t-2xl">
+              <div class="relative aspect-square bg-slate-200 rounded-lg overflow-hidden">
+                <img
+                  v-if="item.coverAsset?.thumbnail_url || item.coverAsset?.public_url"
+                  :src="item.coverAsset?.thumbnail_url || item.coverAsset?.public_url"
+                  :alt="item.name"
+                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  @error="handleImageError"
+                />
+                <div v-else class="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-100 to-orange-100">
+                  <UtensilsCrossed class="h-16 w-16 text-amber-400" />
+                </div>
+                <div v-if="item.is_halal" class="absolute top-2 right-2">
+                  <Badge variant="success" size="sm" class="shadow-lg">Halal</Badge>
+                </div>
+                <div v-if="item.rating" class="absolute bottom-2 left-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1">
+                  <Star class="h-4 w-4 fill-amber-400 text-amber-400" />
+                  <span class="text-sm font-semibold">{{ item.rating.toFixed(1) }}</span>
+                </div>
+              </div>
             </div>
-            <div v-if="item.is_halal" class="absolute top-2 right-2">
-              <Badge variant="success" size="xs">Halal</Badge>
-            </div>
-          </div>
-          <CardBody class="p-4">
-            <h3 class="font-semibold text-slate-900 mb-1 line-clamp-2 text-sm">{{ item.name }}</h3>
-            <p class="text-xs text-slate-600 mb-2">{{ item.restaurant?.name }}</p>
-            <div class="flex items-center justify-between">
-              <div class="text-sm font-semibold text-teal-600">¥{{ item.price }}</div>
-              <Button variant="ghost" size="sm" @click.stop="handleRequestDelivery(item)">
-                Order
-              </Button>
-            </div>
-          </CardBody>
-        </Card>
+            <CardBody class="p-4">
+              <h3 class="font-semibold text-slate-900 mb-1 line-clamp-2">{{ item.name }}</h3>
+              <p v-if="item.restaurant?.name" class="text-xs text-slate-600 mb-3 line-clamp-1">{{ item.restaurant.name }}</p>
+              <div class="flex items-center justify-between mb-3">
+                <div class="text-lg font-bold text-amber-600">¥{{ item.price }}</div>
+                <Button variant="primary" size="sm" @click.stop="handleRequestDelivery(item)">
+                  Order
+                </Button>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
       </div>
     </div>
 
@@ -90,7 +152,7 @@
         </div>
         <p class="text-center text-sm text-slate-600 mt-4">
           Don't have an account? 
-          <router-link to="/register" class="text-teal-600 hover:underline">Register here</router-link>
+          <router-link to="/register" class="text-amber-600 hover:underline">Register here</router-link>
         </p>
       </div>
     </Modal>
@@ -119,7 +181,7 @@
                 <div class="flex-1">
                   <h4 class="font-semibold text-slate-900">{{ selectedFoodItem.name }}</h4>
                   <p class="text-sm text-slate-600">{{ selectedFoodItem.restaurant?.name }}</p>
-                  <p class="text-lg font-bold text-teal-600 mt-1">¥{{ selectedFoodItem.price }}</p>
+                  <p class="text-lg font-bold text-amber-600 mt-1">¥{{ selectedFoodItem.price }}</p>
                 </div>
               </div>
             </CardBody>
@@ -140,7 +202,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { UtensilsCrossed, Star, CheckCircle, X } from 'lucide-vue-next';
+import { UtensilsCrossed, Star, CheckCircle } from 'lucide-vue-next';
 import {
   Card,
   CardBody,
@@ -187,6 +249,11 @@ function debouncedSearch() {
   searchTimeout = setTimeout(() => {
     loadData();
   }, 500);
+}
+
+function handleImageError(event: Event) {
+  const img = event.target as HTMLImageElement;
+  img.style.display = 'none';
 }
 
 function getCategoryName(categoryId: string): string {
@@ -312,10 +379,6 @@ async function loadData() {
   await loadFoodItems();
 }
 
-function handleViewRestaurant(restaurant: any) {
-  router.push(`/services/halal-food/restaurant/${restaurant.id}`);
-}
-
 function handleRequestDelivery(item: any) {
   if (!authStore.isAuthenticated) {
     showLoginModal.value = true;
@@ -338,4 +401,3 @@ onMounted(async () => {
   await loadData();
 });
 </script>
-

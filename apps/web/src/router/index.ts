@@ -150,6 +150,16 @@ const router = createRouter({
           name: 'transport-detail',
           component: () => import('@/pages/TransportDetailPage.vue'),
         },
+        {
+          path: 'services/medical',
+          name: 'medical-list',
+          component: () => import('@/pages/MedicalListPage.vue'),
+        },
+        {
+          path: 'services/medical/:id',
+          name: 'medical-detail',
+          component: () => import('@/pages/MedicalDetailPage.vue'),
+        },
       ],
     },
     {

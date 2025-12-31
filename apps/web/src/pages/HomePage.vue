@@ -140,6 +140,64 @@
             />
           </template>
 
+          <!-- Medical Tab -->
+          <template v-if="activeTab === 'medical'">
+            <CompactCard
+              v-for="center in medicalCenters.slice(0, 4)"
+              :key="center.id"
+              :item="center"
+              :title="center.name"
+              :subtitle="center.city?.name"
+              :thumbnail="center.coverAsset?.thumbnail_url || center.coverAsset?.public_url"
+              :meta="center.type"
+              :badge="center.verified ? 'Verified' : undefined"
+              @click="router.push(`/services/medical/${center.id}`)"
+            />
+            <Card
+              v-if="medicalCenters.length === 0"
+              class="cursor-pointer col-span-full"
+              :hover="true"
+              @click="router.push('/services/medical')"
+            >
+              <CardBody class="p-6 text-center">
+                <HeartPulse class="h-16 w-16 mx-auto mb-4 text-red-600" />
+                <h3 class="font-semibold text-lg mb-2">View All Medical Centers</h3>
+                <p class="text-sm text-slate-600 mb-4">Browse our complete selection of medical services</p>
+                <Button variant="primary" @click.stop="router.push('/services/medical')">View All</Button>
+              </CardBody>
+            </Card>
+          </template>
+
+          <!-- Guide Tab -->
+          <template v-if="activeTab === 'guide'">
+            <CompactCard
+              v-for="guide in guides.slice(0, 4)"
+              :key="guide.id"
+              :item="guide"
+              :title="guide.display_name || guide.name || 'Guide'"
+              :subtitle="guide.city?.name"
+              :thumbnail="guide.coverAsset?.thumbnail_url || guide.coverAsset?.public_url"
+              :rating="guide.rating"
+              :price="guide.hourly_rate ? `¥${guide.hourly_rate}/hr` : undefined"
+              :meta="guide.city?.name"
+              :badge="guide.verified ? 'Verified' : undefined"
+              @click="router.push(`/services/guide/${guide.id}`)"
+            />
+            <Card
+              v-if="guides.length === 0"
+              class="cursor-pointer col-span-full"
+              :hover="true"
+              @click="router.push('/services/guide')"
+            >
+              <CardBody class="p-6 text-center">
+                <User class="h-16 w-16 mx-auto mb-4 text-teal-600" />
+                <h3 class="font-semibold text-lg mb-2">View All Guides</h3>
+                <p class="text-sm text-slate-600 mb-4">Browse our complete selection of local guides</p>
+                <Button variant="primary" @click.stop="router.push('/services/guide')">View All</Button>
+              </CardBody>
+            </Card>
+          </template>
+
           <!-- Shopping Tab -->
           <template v-if="activeTab === 'shopping'">
             <ProductCard
@@ -510,7 +568,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, inject } from 'vue';
 import { useRouter } from 'vue-router';
-import { Search, Car } from 'lucide-vue-next';
+import { Search, Car, HeartPulse, User } from 'lucide-vue-next';
 import {
   OfferStrip,
   AiSearchBar,
@@ -545,6 +603,8 @@ const featuredCards = ref<any[]>([]);
 const featuredItems = ref<any[]>([]);
 const hotProducts = ref<any[]>([]); // TMAPI hot products for shopping tab
 const transportServices = ref<any[]>([]); // Direct transport services for transport tab
+const medicalCenters = ref<any[]>([]); // Direct medical centers for medical tab
+const guides = ref<any[]>([]); // Direct guides for guide tab
 const featuredItemsByType = ref<any>({
   hotels: [],
   restaurants: [],
@@ -575,6 +635,8 @@ const tabOptions = [
   { value: 'transport', label: 'Transport' },
   { value: 'restaurants', label: 'Restaurants' },
   { value: 'halal-food', label: 'Halal Food' },
+  { value: 'medical', label: 'Medical' },
+  { value: 'guide', label: 'Guide' },
   { value: 'esim', label: 'eSIM' },
   { value: 'places', label: 'Places' },
   { value: 'shopping', label: 'Shopping' },
@@ -643,10 +705,12 @@ async function loadHomepageData() {
   loading.value = true;
   try {
     const citySlug = currentCity.value?.slug || 'guangzhou';
-    const [homeResponse, offersResponse, transportResponse] = await Promise.all([
+    const [homeResponse, offersResponse, transportResponse, medicalResponse, guidesResponse] = await Promise.all([
       axios.get(`/api/public/home?city_slug=${citySlug}`),
       axios.get('/api/public/offers').catch(() => ({ data: [] })), // Don't fail if offers endpoint fails
       axios.get('/api/public/catalog/transport').catch(() => ({ data: [] })), // Load transport services
+      axios.get('/api/public/catalog/medical').catch(() => ({ data: [] })), // Load medical centers
+      axios.get('/api/public/catalog/guides').catch(() => ({ data: [] })), // Load guides
     ]);
     
     topHotels.value = homeResponse.data.top_hotels || [];
@@ -670,6 +734,12 @@ async function loadHomepageData() {
     
     // Load transport services for transport tab (show first 4)
     transportServices.value = transportResponse.data || [];
+    
+    // Load medical centers for medical tab (show first 4)
+    medicalCenters.value = medicalResponse.data || [];
+    
+    // Load guides for guide tab (show first 4)
+    guides.value = guidesResponse.data || [];
     
     // Set spotlight offer (first active offer)
     const offers = offersResponse.data || [];
@@ -865,6 +935,12 @@ function handleFeaturedItemClick(item: any) {
       break;
     case 'transport':
       router.push(`/services/transport/${item.entity.id}`);
+      break;
+    case 'medical':
+      router.push(`/services/medical/${item.entity.id}`);
+      break;
+    case 'guide':
+      router.push(`/services/guide/${item.entity.id}`);
       break;
   }
 }

@@ -858,15 +858,34 @@ export default async function publicRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get('/catalog/medical', async (request: FastifyRequest) => {
-    const { city_id } = request.query as { city_id?: string };
+    const { city_id, type } = request.query as { city_id?: string; type?: string };
     const medical = await prisma.medicalCenter.findMany({
       where: {
         ...(city_id ? { city_id } : {}),
+        ...(type ? { type } : {}),
         verified: true,
       },
-      include: { city: true },
+      include: {
+        city: true,
+        coverAsset: true,
+      },
       orderBy: { name: 'asc' },
     });
+    return medical;
+  });
+
+  fastify.get('/catalog/medical/:id', async (request: FastifyRequest) => {
+    const { id } = request.params as { id: string };
+    const medical = await prisma.medicalCenter.findFirst({
+      where: { id },
+      include: {
+        city: true,
+        coverAsset: true,
+      },
+    });
+    if (!medical) {
+      return { error: 'Medical center not found' };
+    }
     return medical;
   });
 
