@@ -10,7 +10,7 @@
       "destination": "/index.html"
     }
   ],
-  "cleanUrls": true,
+  "cleanUrls": false,
   "headers": [
     {
       "source": "/assets/(.*)",
@@ -23,4 +23,3 @@
     }
   ]
 }
-
