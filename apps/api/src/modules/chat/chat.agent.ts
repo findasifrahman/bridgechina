@@ -620,6 +620,65 @@ async function getServiceData(
 }
 
 /**
+ * Translate keyword to Chinese for TMAPI search
+ * TMAPI 1688 API requires Chinese keywords for accurate results
+ */
+async function translateToChinese(keyword: string): Promise<string> {
+  // Check if keyword already contains Chinese characters
+  if (/[\u4e00-\u9fff]/.test(keyword)) {
+    return keyword; // Already in Chinese, return as-is
+  }
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: OPENAI_DISTILL_MODEL,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a translator. Translate product/factory search keywords to Simplified Chinese. Return only the Chinese translation, no explanations, no English text.',
+        },
+        {
+          role: 'user',
+          content: `Translate this search keyword to Chinese: "${keyword}"\n\nReturn only the Chinese translation.`,
+        },
+      ],
+      temperature: 0.3,
+      max_tokens: 50,
+    });
+
+    const chineseKeyword = response.choices[0]?.message?.content?.trim() || keyword;
+    console.log('[Chat Agent] Keyword translation:', { original: keyword, chinese: chineseKeyword });
+    return chineseKeyword;
+  } catch (error: any) {
+    console.error('[Chat Agent] Keyword translation error:', error);
+    
+    // Fallback: try simple word mapping for common terms
+    const commonTranslations: Record<string, string> = {
+      'toy': '玩具',
+      'clothing': '服装',
+      'electronics': '电子产品',
+      'phone': '手机',
+      'bag': '包',
+      'shoes': '鞋',
+      'furniture': '家具',
+      'factory': '工厂',
+      'manufacturer': '制造商',
+      'supplier': '供应商',
+    };
+    
+    const lowerKeyword = keyword.toLowerCase();
+    for (const [en, zh] of Object.entries(commonTranslations)) {
+      if (lowerKeyword.includes(en)) {
+        return zh;
+      }
+    }
+    
+    // If translation fails, return original (might still work for some cases)
+    return keyword;
+  }
+}
+
+/**
  * Enforce English output - translate if Chinese detected
  */
 async function enforceEnglish(text: string): Promise<string> {
@@ -887,8 +946,12 @@ export async function processChatMessage(
           const params = await extractShoppingParams(userMessage);
           console.log('[Chat Agent] Shopping params:', params);
 
-          // Call existing TMAPI keyword search
-          const searchResults = await searchByKeyword(params.keyword, {
+          // Translate keyword to Chinese for TMAPI (1688 requires Chinese keywords for accurate results)
+          const chineseKeyword = await translateToChinese(params.keyword);
+          console.log('[Chat Agent] Translated keyword for search:', { original: params.keyword, chinese: chineseKeyword });
+
+          // Call existing TMAPI keyword search with Chinese keyword
+          const searchResults = await searchByKeyword(chineseKeyword, {
             page: 1,
             pageSize: 20,
           });
@@ -969,8 +1032,12 @@ export async function processChatMessage(
           const words = userMessage.split(/\s+/).filter(w => !stopWords.includes(w.toLowerCase()) && w.length > 2);
           const keyword = words.slice(0, 5).join(' ') || userMessage.substring(0, 50);
 
-          // Call TMAPI factory search
-          const factoryResults = await tmapiClient.searchFactoriesByKeyword(keyword.trim(), {
+          // Translate keyword to Chinese for TMAPI (1688 requires Chinese keywords for accurate results)
+          const chineseKeyword = await translateToChinese(keyword.trim());
+          console.log('[Chat Agent] Translated keyword for factory search:', { original: keyword, chinese: chineseKeyword });
+
+          // Call TMAPI factory search with Chinese keyword
+          const factoryResults = await tmapiClient.searchFactoriesByKeyword(chineseKeyword, {
             page: 1,
             pageSize: 3,
           });
