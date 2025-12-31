@@ -235,7 +235,11 @@ async function handleSend() {
   loading.value = true;
 
   try {
-    const response = await fetch('/api/public/ai-search', {
+    // Use axios if available, otherwise use fetch with proper baseURL
+    const apiUrl = import.meta.env.VITE_API_URL || '';
+    const endpoint = `${apiUrl}/api/public/ai-search`;
+    
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -243,6 +247,19 @@ async function handleSend() {
         sessionId: getSessionId(),
       }),
     });
+
+    // Check if response is OK
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('Non-JSON response:', text.substring(0, 100));
+      throw new Error('Server returned non-JSON response. Please check API configuration.');
+    }
 
     const data = await response.json();
 
@@ -270,11 +287,19 @@ async function handleSend() {
     }
 
     scrollToBottom();
-  } catch (error) {
+  } catch (error: any) {
     console.error('Chat error:', error);
+    let errorMessage = 'I apologize, I encountered an error. Please try again or contact us via WhatsApp.';
+    
+    if (error.message?.includes('404')) {
+      errorMessage = 'API endpoint not found. Please check that VITE_API_URL is configured correctly.';
+    } else if (error.message?.includes('non-JSON')) {
+      errorMessage = 'Server configuration error. Please contact support.';
+    }
+    
     messages.value.push({
       role: 'assistant',
-      content: 'I apologize, I encountered an error. Please try again or contact us via WhatsApp.',
+      content: errorMessage,
     });
     scrollToBottom();
   } finally {
