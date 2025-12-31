@@ -163,6 +163,11 @@
         </div>
       </div>
 
+      <!-- Reviews Section (Full Width) -->
+      <div class="mt-12">
+        <ReviewsSection entity-type="tour" :entity-id="tour.id" />
+      </div>
+
       <!-- Other Tours in City -->
       <section v-if="otherTours.length > 0" class="mt-12">
         <h2 class="text-2xl font-bold text-slate-900 mb-6">Other Tours in {{ tour.city?.name }}</h2>
@@ -183,7 +188,7 @@
 
       <!-- Cross-sell Widget -->
       <div class="mt-12">
-        <CrossSellWidget />
+        <CrossSellWidget :items="relatedServices" title="You may also need" />
       </div>
     </div>
 
@@ -222,12 +227,14 @@ import {
   CrossSellWidget,
 } from '@bridgechina/ui';
 import axios from '@/utils/axios';
+import ReviewsSection from '@/components/reviews/ReviewsSection.vue';
 
 const route = useRoute();
 const router = useRouter();
 const loading = ref(true);
 const tour = ref<any>(null);
 const otherTours = ref<any[]>([]);
+const relatedServices = ref<any[]>([]);
 
 function getImageUrls(): string[] {
   if (!tour.value) return [];
@@ -269,6 +276,25 @@ async function loadTour() {
       otherTours.value = (otherResponse.data || [])
         .filter((t: any) => t.id !== tour.value.id)
         .slice(0, 6);
+    }
+
+    // Load related services (hotels, restaurants, transport in same city)
+    if (tour.value && tour.value.city_id) {
+      try {
+        const [hotelsRes, restaurantsRes, transportRes] = await Promise.all([
+          axios.get(`/api/public/catalog/hotels?city_id=${tour.value.city_id}&limit=2`).catch(() => ({ data: [] })),
+          axios.get(`/api/public/catalog/restaurants?city_id=${tour.value.city_id}&limit=2`).catch(() => ({ data: [] })),
+          axios.get(`/api/public/catalog/transport?city_id=${tour.value.city_id}&limit=2`).catch(() => ({ data: [] })),
+        ]);
+        relatedServices.value = [
+          ...hotelsRes.data.map((h: any) => ({ ...h, type: 'hotel' })),
+          ...restaurantsRes.data.map((r: any) => ({ ...r, type: 'restaurant' })),
+          ...transportRes.data.map((t: any) => ({ ...t, type: 'transport' })),
+        ].slice(0, 4);
+      } catch (e) {
+        console.error('Failed to load related services', e);
+        relatedServices.value = [];
+      }
     }
   } catch (error: any) {
     console.error('Failed to load tour', error);
