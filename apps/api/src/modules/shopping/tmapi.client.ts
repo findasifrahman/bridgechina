@@ -9,7 +9,8 @@ import https from 'node:https';
 // TMAPI 1688 API base URL
 // Default: https://api.tmapi.com (can be overridden via TMAPI_BASE_URL env var)
 // Common patterns: https://api.tmapi.com, https://api.tmapi.com/api/1688
-const TMAPI_BASE_URL = process.env.TMAPI_BASE_URL || 'https://api.tmapi.top';
+// Ensure HTTPS for TMAPI base URL
+const TMAPI_BASE_URL = (process.env.TMAPI_BASE_URL || 'https://api.tmapi.top').replace(/^http:/, 'https:');
 const TMAPI_TOKEN = process.env.TMAPI_API_16688_TOKEN;
 
 console.log('[TMAPI Client] Initialized:', {

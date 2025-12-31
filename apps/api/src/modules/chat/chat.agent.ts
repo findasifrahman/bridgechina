@@ -239,12 +239,12 @@ Classify the user's message into ONE of these intents:
 - TOUR: tour, experience, sightseeing, visit places
 - MEDICAL: medical, doctor, hospital, health, emergency
 - HALAL_FOOD: halal food, restaurant, meal, delivery, dining
-- SHOPPING: product price, buying, supplier, item purchase, product search, factory, manufacturer
+- SHOPPING: product price, buying, supplier, item purchase, product search, factory, manufacturer (ONLY for typical 1688 products like clothing, electronics, toys, etc. NOT for expensive items like cars, real estate, or luxury goods)
 - ESIM: esim, sim card, data plan, mobile internet
 - CITY_INFO: city information, places to visit, attractions (NOT shopping)
 - MARKET_INFO: wholesale market, sourcing zone, Yiwu, Guangzhou markets (NOT buying products)
 - GENERAL_CHINA: general questions about China, culture, travel tips
-- OUT_OF_SCOPE: anything not related to China or BridgeChina services
+- OUT_OF_SCOPE: anything not related to China or BridgeChina services, expensive items like cars/real estate, or services we don't provide
 
 Also extract city name if mentioned. IMPORTANT: 
 - Guangzhou districts/areas (Sanyuanli, Tianhe, Yuexiu, Haizhu, Liwan, Baiyun, etc.) should be mapped to "guangzhou"
@@ -623,23 +623,29 @@ async function getServiceData(
  * Translate keyword to Chinese for TMAPI search
  * TMAPI 1688 API requires Chinese keywords for accurate results
  */
-async function translateToChinese(keyword: string): Promise<string> {
+async function translateToChinese(keyword: string, isFactory: boolean = false): Promise<string> {
   // Check if keyword already contains Chinese characters
   if (/[\u4e00-\u9fff]/.test(keyword)) {
     return keyword; // Already in Chinese, return as-is
   }
 
   try {
+    const systemPrompt = isFactory
+      ? 'You are a translator. Translate product/factory search keywords to Simplified Chinese suitable for 1688 factory search. Use format: "产品名 工厂" or "产品名 生产厂家". Avoid subjective words like "best". Return only the Chinese translation, no explanations, no English text.'
+      : 'You are a translator. Translate product search keywords to Simplified Chinese. Return only the Chinese translation, no explanations, no English text.';
+    
     const response = await openai.chat.completions.create({
       model: OPENAI_DISTILL_MODEL,
       messages: [
         {
           role: 'system',
-          content: 'You are a translator. Translate product/factory search keywords to Simplified Chinese. Return only the Chinese translation, no explanations, no English text.',
+          content: systemPrompt,
         },
         {
           role: 'user',
-          content: `Translate this search keyword to Chinese: "${keyword}"\n\nReturn only the Chinese translation.`,
+          content: isFactory
+            ? `Translate this factory search keyword to Chinese (use format "产品 工厂" or "产品 生产厂家"): "${keyword}"\n\nReturn only the Chinese translation.`
+            : `Translate this search keyword to Chinese: "${keyword}"\n\nReturn only the Chinese translation.`,
         },
       ],
       temperature: 0.3,
@@ -647,7 +653,7 @@ async function translateToChinese(keyword: string): Promise<string> {
     });
 
     const chineseKeyword = response.choices[0]?.message?.content?.trim() || keyword;
-    console.log('[Chat Agent] Keyword translation:', { original: keyword, chinese: chineseKeyword });
+    console.log('[Chat Agent] Keyword translation:', { original: keyword, chinese: chineseKeyword, isFactory });
     return chineseKeyword;
   } catch (error: any) {
     console.error('[Chat Agent] Keyword translation error:', error);
@@ -664,17 +670,21 @@ async function translateToChinese(keyword: string): Promise<string> {
       'factory': '工厂',
       'manufacturer': '制造商',
       'supplier': '供应商',
+      'socks': '袜子',
+      'chocolate': '巧克力',
     };
     
     const lowerKeyword = keyword.toLowerCase();
+    let translated = keyword;
     for (const [en, zh] of Object.entries(commonTranslations)) {
       if (lowerKeyword.includes(en)) {
-        return zh;
+        translated = isFactory ? `${zh} 工厂` : zh;
+        break;
       }
     }
     
     // If translation fails, return original (might still work for some cases)
-    return keyword;
+    return translated;
   }
 }
 
@@ -947,16 +957,25 @@ export async function processChatMessage(
           console.log('[Chat Agent] Shopping params:', params);
 
           // Translate keyword to Chinese for TMAPI (1688 requires Chinese keywords for accurate results)
-          const chineseKeyword = await translateToChinese(params.keyword);
+          const chineseKeyword = await translateToChinese(params.keyword, false);
           console.log('[Chat Agent] Translated keyword for search:', { original: params.keyword, chinese: chineseKeyword });
 
-          // Call existing TMAPI keyword search with Chinese keyword
+          // Call TMAPI directly to get raw items for original image URLs
+          const tmapiResponse = await tmapiClient.searchByKeyword(chineseKeyword, {
+            page: 1,
+            pageSize: 20,
+          });
+          
+          // Get normalized items from searchByKeyword for sorting
           const searchResults = await searchByKeyword(chineseKeyword, {
             page: 1,
             pageSize: 20,
           });
+          
+          // Get raw items from TMAPI response
+          const rawItems = tmapiResponse.data?.items || [];
 
-          // Sort based on priority
+          // Sort based on priority (using normalized items)
           let sortedItems = [...searchResults.items];
           if (params.priority === 'lowest_price') {
             sortedItems.sort((a, b) => (a.priceMin || 0) - (b.priceMin || 0));
@@ -964,12 +983,15 @@ export async function processChatMessage(
             sortedItems.sort((a, b) => (b.priceMin || 0) - (a.priceMin || 0)); // Fallback to price
           }
 
-          // Get top 3 items
+          // Get top 3 items and match with raw items
           const topItems = sortedItems.slice(0, 3);
           
-          // Translate titles to English and format items with inline images
+          // Translate titles to English and format items as structured cards
           const items: ChatResponse['items'] = [];
           for (const item of topItems) {
+            // Find matching raw item by externalId
+            const rawItem = rawItems.find((r: any) => String(r.item_id || r.id) === item.externalId) || {};
+            
             // Translate title to English if needed
             let englishTitle = item.title;
             if (/[\u4e00-\u9fff]/.test(item.title)) {
@@ -990,32 +1012,41 @@ export async function processChatMessage(
               }
             }
 
-            // Get quantity from raw data if available
-            const quantity = (item as any).raw?.quantity_begin || (item as any).availableQuantity;
+            // Get original image URL from raw TMAPI data (before proxying)
+            // Extract from raw item: img, main_image, image_url, or main_imgs[0]
+            const originalImageUrl = rawItem.img || rawItem.main_image || rawItem.image_url || 
+              (Array.isArray(rawItem.main_imgs) && rawItem.main_imgs[0]) || '';
+            
+            // Get quantity from raw data
+            const quantity = rawItem.quantity_begin || (item as any).availableQuantity;
+            
+            // Format price
+            const priceStr = item.priceMin || item.priceMax 
+              ? `¥${item.priceMin || item.priceMax}` 
+              : 'Price on request';
 
             items.push({
               title: englishTitle,
-              imageUrl: item.imageUrl || item.images?.[0],
-              price: item.priceMin || item.priceMax ? `¥${item.priceMin || item.priceMax}` : undefined,
-              supplier: item.sellerName,
+              imageUrl: originalImageUrl, // Use original CDN URL, frontend will proxy
+              price: priceStr,
+              supplier: item.sellerName || 'N/A',
               bullets: [
-                `Price: ¥${item.priceMin || item.priceMax || 'N/A'}`,
+                `Price: ${priceStr}`,
                 `Supplier: ${item.sellerName || 'N/A'}`,
                 quantity ? `Available quantity: ${quantity}` : undefined,
               ].filter(Boolean) as string[],
             });
           }
 
-          // Build response with inline images
+          // Build response text (no image URLs in text, images are in cards)
           const itemLines = items.map((item, idx) => {
-            const imageMarkdown = item.imageUrl ? `\n![${item.title}](${item.imageUrl})` : '';
-            return `${idx + 1}. **${item.title}**${imageMarkdown}\n   - Price: ${item.price || 'Price on request'}\n   - Supplier: ${item.supplier || 'N/A'}`;
+            return `${idx + 1}. **${item.title}**\n   - ${item.bullets?.join('\n   - ') || ''}`;
           });
 
           response = itemLines.join('\n\n');
           response += '\n\nWould you like me to help you place an order or check delivery inside China?';
           
-          // Store items in context for return
+          // Store items in context for return (structured cards)
           context.items = items;
         } catch (error) {
           console.error('[Chat Agent] Retail search error:', error);
@@ -1033,65 +1064,135 @@ export async function processChatMessage(
           const keyword = words.slice(0, 5).join(' ') || userMessage.substring(0, 50);
 
           // Translate keyword to Chinese for TMAPI (1688 requires Chinese keywords for accurate results)
-          const chineseKeyword = await translateToChinese(keyword.trim());
+          // Use isFactory=true to get better translation format (产品 工厂)
+          const chineseKeyword = await translateToChinese(keyword.trim(), true);
           console.log('[Chat Agent] Translated keyword for factory search:', { original: keyword, chinese: chineseKeyword });
 
           // Call TMAPI factory search with Chinese keyword
           const factoryResults = await tmapiClient.searchFactoriesByKeyword(chineseKeyword, {
             page: 1,
-            pageSize: 3,
+            pageSize: 10, // Get more to dedupe
           });
 
           if (!factoryResults?.data?.items || factoryResults.data.items.length === 0) {
             response = 'I couldn\'t find any factories matching your search. Please try different keywords or contact us via WhatsApp for personalized sourcing assistance.';
           } else {
-            const factories = factoryResults.data.items.slice(0, 3);
+            // Dedupe by member_id (keep first occurrence)
+            const seen = new Map<string, any>();
+            const uniqueFactories: any[] = [];
+            for (const factory of factoryResults.data.items) {
+              const memberId = factory.member_id || factory.login_id;
+              if (memberId && !seen.has(memberId)) {
+                seen.set(memberId, factory);
+                uniqueFactories.push(factory);
+                if (uniqueFactories.length >= 3) break;
+              }
+            }
+
             const items: ChatResponse['items'] = [];
 
-            for (const factory of factories) {
-              // Enrich with Tavily search
+            for (const factory of uniqueFactories) {
+              // Determine company type from TMAPI fields
+              const isFactory = factory.is_factory !== false; // Default to true if not specified
+              const companyType = isFactory ? 'Factory' : 'Reseller/Trading';
+              
+              // Enrich with Tavily search (both Chinese and English queries)
               let tavilyInfo = '';
-              try {
-                const tavilyResult = await searchTavily(`"${factory.company_name}" factory china`, 2);
-                tavilyInfo = tavilyResult || '';
-              } catch (error) {
-                console.error('[Chat Agent] Tavily enrichment error:', error);
-              }
-
-              // Extract info from Tavily
               let officialWebsite = '';
               let companyDescription = '';
-              let companyType = 'Factory'; // Default
+              let publicContact = '';
               
-              if (tavilyInfo) {
-                // Try to extract website
-                const websiteMatch = tavilyInfo.match(/https?:\/\/[^\s]+/);
-                if (websiteMatch) {
-                  officialWebsite = websiteMatch[0];
-                }
-                // Extract description snippet
-                companyDescription = tavilyInfo.substring(0, 200);
-                // Classify type
-                if (tavilyInfo.toLowerCase().includes('reseller') || tavilyInfo.toLowerCase().includes('trader')) {
-                  companyType = 'Reseller';
+              if (factory.company_name) {
+                try {
+                  console.log('[Chat Agent] Tavily enrichment started for', factory.company_name);
+                  
+                  // Try Chinese query first
+                  const tavilyResultZh = await searchTavily(`"${factory.company_name}" 1688 工厂 信息 官网 联系方式`, 2);
+                  // Also try English query
+                  const tavilyResultEn = await searchTavily(`"${factory.company_name}" 1688 factory website contact`, 2);
+                  
+                  tavilyInfo = tavilyResultZh || tavilyResultEn || '';
+                  
+                  if (tavilyInfo) {
+                    // Extract website (look for http/https URLs)
+                    const websiteMatches = tavilyInfo.match(/https?:\/\/[^\s\)]+/g);
+                    if (websiteMatches && websiteMatches.length > 0) {
+                      // Prefer .com, .cn, or official-looking domains
+                      officialWebsite = websiteMatches.find(url => 
+                        /\.(com|cn|net|org|gov)/i.test(url)
+                      ) || websiteMatches[0];
+                    }
+                    
+                    // Extract description snippet (first 200 chars)
+                    companyDescription = tavilyInfo.replace(/https?:\/\/[^\s\)]+/g, '').trim().substring(0, 200);
+                    
+                    // Extract contact info (phone/email patterns)
+                    const phoneMatch = tavilyInfo.match(/(\+?\d{1,4}[\s-]?)?\(?\d{3,4}\)?[\s-]?\d{3,4}[\s-]?\d{4}/);
+                    const emailMatch = tavilyInfo.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+                    if (phoneMatch) publicContact = phoneMatch[0];
+                    if (emailMatch && !publicContact) publicContact = emailMatch[0];
+                    
+                    // Re-classify type based on Tavily info
+                    const tavilyLower = tavilyInfo.toLowerCase();
+                    if (tavilyLower.includes('reseller') || tavilyLower.includes('trader') || tavilyLower.includes('trading')) {
+                      // Keep existing type if already Reseller, otherwise update
+                    }
+                  }
+                  
+                  console.log('[Chat Agent] Tavily enrichment finished:', { 
+                    hasWebsite: !!officialWebsite, 
+                    hasContact: !!publicContact,
+                    descriptionLength: companyDescription.length 
+                  });
+                } catch (error) {
+                  console.error('[Chat Agent] Tavily enrichment error:', error);
                 }
               }
 
+              // Build comprehensive bullets with all TMAPI fields
               const bullets: string[] = [
                 `Type: ${companyType}`,
-                `Location: ${factory.location?.city || 'N/A'}`,
-                factory.factory_level ? `Level: ${factory.factory_level}` : undefined,
-                factory.factory_area_size ? `Size: ${factory.factory_area_size} sqm` : undefined,
-                factory.shop_repurchase_rate ? `Repurchase Rate: ${(parseFloat(factory.shop_repurchase_rate) * 100).toFixed(0)}%` : undefined,
-                factory.response_rate ? `Response Rate: ${(parseFloat(factory.response_rate) * 100).toFixed(0)}%` : undefined,
-                factory.tp_member ? `Trade Assurance: ${factory.tp_year} years` : undefined,
+                factory.location?.city ? `Location: ${factory.location.city}` : undefined,
+                factory.location ? `Location: ${factory.location.province || ''} ${factory.location.city || ''}`.trim() : undefined,
+                factory.factory_level ? `Factory Level: ${factory.factory_level}` : undefined,
+                factory.factory_area_size ? `Factory Size: ${factory.factory_area_size} sqm` : undefined,
+                factory.shop_repurchase_rate ? `Repurchase Rate: ${(parseFloat(String(factory.shop_repurchase_rate || '0')) * 100).toFixed(0)}%` : undefined,
+                factory.response_rate ? `Response Rate: ${(parseFloat(String(factory.response_rate || '0')) * 100).toFixed(0)}%` : undefined,
+                factory.tp_member ? `Trade Assurance Member: ${factory.tp_year || 'N/A'} years` : undefined,
                 factory.super_factory ? 'Super Factory Verified' : undefined,
+                factory.factory_url ? `1688 Factory Page: ${factory.factory_url}` : undefined,
+                factory.product_tags ? `Product Tags: ${Array.isArray(factory.product_tags) ? factory.product_tags.join(', ') : factory.product_tags}` : undefined,
+                factory.service_tags ? `Certifications: ${Array.isArray(factory.service_tags) ? factory.service_tags.join(', ') : factory.service_tags}` : undefined,
                 officialWebsite ? `Website: ${officialWebsite}` : undefined,
-                companyDescription ? `Info: ${companyDescription.substring(0, 100)}...` : undefined,
+                companyDescription ? `Info: ${companyDescription}` : undefined,
+                publicContact ? `Contact: ${publicContact}` : undefined,
               ].filter(Boolean) as string[];
 
+              // Translate company name to English if needed (keep Chinese but add English label)
+              let companyTitle = factory.company_name || factory.login_id || 'Unknown Company';
+              if (/[\u4e00-\u9fff]/.test(companyTitle)) {
+                try {
+                  const translateResponse = await openai.chat.completions.create({
+                    model: OPENAI_DISTILL_MODEL,
+                    messages: [
+                      { role: 'system', content: 'Translate company names to English. Return only the translation, no explanations.' },
+                      { role: 'user', content: `Translate: ${companyTitle}` },
+                    ],
+                    temperature: 0.3,
+                    max_tokens: 100,
+                  });
+                  const englishName = translateResponse.choices[0]?.message?.content?.trim();
+                  if (englishName && englishName !== companyTitle) {
+                    companyTitle = `${englishName} (${companyTitle})`;
+                  }
+                } catch (error) {
+                  console.error('[Chat Agent] Company name translation error:', error);
+                  // Keep original if translation fails
+                }
+              }
+
               items.push({
-                title: factory.company_name || factory.login_id || 'Unknown Company',
+                title: companyTitle,
                 location: factory.location?.city || undefined,
                 bullets,
               });
