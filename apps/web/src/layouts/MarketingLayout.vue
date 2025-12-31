@@ -5,13 +5,14 @@
     :user-roles="authStore.user?.roles || []"
     @sign-out="handleSignOut"
     @load-offers="handleLoadOffers"
+    @offer-click="handleOfferClick"
   >
     <router-view />
   </MarketingLayoutComponent>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, provide } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import axios from '@/utils/axios';
@@ -20,6 +21,21 @@ import MarketingLayoutComponent from '@bridgechina/ui/src/layouts/MarketingLayou
 const router = useRouter();
 const authStore = useAuthStore();
 const layoutRef = ref<InstanceType<typeof MarketingLayoutComponent> | null>(null);
+
+// Provide a way for child components to register their modal handler
+const offerModalHandler = ref<((offer: any) => void) | null>(null);
+
+provide('offerModalHandler', {
+  register: (handler: (offer: any) => void) => {
+    offerModalHandler.value = handler;
+  },
+});
+
+function handleOfferClick(offer: any) {
+  if (offerModalHandler.value) {
+    offerModalHandler.value(offer);
+  }
+}
 
 onMounted(() => {
   console.log('[MarketingLayout] Layout mounted, isAuthenticated:', authStore.isAuthenticated);

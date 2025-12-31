@@ -970,7 +970,8 @@ model TourCityPlace {
 }
 
 model GuideProfile {
-  user_id        String       @id
+  id             String       @id @default(uuid())
+  user_id        String?      @unique
   city_id        String
   display_name   String
   bio            String?
@@ -986,11 +987,12 @@ model GuideProfile {
   offers         GuideOffer[]
   city           City         @relation(fields: [city_id], references: [id])
   coverAsset     MediaAsset?  @relation("GuideCover", fields: [cover_asset_id], references: [id])
-  user           User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user           User?        @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([city_id])
   @@index([verified])
   @@index([rating])
+  @@index([user_id])
   @@map("guide_profiles")
 }
 

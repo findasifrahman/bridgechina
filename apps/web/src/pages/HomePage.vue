@@ -46,20 +46,31 @@
             />
           </template>
 
-          <!-- Pickup Tab -->
-          <template v-if="activeTab === 'pickup'">
+          <!-- Transport Tab -->
+          <template v-if="activeTab === 'transport'">
+            <CompactCard
+              v-for="transport in transportServices.slice(0, 4)"
+              :key="transport.id"
+              :item="transport"
+              :title="transport.name || transport.type || 'Transport Service'"
+              :subtitle="transport.city?.name"
+              :thumbnail="transport.coverAsset?.thumbnail_url || transport.coverAsset?.public_url"
+              :price="transport.price_per_km ? `¥${transport.price_per_km}/km` : undefined"
+              :meta="transport.city?.name"
+              :badge="transport.verified ? 'Verified' : undefined"
+              @click="router.push(`/services/transport/${transport.id}`)"
+            />
             <Card
-              v-for="option in transportOptions"
-              :key="option.id"
-              class="cursor-pointer"
+              v-if="transportServices.length === 0"
+              class="cursor-pointer col-span-full"
               :hover="true"
-              @click="handleTransportClick(option)"
+              @click="router.push('/services/transport')"
             >
-              <CardBody class="p-4 text-center">
-                <component :is="option.icon" class="h-12 w-12 mx-auto mb-3 text-teal-600" />
-                <h3 class="font-semibold text-sm mb-2">{{ option.name }}</h3>
-                <p class="text-xs text-slate-600 mb-3">{{ option.description }}</p>
-                <Button variant="primary" size="sm" class="w-full">Request</Button>
+              <CardBody class="p-6 text-center">
+                <Car class="h-16 w-16 mx-auto mb-4 text-teal-600" />
+                <h3 class="font-semibold text-lg mb-2">View All Transport Services</h3>
+                <p class="text-sm text-slate-600 mb-4">Browse our complete selection of transportation options</p>
+                <Button variant="primary" @click.stop="router.push('/services/transport')">View All</Button>
               </CardBody>
             </Card>
           </template>
@@ -497,9 +508,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, inject } from 'vue';
 import { useRouter } from 'vue-router';
-import { Search, Car, MapPin, Calendar } from 'lucide-vue-next';
+import { Search, Car } from 'lucide-vue-next';
 import {
   OfferStrip,
   AiSearchBar,
@@ -533,6 +544,7 @@ const topRestaurants = ref<any[]>([]);
 const featuredCards = ref<any[]>([]);
 const featuredItems = ref<any[]>([]);
 const hotProducts = ref<any[]>([]); // TMAPI hot products for shopping tab
+const transportServices = ref<any[]>([]); // Direct transport services for transport tab
 const featuredItemsByType = ref<any>({
   hotels: [],
   restaurants: [],
@@ -560,7 +572,7 @@ const roomsGuestsOptions = [
 
 const tabOptions = [
   { value: 'hotels', label: 'Hotels' },
-  { value: 'pickup', label: 'Pickup' },
+  { value: 'transport', label: 'Transport' },
   { value: 'restaurants', label: 'Restaurants' },
   { value: 'halal-food', label: 'Halal Food' },
   { value: 'esim', label: 'eSIM' },
@@ -568,32 +580,6 @@ const tabOptions = [
   { value: 'shopping', label: 'Shopping' },
 ];
 
-const transportOptions = [
-  {
-    id: 'airport-pickup',
-    name: 'Airport Pickup',
-    description: 'Safe and reliable airport transfers',
-    icon: Car,
-  },
-  {
-    id: 'point-to-point',
-    name: 'Point to Point',
-    description: 'Direct transfers between locations',
-    icon: MapPin,
-  },
-  {
-    id: 'charter',
-    name: 'Full Day Charter',
-    description: 'Rent a car with driver for the day',
-    icon: Calendar,
-  },
-  {
-    id: 'day-trip',
-    name: 'Day Trip',
-    description: 'Guided day trips to nearby attractions',
-    icon: MapPin,
-  },
-];
 
 const holidayBanners = ref<any[]>([]);
 const serviceOffers = ref<any[]>([]);
@@ -657,9 +643,10 @@ async function loadHomepageData() {
   loading.value = true;
   try {
     const citySlug = currentCity.value?.slug || 'guangzhou';
-    const [homeResponse, offersResponse] = await Promise.all([
+    const [homeResponse, offersResponse, transportResponse] = await Promise.all([
       axios.get(`/api/public/home?city_slug=${citySlug}`),
       axios.get('/api/public/offers').catch(() => ({ data: [] })), // Don't fail if offers endpoint fails
+      axios.get('/api/public/catalog/transport').catch(() => ({ data: [] })), // Load transport services
     ]);
     
     topHotels.value = homeResponse.data.top_hotels || [];
@@ -681,6 +668,9 @@ async function loadHomepageData() {
     };
     currentCity.value = homeResponse.data.city;
     
+    // Load transport services for transport tab (show first 4)
+    transportServices.value = transportResponse.data || [];
+    
     // Set spotlight offer (first active offer)
     const offers = offersResponse.data || [];
     spotlightOffer.value = offers.length > 0 ? offers[0] : null;
@@ -701,12 +691,6 @@ function handleSearchSelect(suggestion: any) {
   router.push(suggestion.action || '/services');
 }
 
-function handleTransportClick(option: any) {
-  router.push({
-    path: '/request',
-    query: { category: 'transport', type: option.id },
-  });
-}
 
 function handleHotelSearch() {
   router.push({
@@ -842,6 +826,7 @@ function handleRequestOffer() {
 function getFeaturedItemsForTab(tabValue: string): any[] {
   const typeMap: Record<string, keyof typeof featuredItemsByType.value> = {
     'hotels': 'hotels',
+    'transport': 'transport',
     'restaurants': 'restaurants',
     'halal-food': 'food_items',
     'esim': 'esim_plans',
@@ -879,7 +864,7 @@ function handleFeaturedItemClick(item: any) {
       router.push(`/shopping/${item.entity.id}`);
       break;
     case 'transport':
-      router.push('/services/transport');
+      router.push(`/services/transport/${item.entity.id}`);
       break;
   }
 }
@@ -889,6 +874,15 @@ watch(activeTab, (newTab) => {
     loadHotProducts();
   }
 });
+
+// Register modal handler with layout
+const offerModalHandler = inject<{ register: (handler: (offer: any) => void) => void }>('offerModalHandler');
+if (offerModalHandler) {
+  offerModalHandler.register((offer: any) => {
+    selectedOffer.value = offer;
+    showOfferModal.value = true;
+  });
+}
 
 onMounted(() => {
   loadHomepageData();

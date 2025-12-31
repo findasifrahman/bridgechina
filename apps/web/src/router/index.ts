@@ -140,6 +140,16 @@ const router = createRouter({
           name: 'restaurants-list',
           component: () => import('@/pages/RestaurantsListPage.vue'),
         },
+        {
+          path: 'services/transport',
+          name: 'transport-list',
+          component: () => import('@/pages/TransportListPage.vue'),
+        },
+        {
+          path: 'services/transport/:id',
+          name: 'transport-detail',
+          component: () => import('@/pages/TransportDetailPage.vue'),
+        },
       ],
     },
     {

@@ -45,7 +45,7 @@ importers:
         specifier: ^9.1.0
         version: 9.1.0
       '@prisma/client':
-        specifier: ^5.9.1
+        specifier: ^5.22.0
         version: 5.22.0(prisma@5.22.0)
       argon2:
         specifier: ^0.44.0

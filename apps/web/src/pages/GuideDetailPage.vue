@@ -90,7 +90,7 @@
 
           <!-- Reviews Section -->
           <div class="mt-12">
-            <ReviewsSection entity-type="guide" :entity-id="guide.user_id" />
+            <ReviewsSection entity-type="guide" :entity-id="guide.id" />
           </div>
         </div>
 
@@ -291,7 +291,8 @@ async function createGuideRequest() {
       phone: authStore.user?.phone || '',
       email: authStore.user?.email || null,
       request_payload: {
-        guide_id: guide.value.user_id,
+        guide_id: guide.value.id,
+        guide_user_id: guide.value.user_id || null,
         guide_name: guide.value.display_name || guide.value.name,
         guide_hourly_rate: guide.value.hourly_rate,
         guide_daily_rate: guide.value.daily_rate,

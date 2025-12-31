@@ -946,9 +946,27 @@ export default async function publicRoutes(fastify: FastifyInstance) {
       where: {
         ...(city_id ? { city_id } : {}),
       },
-      include: { city: true },
+      include: { city: true, coverAsset: true },
       orderBy: { created_at: 'desc' },
     });
+    return transport;
+  });
+
+  fastify.get('/catalog/transport/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const transport = await prisma.transportProduct.findUnique({
+      where: { id: id },
+      include: {
+        city: true,
+        coverAsset: true,
+      },
+    });
+
+    if (!transport) {
+      reply.status(404).send({ error: 'Transport service not found' });
+      return;
+    }
+
     return transport;
   });
 
@@ -1486,8 +1504,8 @@ export default async function publicRoutes(fastify: FastifyInstance) {
 
   fastify.get('/catalog/guides/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
-    const guide = await prisma.guideProfile.findUnique({
-      where: { user_id: id },
+    const guide = await prisma.guideProfile.findFirst({
+      where: { id: id } as any,
       include: {
         city: true,
         coverAsset: true,

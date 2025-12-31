@@ -474,7 +474,7 @@ async function updateEntityRating(entityType: string, entityId: string) {
       break;
     case 'guide':
       await prisma.guideProfile.update({
-        where: { user_id: entityId },
+        where: { id: entityId },
         data: { rating: avgRating, review_count: reviewCount },
       });
       break;

@@ -3293,10 +3293,87 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     };
   });
 
+  fastify.post('/catalog/guides', async (request: FastifyRequest, reply: FastifyReply) => {
+    const body = request.body as any;
+
+    // Validate required fields (user_id is now optional - admin can create profiles without users)
+    if (!body.city_id) {
+      reply.status(400).send({ error: 'city_id is required' });
+      return;
+    }
+
+    if (!body.display_name) {
+      reply.status(400).send({ error: 'display_name is required' });
+      return;
+    }
+
+    // If user_id is provided, verify it exists and check for existing guide
+    if (body.user_id) {
+      // Check if guide already exists for this user_id
+      const existingGuide = await prisma.guideProfile.findUnique({
+        where: { user_id: body.user_id },
+      });
+
+      if (existingGuide) {
+        reply.status(409).send({ error: 'Guide profile already exists for this user. Use PUT to update instead.' });
+        return;
+      }
+
+      // Verify user exists
+      const user = await prisma.user.findUnique({
+        where: { id: body.user_id },
+      });
+
+      if (!user) {
+        reply.status(404).send({ error: 'User not found' });
+        return;
+      }
+    }
+
+    // Verify city exists
+    const city = await prisma.city.findUnique({
+      where: { id: body.city_id },
+    });
+
+    if (!city) {
+      reply.status(404).send({ error: 'City not found' });
+      return;
+    }
+
+    try {
+      const guide = await prisma.guideProfile.create({
+        data: {
+          user_id: body.user_id || null, // Optional - can be null for unclaimed profiles
+          city_id: body.city_id,
+          display_name: body.display_name,
+          bio: body.bio || null,
+          languages: body.languages || [],
+          hourly_rate: body.hourly_rate || null,
+          daily_rate: body.daily_rate || null,
+          verified: body.verified !== undefined ? body.verified : false,
+          cover_asset_id: body.cover_asset_id || null,
+        },
+        include: {
+          city: true,
+          coverAsset: true,
+          user: {
+            select: { id: true, email: true, phone: true },
+          },
+        },
+      });
+
+      return guide;
+    } catch (error: any) {
+      fastify.log.error({ error, body }, '[Admin] Failed to create guide');
+      reply.status(500).send({ error: error.message || 'Failed to create guide profile' });
+      return;
+    }
+  });
+
   fastify.get('/catalog/guides/:id', async (request: FastifyRequest) => {
     const params = request.params as { id: string };
     const guide = await prisma.guideProfile.findUnique({
-      where: { user_id: params.id },
+      where: { id: params.id },
       include: {
         city: true,
         coverAsset: true,
@@ -3313,13 +3390,39 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     return guide;
   });
 
-  fastify.put('/catalog/guides/:id', async (request: FastifyRequest) => {
+  fastify.put('/catalog/guides/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     const params = request.params as { id: string };
     const body = request.body as any;
 
+    // If user_id is being updated, verify it exists and check for conflicts
+    if (body.user_id !== undefined) {
+      if (body.user_id) {
+        // Check if another guide already has this user_id
+        const existingGuide = await prisma.guideProfile.findUnique({
+          where: { user_id: body.user_id },
+        });
+
+        if (existingGuide && existingGuide.id !== params.id) {
+          reply.status(409).send({ error: 'Another guide profile already exists for this user' });
+          return;
+        }
+
+        // Verify user exists
+        const user = await prisma.user.findUnique({
+          where: { id: body.user_id },
+        });
+
+        if (!user) {
+          reply.status(404).send({ error: 'User not found' });
+          return;
+        }
+      }
+    }
+
     const guide = await prisma.guideProfile.update({
-      where: { user_id: params.id },
+      where: { id: params.id },
       data: {
+        user_id: body.user_id !== undefined ? (body.user_id || null) : undefined, // Allow setting to null
         city_id: body.city_id,
         display_name: body.display_name,
         bio: body.bio || null,
@@ -3343,7 +3446,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   fastify.delete('/catalog/guides/:id', async (request: FastifyRequest) => {
     const params = request.params as { id: string };
-    await prisma.guideProfile.delete({ where: { user_id: params.id } });
+    await prisma.guideProfile.delete({ where: { id: params.id } });
     return { message: 'Guide profile deleted' };
   });
 

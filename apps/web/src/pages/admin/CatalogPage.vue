@@ -752,12 +752,12 @@
     <Modal v-model="showGuideModal" :title="editingGuide ? 'Edit Guide' : 'Add Guide'" size="xl">
       <form @submit.prevent="saveGuide" class="space-y-4">
         <div class="grid grid-cols-2 gap-4">
-          <Input
+          <Select
             v-model="guideForm.user_id"
-            label="User ID"
-            required
+            label="User (Optional)"
+            :options="[{ value: '', label: 'No user (unclaimed profile)' }, ...userOptions]"
             :disabled="!!editingGuide"
-            placeholder="User ID (must exist)"
+            placeholder="Select a user (optional)"
           />
           <Select
             v-model="guideForm.city_id"
@@ -773,8 +773,20 @@
           <Input v-model="guideForm.languagesText" placeholder="English, Chinese, Bangla" />
         </div>
         <div class="grid grid-cols-2 gap-4">
-          <Input v-model.number="guideForm.hourly_rate" label="Hourly Rate (CNY)" type="number" step="0.01" />
-          <Input v-model.number="guideForm.daily_rate" label="Daily Rate (CNY)" type="number" step="0.01" />
+          <Input 
+            :model-value="guideForm.hourly_rate ?? ''"
+            @update:model-value="guideForm.hourly_rate = $event === '' ? undefined : ($event ? Number($event) : undefined)"
+            label="Hourly Rate (CNY)" 
+            type="number" 
+            step="0.01"
+          />
+          <Input 
+            :model-value="guideForm.daily_rate ?? ''"
+            @update:model-value="guideForm.daily_rate = $event === '' ? undefined : ($event ? Number($event) : undefined)"
+            label="Daily Rate (CNY)" 
+            type="number" 
+            step="0.01"
+          />
         </div>
         <MultiImagePicker
           v-model="guideForm.image_ids"
@@ -1058,6 +1070,7 @@ const esim = ref<any[]>([]);
 const foodCategories = ref<any[]>([]);
 const foodItems = ref<any[]>([]);
 const mediaAssets = ref<any[]>([]);
+const users = ref<any[]>([]);
 
 const citySearch = ref('');
 const hotelSearch = ref('');
@@ -1447,8 +1460,8 @@ const guideForm = ref({
   bio: '',
   languages: [] as string[],
   languagesText: '',
-  hourly_rate: null as number | null,
-  daily_rate: null as number | null,
+  hourly_rate: undefined as number | undefined,
+  daily_rate: undefined as number | undefined,
   verified: false,
   image_ids: [] as string[],
 });
@@ -2308,8 +2321,8 @@ function resetGuideForm() {
     bio: '',
     languages: [],
     languagesText: '',
-    hourly_rate: null,
-    daily_rate: null,
+    hourly_rate: undefined,
+    daily_rate: undefined,
     verified: false,
     image_ids: [],
   };
@@ -2322,14 +2335,14 @@ function openGuideModal(item?: any) {
     ensureImagesInAvailableAssets(item);
     
     guideForm.value = {
-      user_id: item.user_id,
+      user_id: item.user_id || '',
       city_id: item.city_id,
       display_name: item.display_name,
       bio: item.bio || '',
       languages: Array.isArray(item.languages) ? item.languages : [],
       languagesText: Array.isArray(item.languages) ? item.languages.join(', ') : '',
-      hourly_rate: item.hourly_rate,
-      daily_rate: item.daily_rate,
+      hourly_rate: item.hourly_rate ?? undefined,
+      daily_rate: item.daily_rate ?? undefined,
       verified: item.verified ?? false,
       image_ids: extractImageIds(item),
     };
@@ -2342,27 +2355,49 @@ function openGuideModal(item?: any) {
 async function saveGuide() {
   saving.value = true;
   try {
+    // Validate required fields (user_id is now optional)
+    if (!guideForm.value.city_id) {
+      toast.error('City is required');
+      return;
+    }
+    if (!guideForm.value.display_name) {
+      toast.error('Display Name is required');
+      return;
+    }
+
     const data = {
-      ...guideForm.value,
+      user_id: guideForm.value.user_id || null, // Optional - can be null for unclaimed profiles
+      city_id: guideForm.value.city_id,
+      display_name: guideForm.value.display_name,
+      bio: guideForm.value.bio || null,
       languages: guideForm.value.languagesText
         ? guideForm.value.languagesText.split(',').map((s: string) => s.trim()).filter(Boolean)
         : [],
+      hourly_rate: guideForm.value.hourly_rate !== undefined && guideForm.value.hourly_rate !== null ? guideForm.value.hourly_rate : null,
+      daily_rate: guideForm.value.daily_rate !== undefined && guideForm.value.daily_rate !== null ? guideForm.value.daily_rate : null,
+      verified: guideForm.value.verified || false,
       cover_asset_id: guideForm.value.image_ids.length > 0 ? guideForm.value.image_ids[0] : null,
     };
-    delete data.languagesText;
-    delete data.image_ids;
+    
+    console.log('[CatalogPage] Saving guide:', { editing: !!editingGuide.value, data });
     
     if (editingGuide.value) {
-      await axios.put(`/api/admin/catalog/guides/${editingGuide.value.user_id}`, data);
+      await axios.put(`/api/admin/catalog/guides/${editingGuide.value.id}`, data);
       toast.success('Guide updated');
     } else {
-      await axios.post('/api/guide/profile', data);
+      // Use admin endpoint to create guide with specified user_id
+      const response = await axios.post('/api/admin/catalog/guides', data);
+      console.log('[CatalogPage] Guide created:', response.data);
       toast.success('Guide created');
     }
     showGuideModal.value = false;
+    resetGuideForm();
+    editingGuide.value = null;
     await loadData();
   } catch (error: any) {
-    toast.error(error.response?.data?.error || 'Failed to save guide');
+    console.error('[CatalogPage] Failed to save guide:', error);
+    const errorMessage = error.response?.data?.error || error.message || 'Failed to save guide';
+    toast.error(errorMessage);
   } finally {
     saving.value = false;
   }
@@ -2700,7 +2735,7 @@ async function loadMediaAssets() {
 
 async function loadData() {
   try {
-    const [citiesRes, hotelsRes, restaurantsRes, medicalRes, toursRes, transportRes, cityplacesRes, guidesRes] = await Promise.all([
+    const [citiesRes, hotelsRes, restaurantsRes, medicalRes, toursRes, transportRes, cityplacesRes, guidesRes, usersRes] = await Promise.all([
       axios.get('/api/admin/catalog/cities'),
       axios.get('/api/admin/catalog/hotels'),
       axios.get('/api/admin/catalog/restaurants'),
@@ -2709,6 +2744,7 @@ async function loadData() {
       axios.get('/api/admin/catalog/transport'),
       axios.get('/api/admin/catalog/cityplaces'),
       axios.get('/api/admin/catalog/guides'),
+      axios.get('/api/admin/users').catch(() => ({ data: [] })), // Load users, but don't fail if endpoint doesn't exist
     ]);
     cities.value = citiesRes.data;
     hotels.value = hotelsRes.data?.data || hotelsRes.data || [];
@@ -2718,17 +2754,19 @@ async function loadData() {
     transport.value = transportRes.data?.data || transportRes.data || [];
     cityplaces.value = cityplacesRes.data?.data || cityplacesRes.data || [];
     guides.value = guidesRes.data?.data || guidesRes.data || [];
+    users.value = usersRes.data || [];
   } catch (error) {
     console.error('Failed to load catalog data', error);
     toast.error('Failed to load catalog data');
   }
 }
 
-const userOptions = computed(() => {
-  // For now, return empty array. In a real app, you'd fetch users from an API
-  // This would require a new endpoint: GET /api/admin/users
-  return [];
-});
+const userOptions = computed(() => 
+  users.value.map(u => ({ 
+    value: u.id, 
+    label: u.email || u.phone || `User ${u.id}` 
+  }))
+);
 
 // Watch activeTab to load data when switching tabs
 watch(activeTab, (newTab) => {

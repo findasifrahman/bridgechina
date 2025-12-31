@@ -51,7 +51,7 @@ import Badge from './Badge.vue';
 
 const services = [
   { key: 'hotel', name: 'Hotels', path: '/services/hotel', icon: Hotel },
-  { key: 'transport', name: 'Airport Pickup', path: '/services/transport', icon: Car },
+  { key: 'transport', name: 'Transport Service', path: '/services/transport', icon: Car },
   { key: 'restaurants', name: 'Restaurants', path: '/services/restaurants', icon: UtensilsCrossed },
   { key: 'halal-food', name: 'Halal Food', path: '/services/halal-food', icon: UtensilsCrossed },
   { key: 'medical', name: 'Medical Help', path: '/services/medical', icon: HeartPulse },

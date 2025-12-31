@@ -120,7 +120,7 @@
     </header>
 
     <!-- Mobile Offers Carousel -->
-    <OffersCarousel v-if="offers.length > 0" :offers="offers" />
+    <OffersCarousel v-if="offers.length > 0" :offers="offers" @click="handleOfferClick" />
 
     <!-- Main Layout: Sidebar + Content + Right Rail -->
     <div class="w-full">
@@ -137,7 +137,7 @@
 
         <!-- Right Offers Rail (Desktop only, xl+) -->
         <aside class="hidden xl:block w-[320px] flex-shrink-0 sticky top-20 h-[calc(100vh-5rem)] overflow-hidden">
-          <RightRailOffers :offers="offers" :loading="loadingOffers" />
+          <RightRailOffers :offers="offers" :loading="loadingOffers" @click="handleOfferClick" />
         </aside>
       </div>
     </div>
@@ -259,6 +259,10 @@ watch(() => route.path, () => {
 onMounted(() => {
   emit('loadOffers');
 });
+
+function handleOfferClick(offer: any) {
+  emit('offerClick', offer);
+}
 
 // Expose method to set offers (called by parent)
 defineExpose({
