@@ -308,6 +308,64 @@ class TMAPIClient {
   }
 
   /**
+   * Search factories by keyword
+   * Based on TMAPI docs: GET /1688/search/factories
+   * https://tmapi.top/docs/ali/search/search-factories-by-keywords
+   */
+  async searchFactoriesByKeyword(
+    keyword: string,
+    opts?: {
+      page?: number;
+      pageSize?: number;
+      sort?: string;
+    }
+  ): Promise<any> {
+    try {
+      const params: any = {
+        apiToken: this.apiToken,
+        keywords: keyword, // Note: API uses "keywords" (plural) not "keyword"
+      };
+
+      if (opts?.page) params.page = opts.page;
+      if (opts?.pageSize) params.page_size = opts.pageSize;
+      if (opts?.sort) params.sort = opts.sort || 'default';
+
+      console.log('[TMAPI Client] searchFactoriesByKeyword request:', {
+        baseURL: this.client.defaults.baseURL,
+        endpoint: '/1688/search/factories',
+        method: 'GET',
+        params: { ...params, apiToken: params.apiToken ? '[REDACTED]' : 'MISSING' },
+        hasToken: !!this.apiToken,
+      });
+
+      const response = await this.client.get('/1688/search/factories', { params });
+      
+      console.log('[TMAPI Client] searchFactoriesByKeyword response:', {
+        status: response.status,
+        statusText: response.statusText,
+        dataCode: response.data?.code,
+        dataMsg: response.data?.msg,
+        itemsCount: response.data?.data?.items?.length || 0,
+        totalCount: response.data?.data?.total_count,
+        responseKeys: Object.keys(response.data || {}),
+        dataKeys: response.data?.data ? Object.keys(response.data.data) : [],
+        fullResponse: JSON.stringify(response.data).substring(0, 2000),
+        errorMsg: response.data?.msg !== 'success' ? response.data?.msg : null,
+      });
+
+      return response.data;
+    } catch (error: any) {
+      console.error('[TMAPI Client] searchFactoriesByKeyword error:', {
+        message: error.message,
+        code: error.code,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      throw new Error(`Failed to search factories: ${error.message}`);
+    }
+  }
+
+  /**
    * Get item detail by ID
    * Based on TMAPI docs: GET /1688/item_detail
    * https://tmapi.top/docs/ali/item-detail/get-item-detail-by-id

@@ -7,12 +7,14 @@ import OpenAI from 'openai';
 import axios from 'axios';
 import { PrismaClient } from '@prisma/client';
 import { searchByKeyword } from '../shopping/shopping.service.js';
+import tmapiClient from '../shopping/tmapi.client.js';
 
 const prisma = new PrismaClient();
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_ROUTER_MODEL = process.env.OPENAI_ROUTER_MODEL || 'gpt-4o-mini';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+const OPENAI_DISTILL_MODEL = process.env.OPENAI_DISTILL_MODEL || 'gpt-4o-mini';
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
 
 if (!OPENAI_API_KEY) {
@@ -93,7 +95,8 @@ export interface ChatMessage {
 }
 
 export interface IntentResult {
-  intent: 'HOTEL' | 'TRANSPORT' | 'TOUR' | 'MEDICAL' | 'HALAL_FOOD' | 'SHOPPING' | 'ESIM' | 'CITY_INFO' | 'MARKET_INFO' | 'GENERAL_CHINA' | 'OUT_OF_SCOPE';
+  intent: 'HOTEL' | 'TRANSPORT' | 'TOUR' | 'MEDICAL' | 'HALAL_FOOD' | 'SHOPPING' | 'ESIM' | 'CITY_INFO' | 'MARKET_INFO' | 'GENERAL_CHINA' | 'OUT_OF_SCOPE' | 'GREETING';
+  subIntent?: 'RETAIL' | 'FACTORY' | 'UNKNOWN'; // Only for SHOPPING intent
   city: string | null;
   confidence: number;
 }
@@ -108,6 +111,14 @@ export interface ChatResponse {
   message: string;
   images?: string[];
   shouldReset?: boolean;
+  items?: Array<{
+    title: string;
+    imageUrl?: string;
+    price?: string;
+    supplier?: string;
+    location?: string;
+    bullets?: string[];
+  }>;
 }
 
 /**
@@ -146,19 +157,89 @@ function clearHistory(sessionId: string) {
 }
 
 /**
+ * Check if message is a greeting or small talk
+ */
+function isGreeting(userMessage: string): boolean {
+  const lower = userMessage.toLowerCase().trim();
+  const greetingPatterns = [
+    /^(hi|hello|hey|greetings|good morning|good afternoon|good evening)/i,
+    /^(how are you|how's it going|what's up|how do you do)/i,
+    /^(thanks|thank you|thx|ty)$/i,
+    /^(bye|goodbye|see you|farewell)/i,
+    /^(yes|no|ok|okay|sure|alright)$/i,
+  ];
+  
+  // Check if message is very short and matches greeting patterns
+  if (lower.length < 20) {
+    return greetingPatterns.some(pattern => pattern.test(lower));
+  }
+  
+  // Check for greeting phrases in longer messages
+  const greetingWords = ['hi', 'hello', 'hey', 'greetings', 'thanks', 'thank you', 'bye', 'goodbye'];
+  const words = lower.split(/\s+/);
+  const greetingWordCount = words.filter(w => greetingWords.includes(w)).length;
+  
+  // If more than 30% of words are greetings, consider it a greeting
+  return greetingWordCount > 0 && (greetingWordCount / words.length) > 0.3;
+}
+
+/**
+ * Detect shopping sub-intent (RETAIL vs FACTORY)
+ */
+function detectShoppingSubIntent(userMessage: string): 'RETAIL' | 'FACTORY' | 'UNKNOWN' {
+  const lower = userMessage.toLowerCase();
+  
+  // RETAIL keywords
+  const retailKeywords = [
+    'buy', 'price', 'cheapest', 'low cost', 'retail', 'order', 'product', 'sell',
+    'purchase', 'shopping', 'item', 'goods', 'merchandise'
+  ];
+  
+  // FACTORY keywords
+  const factoryKeywords = [
+    'factory', 'manufacturer', 'supplier', 'sourcing', 'wholesale supplier',
+    'production', 'oem', 'odm', 'manufacturing', 'factory direct',
+    'bulk supplier', 'trading company', 'sourcing agent'
+  ];
+  
+  const retailMatches = retailKeywords.filter(kw => lower.includes(kw)).length;
+  const factoryMatches = factoryKeywords.filter(kw => lower.includes(kw)).length;
+  
+  if (factoryMatches > retailMatches && factoryMatches > 0) {
+    return 'FACTORY';
+  }
+  
+  if (retailMatches > 0) {
+    return 'RETAIL';
+  }
+  
+  return 'UNKNOWN';
+}
+
+/**
  * STEP 1: Intent Detection
  */
 export async function detectIntent(userMessage: string): Promise<IntentResult> {
+  // Check for greeting first - short-circuit
+  if (isGreeting(userMessage)) {
+    return {
+      intent: 'GREETING',
+      city: null,
+      confidence: 0.95,
+    };
+  }
+  
   try {
     const prompt = `You are an intent classifier for BridgeChina, a service platform in China.
 
 Classify the user's message into ONE of these intents:
+- GREETING: greetings, small talk, "hi", "hello", "thanks", "bye"
 - HOTEL: hotel booking, accommodation, stay, room
 - TRANSPORT: transport, pickup, airport, taxi, car, driver
 - TOUR: tour, experience, sightseeing, visit places
 - MEDICAL: medical, doctor, hospital, health, emergency
 - HALAL_FOOD: halal food, restaurant, meal, delivery, dining
-- SHOPPING: product price, buying, supplier, item purchase, product search
+- SHOPPING: product price, buying, supplier, item purchase, product search, factory, manufacturer
 - ESIM: esim, sim card, data plan, mobile internet
 - CITY_INFO: city information, places to visit, attractions (NOT shopping)
 - MARKET_INFO: wholesale market, sourcing zone, Yiwu, Guangzhou markets (NOT buying products)
@@ -214,6 +295,11 @@ User message: "${userMessage}"`;
         result.city = normalized;
       }
     }
+    
+    // Detect shopping sub-intent if intent is SHOPPING
+    if (result.intent === 'SHOPPING') {
+      result.subIntent = detectShoppingSubIntent(userMessage);
+    }
 
     return result;
   } catch (error) {
@@ -233,7 +319,7 @@ User message: "${userMessage}"`;
       intent = 'MEDICAL';
     } else if (lower.includes('halal') || lower.includes('food') || lower.includes('restaurant')) {
       intent = 'HALAL_FOOD';
-    } else if (lower.includes('buy') || lower.includes('price') || lower.includes('product') || lower.includes('supplier')) {
+    } else if (lower.includes('buy') || lower.includes('price') || lower.includes('product') || lower.includes('supplier') || lower.includes('factory') || lower.includes('manufacturer')) {
       intent = 'SHOPPING';
     } else if (lower.includes('esim') || lower.includes('sim') || lower.includes('data')) {
       intent = 'ESIM';
@@ -255,7 +341,18 @@ User message: "${userMessage}"`;
       }
     }
 
-    return { intent, city, confidence: 0.5 };
+    const result: IntentResult = {
+      intent,
+      city,
+      confidence: 0.5,
+    };
+    
+    // Detect shopping sub-intent if intent is SHOPPING
+    if (intent === 'SHOPPING') {
+      result.subIntent = detectShoppingSubIntent(userMessage);
+    }
+    
+    return result;
   }
 }
 
@@ -523,6 +620,41 @@ async function getServiceData(
 }
 
 /**
+ * Enforce English output - translate if Chinese detected
+ */
+async function enforceEnglish(text: string): Promise<string> {
+  // Check if text contains Chinese characters
+  const hasChinese = /[\u4e00-\u9fff]/.test(text);
+  
+  if (!hasChinese) {
+    return text; // Already in English
+  }
+  
+  try {
+    const response = await openai.chat.completions.create({
+      model: OPENAI_DISTILL_MODEL,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a translator. Translate to fluent English only. Preserve names, numbers, prices, URLs exactly as they are.',
+        },
+        {
+          role: 'user',
+          content: `Translate this to English, preserving all names, numbers, prices, and URLs:\n\n${text}`,
+        },
+      ],
+      temperature: 0.3,
+      max_tokens: 500,
+    });
+    
+    return response.choices[0]?.message?.content || text;
+  } catch (error) {
+    console.error('[Chat Agent] English enforcement error:', error);
+    return text; // Return original if translation fails
+  }
+}
+
+/**
  * Generate fallback response when OpenAI is unavailable
  */
 function generateFallbackResponse(
@@ -714,6 +846,14 @@ export async function processChatMessage(
   const intent = await detectIntent(userMessage);
   console.log('[Chat Agent] Intent detected:', intent);
 
+  // Handle GREETING - short-circuit, no API calls
+  if (intent.intent === 'GREETING') {
+    const greetingResponse = 'Hi! 👋 I\'m your BridgeChina assistant. How can I help you today? I can assist with hotels, transport, halal food, medical help, tours, eSIM plans, shopping, and factory sourcing in China.';
+    addToHistory(sessionId, 'user', userMessage);
+    addToHistory(sessionId, 'assistant', greetingResponse);
+    return { message: greetingResponse };
+  }
+
   // STEP 2: Service Availability Guard
   const availabilityMessage = checkServiceAvailability(intent, userMessage);
   if (availabilityMessage) {
@@ -729,58 +869,185 @@ export async function processChatMessage(
 
   switch (intent.intent) {
     case 'SHOPPING': {
-      // Extract shopping parameters
-      const params = await extractShoppingParams(userMessage);
-      console.log('[Chat Agent] Shopping params:', params);
+      const subIntent = intent.subIntent || 'UNKNOWN';
+      console.log('[Chat Agent] Shopping subIntent:', subIntent);
 
-      // Call existing TMAPI search endpoint
-      try {
-        const searchResults = await searchByKeyword(params.keyword, {
-          page: 1,
-          pageSize: 20,
-        });
-
-        // Sort based on priority
-        let sortedItems = [...searchResults.items];
-        if (params.priority === 'lowest_price') {
-          sortedItems.sort((a, b) => (a.priceMin || 0) - (b.priceMin || 0));
-        } else if (params.priority === 'rating') {
-          // Note: ProductCard doesn't have rating, so we'll use popularity as fallback
-          sortedItems.sort((a, b) => (b.priceMin || 0) - (a.priceMin || 0)); // Fallback to price
-        } else if (params.priority === 'popularity') {
-          // Note: ProductCard doesn't have salesCount, so we'll keep original order
-          // In a real implementation, you'd need to fetch details or use raw data
-          sortedItems = sortedItems; // Keep original order
-        }
-
-        // Get top 2
-        const topItems = sortedItems.slice(0, 2);
-        
-        // Map to format with price field for AI context
-        const mappedResults = topItems.map(item => ({
-          title: item.title,
-          price: item.priceMin || item.priceMax,
-          currency: item.currency || 'CNY',
-          image: item.imageUrl || item.images?.[0],
-          supplier: item.sellerName,
-        }));
-        
-        context.shoppingResults = mappedResults;
-
-        // Collect images
-        images = topItems
-          .map(item => item.imageUrl || item.images?.[0])
-          .filter(Boolean) as string[];
-
-        // Generate response with shopping results (use mapped version with price field)
-        response = await generateResponse(userMessage, intent, context, history);
-        
-        // Add CTA
-        response += '\n\nWould you like me to help you place an order or check delivery inside China?';
-      } catch (error) {
-        console.error('[Chat Agent] Shopping search error:', error);
-        response = 'I apologize, I encountered an error searching for products. Please try again or contact us via WhatsApp for assistance.';
+      // Handle UNKNOWN sub-intent - ask for clarification
+      if (subIntent === 'UNKNOWN') {
+        const clarificationMessage = 'Are you looking to buy products (retail) or find factories/suppliers for sourcing?';
+        addToHistory(sessionId, 'user', userMessage);
+        addToHistory(sessionId, 'assistant', clarificationMessage);
+        return { message: clarificationMessage };
       }
+
+      // Handle RETAIL flow
+      if (subIntent === 'RETAIL') {
+        try {
+          // Extract shopping parameters
+          const params = await extractShoppingParams(userMessage);
+          console.log('[Chat Agent] Shopping params:', params);
+
+          // Call existing TMAPI keyword search
+          const searchResults = await searchByKeyword(params.keyword, {
+            page: 1,
+            pageSize: 20,
+          });
+
+          // Sort based on priority
+          let sortedItems = [...searchResults.items];
+          if (params.priority === 'lowest_price') {
+            sortedItems.sort((a, b) => (a.priceMin || 0) - (b.priceMin || 0));
+          } else if (params.priority === 'rating') {
+            sortedItems.sort((a, b) => (b.priceMin || 0) - (a.priceMin || 0)); // Fallback to price
+          }
+
+          // Get top 3 items
+          const topItems = sortedItems.slice(0, 3);
+          
+          // Translate titles to English and format items with inline images
+          const items: ChatResponse['items'] = [];
+          for (const item of topItems) {
+            // Translate title to English if needed
+            let englishTitle = item.title;
+            if (/[\u4e00-\u9fff]/.test(item.title)) {
+              try {
+                const translateResponse = await openai.chat.completions.create({
+                  model: OPENAI_DISTILL_MODEL,
+                  messages: [
+                    { role: 'system', content: 'Translate product titles to English. Return only the translation, no explanations.' },
+                    { role: 'user', content: `Translate: ${item.title}` },
+                  ],
+                  temperature: 0.3,
+                  max_tokens: 100,
+                });
+                englishTitle = translateResponse.choices[0]?.message?.content?.trim() || item.title;
+              } catch (error) {
+                console.error('[Chat Agent] Title translation error:', error);
+                // Keep original if translation fails
+              }
+            }
+
+            // Get quantity from raw data if available
+            const quantity = (item as any).raw?.quantity_begin || (item as any).availableQuantity;
+
+            items.push({
+              title: englishTitle,
+              imageUrl: item.imageUrl || item.images?.[0],
+              price: item.priceMin || item.priceMax ? `¥${item.priceMin || item.priceMax}` : undefined,
+              supplier: item.sellerName,
+              bullets: [
+                `Price: ¥${item.priceMin || item.priceMax || 'N/A'}`,
+                `Supplier: ${item.sellerName || 'N/A'}`,
+                quantity ? `Available quantity: ${quantity}` : undefined,
+              ].filter(Boolean) as string[],
+            });
+          }
+
+          // Build response with inline images
+          const itemLines = items.map((item, idx) => {
+            const imageMarkdown = item.imageUrl ? `\n![${item.title}](${item.imageUrl})` : '';
+            return `${idx + 1}. **${item.title}**${imageMarkdown}\n   - Price: ${item.price || 'Price on request'}\n   - Supplier: ${item.supplier || 'N/A'}`;
+          });
+
+          response = itemLines.join('\n\n');
+          response += '\n\nWould you like me to help you place an order or check delivery inside China?';
+          
+          // Store items in context for return
+          context.items = items;
+        } catch (error) {
+          console.error('[Chat Agent] Retail search error:', error);
+          response = 'I apologize, I encountered an error searching for products. Please try again or contact us via WhatsApp for assistance.';
+        }
+      }
+
+      // Handle FACTORY flow
+      if (subIntent === 'FACTORY') {
+        try {
+          // Extract keyword from user message
+          const lowerMessage = userMessage.toLowerCase();
+          const stopWords = ['i', 'want', 'to', 'find', 'need', 'looking', 'for', 'a', 'an', 'the', 'factory', 'manufacturer', 'supplier'];
+          const words = userMessage.split(/\s+/).filter(w => !stopWords.includes(w.toLowerCase()) && w.length > 2);
+          const keyword = words.slice(0, 5).join(' ') || userMessage.substring(0, 50);
+
+          // Call TMAPI factory search
+          const factoryResults = await tmapiClient.searchFactoriesByKeyword(keyword.trim(), {
+            page: 1,
+            pageSize: 3,
+          });
+
+          if (!factoryResults?.data?.items || factoryResults.data.items.length === 0) {
+            response = 'I couldn\'t find any factories matching your search. Please try different keywords or contact us via WhatsApp for personalized sourcing assistance.';
+          } else {
+            const factories = factoryResults.data.items.slice(0, 3);
+            const items: ChatResponse['items'] = [];
+
+            for (const factory of factories) {
+              // Enrich with Tavily search
+              let tavilyInfo = '';
+              try {
+                const tavilyResult = await searchTavily(`"${factory.company_name}" factory china`, 2);
+                tavilyInfo = tavilyResult || '';
+              } catch (error) {
+                console.error('[Chat Agent] Tavily enrichment error:', error);
+              }
+
+              // Extract info from Tavily
+              let officialWebsite = '';
+              let companyDescription = '';
+              let companyType = 'Factory'; // Default
+              
+              if (tavilyInfo) {
+                // Try to extract website
+                const websiteMatch = tavilyInfo.match(/https?:\/\/[^\s]+/);
+                if (websiteMatch) {
+                  officialWebsite = websiteMatch[0];
+                }
+                // Extract description snippet
+                companyDescription = tavilyInfo.substring(0, 200);
+                // Classify type
+                if (tavilyInfo.toLowerCase().includes('reseller') || tavilyInfo.toLowerCase().includes('trader')) {
+                  companyType = 'Reseller';
+                }
+              }
+
+              const bullets: string[] = [
+                `Type: ${companyType}`,
+                `Location: ${factory.location?.city || 'N/A'}`,
+                factory.factory_level ? `Level: ${factory.factory_level}` : undefined,
+                factory.factory_area_size ? `Size: ${factory.factory_area_size} sqm` : undefined,
+                factory.shop_repurchase_rate ? `Repurchase Rate: ${(parseFloat(factory.shop_repurchase_rate) * 100).toFixed(0)}%` : undefined,
+                factory.response_rate ? `Response Rate: ${(parseFloat(factory.response_rate) * 100).toFixed(0)}%` : undefined,
+                factory.tp_member ? `Trade Assurance: ${factory.tp_year} years` : undefined,
+                factory.super_factory ? 'Super Factory Verified' : undefined,
+                officialWebsite ? `Website: ${officialWebsite}` : undefined,
+                companyDescription ? `Info: ${companyDescription.substring(0, 100)}...` : undefined,
+              ].filter(Boolean) as string[];
+
+              items.push({
+                title: factory.company_name || factory.login_id || 'Unknown Company',
+                location: factory.location?.city || undefined,
+                bullets,
+              });
+            }
+
+            // Build response
+            const factoryLines = items.map((item, idx) => {
+              return `${idx + 1}. **${item.title}**\n${item.bullets?.map(b => `   - ${b}`).join('\n') || ''}`;
+            });
+
+            response = factoryLines.join('\n\n');
+            response += '\n\n**Note:** We can help verify these suppliers and facilitate contact after verification.';
+            response += '\n\nWould you like us to verify this supplier and help you contact them?';
+            
+            // Store items in context for return
+            context.items = items;
+          }
+        } catch (error) {
+          console.error('[Chat Agent] Factory search error:', error);
+          response = 'I apologize, I encountered an error searching for factories. Please try again or contact us via WhatsApp for sourcing assistance.';
+        }
+      }
+
       break;
     }
 
@@ -806,10 +1073,7 @@ export async function processChatMessage(
     }
 
     case 'CITY_INFO': {
-      // Use Tavily for city information
-      const cityQuery = intent.city ? `${intent.city} China attractions places to visit` : userMessage;
-      const tavilyInfo = await searchTavily(cityQuery);
-      context.tavilyInfo = tavilyInfo;
+      // Do not use Tavily for CITY_INFO - use database or general knowledge only
       response = await generateResponse(userMessage, intent, context, history);
       break;
     }
@@ -837,32 +1101,47 @@ export async function processChatMessage(
         .map((item: any) => item.coverAsset?.public_url || item.coverAsset?.thumbnail_url)
         .filter(Boolean);
 
-      // Use Tavily for additional info if needed
-      const tavilyQuery = `${intent.intent.toLowerCase()} ${intent.city || 'China'}`;
-      const tavilyInfo = await searchTavily(tavilyQuery, 2);
-      if (tavilyInfo) {
-        context.tavilyInfo = tavilyInfo;
-      }
-
+      // Do not use Tavily for service intents (HOTEL, TRANSPORT, etc.) - use database data only
       response = await generateResponse(userMessage, intent, context, history);
       break;
     }
   }
 
-  // Clean up response - remove any image URLs that might have been included
-  const cleanedResponse = response
+  // Clean up response - but preserve markdown images for RETAIL/FACTORY flows
+  // Only remove standalone image URLs, not markdown images like ![alt](url)
+  let cleanedResponse = response
     .replace(/\[View image\]\([^)]+\)/gi, '') // Remove [View image](url) markdown
-    .replace(/https?:\/\/[^\s]+\.(jpg|jpeg|png|gif|webp)/gi, '') // Remove image URLs
+    // Remove standalone image URLs (not in markdown format ![alt](url))
+    // Simple approach: only remove URLs that are not part of markdown image syntax
+    .replace(/(?<!\!\[[^\]]*\]\()https?:\/\/[^\s\)]+\.(jpg|jpeg|png|gif|webp)(?!\))/gi, '')
     .replace(/\n{3,}/g, '\n\n') // Remove excessive newlines
     .trim();
+  
+  // If the regex fails (older Node.js), use a simpler approach
+  // Just remove URLs that are clearly standalone (not in parentheses after ![])
+  if (cleanedResponse === response) {
+    // Fallback: remove URLs that don't appear to be in markdown image format
+    cleanedResponse = response
+      .replace(/\[View image\]\([^)]+\)/gi, '')
+      .replace(/(?<![!\[][^\]]*\]\()https?:\/\/[^\s\)]+\.(jpg|jpeg|png|gif|webp)(?!\))/gi, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  // Enforce English output
+  const englishResponse = await enforceEnglish(cleanedResponse);
 
   // Add to conversation history
   addToHistory(sessionId, 'user', userMessage);
-  addToHistory(sessionId, 'assistant', cleanedResponse);
+  addToHistory(sessionId, 'assistant', englishResponse);
+
+  // Extract items from context if available (for RETAIL/FACTORY)
+  const items = context.items || undefined;
 
   return {
-    message: cleanedResponse,
-    images: images.length > 0 ? images.slice(0, 2) : undefined, // Limit to 2 images
+    message: englishResponse,
+    images: images.length > 0 ? images.slice(0, 2) : undefined, // Limit to 2 images (fallback)
+    items: items, // Inline items with images
   };
 }
 
