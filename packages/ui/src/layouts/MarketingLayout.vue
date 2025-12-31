@@ -209,15 +209,8 @@
       </template>
     </Drawer>
 
-    <!-- WhatsApp Floating Button -->
-    <a
-      href="https://wa.me/1234567890"
-      target="_blank"
-      class="fixed bottom-6 right-6 z-40 bg-green-500 hover:bg-green-600 text-white rounded-full p-4 shadow-lg transition-all hover:scale-110"
-      aria-label="Chat on WhatsApp"
-    >
-      <MessageCircle class="h-6 w-6" />
-    </a>
+    <!-- AI Chat Widget -->
+    <FloatingChatWidget />
   </div>
 </template>
 
@@ -230,6 +223,7 @@ import SidebarNav from '../components/SidebarNav.vue';
 import Drawer from '../components/Drawer.vue';
 import RightRailOffers from '../components/RightRailOffers.vue';
 import OffersCarousel from '../components/OffersCarousel.vue';
+import FloatingChatWidget from '../components/FloatingChatWidget.vue';
 
 const props = defineProps<{
   isAuthenticated?: boolean;

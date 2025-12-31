@@ -1702,52 +1702,40 @@ export default async function publicRoutes(fastify: FastifyInstance) {
   });
 
   // AI Search (mocked)
-  fastify.post('/ai-search', async (request: FastifyRequest) => {
-    const { query } = request.body as { query?: string };
-    
-    if (!query) {
-      return { response: 'How can I help you today?' };
-    }
+  // AI Chat Agent endpoint
+  fastify.post('/ai-search', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { query, sessionId } = request.body as { query?: string; sessionId?: string };
+      
+      if (!query || !query.trim()) {
+        return { 
+          response: 'Hi! 👋 I\'m your BridgeChina assistant. How can I help you today?',
+          images: [],
+        };
+      }
 
-    const q = query.toLowerCase();
-    let response = 'I can help you with: ';
-    const suggestions: string[] = [];
+      // Generate session ID if not provided
+      const chatSessionId = sessionId || `session_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
-    if (q.includes('hotel') || q.includes('stay') || q.includes('accommodation')) {
-      suggestions.push('hotel booking');
-      response += 'hotel booking, ';
-    }
-    if (q.includes('transport') || q.includes('pickup') || q.includes('airport')) {
-      suggestions.push('airport pickup');
-      response += 'airport pickup, ';
-    }
-    if (q.includes('food') || q.includes('halal') || q.includes('restaurant')) {
-      suggestions.push('halal food delivery');
-      response += 'halal food delivery, ';
-    }
-    if (q.includes('medical') || q.includes('doctor') || q.includes('hospital')) {
-      suggestions.push('medical assistance');
-      response += 'medical assistance, ';
-    }
-    if (q.includes('esim') || q.includes('sim') || q.includes('data')) {
-      suggestions.push('eSIM plans');
-      response += 'eSIM plans, ';
-    }
+      // Import chat agent
+      const { processChatMessage } = await import('../modules/chat/chat.agent.js');
+      
+      // Process message
+      const result = await processChatMessage(query.trim(), chatSessionId);
 
-    if (suggestions.length === 0) {
-      response = 'I can help you with hotels, transport, halal food, medical assistance, eSIM plans, and tours. What do you need?';
-    } else {
-      response = response.slice(0, -2) + '. Would you like to know more about any of these?';
+      return {
+        response: result.message,
+        images: result.images || [],
+        sessionId: chatSessionId,
+        shouldReset: result.shouldReset || false,
+      };
+    } catch (error: any) {
+      fastify.log.error({ error, stack: error.stack }, '[Chat Agent] Error processing message');
+      reply.status(500).send({
+        error: 'Failed to process chat message',
+        response: 'I apologize, I encountered an error. Please try again or contact us via WhatsApp.',
+      });
     }
-
-    return {
-      response,
-      suggestions,
-      nextActions: suggestions.map((s) => ({
-        text: `Learn more about ${s}`,
-        action: `/services/${s.replace(' ', '-')}`,
-      })),
-    };
   });
 
   // Gallery
