@@ -1,9 +1,6 @@
 <template>
   <div v-if="offers.length > 0" class="lg:hidden mb-6">
-    <div class="flex items-center justify-between mb-3 px-4">
-      <h3 class="text-lg font-semibold text-teal-600">Special Offers</h3>
-      <span class="text-xs text-slate-500">{{ offers.length }} offers</span>
-    </div>
+
     <div class="overflow-x-auto no-scrollbar snap-x snap-mandatory px-4 pb-2">
       <div class="flex gap-4">
         <div

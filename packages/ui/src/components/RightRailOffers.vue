@@ -1,9 +1,7 @@
 <template>
   <div class="h-full flex flex-col">
     <!-- Sticky Header -->
-    <div class="sticky top-0 bg-white/95 backdrop-blur border-b border-slate-200 pb-4 mb-4 z-10">
-      <h3 class="text-lg font-semibold text-teal-600">Special Offers</h3>
-    </div>
+
     
     <!-- Scrollable Content -->
     <div class="flex-1 overflow-y-auto no-scrollbar">

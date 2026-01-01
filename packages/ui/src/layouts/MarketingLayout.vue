@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-white">
+  <div class="min-h-screen bg-slate-50">
     <!-- Top Header (Sticky) -->
     <header class="sticky top-0 z-50 bg-gradient-to-r from-teal-50/80 to-white backdrop-blur-sm border-b border-teal-100 shadow-sm">
       <div class="w-full">
@@ -126,7 +126,7 @@
     <div class="w-full">
       <div class="lg:flex lg:gap-x-6 lg:px-6 px-4 sm:px-6">
         <!-- Fixed Sidebar (Desktop) -->
-        <aside class="hidden lg:block fixed left-6 top-16 w-[260px] h-[calc(100vh-4rem)] overflow-y-auto no-scrollbar border-r border-slate-200 bg-white z-30">
+        <aside class="hidden lg:block fixed left-6 top-16 w-[260px] h-[calc(100vh-4rem)] overflow-y-auto no-scrollbar border-r border-slate-200 bg-slate-50 z-30">
           <SidebarNav />
         </aside>
 
@@ -233,6 +233,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   signOut: [];
   loadOffers: [];
+  offerClick: [offer: any];
 }>();
 
 const router = useRouter();

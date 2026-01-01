@@ -44,7 +44,7 @@ const linkClasses = computed(() => {
   
   const variants = {
     primary: 'bg-teal-600 text-white hover:bg-teal-700 active:bg-teal-800',
-    secondary: 'bg-white text-teal-600 border-2 border-teal-600 hover:bg-teal-50 active:bg-teal-100',
+    secondary: 'bg-white text-teal-600 border-2 border-teal-600 hover:bg-teal-100 active:bg-teal-200',
     accent: 'bg-amber-500 text-slate-900 hover:bg-amber-600 active:bg-amber-700',
     ghost: 'text-slate-700 hover:bg-slate-100 active:bg-slate-200',
   };

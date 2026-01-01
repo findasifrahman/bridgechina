@@ -7,6 +7,16 @@
     @apply bg-slate-50 text-slate-900;
     font-family: 'Inter', system-ui, sans-serif;
   }
+  
+  /* Ensure headings use dark neutral-900 for better contrast */
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-neutral-900;
+  }
+  
+  /* Muted text should use neutral-600 */
+  .text-muted, .muted {
+    @apply text-neutral-600;
+  }
 }
 
 @layer utilities {

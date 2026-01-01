@@ -1,6 +1,6 @@
 <template>
   <Card class="cursor-pointer group" :hover="true" @click="$emit('click', item)">
-    <div class="relative aspect-video bg-slate-200 rounded-t-2xl overflow-hidden">
+    <div class="relative aspect-square bg-slate-200 rounded-t-2xl overflow-hidden">
       <img
         v-if="thumbnail"
         :src="thumbnail"
@@ -17,7 +17,7 @@
     </div>
     <CardBody class="p-4">
       <h3 class="font-semibold text-slate-900 mb-1 line-clamp-2 text-sm">{{ title }}</h3>
-      <p v-if="subtitle" class="text-xs text-slate-600 mb-2 line-clamp-1">{{ subtitle }}</p>
+
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <div v-if="rating" class="flex items-center gap-1">
