@@ -1692,11 +1692,11 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
         children_age?: string;
       };
 
-      const {
+        const {
         getHotelDetails,
         getDescriptionAndInfo,
         getPaymentFeatures,
-        getHotelReviewScores,
+        // getHotelReviewScores, // Commented out - not using review scores for now
         getHotelReviewsFilterMetadata,
         // getPopularAttractionNearBy, // Commented out - not using attractions
         upsertExternalHotel,
@@ -1811,12 +1811,13 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
           console.warn('[Hotel Details] getPaymentFeatures failed:', error.message);
         }
         
-        try {
-          reviewScoresResp = await getHotelReviewScores(hotelId);
-          console.log('[Hotel Details] getHotelReviewScores completed');
-        } catch (error: any) {
-          console.warn('[Hotel Details] getHotelReviewScores failed:', error.message);
-        }
+        // Commented out - not using review scores for now
+        // try {
+        //   reviewScoresResp = await getHotelReviewScores(hotelId);
+        //   console.log('[Hotel Details] getHotelReviewScores completed');
+        // } catch (error: any) {
+        //   console.warn('[Hotel Details] getHotelReviewScores failed:', error.message);
+        // }
         
         // Commented out - not using attractions
         // try {
@@ -1832,7 +1833,8 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
         const details = detailsResp?.data || cached?.raw_details_json || {};
         const description = descriptionResp?.data || cached?.description || [];
         const payment = paymentResp?.data || cached?.payment_features || [];
-        const reviewScores = reviewScoresResp?.data || cached?.review_scores || [];
+        const reviewScores = null; // Commented out - not using review scores for now
+        // const reviewScores = reviewScoresResp?.data || cached?.review_scores || [];
         const reviewFilters: any = cached?.review_filters || {}; // getHotelReviewsFilterMetadata is commented out
         const attractions = attractionsResp?.data || cached?.attractions || {};
 

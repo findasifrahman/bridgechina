@@ -176,7 +176,7 @@
               </div>
             </div>
             <div v-if="hotel.price_from || hotel.gross_price" class="text-sm font-semibold text-teal-600">
-              From {{ hotel.currency || 'CNY' === 'CNY' ? '¥' : hotel.currency }} {{ hotel.price_from || hotel.gross_price }}
+              From {{ (hotel.currency || 'CNY') === 'CNY' ? '¥' : (hotel.currency || 'CNY') }}{{ Math.round(hotel.price_from || hotel.gross_price || 0) }}
             </div>
           </div>
           <div v-if="hotel.amenities && Array.isArray(hotel.amenities) && hotel.amenities.length > 0" class="flex flex-wrap gap-1 mt-2">

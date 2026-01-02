@@ -200,8 +200,8 @@
             </CardBody>
           </Card>
 
-          <!-- Review Scores Breakdown (External hotels) -->
-          <Card v-if="hotel.review_scores && Array.isArray(hotel.review_scores) && hotel.review_scores.length > 0">
+          <!-- Review Scores Breakdown (External hotels) - Commented out for now -->
+          <!-- <Card v-if="hotel.review_scores && Array.isArray(hotel.review_scores) && hotel.review_scores.length > 0">
             <CardBody class="p-4">
               <h2 class="text-base font-semibold mb-2">Review Scores</h2>
               <div v-for="(scoreGroup, idx) in hotel.review_scores" :key="idx" class="mb-4 last:mb-0">
@@ -222,7 +222,7 @@
                 </div>
               </div>
             </CardBody>
-          </Card>
+          </Card> -->
 
           <!-- Nearby Attractions (External hotels) -->
           <Card v-if="hotel.attractions && Array.isArray(hotel.attractions) && hotel.attractions.length > 0">
