@@ -277,8 +277,9 @@ export default async function publicRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Carousel banners endpoint
-  fastify.get('/banners', async (request: FastifyRequest) => {
+// Carousel banners endpoint
+fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
     const banners = await prisma.homepageBanner.findMany({
       where: {
         is_active: true,
@@ -292,7 +293,12 @@ export default async function publicRoutes(fastify: FastifyInstance) {
     });
 
     return banners;
-  });
+  } catch (error: any) {
+    fastify.log.error({ error, stack: error.stack }, '[Banners] Database error');
+    // Return empty array if database is unavailable
+    return [];
+  }
+});
   // Homepage data endpoint
   fastify.get('/home', async (request: FastifyRequest) => {
     const { city_slug } = request.query as { city_slug?: string };
@@ -757,33 +763,528 @@ export default async function publicRoutes(fastify: FastifyInstance) {
     return hotelsWithGallery;
   });
 
+  // NEW: Combined hotel search (internal + external)
+  fastify.get('/hotels/search', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const {
+        mode = 'city',
+        q = '',
+        checkin,
+        checkout,
+        adults = 1,
+        room_qty = 1,
+        children_age = '',
+        page_number = 1,
+      } = request.query as {
+        mode?: string;
+        q?: string;
+        checkin?: string;
+        checkout?: string;
+        adults?: string;
+        room_qty?: string;
+        children_age?: string;
+        page_number?: string;
+      };
+
+      const {
+        searchHotels,
+        getGuangzhouDestination,
+        isGuangzhouQuery,
+        upsertExternalHotel,
+        searchDestination,
+      } = await import('../modules/hotels/bookingcom.service.js');
+
+      // Always fetch internal hotels (max 20)
+      let internalHotels: any[] = [];
+      try {
+        internalHotels = await prisma.hotel.findMany({
+          where: {
+            verified: true,
+            ...(q ? { name: { contains: q, mode: 'insensitive' } } : {}),
+          },
+          include: {
+            city: true,
+            coverAsset: true,
+          },
+          take: 20,
+          orderBy: { name: 'asc' },
+        });
+      } catch (dbError: any) {
+        console.error('[Hotel Search] Database error (continuing with external only):', dbError.message);
+        // Continue with empty internal hotels if DB is unavailable
+        internalHotels = [];
+      }
+
+      // Load gallery for internal hotels
+      const internalWithGallery = await Promise.all(
+        internalHotels.map(async (hotel) => {
+          try {
+            const galleryIds = (hotel.gallery_asset_ids as string[]) || [];
+            const galleryAssets = galleryIds.length > 0
+              ? await prisma.mediaAsset.findMany({
+                  where: { id: { in: galleryIds } },
+                })
+              : [];
+            return {
+              ...hotel,
+              galleryAssets,
+              source: 'internal',
+            };
+          } catch (error) {
+            // If gallery loading fails, return hotel without gallery
+            return {
+              ...hotel,
+              galleryAssets: [],
+              source: 'internal',
+            };
+          }
+        })
+      );
+
+      let externalHotels: any[] = [];
+      let blockedExternal = false;
+      let blockedReason = '';
+
+      // Handle external search
+      if (mode === 'city') {
+        // Only Guangzhou allowed for city search
+        if (!isGuangzhouQuery(q || 'guangzhou')) {
+          blockedExternal = true;
+          blockedReason = 'Currently hotel search by city is available only for Guangzhou, China.';
+        } else {
+          try {
+            // Validate dates before making API call
+            let datesValid = true;
+            if (checkin && checkout) {
+              const checkinDate = new Date(checkin);
+              const checkoutDate = new Date(checkout);
+              if (isNaN(checkinDate.getTime()) || isNaN(checkoutDate.getTime())) {
+                datesValid = false;
+              } else if (checkoutDate <= checkinDate) {
+                datesValid = false;
+                blockedReason = 'Checkout date must be after checkin date.';
+              }
+            }
+
+            if (datesValid) {
+              const guangzhouDest = await getGuangzhouDestination();
+              const searchParams: any = {
+                dest_id: guangzhouDest.dest_id,
+                search_type: guangzhouDest.search_type,
+                adults: parseInt(String(adults)) || 1,
+                room_qty: parseInt(String(room_qty)) || 1,
+                children_age: String(children_age) || '',
+                page_number: parseInt(String(page_number)) || 1,
+                currency_code: 'CNY',
+                languagecode: 'en-us',
+                checkin: checkin || undefined,
+                checkout: checkout || undefined,
+              };
+
+              const searchResult = await searchHotels(searchParams);
+            
+              // API returns { status: true, message: "Success", data: { hotels: [...] } }
+              if (searchResult?.status === true && searchResult?.data?.hotels && Array.isArray(searchResult.data.hotels)) {
+                // Try to upsert hotels to database (but don't fail if DB is down)
+                try {
+                  for (const hotel of searchResult.data.hotels.slice(0, 20)) {
+                    await upsertExternalHotel(hotel);
+                  }
+                } catch (dbError: any) {
+                  console.warn('[Hotel Search] Failed to cache external hotels (DB unavailable):', dbError.message);
+                }
+
+                // Try to fetch from database, but if DB is down, use raw API results
+                try {
+                  const hotelIds = searchResult.data.hotels
+                    .slice(0, 20)
+                    .map((h: any) => String(h.id || h.hotel_id));
+                  
+                  const externalFromDb = await (prisma as any).externalHotel.findMany({
+                    where: {
+                      provider: 'bookingcom',
+                      hotel_id: { in: hotelIds },
+                    },
+                  });
+
+                  if (externalFromDb.length > 0) {
+                    externalHotels = externalFromDb.map((hotel: any) => ({
+                      id: hotel.hotel_id,
+                      name: hotel.name,
+                      city: hotel.city,
+                      address: hotel.address,
+                      star_rating: hotel.star_rating,
+                      review_score: hotel.review_score,
+                      review_count: hotel.review_count,
+                      price_from: hotel.gross_price,
+                      currency: hotel.currency || 'CNY',
+                      cover_photo_url: hotel.cover_photo_url,
+                      photo_urls: (hotel.photo_urls as any) || [],
+                      source: 'external',
+                      booking_url: hotel.booking_url,
+                    }));
+                  } else {
+                    // No cached results, use raw API results
+                    externalHotels = searchResult.data.hotels.slice(0, 20).map((h: any) => {
+                      // Images are in property.photoUrls (array of URLs) based on API response structure
+                      const property = h.property || {};
+                      const imageUrl = property.photoUrls?.[0] || 
+                                       h.photoUrls?.[0] || 
+                                       property.photos?.[0]?.url_max || 
+                                       property.photos?.[0]?.url_original ||
+                                       h.photos?.[0]?.url_max || 
+                                       h.photos?.[0]?.url_original ||
+                                       h.photoUrl ||
+                                       h.imageUrl ||
+                                       null;
+                      
+                      const photoUrls = property.photoUrls || 
+                                       h.photoUrls || 
+                                       (property.photos ? property.photos.map((p: any) => p.url_max || p.url_original).filter(Boolean) : []) ||
+                                       (h.photos ? h.photos.map((p: any) => p.url_max || p.url_original).filter(Boolean) : []) ||
+                                       [];
+                      
+                      return {
+                        id: String(h.hotel_id || h.id || property.id || ''),
+                        name: property.name || h.name || 'Unknown Hotel',
+                        city: property.city_name || h.city_name || h.city,
+                        address: property.address || h.address || h.hotel_address,
+                        star_rating: property.propertyClass || property.accuratePropertyClass || 0,
+                        review_score: property.reviewScore || 0,
+                        review_count: property.reviewCount || 0,
+                        price_from: h.priceBreakdown?.grossPrice?.value || null,
+                        currency: h.priceBreakdown?.grossPrice?.currency || h.currency || property.currency || 'CNY',
+                        cover_photo_url: imageUrl,
+                        photo_urls: photoUrls,
+                        source: 'external',
+                        booking_url: null,
+                      };
+                    });
+                  }
+                } catch (dbError: any) {
+                  console.warn('[Hotel Search] Failed to fetch cached hotels (DB unavailable), using raw API results');
+                  // Use raw API results directly if DB is unavailable
+                  externalHotels = searchResult.data.hotels.slice(0, 20).map((h: any) => {
+                    // Images are in property.photoUrls (array of URLs) based on API response structure
+                    const property = h.property || {};
+                    const imageUrl = property.photoUrls?.[0] || 
+                                     h.photoUrls?.[0] || 
+                                     property.photos?.[0]?.url_max || 
+                                     property.photos?.[0]?.url_original ||
+                                     h.photos?.[0]?.url_max || 
+                                     h.photos?.[0]?.url_original ||
+                                     h.photoUrl ||
+                                     h.imageUrl ||
+                                     null;
+                    
+                    const photoUrls = property.photoUrls || 
+                                     h.photoUrls || 
+                                     (property.photos ? property.photos.map((p: any) => p.url_max || p.url_original).filter(Boolean) : []) ||
+                                     (h.photos ? h.photos.map((p: any) => p.url_max || p.url_original).filter(Boolean) : []) ||
+                                     [];
+                    
+                    return {
+                      id: String(h.hotel_id || h.id || property.id || ''),
+                      name: property.name || h.name || 'Unknown Hotel',
+                      city: property.city_name || h.city_name || h.city,
+                      address: property.address || h.address || h.hotel_address,
+                      star_rating: property.propertyClass || property.accuratePropertyClass || 0,
+                      review_score: property.reviewScore || 0,
+                      review_count: property.reviewCount || 0,
+                      price_from: h.priceBreakdown?.grossPrice?.value || null,
+                      currency: h.priceBreakdown?.grossPrice?.currency || h.currency || property.currency || 'CNY',
+                      cover_photo_url: imageUrl,
+                      photo_urls: photoUrls,
+                      source: 'external',
+                      booking_url: null,
+                    };
+                  });
+                }
+              }
+            } else {
+              // Dates invalid, skip external search
+              console.warn('[Hotel Search] Invalid dates, skipping external search');
+            }
+          } catch (error: any) {
+            console.error('[Hotel Search] External search error:', error);
+            // Don't block, just return empty external results
+            if (error.message.includes('Checkout date must be after checkin')) {
+              blockedReason = error.message;
+            }
+          }
+        }
+      } else if (mode === 'name') {
+        // Hotel name search - allow but mark if outside Guangzhou
+        try {
+          const destResults = await searchDestination(q);
+          
+          // API returns { status: true, message: "Success", data: [...] }
+          if (destResults?.status === true && destResults?.data && Array.isArray(destResults.data) && destResults.data.length > 0) {
+            // Check if results are in China/Guangzhou
+            const chinaResults = destResults.data.filter((d: any) => 
+              d.country?.toLowerCase().includes('china') ||
+              d.city_name?.toLowerCase().includes('guangzhou')
+            );
+
+            if (chinaResults.length === 0 && destResults.data.length > 0) {
+              // Results outside China - mark but allow
+              blockedReason = 'External results (may be outside Guangzhou)';
+            }
+
+            // Use first result for hotel search
+            const firstDest = destResults.data[0];
+            const searchParams: any = {
+              dest_id: firstDest.dest_id,
+              search_type: firstDest.search_type || 'CITY',
+              adults: parseInt(String(adults)) || 1,
+              room_qty: parseInt(String(room_qty)) || 1,
+              children_age: String(children_age) || '',
+              page_number: parseInt(String(page_number)) || 1,
+              currency_code: 'CNY',
+              languagecode: 'en-us',
+            };
+
+            // Add dates if provided
+            if (checkin) {
+              searchParams.arrival_date = checkin;
+            }
+            if (checkout) {
+              searchParams.departure_date = checkout;
+            }
+
+            const searchResult = await searchHotels(searchParams);
+            
+            // API returns { status: true, message: "Success", data: { hotels: [...] } }
+            if (searchResult?.status === true && searchResult?.data?.hotels && Array.isArray(searchResult.data.hotels)) {
+              for (const hotel of searchResult.data.hotels.slice(0, 20)) {
+                await upsertExternalHotel(hotel);
+              }
+
+              const hotelIds = searchResult.data.hotels
+                .slice(0, 20)
+                .map((h: any) => String(h.id || h.hotel_id));
+              
+              const externalFromDb = await (prisma as any).externalHotel.findMany({
+                where: {
+                  provider: 'bookingcom',
+                  hotel_id: { in: hotelIds },
+                },
+              });
+
+              externalHotels = externalFromDb.map((hotel: any) => ({
+                id: hotel.hotel_id,
+                name: hotel.name,
+                city: hotel.city,
+                address: hotel.address,
+                star_rating: hotel.star_rating,
+                review_score: hotel.review_score,
+                review_count: hotel.review_count,
+                price_from: hotel.gross_price,
+                currency: hotel.currency || 'CNY',
+                cover_photo_url: hotel.cover_photo_url,
+                photo_urls: (hotel.photo_urls as any) || [],
+                source: 'external',
+                booking_url: hotel.booking_url,
+              }));
+            }
+          }
+        } catch (error: any) {
+          console.error('[Hotel Search] External name search error:', error);
+        }
+      }
+
+      return {
+        internal: internalWithGallery,
+        external: externalHotels,
+        ...(blockedExternal && { blockedExternal: true, blockedReason }),
+        ...(blockedReason && !blockedExternal && { blockedReason }),
+      };
+    } catch (error: any) {
+      fastify.log.error({ error, stack: error.stack }, '[Hotel Search] Error');
+      reply.status(500).send({ error: error.message || 'Failed to search hotels' });
+    }
+  });
+
+  // NEW: Get external hotel details
+  fastify.get('/hotels/external/:hotelId/details', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { hotelId } = request.params as { hotelId: string };
+      const {
+        adults = 1,
+        room_qty = 1,
+        children_age = '',
+      } = request.query as {
+        adults?: string;
+        room_qty?: string;
+        children_age?: string;
+      };
+
+      const {
+        getHotelDetails,
+        getDescriptionAndInfo,
+        getPaymentFeatures,
+        getHotelReviewScores,
+        getHotelReviewsFilterMetadata,
+        getPopularAttractionNearBy,
+        upsertExternalHotel,
+      } = await import('../modules/hotels/bookingcom.service.js');
+
+      // Check if we have cached details (within 24h)
+      const cached = await (prisma as any).externalHotel.findUnique({
+        where: {
+          provider_hotel_id: {
+            provider: 'bookingcom',
+            hotel_id: hotelId,
+          },
+        },
+      });
+
+      const shouldRefresh = !cached || 
+        !cached.last_synced_at ||
+        new Date().getTime() - cached.last_synced_at.getTime() > 24 * 60 * 60 * 1000;
+
+      if (shouldRefresh) {
+        // Fetch all details
+        const [detailsResp, descriptionResp, paymentResp, reviewScoresResp, reviewFiltersResp, attractionsResp] = await Promise.all([
+          getHotelDetails(hotelId, {
+            adults: parseInt(String(adults)) || 1,
+            room_qty: parseInt(String(room_qty)) || 1,
+            children_age: String(children_age) || '',
+          }),
+          getDescriptionAndInfo(hotelId),
+          getPaymentFeatures(hotelId),
+          getHotelReviewScores(hotelId),
+          getHotelReviewsFilterMetadata(hotelId),
+          getPopularAttractionNearBy(hotelId),
+        ]);
+
+        // Extract data from responses
+        const details = detailsResp?.data || {};
+        const description = descriptionResp?.data || [];
+        const payment = paymentResp?.data || [];
+        const reviewScores = reviewScoresResp?.data || [];
+        const reviewFilters = reviewFiltersResp?.data || {};
+        const attractions = attractionsResp?.data || {};
+
+        // Update database
+        await (prisma as any).externalHotel.update({
+          where: {
+            provider_hotel_id: {
+              provider: 'bookingcom',
+              hotel_id: hotelId,
+            },
+          },
+          data: {
+            raw_details_json: details,
+            description: description,
+            payment_features: payment,
+            review_scores: reviewScores,
+            review_filters: reviewFilters,
+            attractions: attractions,
+            gallery_photos: details?.rooms?.[Object.keys(details.rooms || {})[0]]?.photos || cached?.gallery_photos,
+            highlights: details?.property_highlight_strip || cached?.highlights,
+            facilities: details?.facilities_block || cached?.facilities,
+            booking_url: details?.url || cached?.booking_url,
+            last_synced_at: new Date(),
+          },
+        });
+      }
+
+      // Fetch updated hotel
+      const hotel = await (prisma as any).externalHotel.findUnique({
+        where: {
+          provider_hotel_id: {
+            provider: 'bookingcom',
+            hotel_id: hotelId,
+          },
+        },
+      });
+
+      if (!hotel) {
+        reply.status(404).send({ error: 'Hotel not found' });
+        return;
+      }
+
+      return {
+        id: hotel.hotel_id,
+        name: hotel.name,
+        city: hotel.city,
+        address: hotel.address,
+        star_rating: hotel.star_rating,
+        review_score: hotel.review_score,
+        review_count: hotel.review_count,
+        latitude: hotel.latitude,
+        longitude: hotel.longitude,
+        cover_photo_url: hotel.cover_photo_url,
+        gallery_photos: hotel.gallery_photos,
+        highlights: hotel.highlights,
+        facilities: hotel.facilities,
+        description: hotel.description,
+        payment_features: hotel.payment_features,
+        review_scores: hotel.review_scores,
+        review_filters: hotel.review_filters,
+        attractions: hotel.attractions,
+        booking_url: hotel.booking_url,
+        price_from: hotel.gross_price,
+        currency: hotel.currency || 'CNY',
+        source: 'external',
+      };
+    } catch (error: any) {
+      fastify.log.error({ error, stack: error.stack }, '[Hotel Details] Error');
+      reply.status(500).send({ error: error.message || 'Failed to fetch hotel details' });
+    }
+  });
+
+  // UPDATED: Get hotel details (internal or external)
   fastify.get('/catalog/hotels/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
-    const hotel = await prisma.hotel.findUnique({
-      where: { id },
-      include: {
-        city: true,
-        coverAsset: true,
-      },
-    });
+    
+    // Check if it's a UUID (internal) or external hotel ID
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    
+    if (isUUID) {
+      // Internal hotel
+      const hotel = await prisma.hotel.findUnique({
+        where: { id },
+        include: {
+          city: true,
+          coverAsset: true,
+        },
+      });
 
-    if (!hotel) {
-      reply.status(404).send({ error: 'Hotel not found' });
-      return;
+      if (!hotel) {
+        reply.status(404).send({ error: 'Hotel not found' });
+        return;
+      }
+
+      // Load gallery assets
+      const galleryIds = (hotel.gallery_asset_ids as string[]) || [];
+      const galleryAssets = galleryIds.length > 0
+        ? await prisma.mediaAsset.findMany({
+            where: { id: { in: galleryIds } },
+          })
+        : [];
+
+      return {
+        ...hotel,
+        galleryAssets,
+        source: 'internal',
+      };
+    } else {
+      // External hotel - redirect to external details endpoint
+      const externalDetails = await fastify.inject({
+        method: 'GET',
+        url: `/api/public/hotels/external/${id}/details`,
+        query: request.query as any,
+      });
+
+      if (externalDetails.statusCode === 404) {
+        reply.status(404).send({ error: 'Hotel not found' });
+        return;
+      }
+
+      return JSON.parse(externalDetails.body);
     }
-
-    // Load gallery assets
-    const galleryIds = (hotel.gallery_asset_ids as string[]) || [];
-    const galleryAssets = galleryIds.length > 0
-      ? await prisma.mediaAsset.findMany({
-          where: { id: { in: galleryIds } },
-        })
-      : [];
-
-    return {
-      ...hotel,
-      galleryAssets,
-    };
   });
 
   fastify.get('/catalog/restaurants', async (request: FastifyRequest) => {
@@ -1393,18 +1894,26 @@ export default async function publicRoutes(fastify: FastifyInstance) {
     // Create category-specific booking record
     const payload = body.request_payload as any;
     
-    if (body.category_key === 'hotel' && payload.checkin && payload.checkout) {
+    if (body.category_key === 'hotel') {
+      const hotelBookingData: any = {
+        request_id: serviceRequest.id,
+        checkin: payload.checkin ? new Date(payload.checkin) : null,
+        checkout: payload.checkout ? new Date(payload.checkout) : null,
+        guests: payload.guests || null,
+        rooms: payload.rooms || null,
+        adults: payload.adults || 1,
+        room_qty: payload.room_qty || payload.rooms || 1,
+        children_age: payload.children_age || null,
+        budget_min: payload.budget_min || null,
+        budget_max: payload.budget_max || null,
+        preferred_area: payload.preferred_area || null,
+        hotel_source: payload.hotel_source || 'INTERNAL',
+        external_hotel_id: payload.external_hotel_id || null,
+        hotel_id: payload.hotel_id || null, // Keep for backward compatibility
+      };
+
       await prisma.hotelBooking.create({
-        data: {
-          request_id: serviceRequest.id,
-          checkin: new Date(payload.checkin),
-          checkout: new Date(payload.checkout),
-          guests: payload.guests || 1,
-          rooms: payload.rooms || 1,
-          budget_min: payload.budget_min || null,
-          budget_max: payload.budget_max || null,
-          preferred_area: payload.preferred_area || null,
-        },
+        data: hotelBookingData,
       });
     } else if (body.category_key === 'transport' && payload.pickup_text && payload.dropoff_text) {
       await prisma.transportBooking.create({
@@ -1498,27 +2007,33 @@ export default async function publicRoutes(fastify: FastifyInstance) {
   });
 
   // Guides endpoints
-  fastify.get('/catalog/guides', async (request: FastifyRequest) => {
-    const { city_id } = request.query as { city_id?: string };
-    const guides = await prisma.guideProfile.findMany({
-      where: {
-        ...(city_id ? { city_id } : {}),
-        verified: true,
-      },
-      include: {
-        city: true,
-        coverAsset: true,
-        user: {
-          select: {
-            id: true,
-            email: true,
+  fastify.get('/catalog/guides', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { city_id } = request.query as { city_id?: string };
+      const guides = await prisma.guideProfile.findMany({
+        where: {
+          ...(city_id ? { city_id } : {}),
+          verified: true,
+        },
+        include: {
+          city: true,
+          coverAsset: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+            },
           },
         },
-      },
-      orderBy: { rating: 'desc' },
-    });
-    
-    return guides;
+        orderBy: { rating: 'desc' },
+      });
+      
+      return guides;
+    } catch (error: any) {
+      fastify.log.error({ error, stack: error.stack }, '[Guides] Database error');
+      // Return empty array if database is unavailable
+      return [];
+    }
   });
 
   fastify.get('/catalog/guides/:id', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -1795,45 +2310,64 @@ export default async function publicRoutes(fastify: FastifyInstance) {
   });
 
   // Get active service offers
-  fastify.get('/offers', async (request: FastifyRequest) => {
-    const now = new Date();
-    const offers = await prisma.serviceBasedOffer.findMany({
-      where: {
-        is_active: true,
-        OR: [
-          { valid_from: null, valid_until: null },
-          { valid_from: { lte: now }, valid_until: { gte: now } },
-          { valid_from: { lte: now }, valid_until: null },
-          { valid_from: null, valid_until: { gte: now } },
+  fastify.get('/offers', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const now = new Date();
+      const offers = await prisma.serviceBasedOffer.findMany({
+        where: {
+          is_active: true,
+          OR: [
+            { valid_from: null, valid_until: null },
+            { valid_from: { lte: now }, valid_until: { gte: now } },
+            { valid_from: { lte: now }, valid_until: null },
+            { valid_from: null, valid_until: { gte: now } },
+          ],
+        },
+        include: {
+          coverAsset: true,
+        },
+        orderBy: [
+          { valid_from: 'asc' },
+          { updated_at: 'desc' },
         ],
-      },
-      include: {
-        coverAsset: true,
-      },
-      orderBy: [
-        { valid_from: 'asc' },
-        { updated_at: 'desc' },
-      ],
-      take: 10, // Return more than 4 so frontend can choose
-    });
+        take: 10, // Return more than 4 so frontend can choose
+      });
 
-    // Load gallery assets
-    const offersWithGallery = await Promise.all(
-      offers.map(async (offer) => {
-        const galleryIds = (offer.gallery_asset_ids as string[]) || [];
-        const galleryAssets = galleryIds.length > 0
-          ? await prisma.mediaAsset.findMany({
-              where: { id: { in: galleryIds } },
-            })
-          : [];
-        return {
-          ...offer,
-          galleryAssets,
-        };
-      })
-    );
+      // Load gallery assets
+      const offersWithGallery = await Promise.all(
+        offers.map(async (offer) => {
+          try {
+            const galleryIds = (offer.gallery_asset_ids as string[]) || [];
+            const galleryAssets = galleryIds.length > 0
+              ? await prisma.mediaAsset.findMany({
+                  where: { id: { in: galleryIds } },
+                })
+              : [];
+            return {
+              ...offer,
+              galleryAssets,
+            };
+          } catch (error) {
+            // If gallery loading fails, return offer without gallery
+            return {
+              ...offer,
+              galleryAssets: [],
+            };
+          }
+        })
+      );
 
-    return offersWithGallery;
+      return offersWithGallery;
+    } catch (error: any) {
+      // Check if it's a database connection error
+      if (error.name === 'PrismaClientInitializationError' || error.message?.includes('Can\'t reach database server')) {
+        fastify.log.warn('[Offers] Database connection unavailable - returning empty array');
+        return [];
+      }
+      fastify.log.error({ error, stack: error.stack }, '[Offers] Database error');
+      // Return empty array if database is unavailable
+      return [];
+    }
   });
 }
 

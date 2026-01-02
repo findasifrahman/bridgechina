@@ -461,23 +461,136 @@ model ServiceRequest {
   @@map("service_requests")
 }
 
+enum HotelSource {
+  INTERNAL
+  BOOKINGCOM
+}
+
 model HotelBooking {
-  request_id     String         @id
-  checkin        DateTime
-  checkout       DateTime
-  guests         Int
-  rooms          Int
-  budget_min     Float?
-  budget_max     Float?
-  preferred_area String?
-  hotel_id       String?
-  booking_status String?
-  quoted_price   Float?
-  currency       String?
-  vendor_notes   String?
-  request        ServiceRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+  request_id        String         @id
+  checkin           DateTime?
+  checkout          DateTime?
+  guests            Int?
+  rooms             Int?
+  adults            Int?          @default(1)
+  room_qty          Int?          @default(1)
+  children_age      String?
+  budget_min        Float?
+  budget_max        Float?
+  preferred_area    String?
+  hotel_id          String?
+  hotel_source      HotelSource   @default(INTERNAL)
+  external_hotel_id String?
+  booking_status    String?
+  quoted_price      Float?
+  currency          String?
+  vendor_notes      String?
+  request           ServiceRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
 
   @@map("hotel_bookings")
+}
+
+model ExternalHotelProvider {
+  id            String   @id @default(uuid())
+  provider      String   @unique
+  host          String
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@map("external_hotel_providers")
+}
+
+model ExternalDestination {
+  id            String   @id @default(uuid())
+  provider      String
+  query         String
+  dest_id       String
+  dest_type     String
+  search_type   String
+  label         String?
+  city_name     String?
+  country       String?
+  cc1           String?
+  latitude      Float?
+  longitude     Float?
+  nr_hotels     Int?
+  image_url     String?
+  roundtrip     String?
+  raw_json      Json
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@unique([provider, dest_id, dest_type])
+  @@index([provider, query])
+  @@map("external_destinations")
+}
+
+model ExternalHotel {
+  id                      String     @id @default(uuid())
+  provider                String
+  hotel_id                String
+  ufi                     Int?
+  name                    String
+  city                    String?
+  district                String?
+  country_code            String?
+  address                 String?
+  latitude                Float?
+  longitude               Float?
+  star_rating             Int?
+  review_score            Float?
+  review_score_word       String?
+  review_count            Int?
+  is_preferred            Boolean    @default(false)
+  currency                String?    @default("CNY")
+  gross_price             Float?
+  strikethrough_price     Float?
+  has_free_cancellation   Boolean?
+  includes_taxes_and_charges Boolean?
+  cover_photo_url         String?
+  photo_urls              Json?
+  gallery_photos          Json?
+  highlights              Json?
+  facilities              Json?
+  languages_spoken        Json?
+  payment_features        Json?
+  description             Json?
+  review_filters           Json?
+  review_scores            Json?
+  attractions             Json?
+  booking_url             String?
+  raw_details_json        Json?
+  raw_search_json         Json?
+  last_synced_at          DateTime   @default(now())
+  created_at              DateTime   @default(now())
+  updated_at              DateTime   @updatedAt
+
+  @@unique([provider, hotel_id])
+  @@index([provider, city])
+  @@index([last_synced_at])
+  @@map("external_hotels")
+}
+
+model ExternalHotelSearchCache {
+  id            String   @id @default(uuid())
+  provider      String
+  dest_id       String
+  search_type   String
+  checkin       String?
+  checkout      String?
+  adults        Int?
+  room_qty      Int?
+  page_number   Int?
+  currency_code String?  @default("CNY")
+  languagecode  String?  @default("en-us")
+  hotel_ids     Json
+  raw_json      Json
+  created_at    DateTime @default(now())
+
+  @@index([provider, dest_id])
+  @@index([created_at])
+  @@map("external_hotel_search_cache")
 }
 
 model TransportBooking {
