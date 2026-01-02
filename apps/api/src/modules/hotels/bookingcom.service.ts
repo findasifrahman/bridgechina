@@ -589,7 +589,7 @@ export function normalizeExternalHotel(hotel: any, provider: string = 'bookingco
   // Based on API response: hotel data is in property object, hotel_id is at root
   const hotelId = String(hotel.hotel_id || hotel.id || hotel.property?.id || '');
   const property = hotel.property || {};
-  const priceBreakdown = hotel.priceBreakdown || {};
+  const priceBreakdown = hotel.priceBreakdown || property.priceBreakdown || {};
   const grossPrice = priceBreakdown.grossPrice || {};
   const strikethroughPrice = priceBreakdown.strikethroughPrice || {};
   

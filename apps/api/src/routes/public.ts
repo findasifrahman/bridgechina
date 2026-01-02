@@ -1007,9 +1007,11 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
                   console.warn('[Hotel Search] Cache check failed, will fetch from API:', cacheError.message);
                 }
                 
+                // TEMPORARILY DISABLED CACHE FOR TESTING - Always fetch from API
                 // If not from cache, fetch from API
-                if (!fromCache) {
+                if (true) { // Changed from !fromCache to always true for testing
                   try {
+                    console.log('[Hotel Search] Cache disabled for testing - fetching from API (city mode)');
                     searchResult = await searchHotels(searchParams);
                   } catch (apiError: any) {
                     console.error('[Hotel Search] API call failed:', apiError.message);
@@ -1174,8 +1176,8 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
                               star_rating: property.propertyClass || property.accuratePropertyClass || 0,
                               review_score: property.reviewScore || 0,
                               review_count: property.reviewCount || 0,
-                              price_from: h.priceBreakdown?.grossPrice?.value || null,
-                              currency: h.priceBreakdown?.grossPrice?.currency || h.currency || property.currency || 'CNY',
+                              price_from: (h.priceBreakdown || property.priceBreakdown || {})?.grossPrice?.value || null,
+                              currency: (h.priceBreakdown || property.priceBreakdown || {})?.grossPrice?.currency || h.currency || property.currency || 'CNY',
                               cover_photo_url: imageUrl,
                               photo_urls: photoUrls,
                               source: 'external',
@@ -1313,8 +1315,16 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
             }
 
             if (datesValid) {
+              // Auto-add Guangzhou to hotel name search if no city specified
+              let searchQuery = q.trim();
+              const hasCity = /guangzhou|广州|guang zhou/i.test(searchQuery);
+              if (!hasCity) {
+                searchQuery = `${searchQuery} Guangzhou`;
+                console.log('[Hotel Search] Auto-added Guangzhou to hotel name search:', searchQuery);
+              }
+              
               // First, search for destination
-              const destResults = await searchDestination(q);
+              const destResults = await searchDestination(searchQuery);
               
               // API returns { status: true, message: "Success", data: [...] }
               if (destResults?.status === true && destResults?.data && Array.isArray(destResults.data) && destResults.data.length > 0) {
@@ -1425,9 +1435,11 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
                   console.warn('[Hotel Search] Cache check failed (name mode), will fetch from API:', cacheError.message);
                 }
                 
+                // TEMPORARILY DISABLED CACHE FOR TESTING - Always fetch from API
                 // If not from cache, fetch from API
-                if (!fromCache) {
+                if (true) { // Changed from !fromCache to always true for testing
                   try {
+                    console.log('[Hotel Search] Cache disabled for testing - fetching from API (name mode)');
                     searchResult = await searchHotels(searchParams);
                   } catch (apiError: any) {
                     console.error('[Hotel Search] API call failed (name mode):', apiError.message);
@@ -1594,8 +1606,8 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
                               star_rating: property.propertyClass || property.accuratePropertyClass || 0,
                               review_score: property.reviewScore || 0,
                               review_count: property.reviewCount || 0,
-                              price_from: h.priceBreakdown?.grossPrice?.value || null,
-                              currency: h.priceBreakdown?.grossPrice?.currency || h.currency || property.currency || 'CNY',
+                              price_from: (h.priceBreakdown || property.priceBreakdown || {})?.grossPrice?.value || null,
+                              currency: (h.priceBreakdown || property.priceBreakdown || {})?.grossPrice?.currency || h.currency || property.currency || 'CNY',
                               cover_photo_url: imageUrl,
                               photo_urls: photoUrls,
                               source: 'external',
