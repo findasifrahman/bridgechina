@@ -48,7 +48,7 @@
     <Card v-if="activeTab === 'hotels'" class="mt-6">
       <CardHeader>
         <div class="flex justify-between items-center">
-          <h3 class="text-lg font-semibold">Hotels</h3>
+          <h3 class="text-lg font-semibold">Internal Hotels</h3>
           <Button variant="primary" size="sm" @click="openHotelModal()">Add Hotel</Button>
         </div>
       </CardHeader>
@@ -79,6 +79,68 @@
                 Delete
               </Button>
             </div>
+          </template>
+        </CompactTable>
+      </CardBody>
+    </Card>
+
+    <!-- External Hotels (Booking.com) -->
+    <Card v-if="activeTab === 'hotels'" class="mt-6">
+      <CardHeader>
+        <div class="flex justify-between items-center">
+          <h3 class="text-lg font-semibold">External Hotels (Booking.com)</h3>
+          <Badge variant="info">Read-only</Badge>
+        </div>
+      </CardHeader>
+      <CardBody>
+        <FilterBar @search="handleExternalHotelSearch" />
+        <CompactTable
+          :columns="externalHotelColumns"
+          :data="filteredExternalHotels"
+          :actions="false"
+        >
+          <template #cell-city="{ row }">
+            {{ row.city || 'N/A' }}
+          </template>
+          <template #cell-price="{ row }">
+            {{ row.currency || 'CNY' }}{{ row.gross_price || 'N/A' }}
+          </template>
+          <template #cell-rating="{ row }">
+            <div class="flex items-center gap-1">
+              <span v-if="row.review_score">{{ row.review_score.toFixed(1) }}</span>
+              <span v-else class="text-slate-400">N/A</span>
+              <span v-if="row.review_count" class="text-sm text-slate-500">({{ row.review_count }})</span>
+            </div>
+          </template>
+          <template #cell-synced="{ row }">
+            <span class="text-xs text-slate-600">{{ row.last_synced_at ? new Date(row.last_synced_at).toLocaleDateString() : 'Never' }}</span>
+          </template>
+        </CompactTable>
+      </CardBody>
+    </Card>
+
+    <!-- External Hotel Cache -->
+    <Card v-if="activeTab === 'hotels'" class="mt-6">
+      <CardHeader>
+        <div class="flex justify-between items-center">
+          <h3 class="text-lg font-semibold">External Hotel Search Cache</h3>
+          <Button variant="secondary" size="sm" @click="refreshCache" :loading="refreshingCache">Refresh Cache</Button>
+        </div>
+      </CardHeader>
+      <CardBody>
+        <CompactTable
+          :columns="cacheColumns"
+          :data="externalHotelCache"
+          :actions="false"
+        >
+          <template #cell-dest_id="{ row }">
+            <code class="text-xs">{{ row.dest_id }}</code>
+          </template>
+          <template #cell-hotels="{ row }">
+            <span>{{ Array.isArray(row.hotel_ids) ? row.hotel_ids.length : 0 }} hotels</span>
+          </template>
+          <template #cell-created="{ row }">
+            <span class="text-xs text-slate-600">{{ new Date(row.created_at).toLocaleString() }}</span>
           </template>
         </CompactTable>
       </CardBody>
@@ -1060,6 +1122,8 @@ const toast = useToast();
 const activeTab = ref('cities');
 const cities = ref<any[]>([]);
 const hotels = ref<any[]>([]);
+const externalHotels = ref<any[]>([]);
+const externalHotelCache = ref<any[]>([]);
 const restaurants = ref<any[]>([]);
 const medical = ref<any[]>([]);
 const tours = ref<any[]>([]);
@@ -1074,7 +1138,9 @@ const users = ref<any[]>([]);
 
 const citySearch = ref('');
 const hotelSearch = ref('');
+const externalHotelSearch = ref('');
 const restaurantSearch = ref('');
+const refreshingCache = ref(false);
 const medicalSearch = ref('');
 const tourSearch = ref('');
 const transportSearch = ref('');
@@ -1105,6 +1171,16 @@ const filteredHotels = computed(() => {
     h.name.toLowerCase().includes(q) || 
     h.city?.name.toLowerCase().includes(q) ||
     h.address.toLowerCase().includes(q)
+  );
+});
+
+const filteredExternalHotels = computed(() => {
+  if (!externalHotelSearch.value) return externalHotels.value;
+  const q = externalHotelSearch.value.toLowerCase();
+  return externalHotels.value.filter(h => 
+    h.name?.toLowerCase().includes(q) || 
+    h.city?.toLowerCase().includes(q) ||
+    h.address?.toLowerCase().includes(q)
   );
 });
 
@@ -1208,6 +1284,22 @@ const hotelColumns = [
   { key: 'city', label: 'City' },
   { key: 'price', label: 'Price From' },
   { key: 'verified', label: 'Verified' },
+];
+
+const externalHotelColumns = [
+  { key: 'name', label: 'Name', sortable: true },
+  { key: 'city', label: 'City' },
+  { key: 'price', label: 'Price' },
+  { key: 'rating', label: 'Rating' },
+  { key: 'star_rating', label: 'Stars' },
+  { key: 'synced', label: 'Last Synced' },
+];
+
+const cacheColumns = [
+  { key: 'dest_id', label: 'Destination ID' },
+  { key: 'search_type', label: 'Type' },
+  { key: 'hotels', label: 'Hotels' },
+  { key: 'created', label: 'Created' },
 ];
 
 const restaurantColumns = [
@@ -2206,6 +2298,24 @@ function handleCitySearch(query: string) {
 
 function handleHotelSearch(query: string) {
   hotelSearch.value = query;
+}
+
+function handleExternalHotelSearch(query: string) {
+  externalHotelSearch.value = query;
+}
+
+async function refreshCache() {
+  refreshingCache.value = true;
+  try {
+    await axios.post('/api/admin/catalog/external-hotel-cache/refresh');
+    toast.success('Cache refreshed successfully');
+    await loadData();
+  } catch (error) {
+    console.error('Failed to refresh cache', error);
+    toast.error('Failed to refresh cache');
+  } finally {
+    refreshingCache.value = false;
+  }
 }
 
 function handleRestaurantSearch(query: string) {

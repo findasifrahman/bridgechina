@@ -856,17 +856,14 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
           if (!checkin || !checkout) {
             console.log('[Hotel Search] No dates provided, loading external hotels from database only');
             try {
-              // Load external hotels - prefer Guangzhou but show any if available
               const dbHotels = await (prisma as any).externalHotel.findMany({
                 where: {
                   provider: 'bookingcom',
-                  // Don't filter by city on initial load - show any cached hotels
+                  city: { contains: 'Guangzhou', mode: 'insensitive' },
                 },
                 take: 20,
                 orderBy: { last_synced_at: 'desc' },
               });
-              
-              console.log('[Hotel Search] Found', dbHotels.length, 'external hotels in database');
               
               externalHotels = dbHotels.map((hotel: any) => ({
                 id: hotel.hotel_id,
@@ -882,14 +879,10 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
                 photo_urls: (hotel.photo_urls as any) || [],
                 source: 'external',
                 booking_url: hotel.booking_url,
-                has_free_cancellation: hotel.has_free_cancellation,
               }));
               
               if (externalHotels.length === 0) {
-                console.log('[Hotel Search] No external hotels found in database');
                 blockedReason = 'Please select check-in and check-out dates to search for hotels.';
-              } else {
-                console.log('[Hotel Search] Loaded', externalHotels.length, 'external hotels from database');
               }
             } catch (dbError: any) {
               console.warn('[Hotel Search] Failed to load external hotels from database:', dbError.message);
@@ -1238,420 +1231,81 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
         }
       } else if (mode === 'name') {
         // Hotel name search - allow but mark if outside Guangzhou
-        // If dates are NOT provided, just load from database (no API call)
-        if (!checkin || !checkout) {
-          console.log('[Hotel Search] No dates provided for name search, loading external hotels from database only');
-          try {
-            // Try to find hotels by name in database
-            const dbHotels = await (prisma as any).externalHotel.findMany({
-              where: {
-                provider: 'bookingcom',
-                name: { contains: q, mode: 'insensitive' },
-              },
-              take: 20,
-              orderBy: { last_synced_at: 'desc' },
-            });
+        try {
+          const destResults = await searchDestination(q);
+          
+          // API returns { status: true, message: "Success", data: [...] }
+          if (destResults?.status === true && destResults?.data && Array.isArray(destResults.data) && destResults.data.length > 0) {
+            // Check if results are in China/Guangzhou
+            const chinaResults = destResults.data.filter((d: any) => 
+              d.country?.toLowerCase().includes('china') ||
+              d.city_name?.toLowerCase().includes('guangzhou')
+            );
+
+            if (chinaResults.length === 0 && destResults.data.length > 0) {
+              // Results outside China - mark but allow
+              blockedReason = 'External results (may be outside Guangzhou)';
+            }
+
+            // Use first result for hotel search
+            const firstDest = destResults.data[0];
+            const searchParams: any = {
+              dest_id: firstDest.dest_id,
+              search_type: firstDest.search_type || 'CITY',
+              adults: parseInt(String(adults)) || 1,
+              room_qty: parseInt(String(room_qty)) || 1,
+              children_age: String(children_age) || '',
+              page_number: parseInt(String(page_number)) || 1,
+              currency_code: 'CNY',
+              languagecode: 'en-us',
+            };
+
+            // Add dates if provided
+            if (checkin) {
+              searchParams.arrival_date = checkin;
+            }
+            if (checkout) {
+              searchParams.departure_date = checkout;
+            }
+
+            const searchResult = await searchHotels(searchParams);
             
-            externalHotels = dbHotels.map((hotel: any) => ({
-              id: hotel.hotel_id,
-              name: hotel.name,
-              city: hotel.city,
-              address: hotel.address,
-              star_rating: hotel.star_rating,
-              review_score: hotel.review_score,
-              review_count: hotel.review_count,
-              price_from: hotel.gross_price,
-              currency: hotel.currency || 'CNY',
-              cover_photo_url: hotel.cover_photo_url,
-              photo_urls: (hotel.photo_urls as any) || [],
-              source: 'external',
-              booking_url: hotel.booking_url,
-            }));
-            
-            if (externalHotels.length === 0) {
-              blockedReason = 'Please select check-in and check-out dates to search for hotels.';
-            }
-          } catch (dbError: any) {
-            console.warn('[Hotel Search] Failed to load external hotels from database (name search):', dbError.message);
-            blockedReason = 'Please select check-in and check-out dates to search for hotels.';
-          }
-        } else {
-          // Dates provided - proceed with API call or cache
-          try {
-            // Validate dates before making API call
-            let datesValid = true;
-            const checkinDate = new Date(checkin);
-            const checkoutDate = new Date(checkout);
-            if (isNaN(checkinDate.getTime()) || isNaN(checkoutDate.getTime())) {
-              datesValid = false;
-              blockedReason = 'Invalid date format.';
-            } else if (checkoutDate <= checkinDate) {
-              datesValid = false;
-              blockedReason = 'Checkout date must be after checkin date.';
-            } else {
-              // Check if arrival is in the past (but allow today)
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-              const arrivalDateOnly = new Date(checkinDate.getFullYear(), checkinDate.getMonth(), checkinDate.getDate());
-              const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-              
-              if (arrivalDateOnly < todayDateOnly) {
-                datesValid = false;
-                blockedReason = 'Arrival date must be today or in the future.';
+            // API returns { status: true, message: "Success", data: { hotels: [...] } }
+            if (searchResult?.status === true && searchResult?.data?.hotels && Array.isArray(searchResult.data.hotels)) {
+              for (const hotel of searchResult.data.hotels.slice(0, 20)) {
+                await upsertExternalHotel(hotel);
               }
-            }
 
-            if (datesValid) {
-              // First, search for destination
-              const destResults = await searchDestination(q);
+              const hotelIds = searchResult.data.hotels
+                .slice(0, 20)
+                .map((h: any) => String(h.id || h.hotel_id));
               
-              // API returns { status: true, message: "Success", data: [...] }
-              if (destResults?.status === true && destResults?.data && Array.isArray(destResults.data) && destResults.data.length > 0) {
-                // Check if results are in China/Guangzhou
-                const chinaResults = destResults.data.filter((d: any) => 
-                  d.country?.toLowerCase().includes('china') ||
-                  d.city_name?.toLowerCase().includes('guangzhou')
-                );
+              const externalFromDb = await (prisma as any).externalHotel.findMany({
+                where: {
+                  provider: 'bookingcom',
+                  hotel_id: { in: hotelIds },
+                },
+              });
 
-                if (chinaResults.length === 0 && destResults.data.length > 0) {
-                  // Results outside China - mark but allow
-                  blockedReason = 'External results (may be outside Guangzhou)';
-                }
-
-                // Use first result for hotel search
-                const firstDest = destResults.data[0];
-                const searchParams: any = {
-                  dest_id: firstDest.dest_id,
-                  search_type: firstDest.search_type || (firstDest.dest_type === 'city' ? 'CITY' : 'HOTEL'),
-                  adults: parseInt(String(adults)) || 1,
-                  room_qty: parseInt(String(room_qty)) || 1,
-                  children_age: String(children_age) || '',
-                  page_number: parseInt(String(page_number)) || 1,
-                  currency_code: 'CNY',
-                  languagecode: 'en-us',
-                  checkin: checkin || undefined,
-                  checkout: checkout || undefined,
-                };
-
-                // Check cache first (5 day TTL)
-                const CACHE_TTL_MS = 5 * 24 * 60 * 60 * 1000; // 5 days
-                let searchResult: any = null;
-                let fromCache = false;
-                let cachedData: any = null;
-                
-                try {
-                  // First, try to find fresh cache (within TTL)
-                  const cached = await (prisma as any).externalHotelSearchCache.findFirst({
-                    where: {
-                      provider: 'bookingcom',
-                      dest_id: firstDest.dest_id,
-                      search_type: firstDest.search_type || (firstDest.dest_type === 'city' ? 'CITY' : 'HOTEL'),
-                      checkin: checkin || null,
-                      checkout: checkout || null,
-                      adults: parseInt(String(adults)) || 1,
-                      room_qty: parseInt(String(room_qty)) || 1,
-                      page_number: parseInt(String(page_number)) || 1,
-                      created_at: {
-                        gte: new Date(Date.now() - CACHE_TTL_MS), // 5 days ago
-                      },
-                    },
-                    orderBy: { created_at: 'desc' },
-                  });
-                  
-                  if (cached) {
-                    console.log('[Hotel Search] Using cached search results (fresh, name mode)');
-                    fromCache = true;
-                    cachedData = cached;
-                  } else {
-                    // Try to find any cache (even if expired) as fallback
-                    const expiredCache = await (prisma as any).externalHotelSearchCache.findFirst({
-                      where: {
-                        provider: 'bookingcom',
-                        dest_id: firstDest.dest_id,
-                        search_type: firstDest.search_type || (firstDest.dest_type === 'city' ? 'CITY' : 'HOTEL'),
-                        checkin: checkin || null,
-                        checkout: checkout || null,
-                        adults: parseInt(String(adults)) || 1,
-                        room_qty: parseInt(String(room_qty)) || 1,
-                        page_number: parseInt(String(page_number)) || 1,
-                      },
-                      orderBy: { created_at: 'desc' },
-                    });
-                    
-                    if (expiredCache) {
-                      console.log('[Hotel Search] Found expired cache (will use as fallback if API fails, name mode)');
-                      cachedData = expiredCache;
-                    }
-                  }
-                  
-                  if (fromCache && cachedData) {
-                    // Reconstruct search result from cache
-                    const hotelIds = (cachedData.hotel_ids as any) || [];
-                    const externalFromCache = await (prisma as any).externalHotel.findMany({
-                      where: {
-                        provider: 'bookingcom',
-                        hotel_id: { in: hotelIds },
-                      },
-                    });
-                    
-                    externalHotels = externalFromCache.map((hotel: any) => ({
-                      id: hotel.hotel_id,
-                      name: hotel.name,
-                      city: hotel.city,
-                      address: hotel.address,
-                      star_rating: hotel.star_rating,
-                      review_score: hotel.review_score,
-                      review_count: hotel.review_count,
-                      price_from: hotel.gross_price,
-                      currency: hotel.currency || 'CNY',
-                      cover_photo_url: hotel.cover_photo_url,
-                      photo_urls: (hotel.photo_urls as any) || [],
-                      source: 'external',
-                      booking_url: hotel.booking_url,
-                    }));
-                  }
-                } catch (cacheError: any) {
-                  console.warn('[Hotel Search] Cache check failed (name mode), will fetch from API:', cacheError.message);
-                }
-                
-                // If not from cache, fetch from API
-                if (!fromCache) {
-                  try {
-                    searchResult = await searchHotels(searchParams);
-                  } catch (apiError: any) {
-                    console.error('[Hotel Search] API call failed (name mode):', apiError.message);
-                    
-                    // Fallback: Use cached data if available (even if expired)
-                    if (cachedData) {
-                      console.log('[Hotel Search] API failed, using cached data as fallback (name mode)');
-                      fromCache = true;
-                      const hotelIds = (cachedData.hotel_ids as any) || [];
-                      const externalFromCache = await (prisma as any).externalHotel.findMany({
-                        where: {
-                          provider: 'bookingcom',
-                          hotel_id: { in: hotelIds },
-                        },
-                      });
-                      
-                      externalHotels = externalFromCache.map((hotel: any) => ({
-                        id: hotel.hotel_id,
-                        name: hotel.name,
-                        city: hotel.city,
-                        address: hotel.address,
-                        star_rating: hotel.star_rating,
-                        review_score: hotel.review_score,
-                        review_count: hotel.review_count,
-                        price_from: hotel.gross_price,
-                        currency: hotel.currency || 'CNY',
-                        cover_photo_url: hotel.cover_photo_url,
-                        photo_urls: (hotel.photo_urls as any) || [],
-                        source: 'external',
-                        booking_url: hotel.booking_url,
-                      }));
-                    } else {
-                      // Last resort: Try to find hotels by name in database
-                      console.log('[Hotel Search] No cache available, trying to load from database (name mode)');
-                      const dbHotels = await (prisma as any).externalHotel.findMany({
-                        where: {
-                          provider: 'bookingcom',
-                          name: { contains: q, mode: 'insensitive' },
-                        },
-                        take: 20,
-                        orderBy: { last_synced_at: 'desc' },
-                      });
-                      
-                      if (dbHotels.length > 0) {
-                        console.log(`[Hotel Search] Found ${dbHotels.length} hotels in database as fallback (name mode)`);
-                        externalHotels = dbHotels.map((hotel: any) => ({
-                          id: hotel.hotel_id,
-                          name: hotel.name,
-                          city: hotel.city,
-                          address: hotel.address,
-                          star_rating: hotel.star_rating,
-                          review_score: hotel.review_score,
-                          review_count: hotel.review_count,
-                          price_from: hotel.gross_price,
-                          currency: hotel.currency || 'CNY',
-                          cover_photo_url: hotel.cover_photo_url,
-                          photo_urls: (hotel.photo_urls as any) || [],
-                          source: 'external',
-                          booking_url: hotel.booking_url,
-                        }));
-                      } else {
-                        blockedReason = apiError.message || 'No hotels found.';
-                      }
-                    }
-                    
-                    // Don't throw error, just return what we have
-                    searchResult = null;
-                  }
-                
-                  // Only process and cache if we have valid search results
-                  if (searchResult?.status === true && searchResult?.data?.hotels && Array.isArray(searchResult.data.hotels)) {
-                    // Cache the search results
-                    try {
-                      const hotelIds = searchResult.data.hotels
-                        .slice(0, 20)
-                        .map((h: any) => String(h.hotel_id || h.id || h.property?.id));
-                      
-                      await (prisma as any).externalHotelSearchCache.create({
-                        data: {
-                          provider: 'bookingcom',
-                          dest_id: firstDest.dest_id,
-                          search_type: firstDest.search_type || (firstDest.dest_type === 'city' ? 'CITY' : 'HOTEL'),
-                          checkin: checkin || null,
-                          checkout: checkout || null,
-                          adults: parseInt(String(adults)) || 1,
-                          room_qty: parseInt(String(room_qty)) || 1,
-                          page_number: parseInt(String(page_number)) || 1,
-                          currency_code: 'CNY',
-                          languagecode: 'en-us',
-                          hotel_ids: hotelIds,
-                          raw_json: searchResult.data,
-                        },
-                      });
-                      console.log('[Hotel Search] Cached search results (name mode)');
-                    } catch (cacheError: any) {
-                      console.warn('[Hotel Search] Failed to cache search results (name mode):', cacheError.message);
-                    }
-                    
-                    // Try to upsert hotels to database (but don't fail if DB is down)
-                    try {
-                      for (const hotel of searchResult.data.hotels.slice(0, 20)) {
-                        await upsertExternalHotel(hotel);
-                      }
-                    } catch (dbError: any) {
-                      console.warn('[Hotel Search] Failed to cache external hotels (DB unavailable, name mode):', dbError.message);
-                    }
-                    
-                    // Process API results if not already loaded from cache
-                    if (!fromCache) {
-                      // Try to fetch from database, but if DB is down, use raw API results
-                      try {
-                        const hotelIds = searchResult.data.hotels
-                          .slice(0, 20)
-                          .map((h: any) => String(h.id || h.hotel_id));
-                        
-                        const externalFromDb = await (prisma as any).externalHotel.findMany({
-                          where: {
-                            provider: 'bookingcom',
-                            hotel_id: { in: hotelIds },
-                          },
-                        });
-
-                        if (externalFromDb.length > 0) {
-                          externalHotels = externalFromDb.map((hotel: any) => ({
-                            id: hotel.hotel_id,
-                            name: hotel.name,
-                            city: hotel.city,
-                            address: hotel.address,
-                            star_rating: hotel.star_rating,
-                            review_score: hotel.review_score,
-                            review_count: hotel.review_count,
-                            price_from: hotel.gross_price,
-                            currency: hotel.currency || 'CNY',
-                            cover_photo_url: hotel.cover_photo_url,
-                            photo_urls: (hotel.photo_urls as any) || [],
-                            source: 'external',
-                            booking_url: hotel.booking_url,
-                          }));
-                        } else {
-                          // No cached results, use raw API results
-                          externalHotels = searchResult.data.hotels.slice(0, 20).map((h: any) => {
-                            const property = h.property || {};
-                            const imageUrl = property.photoUrls?.[0] || 
-                                             h.photoUrls?.[0] || 
-                                             property.photos?.[0]?.url_max || 
-                                             property.photos?.[0]?.url_original ||
-                                             h.photos?.[0]?.url_max || 
-                                             h.photos?.[0]?.url_original ||
-                                             h.photoUrl ||
-                                             h.imageUrl ||
-                                             null;
-                            
-                            const photoUrls = property.photoUrls || 
-                                             h.photoUrls || 
-                                             (property.photos ? property.photos.map((p: any) => p.url_max || p.url_original).filter(Boolean) : []) ||
-                                             (h.photos ? h.photos.map((p: any) => p.url_max || p.url_original).filter(Boolean) : []) ||
-                                             [];
-                            
-                            return {
-                              id: String(h.hotel_id || h.id || property.id || ''),
-                              name: property.name || h.name || 'Unknown Hotel',
-                              city: property.city_name || h.city_name || h.city,
-                              address: property.address || h.address || h.hotel_address,
-                              star_rating: property.propertyClass || property.accuratePropertyClass || 0,
-                              review_score: property.reviewScore || 0,
-                              review_count: property.reviewCount || 0,
-                              price_from: h.priceBreakdown?.grossPrice?.value || null,
-                              currency: h.priceBreakdown?.grossPrice?.currency || h.currency || property.currency || 'CNY',
-                              cover_photo_url: imageUrl,
-                              photo_urls: photoUrls,
-                              source: 'external',
-                              booking_url: null,
-                            };
-                          });
-                        }
-                      } catch (dbError: any) {
-                        console.warn('[Hotel Search] Failed to fetch cached hotels (DB unavailable, name mode), using raw API results');
-                        externalHotels = searchResult.data.hotels.slice(0, 20).map((h: any) => {
-                          const property = h.property || {};
-                          const imageUrl = property.photoUrls?.[0] || 
-                                           h.photoUrls?.[0] || 
-                                           property.photos?.[0]?.url_max || 
-                                           property.photos?.[0]?.url_original ||
-                                           h.photos?.[0]?.url_max || 
-                                           h.photos?.[0]?.url_original ||
-                                           h.photoUrl ||
-                                           h.imageUrl ||
-                                           null;
-                          
-                          const photoUrls = property.photoUrls || 
-                                           h.photoUrls || 
-                                           (property.photos ? property.photos.map((p: any) => p.url_max || p.url_original).filter(Boolean) : []) ||
-                                           (h.photos ? h.photos.map((p: any) => p.url_max || p.url_original).filter(Boolean) : []) ||
-                                           [];
-                          
-                          return {
-                            id: String(h.hotel_id || h.id || property.id || ''),
-                            name: property.name || h.name || 'Unknown Hotel',
-                            city: property.city_name || h.city_name || h.city,
-                            address: property.address || h.address || h.hotel_address,
-                            star_rating: property.propertyClass || property.accuratePropertyClass || 0,
-                            review_score: property.reviewScore || 0,
-                            review_count: property.reviewCount || 0,
-                            price_from: h.priceBreakdown?.grossPrice?.value || null,
-                            currency: h.priceBreakdown?.grossPrice?.currency || h.currency || property.currency || 'CNY',
-                            cover_photo_url: imageUrl,
-                            photo_urls: photoUrls,
-                            source: 'external',
-                            booking_url: null,
-                          };
-                        });
-                      }
-                    }
-                  }
-                }
-              } else {
-                // No destination found
-                console.warn('[Hotel Search] No destination found for name search:', q);
-                blockedReason = 'No hotels found matching your search.';
-              }
-            } else {
-              // Dates invalid, skip external search
-              console.warn('[Hotel Search] Invalid dates for name search, skipping external search');
-            }
-          } catch (error: any) {
-            console.error('[Hotel Search] External name search error:', error);
-            // Don't block, just return empty external results
-            if (error.message.includes('Checkout date must be after checkin')) {
-              blockedReason = error.message;
-            } else if (error.message.includes('Arrival date must be today or in the future')) {
-              blockedReason = error.message;
-            } else if (error.message.includes('Invalid date format')) {
-              blockedReason = error.message;
+              externalHotels = externalFromDb.map((hotel: any) => ({
+                id: hotel.hotel_id,
+                name: hotel.name,
+                city: hotel.city,
+                address: hotel.address,
+                star_rating: hotel.star_rating,
+                review_score: hotel.review_score,
+                review_count: hotel.review_count,
+                price_from: hotel.gross_price,
+                currency: hotel.currency || 'CNY',
+                cover_photo_url: hotel.cover_photo_url,
+                photo_urls: (hotel.photo_urls as any) || [],
+                source: 'external',
+                booking_url: hotel.booking_url,
+              }));
             }
           }
+        } catch (error: any) {
+          console.error('[Hotel Search] External name search error:', error);
         }
       }
 
@@ -1701,128 +1355,32 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
         },
       });
 
-      // First, try to use data from searchHotels response (raw_search_json) which has more info
-      const searchData = cached?.raw_search_json;
-      const property = searchData?.property || {};
-      
-      // Extract all images from property.photoUrls (array of URLs)
-      const allPhotoUrls = property.photoUrls || cached?.photo_urls || [];
-      
-      // If we have search data, use it to enrich the hotel record
-      if (searchData && property) {
-        console.log('[Hotel Details] Using searchHotels data from cache for hotel:', hotelId);
-        console.log('[Hotel Details] Found', allPhotoUrls.length, 'images in property.photoUrls');
-        
-        // Extract accessibility label from searchData
-        const accessibilityLabel = searchData.accessibilityLabel || '';
-        
-        // Update hotel with searchHotels data (more complete than getHotelDetails)
-        await (prisma as any).externalHotel.update({
-          where: {
-            provider_hotel_id: {
-              provider: 'bookingcom',
-              hotel_id: hotelId,
-            },
-          },
-          data: {
-            // Save all images from property.photoUrls to gallery_photos
-            gallery_photos: allPhotoUrls.length > 0 ? allPhotoUrls : cached?.gallery_photos || [],
-            // Also update photo_urls with all images
-            photo_urls: allPhotoUrls.length > 0 ? allPhotoUrls : cached?.photo_urls || [],
-            // Update other fields from property object
-            name: property.name || cached?.name,
-            city: property.city_name || cached?.city,
-            address: property.address || cached?.address,
-            latitude: property.latitude || cached?.latitude,
-            longitude: property.longitude || cached?.longitude,
-            star_rating: property.propertyClass || property.accuratePropertyClass || cached?.star_rating,
-            review_score: property.reviewScore || cached?.review_score,
-            review_score_word: property.reviewScoreWord || cached?.review_score_word,
-            review_count: property.reviewCount || cached?.review_count,
-            currency: property.currency || cached?.currency || 'CNY',
-            // Update from priceBreakdown if available
-            gross_price: searchData.priceBreakdown?.grossPrice?.value || cached?.gross_price,
-            strikethrough_price: searchData.priceBreakdown?.strikethroughPrice?.value || cached?.strikethrough_price,
-            has_free_cancellation: accessibilityLabel.toLowerCase().includes('free cancellation') || cached?.has_free_cancellation || false,
-            includes_taxes_and_charges: accessibilityLabel.toLowerCase().includes('includes taxes and charges') || cached?.includes_taxes_and_charges || false,
-            last_synced_at: new Date(),
-          },
-        });
-      }
+      const shouldRefresh = !cached || 
+        !cached.last_synced_at ||
+        new Date().getTime() - cached.last_synced_at.getTime() > 24 * 60 * 60 * 1000;
 
-      // Always fetch fresh details when user clicks hotel details page
-      // searchHotels data is good for list view, but getHotelDetails has more complete info
-      const shouldRefresh = true; // Always refresh when user explicitly views details
-      
       if (shouldRefresh) {
-        console.log('[Hotel Details] User viewing hotel details, fetching fresh data from API for hotel:', hotelId);
-        
-        // Set default dates if not provided (for getHotelDetails which requires dates)
-        const today = new Date();
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const defaultCheckin = today.toISOString().split('T')[0]; // YYYY-MM-DD
-        const defaultCheckout = tomorrow.toISOString().split('T')[0]; // YYYY-MM-DD
-        
-        // Fetch all details with error handling - if one fails, continue with others
-        let detailsResp: any = null;
-        let descriptionResp: any = null;
-        let paymentResp: any = null;
-        let reviewScoresResp: any = null;
-        let attractionsResp: any = null;
-        
-        try {
-          // getHotelDetails requires dates, so use defaults if not provided
-          detailsResp = await getHotelDetails(hotelId, {
+        // Fetch all details
+        const [detailsResp, descriptionResp, paymentResp, reviewScoresResp, reviewFiltersResp, attractionsResp] = await Promise.all([
+          getHotelDetails(hotelId, {
             adults: parseInt(String(adults)) || 1,
             room_qty: parseInt(String(room_qty)) || 1,
             children_age: String(children_age) || '',
-            arrival_date: defaultCheckin,
-            departure_date: defaultCheckout,
-          } as any); // Type assertion needed because TypeScript doesn't know about arrival_date/departure_date yet
-          console.log('[Hotel Details] getHotelDetails completed');
-        } catch (error: any) {
-          console.warn('[Hotel Details] getHotelDetails failed, will use cached data:', error.message);
-          // Continue with other API calls even if getHotelDetails fails
-        }
-        
-        try {
-          descriptionResp = await getDescriptionAndInfo(hotelId);
-          console.log('[Hotel Details] getDescriptionAndInfo completed');
-        } catch (error: any) {
-          console.warn('[Hotel Details] getDescriptionAndInfo failed:', error.message);
-        }
-        
-        try {
-          paymentResp = await getPaymentFeatures(hotelId);
-          console.log('[Hotel Details] getPaymentFeatures completed');
-        } catch (error: any) {
-          console.warn('[Hotel Details] getPaymentFeatures failed:', error.message);
-        }
-        
-        try {
-          reviewScoresResp = await getHotelReviewScores(hotelId);
-          console.log('[Hotel Details] getHotelReviewScores completed');
-        } catch (error: any) {
-          console.warn('[Hotel Details] getHotelReviewScores failed:', error.message);
-        }
-        
-        try {
-          attractionsResp = await getPopularAttractionNearBy(hotelId);
-          console.log('[Hotel Details] getPopularAttractionNearBy completed');
-        } catch (error: any) {
-          console.warn('[Hotel Details] getPopularAttractionNearBy failed:', error.message);
-        }
-        
-        console.log('[Hotel Details] API calls completed for hotel:', hotelId);
+          }),
+          getDescriptionAndInfo(hotelId),
+          getPaymentFeatures(hotelId),
+          getHotelReviewScores(hotelId),
+          getHotelReviewsFilterMetadata(hotelId),
+          getPopularAttractionNearBy(hotelId),
+        ]);
 
-        // Extract data from responses (use cached data as fallback if API failed)
-        const details = detailsResp?.data || cached?.raw_details_json || {};
-        const description = descriptionResp?.data || cached?.description || [];
-        const payment = paymentResp?.data || cached?.payment_features || [];
-        const reviewScores = reviewScoresResp?.data || cached?.review_scores || [];
-        const reviewFilters: any = cached?.review_filters || {}; // getHotelReviewsFilterMetadata is commented out
-        const attractions = attractionsResp?.data || cached?.attractions || {};
+        // Extract data from responses
+        const details = detailsResp?.data || {};
+        const description = descriptionResp?.data || [];
+        const payment = paymentResp?.data || [];
+        const reviewScores = reviewScoresResp?.data || [];
+        const reviewFilters = reviewFiltersResp?.data || {};
+        const attractions = attractionsResp?.data || {};
 
         // Extract gallery photos from rooms (all rooms, not just first)
         const allRoomPhotos: any[] = [];
@@ -1834,34 +1392,9 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
           });
         }
         
-        // Combine images from multiple sources:
-        // 1. Room photos from getHotelDetails
-        // 2. Photos from getHotelDetails
-        // 3. property.photoUrls from searchHotels (if available in cached raw_search_json)
-        // 4. Existing gallery_photos from cache
-        const searchPhotoUrls = cached?.raw_search_json?.property?.photoUrls || [];
-        const allPhotos = [
-          ...allRoomPhotos,
-          ...(details.photos || []),
-          ...searchPhotoUrls,
-          ...(cached?.gallery_photos || []),
-        ];
-        
-        // Deduplicate by URL (extract base URL without query params for comparison)
-        const seenUrls = new Set<string>();
-        const galleryPhotos = allPhotos.filter((url: any) => {
-          if (!url) return false;
-          const urlStr = typeof url === 'string' ? url : (url.url || url.url_max || url.url_original || '');
-          if (!urlStr) return false;
-          
-          // Extract base URL (without query params) for deduplication
-          const baseUrl = urlStr.split('?')[0];
-          if (seenUrls.has(baseUrl)) return false;
-          seenUrls.add(baseUrl);
-          return true;
-        }).map((url: any) => typeof url === 'string' ? url : (url.url || url.url_max || url.url_original || ''));
-        
-        console.log('[Hotel Details] Combined gallery photos:', galleryPhotos.length, 'unique images (from', allPhotos.length, 'total)');
+        // Also check for photos in other locations
+        const galleryPhotos = allRoomPhotos.length > 0 ? allRoomPhotos : 
+                             (details.photos || cached?.gallery_photos || []);
 
         // Update database with all extracted data
         await (prisma as any).externalHotel.update({
@@ -1904,31 +1437,11 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
         return;
       }
 
-      // Extract gallery photos from various possible locations and deduplicate
-      // Priority: gallery_photos (saved from getHotelDetails) > photo_urls > raw_search_json > raw_details_json
-      const allPhotos = [
-        ...(hotel.gallery_photos || []),
-        ...(hotel.photo_urls && Array.isArray(hotel.photo_urls) ? hotel.photo_urls : []),
-        ...(hotel.raw_search_json?.property?.photoUrls && Array.isArray(hotel.raw_search_json.property.photoUrls) ? hotel.raw_search_json.property.photoUrls : []),
-        ...(hotel.raw_details_json?.rooms ? 
-          Object.values(hotel.raw_details_json.rooms).flatMap((room: any) => room.photos || []) : []),
-      ];
-      
-      // Deduplicate by URL (extract base URL without query params for comparison)
-      const seenUrls = new Set<string>();
-      const galleryPhotos = allPhotos.filter((url: any) => {
-        if (!url) return false;
-        const urlStr = typeof url === 'string' ? url : (url.url || url.url_max || url.url_original || '');
-        if (!urlStr) return false;
-        
-        // Extract base URL (without query params) for deduplication
-        const baseUrl = urlStr.split('?')[0];
-        if (seenUrls.has(baseUrl)) return false;
-        seenUrls.add(baseUrl);
-        return true;
-      }).map((url: any) => typeof url === 'string' ? url : (url.url || url.url_max || url.url_original || ''));
-      
-      console.log('[Hotel Details] Returning', galleryPhotos.length, 'unique gallery photos for hotel:', hotelId, '(from', allPhotos.length, 'total)');
+      // Extract gallery photos from various possible locations
+      const galleryPhotos = hotel.gallery_photos || 
+                           (hotel.raw_details_json?.rooms ? 
+                             Object.values(hotel.raw_details_json.rooms).flatMap((room: any) => room.photos || []) : []) ||
+                           [];
       
       // Extract facilities from facilities_block
       const facilitiesBlock = hotel.facilities || hotel.raw_details_json?.facilities_block || {};

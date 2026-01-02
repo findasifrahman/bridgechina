@@ -586,6 +586,91 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     };
   });
 
+  // External Hotels (read-only view)
+  fastify.get('/catalog/external-hotels', async (request: FastifyRequest) => {
+    const { search, city, page = '1', limit = '50' } = request.query as any;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const where: any = {
+      provider: 'bookingcom',
+    };
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { city: { contains: search, mode: 'insensitive' } },
+        { address: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+    if (city) where.city = { contains: city, mode: 'insensitive' };
+
+    const [hotels, total] = await Promise.all([
+      (prisma as any).externalHotel.findMany({
+        where,
+        orderBy: { last_synced_at: 'desc' },
+        skip,
+        take: limitNum,
+      }),
+      (prisma as any).externalHotel.count({ where }),
+    ]);
+
+    return {
+      data: hotels,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
+    };
+  });
+
+  // External Hotel Search Cache (read-only view with refresh action)
+  fastify.get('/catalog/external-hotel-cache', async (request: FastifyRequest) => {
+    const { provider = 'bookingcom', page = '1', limit = '50' } = request.query as any;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const where: any = { provider };
+
+    const [cache, total] = await Promise.all([
+      (prisma as any).externalHotelSearchCache.findMany({
+        where,
+        orderBy: { created_at: 'desc' },
+        skip,
+        take: limitNum,
+      }),
+      (prisma as any).externalHotelSearchCache.count({ where }),
+    ]);
+
+    return {
+      data: cache,
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum),
+    };
+  });
+
+  // Refresh external hotel cache (delete old entries)
+  fastify.post('/catalog/external-hotel-cache/refresh', async (request: FastifyRequest) => {
+    // Delete cache entries older than 5 days
+    const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+    
+    const deleted = await (prisma as any).externalHotelSearchCache.deleteMany({
+      where: {
+        created_at: {
+          lt: fiveDaysAgo,
+        },
+      },
+    });
+
+    return {
+      message: `Deleted ${deleted.count} expired cache entries`,
+      deleted: deleted.count,
+    };
+  });
+
   fastify.delete('/catalog/hotels/:id', async (request: FastifyRequest) => {
     const params = request.params as { id: string };
     await prisma.hotel.delete({ where: { id: params.id } });

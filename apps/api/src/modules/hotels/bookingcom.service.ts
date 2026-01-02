@@ -356,6 +356,8 @@ export async function getHotelDetails(
     temperature_unit?: string;
     languagecode?: string;
     currency_code?: string;
+    arrival_date?: string; // YYYY-MM-DD format
+    departure_date?: string; // YYYY-MM-DD format
   } = {}
 ): Promise<any> {
   const defaultParams = {

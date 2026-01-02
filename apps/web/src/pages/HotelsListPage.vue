@@ -160,7 +160,6 @@
           </div>
           <div class="absolute top-2 right-2 flex gap-2">
             <Badge v-if="hotel.source === 'internal' && hotel.verified" variant="success" size="sm">Verified</Badge>
-            <Badge v-else-if="hotel.source === 'external'" variant="primary" size="sm">Booking.com</Badge>
           </div>
         </div>
         <CardBody class="p-4">
@@ -230,6 +229,7 @@ const route = useRoute();
 const loading = ref(true);
 const internalHotels = ref<any[]>([]);
 const externalHotels = ref<any[]>([]);
+const allHotels = ref<any[]>([]);
 const blockedExternal = ref(false);
 const blockedReason = ref('');
 const currentPage = ref(1);
@@ -273,10 +273,10 @@ const breakfastOptions = [
   { value: 'yes', label: 'Breakfast Included' },
 ];
 
-// Computed: All hotels combined
-const allHotels = computed(() => {
-  return [...internalHotels.value, ...externalHotels.value];
-});
+// Update allHotels when internal or external hotels change
+function updateAllHotels() {
+  allHotels.value = [...internalHotels.value, ...externalHotels.value];
+}
 
 // Computed: Filtered hotels (client-side filtering)
 const filteredHotels = computed(() => {
@@ -343,6 +343,7 @@ async function performSearch() {
 
     internalHotels.value = (data.internal || []).map((h: any) => ({ ...h, source: 'internal' }));
     externalHotels.value = (data.external || []).map((h: any) => ({ ...h, source: 'external' }));
+    updateAllHotels();
     blockedExternal.value = data.blockedExternal || false;
     blockedReason.value = data.blockedReason || '';
 
@@ -420,9 +421,10 @@ onMounted(async () => {
     });
     const data = response.data || { internal: [], external: [] };
     internalHotels.value = data.internal || [];
-    externalHotels.value = []; // Don't load external on page load
-    blockedExternal.value = false;
-    blockedReason.value = undefined;
+    externalHotels.value = data.external || []; // Load from database (no API call)
+    updateAllHotels();
+    blockedExternal.value = data.blockedExternal || false;
+    blockedReason.value = data.blockedReason || '';
   } catch (error: any) {
     console.error('Failed to load hotels', error);
     internalHotels.value = [];
