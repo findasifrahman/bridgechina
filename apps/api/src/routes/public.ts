@@ -1698,7 +1698,7 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
         getPaymentFeatures,
         getHotelReviewScores,
         getHotelReviewsFilterMetadata,
-        getPopularAttractionNearBy,
+        // getPopularAttractionNearBy, // Commented out - not using attractions
         upsertExternalHotel,
       } = await import('../modules/hotels/bookingcom.service.js');
 
@@ -1780,7 +1780,7 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
         let descriptionResp: any = null;
         let paymentResp: any = null;
         let reviewScoresResp: any = null;
-        let attractionsResp: any = null;
+        let attractionsResp: any = null; // Not used - API call commented out
         
         try {
           // getHotelDetails requires dates, so use defaults if not provided
@@ -1818,12 +1818,13 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
           console.warn('[Hotel Details] getHotelReviewScores failed:', error.message);
         }
         
-        try {
-          attractionsResp = await getPopularAttractionNearBy(hotelId);
-          console.log('[Hotel Details] getPopularAttractionNearBy completed');
-        } catch (error: any) {
-          console.warn('[Hotel Details] getPopularAttractionNearBy failed:', error.message);
-        }
+        // Commented out - not using attractions
+        // try {
+        //   attractionsResp = await getPopularAttractionNearBy(hotelId);
+        //   console.log('[Hotel Details] getPopularAttractionNearBy completed');
+        // } catch (error: any) {
+        //   console.warn('[Hotel Details] getPopularAttractionNearBy failed:', error.message);
+        // }
         
         console.log('[Hotel Details] API calls completed for hotel:', hotelId);
 
@@ -1960,8 +1961,36 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
       const attractions = hotel.attractions || hotel.raw_details_json?.attractions || {};
       const popularAttractions = attractions.popular_landmarks || attractions.closest_landmarks || [];
       
-      // Extract payment features
-      const paymentFeatures = hotel.payment_features || [];
+      // Extract payment features and map creditcard_id to names
+      const creditCardMap: Record<number, string> = {
+        1: 'Visa',
+        2: 'Mastercard',
+        3: 'American Express',
+        5: 'Diners Club',
+        7: 'JCB',
+        18: 'UnionPay',
+        44: 'Discover',
+      };
+      
+      const paymentFeaturesRaw = hotel.payment_features || [];
+      const paymentFeatures = Array.isArray(paymentFeaturesRaw)
+        ? paymentFeaturesRaw.map((p: any) => {
+            const cardName = p.creditcard_id ? creditCardMap[p.creditcard_id] : null;
+            return {
+              name: cardName || p.name || `Card ${p.creditcard_id || 'Unknown'}`,
+              creditcard_id: p.creditcard_id,
+              bookable: p.bookable,
+              payable: p.payable,
+            };
+          })
+        : [];
+      
+      // Extract price from product_price_breakdown or composite_price_breakdown
+      const priceBreakdown = hotel.raw_details_json?.product_price_breakdown || hotel.raw_details_json?.composite_price_breakdown || {};
+      const grossAmountPerNight = priceBreakdown.gross_amount_per_night?.value || priceBreakdown.gross_amount?.value || null;
+      const grossAmount = priceBreakdown.gross_amount?.value || null;
+      const netAmount = priceBreakdown.net_amount?.value || null;
+      const currency = priceBreakdown.gross_amount?.currency || priceBreakdown.gross_amount_per_night?.currency || hotel.currency || 'CNY';
       
       // Extract sustainability info
       const sustainability = hotel.raw_details_json?.sustainability || null;
@@ -1991,9 +2020,12 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
         review_filters: hotel.review_filters || {},
         attractions: popularAttractions,
         booking_url: hotel.booking_url,
-        price_from: hotel.gross_price,
+        price_from: grossAmountPerNight || grossAmount || hotel.gross_price,
+        price_total: grossAmount,
+        price_per_night: grossAmountPerNight,
+        net_amount: netAmount,
         strikethrough_price: hotel.strikethrough_price,
-        currency: hotel.currency || 'CNY',
+        currency: currency,
         has_free_cancellation: hotel.has_free_cancellation,
         includes_taxes_and_charges: hotel.includes_taxes_and_charges,
         hotel_include_breakfast: hotel.raw_details_json?.hotel_include_breakfast || false,

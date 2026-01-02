@@ -25,13 +25,21 @@
         <!-- Right: Sticky Booking Card -->
         <div class="lg:sticky lg:top-20 lg:h-fit">
             <Card class="border-2 border-teal-200">
-            <CardBody class="p-4">
-              <div class="flex items-start justify-between mb-3">
-                <h1 class="text-lg font-semibold text-slate-900 leading-tight pr-2">{{ hotel.name }}</h1>
-                <div class="flex gap-2">
-                  <Badge v-if="hotel.source === 'internal' && hotel.verified" variant="success">Verified</Badge>
-                </div>
-              </div>
+                <CardBody class="p-4">
+                  <div class="flex items-start justify-between mb-3">
+                    <div class="flex-1">
+                      <h1 class="text-lg font-semibold text-slate-900 leading-tight pr-2">{{ hotel.name }}</h1>
+                      <div v-if="hotel.price_per_night || hotel.price_from || hotel.gross_price" class="mt-1">
+                        <span class="text-sm font-bold text-teal-600">
+                          {{ hotel.currency === 'CNY' ? '¥' : hotel.currency || '¥' }}{{ Math.round(hotel.price_per_night || hotel.price_from || hotel.gross_price || 0) }}
+                        </span>
+                        <span class="text-xs text-slate-500 ml-1">/night</span>
+                      </div>
+                    </div>
+                    <div class="flex gap-2">
+                      <Badge v-if="hotel.source === 'internal' && hotel.verified" variant="success">Verified</Badge>
+                    </div>
+                  </div>
               
               <div v-if="hotel.review_score || hotel.rating" class="flex items-center gap-2 mb-3 text-sm">
                 <div class="flex items-center">
@@ -47,14 +55,14 @@
                 <span class="text-sm">{{ '⭐'.repeat(hotel.star_rating) }}</span>
               </div>
 
-              <div v-if="hotel.price_from || hotel.gross_price" class="mb-3">
+              <div v-if="hotel.price_per_night || hotel.price_from || hotel.gross_price" class="mb-3">
                 <div class="text-xs text-slate-600">Starting from</div>
                 <div class="text-lg font-bold text-teal-600">
-                  {{ hotel.currency === 'CNY' ? '¥' : hotel.currency || '¥' }}{{ hotel.price_from || hotel.gross_price }}
+                  {{ hotel.currency === 'CNY' ? '¥' : hotel.currency || '¥' }}{{ Math.round(hotel.price_per_night || hotel.price_from || hotel.gross_price || 0) }}
                 </div>
                 <div class="text-xs text-slate-500">per night</div>
-                <div v-if="hotel.strikethrough_price && hotel.strikethrough_price > (hotel.price_from || hotel.gross_price)" class="text-xs text-slate-400 line-through mt-1">
-                  {{ hotel.currency === 'CNY' ? '¥' : hotel.currency || '¥' }}{{ hotel.strikethrough_price }}
+                <div v-if="hotel.strikethrough_price && hotel.strikethrough_price > (hotel.price_per_night || hotel.price_from || hotel.gross_price || 0)" class="text-xs text-slate-400 line-through mt-1">
+                  {{ hotel.currency === 'CNY' ? '¥' : hotel.currency || '¥' }}{{ Math.round(hotel.strikethrough_price) }}
                 </div>
               </div>
 
@@ -143,12 +151,12 @@
             <CardBody class="p-4">
               <h2 class="text-base font-semibold mb-2">Facilities</h2>
               <!-- Most Popular Facilities -->
-              <div v-if="hotel.facilities.popular && hotel.facilities.popular.length > 0" class="mb-4">
+              <div v-if="hotel.facilities.popular && Array.isArray(hotel.facilities.popular) && hotel.facilities.popular.length > 0" class="mb-4">
                 <h3 class="text-sm font-medium text-slate-600 mb-2">Most Popular</h3>
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                   <div v-for="(facility, idx) in hotel.facilities.popular.slice(0, 9)" :key="idx" class="flex items-center gap-2 text-sm text-slate-700">
                     <Check class="h-4 w-4 text-teal-600 flex-shrink-0" />
-                    <span>{{ facility.name || facility }}</span>
+                    <span>{{ typeof facility === 'object' ? (facility.name || facility.translated_name || JSON.stringify(facility)) : facility }}</span>
                   </div>
                 </div>
               </div>
@@ -158,7 +166,7 @@
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                   <div v-for="(facility, idx) in hotel.facilities.facilities" :key="idx" class="flex items-center gap-2 text-sm text-slate-700">
                     <Check class="h-4 w-4 text-teal-600 flex-shrink-0" />
-                    <span>{{ facility.name || facility }}</span>
+                    <span>{{ typeof facility === 'object' ? (facility.name || facility.translated_name || JSON.stringify(facility)) : facility }}</span>
                   </div>
                 </div>
               </div>
@@ -168,7 +176,7 @@
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                   <div v-for="(facility, idx) in hotel.facilities.all" :key="idx" class="flex items-center gap-2 text-sm text-slate-700">
                     <Check class="h-4 w-4 text-teal-600 flex-shrink-0" />
-                    <span>{{ facility.name || facility }}</span>
+                    <span>{{ typeof facility === 'object' ? (facility.name || facility.translated_name || JSON.stringify(facility)) : facility }}</span>
                   </div>
                 </div>
               </div>
@@ -278,8 +286,8 @@
             </CardBody>
           </Card>
 
-          <!-- Facilities -->
-          <Card v-if="hotel.facilities">
+          <!-- Facilities (Internal hotels only - external hotels use the card above) -->
+          <Card v-if="hotel.source === 'internal' && hotel.facilities">
             <CardBody class="p-4">
               <h2 class="text-base font-semibold mb-2">Facilities</h2>
               <div class="prose prose-sm max-w-none text-slate-700" v-html="formatFacilities(hotel.facilities)" />
