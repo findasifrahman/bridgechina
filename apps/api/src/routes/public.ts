@@ -1009,7 +1009,8 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
                 
                 // TEMPORARILY DISABLED CACHE FOR TESTING - Always fetch from API
                 // If not from cache, fetch from API
-                if (true) { // Changed from !fromCache to always true for testing
+                //if (true) { // Changed from !fromCache to always true for testing
+                if (!fromCache){
                   try {
                     console.log('[Hotel Search] Cache disabled for testing - fetching from API (city mode)');
                     searchResult = await searchHotels(searchParams);
