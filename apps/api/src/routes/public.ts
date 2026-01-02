@@ -1238,8 +1238,11 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
         }
       } else if (mode === 'name') {
         // Hotel name search - allow but mark if outside Guangzhou
-        // If dates are NOT provided, just load from database (no API call)
-        if (!checkin || !checkout) {
+        // Validate query is not empty
+        if (!q || q.trim() === '') {
+          blockedReason = 'Please enter a hotel name to search.';
+        } else if (!checkin || !checkout) {
+          // If dates are NOT provided, just load from database (no API call)
           console.log('[Hotel Search] No dates provided for name search, loading external hotels from database only');
           try {
             // Try to find hotels by name in database
@@ -1298,6 +1301,14 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
               if (arrivalDateOnly < todayDateOnly) {
                 datesValid = false;
                 blockedReason = 'Arrival date must be today or in the future.';
+              }
+            }
+
+            if (datesValid) {
+              // Validate query is not empty
+              if (!q || q.trim() === '') {
+                blockedReason = 'Please enter a hotel name to search.';
+                datesValid = false;
               }
             }
 
@@ -1882,8 +1893,6 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
             highlights: details?.property_highlight_strip || cached?.highlights,
             facilities: details?.facilities_block || cached?.facilities,
             booking_url: details?.url || cached?.booking_url,
-            // Update other fields from details
-            hotel_include_breakfast: details?.hotel_include_breakfast || cached?.hotel_include_breakfast || false,
             last_synced_at: new Date(),
           },
         });
