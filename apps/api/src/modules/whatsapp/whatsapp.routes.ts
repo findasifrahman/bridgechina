@@ -143,8 +143,8 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
             where: { id: conversation.id },
             data: { last_outbound_at: new Date() },
           });
-        } catch (error) {
-          fastify.log.error('[WhatsApp Routes] Failed to send confirmation:', error);
+        } catch (error: any) {
+          fastify.log.error({ error }, '[WhatsApp Routes] Failed to send confirmation');
         }
 
         // Notify WeCom
