@@ -1,186 +1,201 @@
 <template>
-  <div class="h-screen flex flex-col">
-    <!-- Header -->
-    <div class="border-b bg-white px-4 py-3 flex items-center justify-between">
-      <h1 class="text-xl font-semibold">WhatsApp Inbox</h1>
-      <div class="flex items-center gap-2">
-        <select
-          v-model="filters.mode"
-          @change="loadConversations"
-          class="px-3 py-1.5 border rounded-md text-sm"
-        >
-          <option value="">All</option>
-          <option value="AI">AI</option>
-          <option value="HUMAN">Human</option>
-        </select>
-        <input
-          v-model="searchQuery"
-          @input="handleSearch"
-          type="text"
-          placeholder="Search..."
-          class="px-3 py-1.5 border rounded-md text-sm w-48"
-        />
+  <div class="h-screen flex flex-col bg-slate-50">
+    <!-- Mobile: List View -->
+    <div v-if="!selectedConversationId || showListView" class="h-full flex flex-col md:hidden">
+      <!-- Header -->
+      <div class="bg-white border-b px-4 py-3 sticky top-0 z-10">
+        <div class="flex items-center justify-between mb-3">
+          <h1 class="text-lg font-semibold">WhatsApp Inbox</h1>
+        </div>
+        <!-- Search and Filter -->
+        <div class="flex gap-2">
+          <input
+            v-model="searchQuery"
+            @input="handleSearch"
+            type="text"
+            placeholder="Search conversations..."
+            class="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+          />
+          <select
+            v-model="filters.mode"
+            @change="loadConversations"
+            class="px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+          >
+            <option value="">All</option>
+            <option value="AI">AI</option>
+            <option value="HUMAN">Human</option>
+          </select>
+        </div>
       </div>
-    </div>
 
-    <div class="flex flex-1 overflow-hidden">
-      <!-- Conversations List (Left) -->
-      <div class="w-80 border-r bg-slate-50 overflow-y-auto">
+      <!-- Conversations List -->
+      <div class="flex-1 overflow-y-auto bg-white">
         <div v-if="loading" class="p-4 text-center text-sm text-slate-500">
           Loading...
         </div>
         <div v-else-if="conversations.length === 0" class="p-4 text-center text-sm text-slate-500">
           No conversations
         </div>
-        <div
-          v-else
-          class="divide-y"
-        >
+        <div v-else class="divide-y divide-slate-200">
           <div
             v-for="conv in conversations"
             :key="conv.id"
-            :class="[
-              'p-4 cursor-pointer hover:bg-white transition-colors',
-              selectedConversationId === conv.id ? 'bg-white border-l-4 border-teal-600' : ''
-            ]"
-            @click="selectConversation(conv.id)"
+            class="p-4 active:bg-slate-100 transition-colors cursor-pointer"
+            @click="selectConversationMobile(conv.id)"
           >
-            <div class="flex items-start justify-between mb-1">
-              <div class="flex items-center gap-2">
-                <span class="font-medium text-sm">
-                  {{ conv.external_from?.replace('whatsapp:', '') || 'Unknown' }}
-                </span>
-                <span
-                  :class="[
-                    'px-2 py-0.5 rounded text-xs font-medium',
-                    conv.mode === 'HUMAN' ? 'bg-amber-100 text-amber-700' : 'bg-teal-100 text-teal-700'
-                  ]"
-                >
-                  {{ conv.mode }}
+            <div class="flex items-start gap-3">
+              <!-- Avatar -->
+              <div class="w-12 h-12 rounded-full bg-teal-500 flex items-center justify-center flex-shrink-0">
+                <span class="text-white font-semibold text-lg">
+                  {{ getInitials(conv.external_from) }}
                 </span>
               </div>
-              <span class="text-xs text-slate-500">
-                {{ formatTime(conv.last_inbound_at) }}
-              </span>
-            </div>
-            <p class="text-sm text-slate-600 line-clamp-2">
-              {{ conv.last_message_preview || 'No messages' }}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Chat View (Right) -->
-      <div class="flex-1 flex flex-col bg-white">
-        <div v-if="!selectedConversation" class="flex-1 flex items-center justify-center text-slate-400">
-          Select a conversation to view messages
-        </div>
-        <div v-else class="flex-1 flex flex-col">
-          <!-- Chat Header -->
-          <div class="border-b px-4 py-3 flex items-center justify-between">
-            <div>
-              <div class="font-medium">
-                {{ selectedConversation.external_from?.replace('whatsapp:', '') || 'Unknown' }}
-              </div>
-              <div class="text-sm text-slate-500">
-                {{ selectedConversation.mode }} mode
-              </div>
-            </div>
-            <div class="flex gap-2">
-              <button
-                v-if="selectedConversation.mode === 'AI'"
-                @click="handleTakeover"
-                class="px-3 py-1.5 bg-teal-600 text-white rounded-md text-sm hover:bg-teal-700"
-              >
-                Take Over
-              </button>
-              <button
-                v-else
-                @click="handleRelease"
-                class="px-3 py-1.5 bg-slate-600 text-white rounded-md text-sm hover:bg-slate-700"
-              >
-                Release to AI
-              </button>
-            </div>
-          </div>
-
-          <!-- Messages -->
-          <div class="flex-1 overflow-y-auto p-4 space-y-4">
-            <div
-              v-for="msg in messages"
-              :key="msg.id"
-              :class="[
-                'flex',
-                msg.direction === 'OUTBOUND' ? 'justify-end' : 'justify-start'
-              ]"
-            >
-              <div
-                :class="[
-                  'max-w-[80%] rounded-lg px-4 py-2',
-                  msg.direction === 'OUTBOUND'
-                    ? 'bg-teal-600 text-white'
-                    : 'bg-slate-100 text-slate-900'
-                ]"
-              >
-                <p class="whitespace-pre-wrap break-words">{{ msg.content }}</p>
-                
-                <!-- Images -->
-                <div v-if="msg.meta_json?.mediaUrls?.length" class="mt-2 space-y-2">
-                  <div
-                    v-for="(url, idx) in msg.meta_json.mediaUrls"
-                    :key="idx"
-                    class="rounded overflow-hidden"
-                  >
-                    <img
-                      :src="url"
-                      :alt="`Media ${idx + 1}`"
-                      class="max-w-full h-auto"
-                      @error="handleImageError"
-                    />
+              
+              <!-- Content -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between mb-1">
+                  <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <span class="font-medium text-sm text-slate-900 truncate">
+                      {{ formatPhoneNumber(conv.external_from) }}
+                    </span>
+                    <span
+                      :class="[
+                        'px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0',
+                        conv.mode === 'HUMAN' ? 'bg-amber-100 text-amber-700' : 'bg-teal-100 text-teal-700'
+                      ]"
+                    >
+                      {{ conv.mode }}
+                    </span>
                   </div>
+                  <span class="text-xs text-slate-500 flex-shrink-0 ml-2">
+                    {{ formatTime(conv.last_inbound_at) }}
+                  </span>
                 </div>
+                <p class="text-sm text-slate-600 truncate">
+                  {{ conv.last_message_preview || 'No messages' }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-                <!-- Single media URL from meta_json.mediaUrl -->
-                <div v-else-if="msg.meta_json?.mediaUrl" class="mt-2 rounded overflow-hidden">
-                  <img
-                    :src="msg.meta_json.mediaUrl"
-                    alt="Media"
-                    class="max-w-full h-auto"
-                    @error="handleImageError"
-                  />
+    <!-- Desktop: Side-by-side Layout -->
+    <div class="hidden md:flex md:flex-col md:h-full">
+      <!-- Header -->
+      <div class="bg-white border-b px-4 py-3 flex items-center justify-between">
+        <h1 class="text-xl font-semibold">WhatsApp Inbox</h1>
+        <div class="flex items-center gap-2">
+          <select
+            v-model="filters.mode"
+            @change="loadConversations"
+            class="px-3 py-1.5 border rounded-md text-sm"
+          >
+            <option value="">All</option>
+            <option value="AI">AI</option>
+            <option value="HUMAN">Human</option>
+          </select>
+          <input
+            v-model="searchQuery"
+            @input="handleSearch"
+            type="text"
+            placeholder="Search..."
+            class="px-3 py-1.5 border rounded-md text-sm w-48"
+          />
+        </div>
+      </div>
+
+      <div class="flex flex-1 overflow-hidden">
+        <!-- Conversations List (Left) -->
+        <div class="w-80 border-r bg-white overflow-y-auto">
+          <div v-if="loading" class="p-4 text-center text-sm text-slate-500">
+            Loading...
+          </div>
+          <div v-else-if="conversations.length === 0" class="p-4 text-center text-sm text-slate-500">
+            No conversations
+          </div>
+          <div v-else class="divide-y divide-slate-200">
+            <div
+              v-for="conv in conversations"
+              :key="conv.id"
+              :class="[
+                'p-4 cursor-pointer hover:bg-slate-50 transition-colors',
+                selectedConversationId === conv.id ? 'bg-teal-50 border-l-4 border-teal-600' : ''
+              ]"
+              @click="selectConversation(conv.id)"
+            >
+              <div class="flex items-start gap-3">
+                <!-- Avatar -->
+                <div class="w-10 h-10 rounded-full bg-teal-500 flex items-center justify-center flex-shrink-0">
+                  <span class="text-white font-semibold text-sm">
+                    {{ getInitials(conv.external_from) }}
+                  </span>
                 </div>
-
-                <div class="text-xs mt-1 opacity-70">
-                  {{ formatTime(msg.created_at) }}
+                
+                <!-- Content -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between mb-1">
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                      <span class="font-medium text-sm text-slate-900 truncate">
+                        {{ formatPhoneNumber(conv.external_from) }}
+                      </span>
+                      <span
+                        :class="[
+                          'px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0',
+                          conv.mode === 'HUMAN' ? 'bg-amber-100 text-amber-700' : 'bg-teal-100 text-teal-700'
+                        ]"
+                      >
+                        {{ conv.mode }}
+                      </span>
+                    </div>
+                    <span class="text-xs text-slate-500 flex-shrink-0 ml-2">
+                      {{ formatTime(conv.last_inbound_at) }}
+                    </span>
+                  </div>
+                  <p class="text-sm text-slate-600 line-clamp-2">
+                    {{ conv.last_message_preview || 'No messages' }}
+                  </p>
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- Reply Box -->
-          <div v-if="selectedConversation.mode === 'HUMAN'" class="border-t p-4">
-            <form @submit.prevent="handleSend" class="flex gap-2">
-              <input
-                v-model="replyText"
-                type="text"
-                placeholder="Type a message..."
-                class="flex-1 px-3 py-2 border rounded-md"
-                :disabled="sending"
-              />
-              <button
-                type="submit"
-                :disabled="!replyText.trim() || sending"
-                class="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Send
-              </button>
-            </form>
+        <!-- Chat View (Right) -->
+        <div class="flex-1 flex flex-col bg-white">
+          <div v-if="!selectedConversation" class="flex-1 flex items-center justify-center text-slate-400">
+            Select a conversation to view messages
           </div>
-          <div v-else class="border-t p-4 text-sm text-slate-500 text-center">
-            AI mode - take over to reply
-          </div>
+          <ConversationView
+            v-else
+            :conversation="selectedConversation"
+            :messages="messages"
+            :reply-text="replyText"
+            :sending="sending"
+            @update:reply-text="replyText = $event"
+            @send="handleSend"
+            @takeover="handleTakeover"
+            @release="handleRelease"
+          />
         </div>
       </div>
+    </div>
+
+    <!-- Mobile: Chat View -->
+    <div v-if="selectedConversationId && !showListView" class="h-full flex flex-col md:hidden">
+      <ConversationView
+        :conversation="selectedConversation"
+        :messages="messages"
+        :reply-text="replyText"
+        :sending="sending"
+        :mobile="true"
+        @update:reply-text="replyText = $event"
+        @send="handleSend"
+        @takeover="handleTakeover"
+        @release="handleRelease"
+        @back="showListView = true"
+      />
     </div>
   </div>
 </template>
@@ -189,6 +204,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from '@/utils/axios';
+import ConversationView from './ConversationView.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -204,6 +220,7 @@ const filters = ref({
   mode: '',
 });
 const replyText = ref('');
+const showListView = ref(false); // For mobile navigation
 let pollInterval: number | null = null;
 
 function formatTime(date: string | Date | null) {
@@ -214,12 +231,23 @@ function formatTime(date: string | Date | null) {
   const diffMins = Math.floor(diffMs / 60000);
   
   if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffMins < 60) return `${diffMins}m`;
   const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffHours < 24) return `${diffHours}h`;
   const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return d.toLocaleDateString();
+  if (diffDays < 7) return `${diffDays}d`;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatPhoneNumber(phone: string | null) {
+  if (!phone) return 'Unknown';
+  return phone.replace('whatsapp:', '').replace(/^\+/, '');
+}
+
+function getInitials(phone: string | null) {
+  if (!phone) return '?';
+  const num = phone.replace('whatsapp:', '').replace(/^\+/, '');
+  return num.slice(-2) || '?';
 }
 
 async function loadConversations() {
@@ -238,11 +266,11 @@ async function loadConversations() {
     const response = await axios.get('/api/ops/conversations', { params });
     conversations.value = response.data.conversations || [];
 
-    // Select conversation from URL query param if present
+    // Select conversation from URL query param if present (desktop only)
     const convId = route.query.c as string;
-    if (convId && !selectedConversationId.value) {
+    if (convId && !selectedConversationId.value && window.innerWidth >= 768) {
       selectConversation(convId);
-    } else if (conversations.value.length > 0 && !selectedConversationId.value) {
+    } else if (conversations.value.length > 0 && !selectedConversationId.value && window.innerWidth >= 768) {
       selectConversation(conversations.value[0].id);
     }
   } catch (error) {
@@ -254,6 +282,7 @@ async function loadConversations() {
 
 async function selectConversation(id: string) {
   selectedConversationId.value = id;
+  showListView.value = false;
   try {
     const response = await axios.get(`/api/ops/conversations/${id}`);
     selectedConversation.value = response.data;
@@ -264,6 +293,11 @@ async function selectConversation(id: string) {
   } catch (error) {
     console.error('Failed to load conversation:', error);
   }
+}
+
+function selectConversationMobile(id: string) {
+  selectConversation(id);
+  showListView.value = false;
 }
 
 async function handleTakeover() {
@@ -316,18 +350,14 @@ function handleSearch() {
   loadConversations();
 }
 
-function handleImageError(e: Event) {
-  (e.target as HTMLImageElement).style.display = 'none';
-}
-
-// Poll for new messages every 30 seconds
+// Poll for new messages every 2 minutes
 function startPolling() {
   pollInterval = window.setInterval(() => {
     loadConversations();
     if (selectedConversationId.value) {
       selectConversation(selectedConversationId.value);
     }
-  }, 30000*4); // 30 seconds
+  }, 120000); // 2 minutes
 }
 
 function stopPolling() {
@@ -355,4 +385,3 @@ onUnmounted(() => {
   overflow: hidden;
 }
 </style>
-
