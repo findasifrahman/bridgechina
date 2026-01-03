@@ -43,12 +43,15 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
       const body = request.body as any;
 
       // Validate signature (if enabled)
-      const webhookUrl = `${APP_BASE_URL}/api/webhooks/twilio/whatsapp/inbound`;
-      const isValid = validateWebhookSignature(request, webhookUrl);
-      if (!isValid) {
-        fastify.log.warn('[WhatsApp Routes] Invalid webhook signature');
-        reply.status(403).send('Invalid signature');
-        return;
+      const TWILIO_WEBHOOK_VALIDATE = process.env.TWILIO_WEBHOOK_VALIDATE === 'true';
+      if (TWILIO_WEBHOOK_VALIDATE) {
+        const webhookUrl = `${APP_BASE_URL}/api/webhooks/twilio/whatsapp/inbound`;
+        const isValid = validateWebhookSignature(request, webhookUrl);
+        if (!isValid) {
+          fastify.log.warn('[WhatsApp Routes] Invalid webhook signature');
+          reply.status(403).send('Invalid signature');
+          return;
+        }
       }
 
       // Parse and validate payload

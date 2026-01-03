@@ -41,7 +41,7 @@ curl -X POST https://bridgechina-production.up.railway.app/api/webhooks/twilio/w
 
 Expected response: `ok` (status 200)
 
-**Note**: Signature validation will be skipped if `TWILIO_WEBHOOK_VALIDATE=false` or if validation fails gracefully.
+**Note**: For testing, make sure `TWILIO_WEBHOOK_VALIDATE` is NOT set to `"true"` in your environment variables, or set it to `false`. This will skip signature validation. In production with Twilio, set it to `"true"` for security.
 
 ### 3. Test Status Callback Webhook
 
