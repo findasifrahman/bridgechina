@@ -5,11 +5,9 @@
 
 import OpenAI from 'openai';
 import axios from 'axios';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../../lib/prisma.js';
 import { searchByKeyword } from '../shopping/shopping.service.js';
 import tmapiClient from '../shopping/tmapi.client.js';
-
-const prisma = new PrismaClient();
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_ROUTER_MODEL = process.env.OPENAI_ROUTER_MODEL || 'gpt-4o-mini';

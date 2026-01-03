@@ -8,9 +8,7 @@
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma.js';
 
 // Middleware to check if user is a guide
 async function requireGuide(request: FastifyRequest, reply: FastifyReply) {

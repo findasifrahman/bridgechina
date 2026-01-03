@@ -4,7 +4,7 @@
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../../lib/prisma.js';
 import { validateWebhookSignature } from './twilio.client.js';
 import { inboundWebhookSchema, statusWebhookSchema } from './whatsapp.schemas.js';
 import { generateThreadKey, handleAIReply } from './whatsapp.service.js';
@@ -19,8 +19,6 @@ function requestsHumanTakeover(body: string): boolean {
   const keywords = ['human', 'agent', 'person', 'help me', 'operator', 'representative'];
   return keywords.some(keyword => lower.includes(keyword));
 }
-
-const prisma = new PrismaClient();
 const APP_BASE_URL = process.env.APP_BASE_URL || 'http://localhost:3000';
 
 export default async function whatsappRoutes(fastify: FastifyInstance) {

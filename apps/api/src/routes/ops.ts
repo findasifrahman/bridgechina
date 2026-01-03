@@ -4,12 +4,10 @@
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { sendText, sendMedia } from '../modules/whatsapp/twilio.client.js';
 import { z } from 'zod';
-
-const prisma = new PrismaClient();
 
 const replySchema = z.object({
   text: z.string(),

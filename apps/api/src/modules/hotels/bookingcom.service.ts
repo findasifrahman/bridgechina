@@ -4,9 +4,7 @@
  */
 
 import axios, { AxiosInstance } from 'axios';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../../lib/prisma.js';
 
 const RAPID_API_KEY = process.env.RAPID_API_KEY;
 const RAPID_API_HOST = 'booking-com15.p.rapidapi.com';

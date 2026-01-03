@@ -5,8 +5,8 @@ import formbody from '@fastify/formbody';
 import jwt from '@fastify/jwt';
 import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
-import { PrismaClient } from '@prisma/client';
 import { authenticate } from './middleware/auth.js';
+import { prisma } from './lib/prisma.js';
 
 import authRoutes from './routes/auth.js';
 import publicRoutes from './routes/public.js';
@@ -16,8 +16,6 @@ import userRoutes from './routes/user.js';
 import guideRoutes from './routes/guide.js';
 import opsRoutes from './routes/ops.js';
 import whatsappRoutes from './modules/whatsapp/whatsapp.routes.js';
-
-const prisma = new PrismaClient();
 
 const fastify = Fastify({
   logger: true,

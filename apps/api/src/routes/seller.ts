@@ -1,9 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { createProductSchema, updateProductSchema } from '@bridgechina/shared';
-
-const prisma = new PrismaClient();
 
 export default async function sellerRoutes(fastify: FastifyInstance) {
   // All seller routes require authentication and SELLER role

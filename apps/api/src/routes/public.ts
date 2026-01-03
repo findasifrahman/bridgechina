@@ -1,10 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { PrismaClient } from '@prisma/client';
 import { createServiceRequestSchema, createLeadSchema } from '@bridgechina/shared';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { getS3Client } from '../utils/r2.js';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma.js';
 
 // Simple geo detection (stub - can be enhanced with geoip-lite)
 function detectCity(request: FastifyRequest): string {

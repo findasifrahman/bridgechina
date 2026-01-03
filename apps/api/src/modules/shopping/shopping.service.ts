@@ -3,7 +3,8 @@
  * Orchestrates TMAPI calls with caching
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import { prisma } from '../../lib/prisma.js';
 import tmapiClient from './tmapi.client.js';
 import {
   normalizeProductCards,
@@ -19,8 +20,6 @@ import {
   getCachedItem,
   setCachedItem,
 } from './cache.js';
-
-const prisma = new PrismaClient();
 const SOURCE = 'tmapi_1688';
 
 // Shopping categories (can be moved to DB later)

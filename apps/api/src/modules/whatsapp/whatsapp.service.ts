@@ -3,7 +3,7 @@
  * Handles WhatsApp message processing, AI replies, and conversation management
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../../lib/prisma.js';
 import crypto from 'crypto';
 import { processChatMessage } from '../chat/chat.agent.js';
 import { sendText, sendMedia } from './twilio.client.js';
@@ -11,8 +11,6 @@ import { sendWecomText } from '../../utils/wecom.js';
 import { searchByKeyword } from '../shopping/shopping.service.js';
 import tmapiClient from '../shopping/tmapi.client.js';
 import OpenAI from 'openai';
-
-const prisma = new PrismaClient();
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_DISTILL_MODEL = process.env.OPENAI_DISTILL_MODEL || 'gpt-4o-mini';
 

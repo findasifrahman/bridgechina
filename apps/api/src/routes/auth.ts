@@ -1,9 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import argon2 from 'argon2';
 import { registerSchema, loginSchema } from '@bridgechina/shared';
-
-const prisma = new PrismaClient();
 
 export default async function authRoutes(fastify: FastifyInstance) {
   // Register

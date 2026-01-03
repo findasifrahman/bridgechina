@@ -9,10 +9,8 @@
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
-
-const prisma = new PrismaClient();
 
 // All user routes require authentication
 async function requireAuth(request: FastifyRequest, reply: FastifyReply) {

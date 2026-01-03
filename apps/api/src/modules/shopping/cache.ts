@@ -2,10 +2,8 @@
  * Cache helpers for TMAPI responses
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../../lib/prisma.js';
 import crypto from 'node:crypto';
-
-const prisma = new PrismaClient();
 
 const SEARCH_CACHE_TTL_MINUTES = 15;
 const ITEM_CACHE_TTL_HOURS = 24;

@@ -5,6 +5,9 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  // Connection pooling is handled by Prisma Client
+  // For production, use a connection pooler URL (e.g., Railway's pooled connection)
+  // Format: postgresql://user:password@host:port/db?pgbouncer=true&connection_limit=10
 }
 
 model User {

@@ -18,8 +18,7 @@ export async function authenticate(
     const payload = request.user as { id: string; email?: string; phone?: string };
     
     // Fetch user roles from database
-    const { PrismaClient } = await import('@prisma/client');
-    const prisma = new PrismaClient();
+    const { prisma } = await import('../lib/prisma.js');
     
     const user = await prisma.user.findUnique({
       where: { id: payload.id },

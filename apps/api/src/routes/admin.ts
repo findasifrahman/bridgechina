@@ -1,9 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { updateServiceRequestStatusSchema, updateLeadSchema } from '@bridgechina/shared';
-
-const prisma = new PrismaClient();
 
 export default async function adminRoutes(fastify: FastifyInstance) {
   // All admin routes require authentication and ADMIN/OPS/EDITOR role
