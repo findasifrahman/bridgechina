@@ -300,7 +300,7 @@ const router = createRouter({
     },
     {
       path: '/ops',
-      component: () => import('@/layouts/AdminLayout.vue'),
+      component: () => import('@/layouts/OpsLayout.vue'),
       meta: { requiresAuth: true, requiresRole: ['ADMIN', 'OPS', 'SELLER', 'PARTNER'] },
       children: [
         {

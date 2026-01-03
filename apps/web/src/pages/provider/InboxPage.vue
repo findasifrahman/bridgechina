@@ -250,10 +250,11 @@ async function handleTakeover() {
   
   try {
     await axios.post(`/api/provider/conversations/${selectedConversationId.value}/takeover`);
+    await loadConversations();
     await selectConversation(selectedConversationId.value);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to take over:', error);
-    alert('Failed to take over conversation');
+    alert(error.response?.data?.error || 'Failed to take over conversation');
   }
 }
 
@@ -262,10 +263,11 @@ async function handleRelease() {
   
   try {
     await axios.post(`/api/provider/conversations/${selectedConversationId.value}/release`);
+    await loadConversations();
     await selectConversation(selectedConversationId.value);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to release:', error);
-    alert('Failed to release conversation');
+    alert(error.response?.data?.error || 'Failed to release conversation');
   }
 }
 

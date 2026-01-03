@@ -621,7 +621,7 @@ Set all required environment variables in your hosting platform (Vercel, Railway
 
 1. **Create Service Provider User**:
    - Register a new user or use existing user
-   - Assign `SERVICE_PROVIDER` role (via admin panel or database)
+   - Assign `SERVICE_PROVIDER` role (via admin panel: `/admin/users` → Edit Roles)
 
 2. **Create Service Provider Profile** (Admin Panel):
    - Navigate to `/admin` → Service Providers (link in sidebar)
@@ -630,19 +630,36 @@ Set all required environment variables in your hosting platform (Vercel, Railway
      - **Active**: Enable/disable provider
      - **City**: Optional city assignment (future feature)
 
-3. **AI Auto-Assignment**:
-   - Conversations are automatically assigned based on detected intent and confidence:
-     - **transport** (≥0.75), **tours** (≥0.75), **hotel** (≥0.75), **shopping** (≥0.70)
-     - Low confidence → assigned to `ops_queue` (unassigned)
-   - Assignment happens asynchronously (does not delay AI reply)
-   - Conversations remain in `AI` mode even when assigned
-   - Only switches to `HUMAN` mode when provider takes over or user requests human
+3. **AI Auto-Assignment & Queue System**:
+   
+   **How Assignment Works**:
+   - When a user sends a WhatsApp message, the AI detects the intent (hotel, transport, tours, shopping, etc.)
+   - Based on intent confidence thresholds:
+     - **transport** (≥0.75), **tours** (≥0.75), **hotel** (≥0.75), **shopping** (≥0.70) → Auto-assigned to provider
+     - **Low confidence** (< threshold) → Assigned to `ops_queue` (unassigned, visible in OPS inbox)
+   - Assignment is **asynchronous** (does not delay AI reply)
+   - Conversations remain in `AI` mode even when assigned (AI continues responding)
+   - Only switches to `HUMAN` mode when:
+     - Provider clicks "Take Over" button
+     - User explicitly requests human (keywords: "human", "agent", "person", "help me", "operator")
+   
+   **Queue System**:
+   - `ops_queue`: Conversations with low confidence or no matching provider
+   - These appear in `/ops/inbox` for OPS team to manually handle or reassign
+   - OPS team can manually assign conversations to providers via `/api/ops/conversations/:id/assign`
+   - Service providers only see conversations where `assigned_user_id = their user ID`
 
 4. **Provider Dashboard** (`/provider`):
    - View assigned conversations and KPIs
    - Access inbox to reply to conversations
    - Take over conversations to switch to HUMAN mode
    - Release conversations back to AI mode
+
+5. **Ops Inbox** (`/ops/inbox`):
+   - OPS users see ALL conversations (including unassigned `ops_queue` conversations)
+   - Can take over any conversation
+   - Can manually assign conversations to providers
+   - Separate layout (no admin panel links) - only WhatsApp Inbox
 
 ## Brand Guidelines
 
