@@ -137,7 +137,10 @@ TMAPI_BASE_URL="https://api.tmapi.top"  # TMAPI base URL (default)
 TWILIO_ACCOUNT_SID=""         # Twilio Account SID
 TWILIO_AUTH_TOKEN=""          # Twilio Auth Token
 TWILIO_WHATSAPP_FROM=""       # WhatsApp sender number (e.g., whatsapp:+14155238886)
+                              # For testing: Use Twilio sandbox number (whatsapp:+14155238886)
+                              # For production: Use your verified WhatsApp Business number from Twilio
 TWILIO_WEBHOOK_VALIDATE="true"  # Enable webhook signature validation (true/false)
+                              # Set to false or leave unset for testing without signature validation
 
 # WeCom Notifications (Optional)
 WECOM_GROUP_BOT_WEBHOOK_URL=""  # WeCom group bot webhook URL for notifications

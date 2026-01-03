@@ -61,6 +61,11 @@ export async function sendText(
     throw new Error('Twilio client not initialized or TWILIO_WHATSAPP_FROM not set');
   }
 
+  // Validate sender number format
+  if (!TWILIO_WHATSAPP_FROM.startsWith('whatsapp:+')) {
+    throw new Error(`Invalid TWILIO_WHATSAPP_FROM format. Expected format: whatsapp:+14155238886, got: ${TWILIO_WHATSAPP_FROM}`);
+  }
+
   try {
     const message = await twilioClient.messages.create({
       from: TWILIO_WHATSAPP_FROM,
@@ -71,6 +76,12 @@ export async function sendText(
     return message.sid;
   } catch (error: any) {
     console.error('[Twilio Client] Send text error:', error);
+    // Log helpful error message for common issues
+    if (error.code === 21212) {
+      console.error('[Twilio Client] Invalid sender number. Make sure TWILIO_WHATSAPP_FROM is a valid Twilio WhatsApp number.');
+      console.error('[Twilio Client] For testing, use Twilio sandbox: whatsapp:+14155238886');
+      console.error('[Twilio Client] For production, use your verified WhatsApp Business number from Twilio.');
+    }
     throw error;
   }
 }

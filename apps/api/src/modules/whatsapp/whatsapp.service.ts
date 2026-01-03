@@ -236,7 +236,30 @@ export async function handleAIReply(conversationId: string): Promise<void> {
     }
 
     // Send text message via Twilio
-    const providerSid = await sendText(conversation.external_from!, responseText);
+    let providerSid: string | null = null;
+    try {
+      providerSid = await sendText(conversation.external_from!, responseText);
+    } catch (error: any) {
+      console.error('[WhatsApp Service] Failed to send WhatsApp message:', error);
+      // Store message with failed status
+      await prisma.message.create({
+        data: {
+          conversation_id: conversationId,
+          role: 'assistant',
+          direction: 'OUTBOUND',
+          provider: 'twilio',
+          provider_sid: null,
+          content: responseText,
+          status: 'failed',
+          meta_json: {
+            error: error.message || 'Failed to send',
+            errorCode: error.code,
+          },
+        },
+      });
+      // Don't throw - log error but don't break webhook
+      return;
+    }
 
     // Store outbound message
     await prisma.message.create({
