@@ -3930,5 +3930,212 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
     return { message: 'Banner deleted successfully' };
   });
+
+  // Service Provider Profiles CRUD
+  fastify.get('/service-providers', async () => {
+    const providers = await prisma.serviceProviderProfile.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            phone: true,
+            status: true,
+            roles: {
+              include: {
+                role: true,
+              },
+            },
+          },
+        },
+        city: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    return providers;
+  });
+
+  fastify.get('/service-providers/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+
+    const provider = await prisma.serviceProviderProfile.findUnique({
+      where: { id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            phone: true,
+            status: true,
+            roles: {
+              include: {
+                role: true,
+              },
+            },
+          },
+        },
+        city: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+    });
+
+    if (!provider) {
+      reply.status(404).send({ error: 'Service provider not found' });
+      return;
+    }
+
+    return provider;
+  });
+
+  fastify.post('/service-providers', async (request: FastifyRequest, reply: FastifyReply) => {
+    const body = request.body as {
+      user_id: string;
+      categories?: string[];
+      city_id?: string;
+      is_active?: boolean;
+    };
+
+    if (!body.user_id) {
+      reply.status(400).send({ error: 'user_id is required' });
+      return;
+    }
+
+    // Verify user exists and has SERVICE_PROVIDER role
+    const user = await prisma.user.findUnique({
+      where: { id: body.user_id },
+      include: {
+        roles: {
+          include: { role: true },
+        },
+      },
+    });
+
+    if (!user) {
+      reply.status(404).send({ error: 'User not found' });
+      return;
+    }
+
+    const hasServiceProviderRole = user.roles.some((ur) => ur.role.name === 'SERVICE_PROVIDER');
+    if (!hasServiceProviderRole) {
+      reply.status(400).send({ error: 'User does not have SERVICE_PROVIDER role' });
+      return;
+    }
+
+    // Check if profile already exists
+    const existing = await prisma.serviceProviderProfile.findUnique({
+      where: { user_id: body.user_id },
+    });
+
+    if (existing) {
+      reply.status(400).send({ error: 'Service provider profile already exists for this user' });
+      return;
+    }
+
+    const provider = await prisma.serviceProviderProfile.create({
+      data: {
+        user_id: body.user_id,
+        categories: body.categories || [],
+        city_id: body.city_id || null,
+        is_active: body.is_active !== undefined ? body.is_active : true,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            phone: true,
+            status: true,
+          },
+        },
+        city: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+    });
+
+    return provider;
+  });
+
+  fastify.put('/service-providers/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as {
+      categories?: string[];
+      city_id?: string;
+      is_active?: boolean;
+    };
+
+    const provider = await prisma.serviceProviderProfile.findUnique({
+      where: { id },
+    });
+
+    if (!provider) {
+      reply.status(404).send({ error: 'Service provider not found' });
+      return;
+    }
+
+    const updateData: any = {};
+    if (body.categories !== undefined) updateData.categories = body.categories;
+    if (body.city_id !== undefined) updateData.city_id = body.city_id || null;
+    if (body.is_active !== undefined) updateData.is_active = body.is_active;
+
+    const updated = await prisma.serviceProviderProfile.update({
+      where: { id },
+      data: updateData,
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            phone: true,
+            status: true,
+          },
+        },
+        city: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+    });
+
+    return updated;
+  });
+
+  fastify.delete('/service-providers/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+
+    const provider = await prisma.serviceProviderProfile.findUnique({
+      where: { id },
+    });
+
+    if (!provider) {
+      reply.status(404).send({ error: 'Service provider not found' });
+      return;
+    }
+
+    await prisma.serviceProviderProfile.delete({
+      where: { id },
+    });
+
+    return { success: true };
+  });
 }
 

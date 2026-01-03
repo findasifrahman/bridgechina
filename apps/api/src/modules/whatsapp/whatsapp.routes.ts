@@ -69,7 +69,7 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
         // Unique constraint violation = already processed
         if (error.code === 'P2002') {
           fastify.log.info('[WhatsApp Routes] Duplicate webhook, returning 200 OK');
-          reply.code(200).send('ok');
+          reply.type('text/xml').code(200).send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
           return;
         }
         throw error;
@@ -77,6 +77,32 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
 
       // Generate thread key
       const threadKey = generateThreadKey(From, To);
+
+      // Extract phone number from WhatsApp number (whatsapp:+880... -> +880...)
+      const phoneNumber = From.replace(/^whatsapp:/, '');
+      
+      // Create or find lead
+      let lead = await prisma.lead.findFirst({
+        where: {
+          OR: [
+            { whatsapp: From },
+            { phone: phoneNumber },
+          ],
+        },
+      });
+
+      if (!lead) {
+        lead = await prisma.lead.create({
+          data: {
+            name: ProfileName || 'WhatsApp User',
+            phone: phoneNumber,
+            whatsapp: From,
+            source: 'whatsapp',
+            status: 'new',
+          },
+        });
+        fastify.log.info({ leadId: lead.id, phone: phoneNumber }, '[WhatsApp Routes] Created new lead');
+      }
 
       // Upsert conversation
       const conversation = await prisma.conversation.upsert({
@@ -89,6 +115,7 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
           external_from: From,
           external_to: To,
           external_thread_key: threadKey,
+          lead_id: lead.id,
           mode: 'AI',
           last_inbound_at: new Date(),
           last_message_preview: Body?.substring(0, 100) || '',
@@ -96,6 +123,7 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
         update: {
           last_inbound_at: new Date(),
           last_message_preview: Body?.substring(0, 100) || '',
+          lead_id: lead.id, // Update lead_id in case it wasn't set before
         },
       });
 
@@ -166,12 +194,12 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
           `New WhatsApp lead: ${From} | Human takeover requested | Last message: ${Body?.substring(0, 50) || '(media)'} | Open: ${APP_BASE_URL}/ops/inbox?c=${conversation.id}`
         );
 
-        reply.code(200).send('ok');
+        reply.type('text/xml').code(200).send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
         return;
       }
 
       // AI-first: Return 200 OK immediately, process async
-      reply.code(200).send('ok');
+      reply.type('text/xml').code(200).send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
 
       // Process AI reply asynchronously
       fastify.log.info({ conversationId: conversation.id }, '[WhatsApp Routes] Triggering async AI reply');
@@ -183,7 +211,7 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
     } catch (error: any) {
       fastify.log.error({ error, stack: error.stack }, '[WhatsApp Routes] Inbound webhook error');
       // Always return 200 to Twilio to prevent retries
-      reply.code(200).send('ok');
+      reply.type('text/xml').code(200).send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
     }
   });
 
@@ -213,10 +241,10 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
         data: { status: MessageStatus },
       });
 
-      reply.code(200).send('ok');
+      reply.type('text/xml').code(200).send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
     } catch (error: any) {
       fastify.log.error({ error, stack: error.stack }, '[WhatsApp Routes] Status webhook error');
-      reply.code(200).send('ok');
+      reply.type('text/xml').code(200).send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
     }
   });
 }

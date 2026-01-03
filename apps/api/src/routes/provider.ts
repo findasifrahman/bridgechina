@@ -1,6 +1,6 @@
 /**
- * Ops Routes
- * Routes for operations team to manage WhatsApp conversations
+ * Provider Routes
+ * Routes for service providers to manage their assigned conversations
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
@@ -14,50 +14,47 @@ const replySchema = z.object({
   mediaUrl: z.string().optional(),
 });
 
-export default async function opsRoutes(fastify: FastifyInstance) {
-  // All ops routes require authentication and OPS/ADMIN/SELLER/PARTNER role
+export default async function providerRoutes(fastify: FastifyInstance) {
+  // All provider routes require authentication and SERVICE_PROVIDER role
   fastify.addHook('onRequest', authenticate);
-  fastify.addHook('onRequest', requireRole('ADMIN', 'OPS', 'SELLER', 'PARTNER'));
+  fastify.addHook('onRequest', requireRole('SERVICE_PROVIDER'));
 
-  // List conversations
+  // List assigned conversations
   fastify.get('/conversations', async (request: FastifyRequest) => {
+    const req = request as any;
     const query = request.query as {
-      channel?: string;
       mode?: string;
-      q?: string;
+      category?: string;
       page?: string;
     };
 
-    const channel = query.channel || 'twilio_whatsapp';
     const mode = query.mode;
-    const search = query.q;
+    const category = query.category;
     const page = parseInt(query.page || '1');
     const pageSize = 50;
 
     const where: any = {
-      external_channel: channel,
+      assigned_user_id: req.user.id, // Only show assigned conversations
     };
 
     if (mode) {
       where.mode = mode;
     }
 
-    if (search) {
-      where.OR = [
-        { external_from: { contains: search } },
-        { last_message_preview: { contains: search } },
-      ];
+    if (category) {
+      where.category_key = category;
     }
 
     const [conversations, total] = await Promise.all([
       prisma.conversation.findMany({
         where,
         include: {
-          assignedUser: {
+          lead: {
             select: {
               id: true,
-              email: true,
+              name: true,
               phone: true,
+              whatsapp: true,
             },
           },
         },
@@ -82,26 +79,35 @@ export default async function opsRoutes(fastify: FastifyInstance) {
   // Get conversation detail
   fastify.get('/conversations/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
+    const req = request as any;
 
     const conversation = await prisma.conversation.findUnique({
       where: { id },
       include: {
-        assignedUser: {
+        lead: {
           select: {
             id: true,
-            email: true,
+            name: true,
             phone: true,
+            whatsapp: true,
+            email: true,
           },
         },
         messages: {
           orderBy: { created_at: 'asc' },
-          take: 50, // Last 50 messages
+          take: 100, // Last 100 messages
         },
       },
     });
 
     if (!conversation) {
       reply.status(404).send({ error: 'Conversation not found' });
+      return;
+    }
+
+    // Ensure provider can only access their assigned conversations
+    if (conversation.assigned_user_id !== req.user.id) {
+      reply.status(403).send({ error: 'Access denied' });
       return;
     }
 
@@ -122,6 +128,12 @@ export default async function opsRoutes(fastify: FastifyInstance) {
       return;
     }
 
+    // Ensure provider can only take over their assigned conversations
+    if (conversation.assigned_user_id !== req.user.id) {
+      reply.status(403).send({ error: 'Access denied' });
+      return;
+    }
+
     const now = new Date();
     const updateData: any = {
       mode: 'HUMAN',
@@ -131,11 +143,6 @@ export default async function opsRoutes(fastify: FastifyInstance) {
     // Set first_human_takeover_at only if not already set
     if (!conversation.first_human_takeover_at) {
       updateData.first_human_takeover_at = now;
-    }
-
-    // Set assigned_user_id if not already set
-    if (!conversation.assigned_user_id) {
-      updateData.assigned_user_id = req.user.id;
     }
 
     await prisma.conversation.update({
@@ -149,6 +156,7 @@ export default async function opsRoutes(fastify: FastifyInstance) {
   // Release conversation (set to AI mode)
   fastify.post('/conversations/:id/release', async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
+    const req = request as any;
 
     const conversation = await prisma.conversation.findUnique({
       where: { id },
@@ -159,11 +167,17 @@ export default async function opsRoutes(fastify: FastifyInstance) {
       return;
     }
 
+    // Ensure provider can only release their assigned conversations
+    if (conversation.assigned_user_id !== req.user.id) {
+      reply.status(403).send({ error: 'Access denied' });
+      return;
+    }
+
     await prisma.conversation.update({
       where: { id },
       data: {
         mode: 'AI',
-        assigned_user_id: null,
+        mode_changed_at: new Date(),
       },
     });
 
@@ -173,6 +187,7 @@ export default async function opsRoutes(fastify: FastifyInstance) {
   // Send reply
   fastify.post('/conversations/:id/reply', async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
+    const req = request as any;
     const body = replySchema.parse(request.body);
 
     const conversation = await prisma.conversation.findUnique({
@@ -181,6 +196,12 @@ export default async function opsRoutes(fastify: FastifyInstance) {
 
     if (!conversation || !conversation.external_from) {
       reply.status(404).send({ error: 'Conversation not found or invalid' });
+      return;
+    }
+
+    // Ensure provider can only reply to their assigned conversations
+    if (conversation.assigned_user_id !== req.user.id) {
+      reply.status(403).send({ error: 'Access denied' });
       return;
     }
 
@@ -200,10 +221,8 @@ export default async function opsRoutes(fastify: FastifyInstance) {
         providerSid = await sendText(conversation.external_from, body.text);
       }
 
-      const req = request as any;
-      
       // Store outbound message
-      const message = await prisma.message.create({
+      await prisma.message.create({
         data: {
           conversation_id: id,
           role: 'assistant',
@@ -221,7 +240,7 @@ export default async function opsRoutes(fastify: FastifyInstance) {
 
       // Update conversation
       const now = new Date();
-      const conversation = await prisma.conversation.findUnique({
+      const currentConversation = await prisma.conversation.findUnique({
         where: { id },
         select: { first_human_reply_at: true },
       });
@@ -232,7 +251,7 @@ export default async function opsRoutes(fastify: FastifyInstance) {
       };
 
       // Set first_human_reply_at only if not already set
-      if (!conversation?.first_human_reply_at) {
+      if (!currentConversation?.first_human_reply_at) {
         updateData.first_human_reply_at = now;
       }
 
@@ -243,9 +262,85 @@ export default async function opsRoutes(fastify: FastifyInstance) {
 
       return { success: true, providerSid };
     } catch (error: any) {
-      fastify.log.error({ error }, '[Ops Routes] Failed to send reply');
+      fastify.log.error({ error }, '[Provider Routes] Failed to send reply');
       reply.status(500).send({ error: error.message || 'Failed to send message' });
     }
+  });
+
+  // Get provider stats/KPIs
+  fastify.get('/stats', async (request: FastifyRequest) => {
+    const req = request as any;
+    const now = new Date();
+    const dayAgo = new Date(now);
+    dayAgo.setHours(dayAgo.getHours() - 24);
+
+    const [
+      assignedCount,
+      unreadCount,
+      avgResponseTime,
+    ] = await Promise.all([
+      // Total assigned conversations
+      prisma.conversation.count({
+        where: {
+          assigned_user_id: req.user.id,
+        },
+      }),
+      // Unread inbound messages (conversations with new messages in last 24h)
+      prisma.conversation.count({
+        where: {
+          assigned_user_id: req.user.id,
+          last_inbound_at: {
+            gte: dayAgo,
+          },
+        },
+      }),
+      // Average response time (first_human_reply_at - last_inbound_at) for conversations with replies
+      prisma.conversation.aggregate({
+        where: {
+          assigned_user_id: req.user.id,
+          first_human_reply_at: { not: null },
+          last_inbound_at: { not: null },
+        },
+        _avg: {
+          // We'll calculate this manually since Prisma doesn't support date subtraction directly
+        },
+      }),
+    ]);
+
+    // Calculate average response time manually
+    const conversationsWithReplies = await prisma.conversation.findMany({
+      where: {
+        assigned_user_id: req.user.id,
+        first_human_reply_at: { not: null },
+        last_inbound_at: { not: null },
+      },
+      select: {
+        first_human_reply_at: true,
+        last_inbound_at: true,
+      },
+    });
+
+    let totalResponseTime = 0;
+    let countWithReplies = 0;
+
+    for (const conv of conversationsWithReplies) {
+      if (conv.first_human_reply_at && conv.last_inbound_at) {
+        const responseTime = conv.first_human_reply_at.getTime() - conv.last_inbound_at.getTime();
+        if (responseTime > 0) {
+          totalResponseTime += responseTime;
+          countWithReplies++;
+        }
+      }
+    }
+
+    const avgResponseTimeMs = countWithReplies > 0 ? totalResponseTime / countWithReplies : 0;
+    const avgResponseTimeMinutes = Math.round(avgResponseTimeMs / (1000 * 60));
+
+    return {
+      assignedConversations: assignedCount,
+      unreadLast24h: unreadCount,
+      avgResponseTimeMinutes,
+    };
   });
 }
 

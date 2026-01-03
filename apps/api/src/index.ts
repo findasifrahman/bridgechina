@@ -15,6 +15,7 @@ import sellerRoutes from './routes/seller.js';
 import userRoutes from './routes/user.js';
 import guideRoutes from './routes/guide.js';
 import opsRoutes from './routes/ops.js';
+import providerRoutes from './routes/provider.js';
 import whatsappRoutes from './modules/whatsapp/whatsapp.routes.js';
 
 const fastify = Fastify({
@@ -119,6 +120,7 @@ await fastify.register(guideRoutes, { prefix: '/api/guide' });
 await fastify.register(adminRoutes, { prefix: '/api/admin' });
 await fastify.register(sellerRoutes, { prefix: '/api/seller' });
 await fastify.register(opsRoutes, { prefix: '/api/ops' });
+await fastify.register(providerRoutes, { prefix: '/api/provider' });
 await fastify.register(whatsappRoutes, { prefix: '/api/webhooks/twilio/whatsapp' });
 
 // Error handler

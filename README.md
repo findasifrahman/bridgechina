@@ -183,11 +183,11 @@ pnpm dev
 
 #### Authentication & Authorization
 - ✅ JWT-based authentication with refresh tokens (httpOnly cookies)
-- ✅ Role-Based Access Control (RBAC): ADMIN, OPS, EDITOR, SELLER, PARTNER, USER
+- ✅ Role-Based Access Control (RBAC): ADMIN, OPS, EDITOR, SELLER, PARTNER, USER, SERVICE_PROVIDER
 - ✅ Frontend route guards for protected routes
 - ✅ API middleware for role-based access
 - ✅ User registration and login
-- ✅ Role-based redirects after login (admin → /admin, seller → /seller, user → /app)
+- ✅ Role-based redirects after login (admin → /admin, seller → /seller, service_provider → /provider, user → /app)
 
 #### Database Schema
 - ✅ Complete Prisma schema with 50+ tables
@@ -462,6 +462,22 @@ pnpm dev
 - `POST /api/ops/conversations/:id/takeover` - Take over conversation (HUMAN mode)
 - `POST /api/ops/conversations/:id/release` - Release conversation to AI
 - `POST /api/ops/conversations/:id/reply` - Send reply to conversation
+- `POST /api/ops/conversations/:id/assign` - Assign conversation to service provider (ADMIN/OPS only)
+
+### Provider Endpoints (SERVICE_PROVIDER, ADMIN, OPS)
+- `GET /api/provider/conversations` - List assigned conversations
+- `GET /api/provider/conversations/:id` - Get conversation detail
+- `GET /api/provider/stats` - Get provider KPIs (assigned conversations, unread, avg response time)
+- `POST /api/provider/conversations/:id/takeover` - Take over conversation (HUMAN mode)
+- `POST /api/provider/conversations/:id/release` - Release conversation to AI
+- `POST /api/provider/conversations/:id/reply` - Send reply to conversation
+
+### Admin Endpoints (continued)
+- `GET /api/admin/service-providers` - List service provider profiles
+- `GET /api/admin/service-providers/:id` - Get service provider profile
+- `POST /api/admin/service-providers` - Create service provider profile
+- `PUT /api/admin/service-providers/:id` - Update service provider profile
+- `DELETE /api/admin/service-providers/:id` - Delete service provider profile
 
 ## Database Schema Highlights
 
@@ -514,6 +530,27 @@ pnpm dev
   - Raw API responses for full data preservation
 - `external_hotel_search_cache` - Search result caching (5-day TTL)
 - `hotel_bookings` - Extended with `hotel_source` (INTERNAL/BOOKINGCOM) and `external_hotel_id`
+
+### WhatsApp Integration (Twilio)
+- `conversations` - Extended with:
+  - `external_channel` (twilio_whatsapp)
+  - `external_from`, `external_to`, `external_thread_key`
+  - `mode` (AI/HUMAN)
+  - `assigned_user_id` (service provider)
+  - `category_key` (transport/tours/hotel/shopping/ops_queue)
+  - `assigned_at`, `assigned_by` (AI/OPS/ADMIN)
+  - SLA tracking: `first_human_takeover_at`, `first_human_reply_at`, `mode_changed_at`
+- `messages` - Extended with:
+  - `direction` (INBOUND/OUTBOUND)
+  - `provider` (twilio)
+  - `provider_sid` (Twilio MessageSid)
+  - `status` (queued/sent/delivered/read/failed)
+- `twilio_webhook_events` - Webhook event idempotency tracking
+- `twilio_message_statuses` - Message status callback history
+- `product_title_translations` - Chinese title translation cache
+- `service_provider_profiles` - Service provider configuration:
+  - User assignment, categories, active status
+  - City assignment (optional)
 
 ## Scripts
 
@@ -572,12 +609,40 @@ Set all required environment variables in your hosting platform (Vercel, Railway
 3. Set up webhooks in Twilio Console:
    - **Incoming message webhook**: `https://bridgechina-production.up.railway.app/api/webhooks/twilio/whatsapp/inbound`
    - **Status callback**: `https://bridgechina-production.up.railway.app/api/webhooks/twilio/whatsapp/status`
+   - **Important**: Webhooks must return TwiML XML (`<Response></Response>`) for WhatsApp, not plain text
 4. Add environment variables:
    - `TWILIO_ACCOUNT_SID`
    - `TWILIO_AUTH_TOKEN`
    - `TWILIO_WHATSAPP_FROM` (e.g., `whatsapp:+14155238886`)
    - `TWILIO_WEBHOOK_VALIDATE=true` (enable signature validation)
    - `WECOM_GROUP_BOT_WEBHOOK_URL` (optional, for WeCom notifications)
+
+### Service Provider Setup
+
+1. **Create Service Provider User**:
+   - Register a new user or use existing user
+   - Assign `SERVICE_PROVIDER` role (via admin panel or database)
+
+2. **Create Service Provider Profile** (Admin Panel):
+   - Navigate to `/admin` → Service Providers (link in sidebar)
+   - Create profile for user with:
+     - **Categories**: Select categories the provider handles (transport, tours, hotel, shopping)
+     - **Active**: Enable/disable provider
+     - **City**: Optional city assignment (future feature)
+
+3. **AI Auto-Assignment**:
+   - Conversations are automatically assigned based on detected intent and confidence:
+     - **transport** (≥0.75), **tours** (≥0.75), **hotel** (≥0.75), **shopping** (≥0.70)
+     - Low confidence → assigned to `ops_queue` (unassigned)
+   - Assignment happens asynchronously (does not delay AI reply)
+   - Conversations remain in `AI` mode even when assigned
+   - Only switches to `HUMAN` mode when provider takes over or user requests human
+
+4. **Provider Dashboard** (`/provider`):
+   - View assigned conversations and KPIs
+   - Access inbox to reply to conversations
+   - Take over conversations to switch to HUMAN mode
+   - Release conversations back to AI mode
 
 ## Brand Guidelines
 

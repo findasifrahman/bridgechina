@@ -5,12 +5,13 @@
 
 import { prisma } from '../../lib/prisma.js';
 import crypto from 'crypto';
-import { processChatMessage } from '../chat/chat.agent.js';
+import { processChatMessage, detectIntent } from '../chat/chat.agent.js';
 import { sendText, sendMedia } from './twilio.client.js';
 import { sendWecomText } from '../../utils/wecom.js';
 import { searchByKeyword } from '../shopping/shopping.service.js';
 import tmapiClient from '../shopping/tmapi.client.js';
 import OpenAI from 'openai';
+import { assignConversationToProvider } from './assignment.service.js';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_DISTILL_MODEL = process.env.OPENAI_DISTILL_MODEL || 'gpt-4o-mini';
 
@@ -144,6 +145,15 @@ export async function handleAIReply(conversationId: string): Promise<void> {
         content: m.content,
       }));
 
+    // Detect intent first for assignment
+    const intentResult = await detectIntent(userMessage);
+    console.log('[WhatsApp Service] Intent detected:', intentResult);
+
+    // Trigger assignment (async, non-blocking)
+    assignConversationToProvider(conversationId, intentResult).catch((error) => {
+      console.error('[WhatsApp Service] Assignment error:', error);
+    });
+
     // Call existing chat agent (reuse existing logic)
     // Generate session ID from conversation ID for consistency
     const sessionId = `whatsapp_${conversationId}`;
@@ -157,55 +167,59 @@ export async function handleAIReply(conversationId: string): Promise<void> {
     // Handle shopping results specially (format for WhatsApp)
     if (result.items && result.items.length > 0) {
       const items = result.items.slice(0, 3); // Top 3 only
-      const lines: string[] = [];
+      const firstItem = items[0];
+      const remainingItems = items.slice(1);
 
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        const englishTitle = await translateTitleToEnglish(item.title);
-        const price = item.price || 'Price on request';
-        const supplier = item.supplier || 'N/A';
+      // Translate first item title
+      const firstItemEnglishTitle = await translateTitleToEnglish(firstItem.title);
+      const firstItemPrice = firstItem.price || 'Price on request';
+      const firstItemSupplier = firstItem.supplier || 'N/A';
 
-        if (i === 0 && item.imageUrl) {
-          // Send first item as media message
-          try {
-            const providerSid = await sendMedia(conversation.external_from!, item.imageUrl, `${englishTitle}\n${price} - ${supplier}`);
-            
-            // Store outbound message
-            await prisma.message.create({
-              data: {
-                conversation_id: conversationId,
-                role: 'assistant',
-                direction: 'OUTBOUND',
-                provider: 'twilio',
-                provider_sid: providerSid,
-                content: `${englishTitle}\n${price} - ${supplier}`,
-                status: 'sent',
-                meta_json: {
-                  type: 'media',
-                  mediaUrl: item.imageUrl,
-                },
+      // Send first item as media (if image available)
+      if (firstItem.imageUrl) {
+        try {
+          const caption = `${firstItemEnglishTitle}\n${firstItemPrice} - ${firstItemSupplier}`;
+          const providerSid = await sendMedia(conversation.external_from!, firstItem.imageUrl, caption);
+          
+          // Store outbound message
+          await prisma.message.create({
+            data: {
+              conversation_id: conversationId,
+              role: 'assistant',
+              direction: 'OUTBOUND',
+              provider: 'twilio',
+              provider_sid: providerSid,
+              content: caption,
+              status: 'sent',
+              meta_json: {
+                type: 'media',
+                mediaUrl: firstItem.imageUrl,
               },
-            });
+            },
+          });
 
-            await prisma.conversation.update({
-              where: { id: conversationId },
-              data: { last_outbound_at: new Date() },
-            });
-          } catch (error) {
-            console.error('[WhatsApp Service] Failed to send media:', error);
-            // Fallback to text
-            lines.push(`${i + 1}. ${englishTitle} - ${price} - ${supplier}`);
-          }
-        } else {
-          // Send remaining items as text
-          lines.push(`${i + 1}. ${englishTitle} - ${price} - ${supplier}`);
+          await prisma.conversation.update({
+            where: { id: conversationId },
+            data: { last_outbound_at: new Date() },
+          });
+        } catch (error) {
+          console.error('[WhatsApp Service] Failed to send media:', error);
+          // Fallback to text - will be included in summary below
         }
       }
 
-      if (lines.length > 0) {
-        responseText = lines.join('\n\n');
+      // Send remaining items as text summary (with translated titles)
+      if (remainingItems.length > 0) {
+        const summaryLines: string[] = [];
+        for (const item of remainingItems) {
+          const englishTitle = await translateTitleToEnglish(item.title);
+          const price = item.price || 'Price on request';
+          const supplier = item.supplier || 'N/A';
+          summaryLines.push(`${englishTitle} - ${price} - ${supplier}`);
+        }
+        responseText = summaryLines.join('\n\n');
       } else {
-        // If all items were sent as media, send a simple follow-up
+        // Only one item, send follow-up question
         responseText = 'Would you like me to help you place an order or check delivery inside China?';
       }
     }

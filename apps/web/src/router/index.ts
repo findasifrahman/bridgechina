@@ -311,6 +311,28 @@ const router = createRouter({
       ],
     },
     {
+      path: '/provider',
+      component: () => import('@/layouts/AppLayout.vue'),
+      meta: { requiresAuth: true, requiresRole: ['SERVICE_PROVIDER', 'ADMIN', 'OPS'] },
+      children: [
+        {
+          path: '',
+          name: 'provider-dashboard',
+          component: () => import('@/pages/provider/DashboardPage.vue'),
+        },
+        {
+          path: 'inbox',
+          name: 'provider-inbox',
+          component: () => import('@/pages/provider/InboxPage.vue'),
+        },
+        {
+          path: 'inbox/:id',
+          name: 'provider-inbox-detail',
+          component: () => import('@/pages/provider/InboxPage.vue'),
+        },
+      ],
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('@/pages/NotFoundPage.vue'),
