@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
+import formbody from '@fastify/formbody';
 import jwt from '@fastify/jwt';
 import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
@@ -13,6 +14,8 @@ import adminRoutes from './routes/admin.js';
 import sellerRoutes from './routes/seller.js';
 import userRoutes from './routes/user.js';
 import guideRoutes from './routes/guide.js';
+import opsRoutes from './routes/ops.js';
+import whatsappRoutes from './modules/whatsapp/whatsapp.routes.js';
 
 const prisma = new PrismaClient();
 
@@ -46,6 +49,8 @@ await fastify.register(cors, {
 await fastify.register(cookie, {
   secret: process.env.JWT_REFRESH_SECRET || 'change-me',
 });
+
+await fastify.register(formbody);
 
 await fastify.register(multipart, {
   limits: {
@@ -115,6 +120,8 @@ await fastify.register(userRoutes, { prefix: '/api/user' });
 await fastify.register(guideRoutes, { prefix: '/api/guide' });
 await fastify.register(adminRoutes, { prefix: '/api/admin' });
 await fastify.register(sellerRoutes, { prefix: '/api/seller' });
+await fastify.register(opsRoutes, { prefix: '/api/ops' });
+await fastify.register(whatsappRoutes, { prefix: '/api/webhooks/twilio/whatsapp' });
 
 // Error handler
 fastify.setErrorHandler((error, request, reply) => {

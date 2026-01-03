@@ -1,0 +1,269 @@
+/**
+ * WhatsApp Service
+ * Handles WhatsApp message processing, AI replies, and conversation management
+ */
+
+import { PrismaClient } from '@prisma/client';
+import crypto from 'crypto';
+import { processChatMessage } from '../chat/chat.agent.js';
+import { sendText, sendMedia } from './twilio.client.js';
+import { sendWecomText } from '../../utils/wecom.js';
+import { searchByKeyword } from '../shopping/shopping.service.js';
+import tmapiClient from '../shopping/tmapi.client.js';
+import OpenAI from 'openai';
+
+const prisma = new PrismaClient();
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const OPENAI_DISTILL_MODEL = process.env.OPENAI_DISTILL_MODEL || 'gpt-4o-mini';
+
+const openai = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
+
+/**
+ * Generate external thread key from from/to numbers
+ */
+export function generateThreadKey(from: string, to: string): string {
+  return crypto.createHash('sha256').update(`${from}|${to}`).digest('hex');
+}
+
+/**
+ * Check if message requests human takeover
+ */
+function requestsHumanTakeover(body: string): boolean {
+  const lower = body.toLowerCase();
+  const keywords = ['human', 'agent', 'person', 'help me', 'operator', 'representative'];
+  return keywords.some(keyword => lower.includes(keyword));
+}
+
+/**
+ * Translate product title to English (with caching)
+ */
+async function translateTitleToEnglish(title: string): Promise<string> {
+  // Check if already in English (no Chinese characters)
+  if (!/[\u4e00-\u9fff]/.test(title)) {
+    return title;
+  }
+
+  // Check cache
+  const cached = await prisma.productTitleTranslation.findUnique({
+    where: { source_text: title },
+  });
+
+  if (cached) {
+    return cached.translated_text;
+  }
+
+  // Translate using OpenAI
+  if (!openai) {
+    console.warn('[WhatsApp Service] OpenAI not available for translation');
+    return title;
+  }
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: OPENAI_DISTILL_MODEL,
+      messages: [
+        {
+          role: 'system',
+          content: 'Translate product titles to English. Return only the translation, no explanations.',
+        },
+        {
+          role: 'user',
+          content: `Translate: ${title}`,
+        },
+      ],
+      temperature: 0.3,
+      max_tokens: 100,
+    });
+
+    const translated = response.choices[0]?.message?.content?.trim() || title;
+
+    // Cache the translation
+    try {
+      await prisma.productTitleTranslation.create({
+        data: {
+          source_text: title,
+          translated_text: translated,
+          provider: 'openai',
+        },
+      });
+    } catch (error) {
+      // Ignore cache errors (might be duplicate key)
+      console.warn('[WhatsApp Service] Failed to cache translation:', error);
+    }
+
+    return translated;
+  } catch (error) {
+    console.error('[WhatsApp Service] Translation error:', error);
+    return title;
+  }
+}
+
+/**
+ * Handle AI reply for WhatsApp conversation
+ */
+export async function handleAIReply(conversationId: string): Promise<void> {
+  try {
+    // Fetch conversation
+    const conversation = await prisma.conversation.findUnique({
+      where: { id: conversationId },
+      include: {
+        messages: {
+          orderBy: { created_at: 'asc' },
+          take: 20, // Last 20 messages for context
+        },
+      },
+    });
+
+    if (!conversation) {
+      console.error('[WhatsApp Service] Conversation not found:', conversationId);
+      return;
+    }
+
+    // Skip if in HUMAN mode
+    if (conversation.mode === 'HUMAN') {
+      console.log('[WhatsApp Service] Conversation in HUMAN mode, skipping AI reply');
+      return;
+    }
+
+    // Get last inbound message
+    const lastInbound = conversation.messages
+      .filter(m => m.direction === 'INBOUND')
+      .slice(-1)[0];
+
+    if (!lastInbound) {
+      console.log('[WhatsApp Service] No inbound message found');
+      return;
+    }
+
+    const userMessage = lastInbound.content;
+
+    // Build conversation history for AI (last 10 messages, alternating user/assistant)
+    const historyMessages = conversation.messages
+      .filter(m => m.role === 'user' || m.role === 'assistant')
+      .slice(-10)
+      .map(m => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      }));
+
+    // Call existing chat agent (reuse existing logic)
+    // Generate session ID from conversation ID for consistency
+    const sessionId = `whatsapp_${conversationId}`;
+    const result = await processChatMessage(userMessage, sessionId);
+
+    let responseText = result.message;
+
+    // Handle shopping results specially (format for WhatsApp)
+    if (result.items && result.items.length > 0) {
+      const items = result.items.slice(0, 3); // Top 3 only
+      const lines: string[] = [];
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const englishTitle = await translateTitleToEnglish(item.title);
+        const price = item.price || 'Price on request';
+        const supplier = item.supplier || 'N/A';
+
+        if (i === 0 && item.imageUrl) {
+          // Send first item as media message
+          try {
+            const providerSid = await sendMedia(conversation.external_from!, item.imageUrl, `${englishTitle}\n${price} - ${supplier}`);
+            
+            // Store outbound message
+            await prisma.message.create({
+              data: {
+                conversation_id: conversationId,
+                role: 'assistant',
+                direction: 'OUTBOUND',
+                provider: 'twilio',
+                provider_sid: providerSid,
+                content: `${englishTitle}\n${price} - ${supplier}`,
+                status: 'sent',
+                meta_json: {
+                  type: 'media',
+                  mediaUrl: item.imageUrl,
+                },
+              },
+            });
+
+            await prisma.conversation.update({
+              where: { id: conversationId },
+              data: { last_outbound_at: new Date() },
+            });
+          } catch (error) {
+            console.error('[WhatsApp Service] Failed to send media:', error);
+            // Fallback to text
+            lines.push(`${i + 1}. ${englishTitle} - ${price} - ${supplier}`);
+          }
+        } else {
+          // Send remaining items as text
+          lines.push(`${i + 1}. ${englishTitle} - ${price} - ${supplier}`);
+        }
+      }
+
+      if (lines.length > 0) {
+        responseText = lines.join('\n\n');
+      } else {
+        // If all items were sent as media, send a simple follow-up
+        responseText = 'Would you like me to help you place an order or check delivery inside China?';
+      }
+    }
+
+    // Enforce English output (check if >20% CJK characters)
+    const cjkCount = (responseText.match(/[\u4e00-\u9fff]/g) || []).length;
+    const totalChars = responseText.length;
+    if (totalChars > 0 && cjkCount / totalChars > 0.2 && openai) {
+      try {
+        const response = await openai.chat.completions.create({
+          model: OPENAI_DISTILL_MODEL,
+          messages: [
+            {
+              role: 'system',
+              content: 'Translate to fluent English only. Preserve names, numbers, prices, URLs exactly as they are.',
+            },
+            {
+              role: 'user',
+              content: `Translate this to English:\n\n${responseText}`,
+            },
+          ],
+          temperature: 0.3,
+          max_tokens: 500,
+        });
+        responseText = response.choices[0]?.message?.content || responseText;
+      } catch (error) {
+        console.error('[WhatsApp Service] English enforcement error:', error);
+      }
+    }
+
+    // Send text message via Twilio
+    const providerSid = await sendText(conversation.external_from!, responseText);
+
+    // Store outbound message
+    await prisma.message.create({
+      data: {
+        conversation_id: conversationId,
+        role: 'assistant',
+        direction: 'OUTBOUND',
+        provider: 'twilio',
+        provider_sid: providerSid,
+        content: responseText,
+        status: 'sent',
+      },
+    });
+
+    // Update conversation
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        last_outbound_at: new Date(),
+        last_message_preview: responseText.substring(0, 100),
+      },
+    });
+
+    console.log('[WhatsApp Service] AI reply sent successfully');
+  } catch (error) {
+    console.error('[WhatsApp Service] Error handling AI reply:', error);
+    // Don't throw - errors shouldn't break the webhook
+  }
+}
+

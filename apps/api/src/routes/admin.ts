@@ -2824,7 +2824,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     };
   });
 
-  fastify.put('/esim/plans/:id', async (request: FastifyRequest) => {
+  fastify.put('/esim/plans/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     const params = request.params as { id: string };
     const body = request.body as any;
     
@@ -2833,11 +2833,28 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     const coverAssetId = imageIds.length > 0 ? imageIds[0] : (body.cover_asset_id !== undefined ? body.cover_asset_id : null);
     const galleryAssetIds = imageIds.length > 1 ? imageIds.slice(1) : (body.gallery_asset_ids !== undefined ? body.gallery_asset_ids : null);
     
+    // Check if package_code is being changed and if it conflicts with another plan
+    if (body.package_code !== undefined && body.package_code !== null) {
+      const existingPlan = await prisma.esimPlan.findFirst({
+        where: {
+          package_code: body.package_code,
+          id: { not: params.id }, // Exclude the current plan
+        },
+      });
+      
+      if (existingPlan) {
+        reply.status(400).send({ 
+          error: `Package code "${body.package_code}" already exists in another eSIM plan (ID: ${existingPlan.id})` 
+        });
+        return;
+      }
+    }
+    
     const updatedPlan = await prisma.esimPlan.update({
       where: { id: params.id },
       data: {
         name: body.name,
-        package_code: body.package_code,
+        ...(body.package_code !== undefined ? { package_code: body.package_code } : {}),
         provider: body.provider,
         country: body.country,
         region_text: body.region_text,

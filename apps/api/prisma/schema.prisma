@@ -16,11 +16,12 @@ model User {
   created_at       DateTime         @default(now())
   updated_at       DateTime         @updatedAt
   activityLogs     ActivityLog[]
-  addresses        Address[]
-  blogPosts        BlogPost[]
-  cart             Cart?
-  conversations    Conversation[]
-  customerProfile  CustomerProfile?
+  addresses               Address[]
+  assignedConversations   Conversation[]        @relation("AssignedConversations")
+  blogPosts               BlogPost[]
+  cart                    Cart?
+  conversations           Conversation[]
+  customerProfile         CustomerProfile?
   guideProfile     GuideProfile?
   leads            Lead[]
   mediaAssets      MediaAsset[]
@@ -907,17 +908,30 @@ model ShippingUpdate {
 }
 
 model Conversation {
-  id         String    @id @default(uuid())
-  channel    String
-  user_id    String?
-  lead_id    String?
-  created_at DateTime  @default(now())
-  lead       Lead?     @relation(fields: [lead_id], references: [id])
-  user       User?     @relation(fields: [user_id], references: [id])
-  messages   Message[]
+  id                    String    @id @default(uuid())
+  channel               String
+  user_id               String?
+  lead_id               String?
+  external_channel      String?
+  external_from         String?
+  external_to           String?
+  external_thread_key   String?
+  mode                  String    @default("AI")
+  assigned_user_id      String?
+  last_inbound_at       DateTime?
+  last_outbound_at      DateTime?
+  last_message_preview  String?
+  created_at            DateTime  @default(now())
+  lead                  Lead?     @relation(fields: [lead_id], references: [id])
+  user                  User?     @relation(fields: [user_id], references: [id])
+  assignedUser          User?     @relation("AssignedConversations", fields: [assigned_user_id], references: [id])
+  messages              Message[]
 
+  @@unique([external_thread_key])
   @@index([user_id])
   @@index([lead_id])
+  @@index([external_from])
+  @@index([mode])
   @@map("conversations")
 }
 
@@ -926,11 +940,16 @@ model Message {
   conversation_id String
   role            String
   content         String
+  direction       String?
+  provider        String?
+  provider_sid    String?
+  status          String?
   meta_json       Json?
   created_at      DateTime     @default(now())
   conversation    Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
 
   @@index([conversation_id])
+  @@index([provider_sid])
   @@map("messages")
 }
 
@@ -1210,4 +1229,39 @@ model HomepageBanner {
 
   @@index([is_active, sort_order])
   @@map("homepage_banners")
+}
+
+model TwilioWebhookEvent {
+  id            String   @id @default(uuid())
+  event_type    String
+  provider_sid  String?
+  payload       Json
+  created_at    DateTime @default(now())
+
+  @@unique([event_type, provider_sid])
+  @@map("twilio_webhook_events")
+}
+
+model TwilioMessageStatus {
+  id             String   @id @default(uuid())
+  provider_sid   String
+  status         String
+  error_code     String?
+  error_message  String?
+  raw            Json?
+  created_at     DateTime @default(now())
+
+  @@index([provider_sid])
+  @@map("twilio_message_statuses")
+}
+
+model ProductTitleTranslation {
+  id              String   @id @default(uuid())
+  source_text     String
+  translated_text String
+  provider        String   @default("openai")
+  created_at      DateTime @default(now())
+
+  @@unique([source_text])
+  @@map("product_title_translations")
 }

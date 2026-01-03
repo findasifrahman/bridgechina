@@ -294,6 +294,23 @@ const router = createRouter({
       ],
     },
     {
+      path: '/ops',
+      component: () => import('@/layouts/AdminLayout.vue'),
+      meta: { requiresAuth: true, requiresRole: ['ADMIN', 'OPS', 'SELLER', 'PARTNER'] },
+      children: [
+        {
+          path: 'inbox',
+          name: 'ops-inbox',
+          component: () => import('@/pages/ops/InboxPage.vue'),
+        },
+        {
+          path: 'inbox/:id',
+          name: 'ops-inbox-detail',
+          component: () => import('@/pages/ops/InboxPage.vue'),
+        },
+      ],
+    },
+    {
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('@/pages/NotFoundPage.vue'),

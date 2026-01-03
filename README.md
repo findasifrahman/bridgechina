@@ -10,18 +10,37 @@ A premium, modern, responsive web platform for international travelers in China.
 - **Database**: PostgreSQL
 - **Storage**: Cloudflare R2 (S3 compatible)
 - **Auth**: JWT with refresh tokens (httpOnly cookies) + RBAC
+- **AI/ML**: OpenAI (GPT-4o-mini) for chat agent and intent detection
+- **Web Search**: Tavily API for real-time information retrieval
+- **External APIs**: 
+  - Booking.com (RapidAPI) for hotel search and details
+  - TMAPI (1688.com) for shopping product and factory search
 
 ## Project Structure
 
 ```
 bridgechina/
 ├── apps/
-│   ├── api/          # Fastify API server
-│   └── web/           # Vue 3 frontend
+│   ├── api/                    # Fastify API server
+│   │   ├── src/
+│   │   │   ├── modules/
+│   │   │   │   ├── chat/        # AI Chat Agent (OpenAI + Tavily)
+│   │   │   │   ├── hotels/      # Booking.com integration service
+│   │   │   │   └── shopping/    # TMAPI 1688.com integration
+│   │   │   └── routes/          # API route handlers
+│   │   └── prisma/              # Database schema and migrations
+│   └── web/                     # Vue 3 frontend
+│       └── src/
+│           ├── pages/           # Page components
+│           │   ├── HotelsListPage.vue      # Hotel search and listing
+│           │   ├── HotelDetailPage.vue     # Hotel details (internal + external)
+│           │   └── ShoppingPage.vue        # Shopping with TMAPI integration
+│           └── components/      # Reusable components
+│               └── FloatingChatWidget.vue   # AI chat interface
 ├── packages/
-│   ├── shared/        # Shared types and Zod schemas
-│   └── ui/            # Shared Vue UI components
-└── package.json       # Root workspace config
+│   ├── shared/                  # Shared types and Zod schemas
+│   └── ui/                      # Shared Vue UI components
+└── package.json                 # Root workspace config
 ```
 
 ## Prerequisites
@@ -99,6 +118,29 @@ R2_ENDPOINT=""                # Usually: https://<account-id>.r2.cloudflarestora
 
 # Optional: Redis
 REDIS_URL=""                  # Leave empty if not using Redis
+
+# AI Chat Agent (OpenAI + Tavily)
+OPENAI_API_KEY=""             # OpenAI API key for chat agent
+OPENAI_MODEL="gpt-4o-mini"    # Main model for chat responses
+OPENAI_ROUTER_MODEL="gpt-4o-mini"  # Model for intent detection/routing
+OPENAI_DISTILL_MODEL="gpt-4o-mini" # Model for translation/distillation
+TAVILY_API_KEY=""             # Tavily API key for web search
+
+# External Hotel Provider (Booking.com via RapidAPI)
+RAPID_API_KEY=""              # RapidAPI key for Booking.com integration
+
+# Shopping Integration (TMAPI 1688.com)
+TMAPI_API_16688_TOKEN=""      # TMAPI token for 1688.com product search
+TMAPI_BASE_URL="https://api.tmapi.top"  # TMAPI base URL (default)
+
+# WhatsApp Integration (Twilio)
+TWILIO_ACCOUNT_SID=""         # Twilio Account SID
+TWILIO_AUTH_TOKEN=""          # Twilio Auth Token
+TWILIO_WHATSAPP_FROM=""       # WhatsApp sender number (e.g., whatsapp:+14155238886)
+TWILIO_WEBHOOK_VALIDATE="true"  # Enable webhook signature validation (true/false)
+
+# WeCom Notifications (Optional)
+WECOM_GROUP_BOT_WEBHOOK_URL=""  # WeCom group bot webhook URL for notifications
 ```
 
 ### 5. Generate Prisma Client & Run Migrations
@@ -145,7 +187,7 @@ pnpm dev
 - ✅ Role-based redirects after login (admin → /admin, seller → /seller, user → /app)
 
 #### Database Schema
-- ✅ Complete Prisma schema with 40+ tables
+- ✅ Complete Prisma schema with 50+ tables
 - ✅ Image tables for all services (HotelImage, RestaurantImage, MedicalImage, TourImage, TransportImage, CityImage, ProductImage, EsimImage)
 - ✅ Trip.com-style service fields:
   - Hotels: ratings, reviews, star ratings, amenities, facilities, check-in/out times
@@ -162,6 +204,15 @@ pnpm dev
   - Ratings, reviews, SKU, brand, tags
   - Original price (for discounts), weight, dimensions
   - Specifications (key-value pairs)
+- ✅ **External Hotel Integration**:
+  - `ExternalHotelProvider` - External hotel provider configuration
+  - `ExternalDestination` - Cached destination lookups (cities, hotels)
+  - `ExternalHotel` - External hotel data with full details (Booking.com)
+  - `ExternalHotelSearchCache` - Search result caching (5-day TTL)
+  - `HotelBooking` - Extended with `hotel_source` (INTERNAL/BOOKINGCOM) and external hotel ID
+- ✅ **Shopping Integration**:
+  - `ExternalSearchCache` - TMAPI search result caching
+  - `ExternalCatalogItem` - Cached product data from TMAPI
 
 #### Admin Panel
 - ✅ Dashboard with KPIs (leads, requests, orders)
@@ -211,7 +262,7 @@ pnpm dev
 - ✅ Homepage (Trip.com-inspired):
   - Compact, information-dense layout
   - Left service sidebar (desktop)
-  - AI search bar
+  - AI search bar with floating chat widget
   - Offer strip
   - Promo cards
   - Featured carousel
@@ -219,11 +270,27 @@ pnpm dev
 - ✅ Services pages:
   - Services overview
   - Individual service detail pages (hotel, transport, halal_food, medical, translation_help, shopping, tours, esim)
-- ✅ Shopping interface (ecommerce):
+- ✅ **Hotel Booking**:
+  - Combined internal and external hotel search
+  - City search (Guangzhou only) and hotel name search
+  - Date range picker with guest/room selection
+  - Client-side filters (price, rating, cancellation, breakfast)
+  - Hotel detail pages with rich information:
+    - Image galleries (deduplicated)
+    - Highlights, facilities, payment methods
+    - Description, review scores, nearby attractions
+    - Price display (per night and total)
+    - Booking request flow for both internal and external hotels
+- ✅ **Shopping interface** (ecommerce):
   - Product grid with filters
   - Category navigation
-  - Search functionality
+  - Search functionality (keyword and image search)
   - Product detail pages
+  - TMAPI 1688.com integration:
+    - Product search by keyword (with Chinese translation)
+    - Factory/supplier search for sourcing
+    - Image search for visual product discovery
+    - Product details with images, prices, supplier info
   - Add to cart (stub)
 - ✅ Cities pages:
   - City listing
@@ -265,10 +332,49 @@ pnpm dev
 - ⏳ QR code generation
 - ⏳ Activation instructions
 
+#### Hotel Features (Future Enhancements)
+- ⏳ Review scores display (API ready, UI commented out for future use)
+- ⏳ Nearby attractions display (API ready, UI commented out for future use)
+- ⏳ Advanced filtering and sorting
+- ⏳ Price alerts and notifications
+
+#### AI Chat Agent
+- ✅ **Intelligent Chat Assistant**:
+  - OpenAI-powered intent detection and routing
+  - Session-based conversation memory (last 5 turns)
+  - Multilingual input support (outputs English only)
+  - Intent classification: HOTEL, TRANSPORT, TOUR, MEDICAL, HALAL_FOOD, SHOPPING, ESIM, CITY_INFO, MARKET_INFO, GENERAL_CHINA, OUT_OF_SCOPE
+  - Service availability guard (Guangzhou/Hainan only for certain services)
+  - Shopping intent routing:
+    - RETAIL: Product search via TMAPI with price/supplier info
+    - FACTORY: Supplier/factory search with Tavily enrichment
+  - Tavily web search integration for:
+    - Factory/supplier verification and enrichment
+    - Market information
+    - General China information
+  - Greeting short-circuit (immediate friendly responses)
+  - English output enforcement (auto-translation if needed)
+  - Response formatting with inline images and structured cards
+  - Price extraction and display from external APIs
+  - Keyword translation to Chinese for TMAPI searches
+
 #### Advanced Features
+- ✅ **External Hotel Integration**:
+  - Booking.com RapidAPI integration
+  - Hotel search by city (Guangzhou) and by hotel name
+  - Rich hotel details (images, facilities, reviews, pricing)
+  - Search result caching (5-day TTL)
+  - Fallback to cached data if API fails
+  - Price extraction and display
+  - Auto-add Guangzhou for hotel name searches
+- ✅ **Shopping Integration**:
+  - TMAPI 1688.com product search
+  - Factory/supplier search for sourcing
+  - Image search for visual discovery
+  - Product caching and normalization
+  - Chinese keyword translation for accurate results
 - ⏳ Redis caching (hooks ready, needs REDIS_URL)
 - ⏳ WhatsApp integration (webhook endpoints stubbed)
-- ⏳ AI search enhancement (currently mocked)
 - ⏳ Email notifications
 - ⏳ SMS notifications
 
@@ -282,13 +388,26 @@ pnpm dev
 ### Public Endpoints
 - `GET /api/public/cities` - List active cities
 - `GET /api/public/catalog/*` - Catalog listings (hotels, restaurants, medical, tours, transport)
-- `GET /api/public/shopping/categories` - Product categories
-- `GET /api/public/shopping/products` - Products (with search/filters)
-- `GET /api/public/shopping/products/:id` - Product detail
+- `GET /api/public/hotels/search` - Combined hotel search (internal + external Booking.com)
+  - Query params: `mode` (city/name), `q`, `checkin`, `checkout`, `adults`, `room_qty`, `page_number`
+  - Returns: Combined internal and external hotels with prices
+- `GET /api/public/hotels/external/:hotelId/details` - External hotel details (Booking.com)
+  - Query params: `checkin`, `checkout`, `adults`, `room_qty`
+  - Returns: Full hotel details with images, facilities, reviews, pricing
+- `GET /api/public/catalog/hotels/:id` - Hotel details (handles both internal UUIDs and external IDs)
+- `POST /api/hotel-bookings/request` - Create hotel booking request (authenticated)
+- `GET /api/public/shopping/categories` - Product categories (TMAPI)
+- `GET /api/public/shopping/products` - Products (with search/filters, TMAPI integration)
+- `GET /api/public/shopping/products/:id` - Product detail (TMAPI)
+- `POST /api/public/shopping/search/keyword` - Search products by keyword (TMAPI)
+- `POST /api/public/shopping/search/image` - Search products by image (TMAPI)
+- `GET /api/public/shopping/factories` - Search factories/suppliers (TMAPI)
 - `GET /api/public/blog` - Blog posts
 - `GET /api/public/blog/:slug` - Blog post detail
 - `GET /api/public/search` - Unified search
-- `POST /api/public/ai-search` - AI search (mocked)
+- `POST /api/public/ai-search` - AI Chat Agent (OpenAI + Tavily)
+  - Body: `{ query: string, sessionId?: string }`
+  - Returns: `{ response: string, images: string[], sessionId: string, cards?: array }`
 - `POST /api/public/service-request` - Submit service request
 - `POST /api/public/lead` - Submit lead
 - `GET /api/public/geo` - City detection
@@ -334,6 +453,13 @@ pnpm dev
 - `PUT /api/seller/products/:id` - Update product
 - `GET /api/seller/orders` - Seller's orders
 
+### Ops Endpoints (ADMIN, OPS, SELLER, PARTNER)
+- `GET /api/ops/conversations` - List WhatsApp conversations
+- `GET /api/ops/conversations/:id` - Get conversation detail
+- `POST /api/ops/conversations/:id/takeover` - Take over conversation (HUMAN mode)
+- `POST /api/ops/conversations/:id/release` - Release conversation to AI
+- `POST /api/ops/conversations/:id/reply` - Send reply to conversation
+
 ## Database Schema Highlights
 
 ### Service Tables (with Image Relations)
@@ -364,11 +490,27 @@ pnpm dev
 ### Shopping
 - `product_categories` - Hierarchical categories
 - `products` - Products with ratings, reviews, SKU, specifications
+- `external_search_cache` - TMAPI search result caching
+- `external_catalog_items` - Cached product data from TMAPI
 - `carts` - Shopping carts
 - `cart_items` - Cart items
 - `orders` - Orders
 - `order_items` - Order items
 - `shipping_updates` - Shipping tracking
+
+### External Hotel Integration
+- `external_hotel_providers` - External hotel provider configuration
+- `external_destinations` - Cached destination lookups (cities, hotels, airports)
+- `external_hotels` - External hotel data with full details:
+  - Basic info (name, city, address, coordinates)
+  - Ratings and reviews
+  - Pricing (gross_price, strikethrough_price, currency)
+  - Images (cover_photo_url, photo_urls, gallery_photos)
+  - Facilities, highlights, payment methods
+  - Description, review scores, attractions
+  - Raw API responses for full data preservation
+- `external_hotel_search_cache` - Search result caching (5-day TTL)
+- `hotel_bookings` - Extended with `hotel_source` (INTERNAL/BOOKINGCOM) and `external_hotel_id`
 
 ## Scripts
 
@@ -417,6 +559,19 @@ pnpm lint
 ### Environment Variables (Production)
 
 Set all required environment variables in your hosting platform (Vercel, Railway, etc.)
+
+### Twilio WhatsApp Configuration
+
+1. Create a Twilio account and get a WhatsApp sender number
+2. Set up webhooks in Twilio Console:
+   - **Incoming message webhook**: `https://bridgechina-production.up.railway.app/api/webhooks/twilio/whatsapp/inbound`
+   - **Status callback**: `https://bridgechina-production.up.railway.app/api/webhooks/twilio/whatsapp/status`
+3. Add environment variables:
+   - `TWILIO_ACCOUNT_SID`
+   - `TWILIO_AUTH_TOKEN`
+   - `TWILIO_WHATSAPP_FROM` (e.g., `whatsapp:+14155238886`)
+   - `TWILIO_WEBHOOK_VALIDATE=true` (enable signature validation)
+   - `WECOM_GROUP_BOT_WEBHOOK_URL` (optional, for WeCom notifications)
 
 ## Brand Guidelines
 
