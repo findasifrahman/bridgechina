@@ -76,8 +76,10 @@ async function handleLogin() {
     
     if (!redirect) {
       const userRoles = authStore.user?.roles || [];
-      if (userRoles.some((role: string) => ['ADMIN', 'OPS', 'EDITOR'].includes(role))) {
+      if (userRoles.includes('ADMIN') || userRoles.includes('EDITOR')) {
         redirect = '/admin';
+      } else if (userRoles.includes('OPS')) {
+        redirect = '/ops/inbox';
       } else if (userRoles.includes('SELLER')) {
         redirect = '/seller';
       } else if (userRoles.includes('SERVICE_PROVIDER') && !userRoles.some((role: string) => ['ADMIN', 'OPS'].includes(role))) {
