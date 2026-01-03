@@ -265,6 +265,11 @@ const router = createRouter({
           component: () => import('@/pages/admin/UsersPage.vue'),
         },
         {
+          path: 'service-providers',
+          name: 'admin-service-providers',
+          component: () => import('@/pages/admin/ServiceProvidersPage.vue'),
+        },
+        {
           path: 'audit',
           name: 'admin-audit',
           component: () => import('@/pages/admin/AuditPage.vue'),
