@@ -176,9 +176,10 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
       reply.code(200).send('ok');
 
       // Process AI reply asynchronously
+      fastify.log.info({ conversationId: conversation.id }, '[WhatsApp Routes] Triggering async AI reply');
       setImmediate(() => {
         handleAIReply(conversation.id).catch((error) => {
-          fastify.log.error('[WhatsApp Routes] Error in async AI processing:', error);
+          fastify.log.error({ error }, '[WhatsApp Routes] Error in async AI processing');
         });
       });
     } catch (error: any) {

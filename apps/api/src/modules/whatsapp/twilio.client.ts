@@ -67,10 +67,22 @@ export async function sendText(
   }
 
   try {
+    console.log('[Twilio Client] Creating message:', {
+      from: TWILIO_WHATSAPP_FROM,
+      to: to,
+      bodyLength: body.length,
+      bodyPreview: body.substring(0, 50),
+    });
+
     const message = await twilioClient.messages.create({
       from: TWILIO_WHATSAPP_FROM,
       to: to,
       body: body,
+    });
+
+    console.log('[Twilio Client] Message created successfully:', {
+      sid: message.sid,
+      status: message.status,
     });
 
     return message.sid;

@@ -149,9 +149,12 @@ export async function handleAIReply(conversationId: string): Promise<void> {
     // Call existing chat agent (reuse existing logic)
     // Generate session ID from conversation ID for consistency
     const sessionId = `whatsapp_${conversationId}`;
+    console.log('[WhatsApp Service] Processing AI reply for conversation:', conversationId, 'userMessage:', userMessage);
     const result = await processChatMessage(userMessage, sessionId);
 
     let responseText = result.message;
+    console.log('[WhatsApp Service] AI response text (full):', responseText);
+    console.log('[WhatsApp Service] AI response length:', responseText.length);
 
     // Handle shopping results specially (format for WhatsApp)
     if (result.items && result.items.length > 0) {
@@ -209,6 +212,12 @@ export async function handleAIReply(conversationId: string): Promise<void> {
       }
     }
 
+    // Ensure responseText is not empty
+    if (!responseText || responseText.trim().length === 0) {
+      responseText = 'I apologize, I could not generate a response. How can I help you?';
+      console.warn('[WhatsApp Service] Empty response text, using fallback');
+    }
+
     // Enforce English output (check if >20% CJK characters)
     const cjkCount = (responseText.match(/[\u4e00-\u9fff]/g) || []).length;
     const totalChars = responseText.length;
@@ -235,10 +244,24 @@ export async function handleAIReply(conversationId: string): Promise<void> {
       }
     }
 
+    // Ensure we have a valid response text
+    if (!responseText || responseText.trim().length === 0) {
+      console.error('[WhatsApp Service] Empty response text, using fallback');
+      responseText = 'I apologize, I could not generate a response. How can I help you?';
+    }
+
     // Send text message via Twilio
+    console.log('[WhatsApp Service] Sending WhatsApp message:', {
+      to: conversation.external_from,
+      messageLength: responseText.length,
+      preview: responseText.substring(0, 100),
+      fullMessage: responseText,
+    });
+
     let providerSid: string | null = null;
     try {
       providerSid = await sendText(conversation.external_from!, responseText);
+      console.log('[WhatsApp Service] Message sent successfully, providerSid:', providerSid);
     } catch (error: any) {
       console.error('[WhatsApp Service] Failed to send WhatsApp message:', error);
       // Store message with failed status
