@@ -277,7 +277,6 @@ export default async function providerRoutes(fastify: FastifyInstance) {
     const [
       assignedCount,
       unreadCount,
-      avgResponseTime,
     ] = await Promise.all([
       // Total assigned conversations
       prisma.conversation.count({
@@ -292,17 +291,6 @@ export default async function providerRoutes(fastify: FastifyInstance) {
           last_inbound_at: {
             gte: dayAgo,
           },
-        },
-      }),
-      // Average response time (first_human_reply_at - last_inbound_at) for conversations with replies
-      prisma.conversation.aggregate({
-        where: {
-          assigned_user_id: req.user.id,
-          first_human_reply_at: { not: null },
-          last_inbound_at: { not: null },
-        },
-        _avg: {
-          // We'll calculate this manually since Prisma doesn't support date subtraction directly
         },
       }),
     ]);

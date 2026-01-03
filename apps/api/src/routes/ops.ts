@@ -189,15 +189,21 @@ export default async function opsRoutes(fastify: FastifyInstance) {
       return;
     }
 
+    const externalFrom = conversation.external_from; // Store in local variable for type narrowing
+    if (!externalFrom) {
+      reply.status(404).send({ error: 'Conversation external_from is invalid' });
+      return;
+    }
+
     try {
       let providerSid: string;
 
       if (body.mediaUrl) {
         // Send media message
-        providerSid = await sendMedia(conversation.external_from, body.mediaUrl, body.text);
+        providerSid = await sendMedia(externalFrom, body.mediaUrl, body.text);
       } else {
         // Send text message
-        providerSid = await sendText(conversation.external_from, body.text);
+        providerSid = await sendText(externalFrom, body.text);
       }
 
       const req = request as any;
@@ -221,7 +227,7 @@ export default async function opsRoutes(fastify: FastifyInstance) {
 
       // Update conversation
       const now = new Date();
-      const conversation = await prisma.conversation.findUnique({
+      const currentConv = await prisma.conversation.findUnique({
         where: { id },
         select: { first_human_reply_at: true },
       });
@@ -232,7 +238,7 @@ export default async function opsRoutes(fastify: FastifyInstance) {
       };
 
       // Set first_human_reply_at only if not already set
-      if (!conversation?.first_human_reply_at) {
+      if (!currentConv?.first_human_reply_at) {
         updateData.first_human_reply_at = now;
       }
 
