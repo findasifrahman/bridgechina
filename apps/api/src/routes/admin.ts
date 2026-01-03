@@ -2383,6 +2383,63 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     });
   });
 
+  // Get all roles (for user role assignment)
+  fastify.get('/roles', async () => {
+    return prisma.role.findMany({
+      orderBy: { name: 'asc' },
+    });
+  });
+
+  // Update user roles
+  fastify.put('/users/:id/roles', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as { role_ids: string[] };
+
+    if (!body.role_ids || !Array.isArray(body.role_ids)) {
+      reply.status(400).send({ error: 'role_ids must be an array' });
+      return;
+    }
+
+    // Verify user exists
+    const user = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!user) {
+      reply.status(404).send({ error: 'User not found' });
+      return;
+    }
+
+    // Delete all existing user roles
+    await prisma.userRole.deleteMany({
+      where: { user_id: id },
+    });
+
+    // Create new user roles
+    if (body.role_ids.length > 0) {
+      await prisma.userRole.createMany({
+        data: body.role_ids.map((role_id) => ({
+          user_id: id,
+          role_id,
+        })),
+      });
+    }
+
+    // Fetch updated user with roles
+    const updatedUser = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        roles: {
+          include: {
+            role: true,
+          },
+        },
+      },
+    });
+
+    return updatedUser;
+  });
+
   // Audit logs
   fastify.get('/audit', async (request: FastifyRequest) => {
     const { entity_type, entity_id, limit = '50' } = request.query as {

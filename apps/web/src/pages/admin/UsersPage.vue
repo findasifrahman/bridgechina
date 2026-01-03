@@ -96,7 +96,8 @@ function getRoleVariant(roleName: string) {
 
 function editUserRoles(user: any) {
   selectedUser.value = user;
-  userRoles.value = user.roles.map((ur: any) => ur.role_id);
+  // Get role IDs from user's roles
+  userRoles.value = user.roles.map((ur: any) => ur.role?.id || ur.role_id);
   showRolesModal.value = true;
 }
 
@@ -112,8 +113,7 @@ function toggleRole(roleId: string) {
 async function handleUpdateRoles() {
   updating.value = true;
   try {
-    // We'll need to add this endpoint
-    await axios.patch(`/api/admin/users/${selectedUser.value.id}/roles`, {
+    await axios.put(`/api/admin/users/${selectedUser.value.id}/roles`, {
       role_ids: userRoles.value,
     });
     toast.success('Roles updated');
@@ -137,19 +137,21 @@ async function loadUsers() {
 
 async function loadRoles() {
   try {
-    // We'll need a roles endpoint or extract from users
-    // For now, extract unique roles from users
+    // Fetch all roles from the database
+    const response = await axios.get('/api/admin/roles');
+    allRoles.value = response.data;
+  } catch (error) {
+    console.error('Failed to load roles:', error);
+    // Fallback: extract from users if API fails
     const roleMap = new Map();
     users.value.forEach((user) => {
       user.roles.forEach((ur: any) => {
-        if (!roleMap.has(ur.role.id)) {
+        if (ur.role && !roleMap.has(ur.role.id)) {
           roleMap.set(ur.role.id, ur.role);
         }
       });
     });
     allRoles.value = Array.from(roleMap.values());
-  } catch (error) {
-    console.error('Failed to load roles');
   }
 }
 
