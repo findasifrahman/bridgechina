@@ -320,14 +320,14 @@ function handleImageError(e: Event) {
   (e.target as HTMLImageElement).style.display = 'none';
 }
 
-// Poll for new messages every 5 seconds
+// Poll for new messages every 30 seconds
 function startPolling() {
   pollInterval = window.setInterval(() => {
     loadConversations();
     if (selectedConversationId.value) {
       selectConversation(selectedConversationId.value);
     }
-  }, 5000);
+  }, 30000*4); // 30 seconds
 }
 
 function stopPolling() {
