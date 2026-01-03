@@ -563,10 +563,13 @@ Set all required environment variables in your hosting platform (Vercel, Railway
 ### Twilio WhatsApp Configuration
 
 1. Create a Twilio account and get a WhatsApp sender number
-2. Set up webhooks in Twilio Console:
+2. Test webhook endpoints are accessible:
+   - **Health check**: `GET https://bridgechina-production.up.railway.app/api/webhooks/twilio/whatsapp/health`
+   - This should return `{"status":"ok","service":"twilio-whatsapp-webhook",...}`
+3. Set up webhooks in Twilio Console:
    - **Incoming message webhook**: `https://bridgechina-production.up.railway.app/api/webhooks/twilio/whatsapp/inbound`
    - **Status callback**: `https://bridgechina-production.up.railway.app/api/webhooks/twilio/whatsapp/status`
-3. Add environment variables:
+4. Add environment variables:
    - `TWILIO_ACCOUNT_SID`
    - `TWILIO_AUTH_TOKEN`
    - `TWILIO_WHATSAPP_FROM` (e.g., `whatsapp:+14155238886`)

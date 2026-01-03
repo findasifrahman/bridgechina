@@ -24,6 +24,19 @@ const prisma = new PrismaClient();
 const APP_BASE_URL = process.env.APP_BASE_URL || 'http://localhost:3000';
 
 export default async function whatsappRoutes(fastify: FastifyInstance) {
+  // Health check for webhook endpoint (GET for testing)
+  fastify.get('/health', async () => {
+    return {
+      status: 'ok',
+      service: 'twilio-whatsapp-webhook',
+      timestamp: new Date().toISOString(),
+      endpoints: {
+        inbound: '/api/webhooks/twilio/whatsapp/inbound',
+        status: '/api/webhooks/twilio/whatsapp/status',
+      },
+    };
+  });
+
   // Inbound message webhook
   fastify.post('/inbound', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
