@@ -11,9 +11,9 @@
         <div v-else class="space-y-4">
           <div v-for="request in requests" :key="request.id" class="border-b pb-4">
             <div class="flex justify-between items-center">
-              <div>
-                <p class="font-semibold">{{ request.category.name }}</p>
-                <p class="text-sm text-slate-600">{{ request.city.name }}</p>
+              <div class="flex-1 cursor-pointer" @click="$router.push(`/app/requests/${request.id}`)">
+                <p class="font-semibold">{{ request.category?.name || 'Service' }}</p>
+                <p class="text-sm text-slate-600">{{ request.city?.name || 'N/A' }}</p>
                 <p class="text-sm text-slate-500">{{ new Date(request.created_at).toLocaleDateString() }}</p>
               </div>
               <StatusChip :status="request.status" />

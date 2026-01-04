@@ -41,6 +41,7 @@ model User {
   providerDispatches     ProviderDispatch[]
   providerOffers         ProviderOffer[]
   approvedOffers         ProviderOffer[]         @relation("ApprovedOffers")
+  reviewedPaymentProofs  PaymentProof[]          @relation("PaymentProofReviewer")
 
   @@index([email])
   @@index([phone])
@@ -154,6 +155,7 @@ model MediaAsset {
   tourCovers           Tour[]              @relation("TourCover")
   transportCovers      TransportProduct[]  @relation("TransportCover")
   homepageBannerCovers HomepageBanner[]    @relation("HomepageBannerCover")
+  paymentProofs        PaymentProof[]
 
   @@index([uploaded_by])
   @@index([category])
@@ -435,43 +437,44 @@ model ServiceCategory {
 }
 
 model ServiceRequest {
-  id                        String                  @id @default(uuid())
-  category_id               String
-  city_id                   String
-  user_id                   String?
-  lead_id                   String?
-  status                    String                  @default("new")
-  assigned_to               String?
-  customer_name             String
-  phone                     String
-  whatsapp                  String?
-  email                     String?
-  request_payload           Json
+  id                           String                   @id @default(uuid())
+  category_id                  String
+  city_id                      String
+  user_id                      String?
+  lead_id                      String?
+  status                       String                   @default("new")
+  assigned_to                  String?
+  customer_name                String
+  phone                        String
+  whatsapp                     String?
+  email                        String?
+  request_payload              Json
   created_from_conversation_id String?
-  bundle_key                String?
-  dispatched_at             DateTime?
-  first_provider_response_at DateTime?
-  first_ops_approval_at     DateTime?
-  ops_last_action_at        DateTime?
-  sla_due_at                DateTime?
-  created_at                DateTime                @default(now())
-  updated_at                DateTime                @updatedAt
-  foodDelivery              FoodDelivery?
-  guideRequest              GuideRequest?
-  hotelBooking              HotelBooking?
-  medicalAssist             MedicalAssist?
-  assignedUser              User?                   @relation("AssignedRequests", fields: [assigned_to], references: [id])
-  category                  ServiceCategory         @relation(fields: [category_id], references: [id])
-  city                      City                    @relation(fields: [city_id], references: [id])
-  lead                      Lead?                   @relation(fields: [lead_id], references: [id])
-  user                      User?                   @relation("UserRequests", fields: [user_id], references: [id])
-  conversation              Conversation?           @relation(fields: [created_from_conversation_id], references: [id])
-  tourBooking               TourBooking?
-  translationTask           TranslationTask?
-  transportBooking          TransportBooking?
-  providerDispatches        ProviderDispatch[]
-  providerOffers            ProviderOffer[]
-  providerMessageContexts   ProviderMessageContext[]
+  bundle_key                   String?
+  dispatched_at                DateTime?
+  first_provider_response_at   DateTime?
+  first_ops_approval_at        DateTime?
+  ops_last_action_at           DateTime?
+  sla_due_at                   DateTime?
+  created_at                   DateTime                 @default(now())
+  updated_at                   DateTime                 @updatedAt
+  foodDelivery                 FoodDelivery?
+  guideRequest                 GuideRequest?
+  hotelBooking                 HotelBooking?
+  medicalAssist                MedicalAssist?
+  assignedUser                 User?                    @relation("AssignedRequests", fields: [assigned_to], references: [id])
+  category                     ServiceCategory          @relation(fields: [category_id], references: [id])
+  city                         City                     @relation(fields: [city_id], references: [id])
+  lead                         Lead?                    @relation(fields: [lead_id], references: [id])
+  user                         User?                    @relation("UserRequests", fields: [user_id], references: [id])
+  conversation                 Conversation?            @relation(fields: [created_from_conversation_id], references: [id])
+  tourBooking                  TourBooking?
+  translationTask              TranslationTask?
+  transportBooking             TransportBooking?
+  providerDispatches           ProviderDispatch[]
+  providerOffers               ProviderOffer[]
+  providerMessageContexts      ProviderMessageContext[]
+  paymentProofs                PaymentProof[]
 
   @@index([category_id])
   @@index([city_id])
@@ -929,7 +932,7 @@ model ShippingUpdate {
 }
 
 model Conversation {
-  id                      String    @id @default(uuid())
+  id                      String                   @id @default(uuid())
   channel                 String
   user_id                 String?
   lead_id                 String?
@@ -937,7 +940,7 @@ model Conversation {
   external_from           String?
   external_to             String?
   external_thread_key     String?
-  mode                    String    @default("AI")
+  mode                    String                   @default("AI")
   assigned_user_id        String?
   category_key            String?
   assigned_at             DateTime?
@@ -948,10 +951,10 @@ model Conversation {
   last_inbound_at         DateTime?
   last_outbound_at        DateTime?
   last_message_preview    String?
-  created_at              DateTime  @default(now())
-  lead                    Lead?     @relation(fields: [lead_id], references: [id])
-  user                    User?     @relation(fields: [user_id], references: [id])
-  assignedUser            User?     @relation("AssignedConversations", fields: [assigned_user_id], references: [id])
+  created_at              DateTime                 @default(now())
+  lead                    Lead?                    @relation(fields: [lead_id], references: [id])
+  user                    User?                    @relation(fields: [user_id], references: [id])
+  assignedUser            User?                    @relation("AssignedConversations", fields: [assigned_user_id], references: [id])
   messages                Message[]
   serviceRequests         ServiceRequest[]
   providerMessageContexts ProviderMessageContext[]
@@ -1003,16 +1006,16 @@ model ServiceProviderProfile {
 }
 
 model ProviderDispatch {
-  id              String   @id @default(uuid())
-  request_id      String
+  id               String         @id @default(uuid())
+  request_id       String
   provider_user_id String
-  status          String   @default("sent")
-  sent_at         DateTime @default(now())
-  viewed_at       DateTime?
-  responded_at    DateTime?
-  created_at      DateTime @default(now())
-  request         ServiceRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
-  provider        User     @relation(fields: [provider_user_id], references: [id], onDelete: Cascade)
+  status           String         @default("sent")
+  sent_at          DateTime       @default(now())
+  viewed_at        DateTime?
+  responded_at     DateTime?
+  created_at       DateTime       @default(now())
+  request          ServiceRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+  provider         User           @relation(fields: [provider_user_id], references: [id], onDelete: Cascade)
 
   @@unique([request_id, provider_user_id])
   @@index([request_id])
@@ -1022,24 +1025,24 @@ model ProviderDispatch {
 }
 
 model ProviderOffer {
-  id               String   @id @default(uuid())
+  id               String         @id @default(uuid())
   request_id       String
   provider_user_id String
   service_type     String
   provider_note    String?
   payload_json     Json?
-  status           String   @default("submitted")
-  submitted_at     DateTime @default(now())
+  status           String         @default("submitted")
+  submitted_at     DateTime       @default(now())
   approved_at      DateTime?
   rejected_at      DateTime?
   sent_to_user_at  DateTime?
   approved_by      String?
   reject_reason    String?
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
+  created_at       DateTime       @default(now())
+  updated_at       DateTime       @updatedAt
   request          ServiceRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
-  provider         User     @relation(fields: [provider_user_id], references: [id], onDelete: Cascade)
-  approvedByUser   User?    @relation("ApprovedOffers", fields: [approved_by], references: [id])
+  provider         User           @relation(fields: [provider_user_id], references: [id], onDelete: Cascade)
+  approvedByUser   User?          @relation("ApprovedOffers", fields: [approved_by], references: [id])
 
   @@index([request_id])
   @@index([provider_user_id])
@@ -1049,20 +1052,39 @@ model ProviderOffer {
 }
 
 model ProviderMessageContext {
-  id               String   @id @default(uuid())
-  request_id       String
-  conversation_id  String?
+  id                String         @id @default(uuid())
+  request_id        String
+  conversation_id   String?
   user_message_text String
   extracted_summary String?
   extracted_payload Json?
-  created_by       String?
-  created_at       DateTime @default(now())
-  request          ServiceRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
-  conversation     Conversation?  @relation(fields: [conversation_id], references: [id], onDelete: SetNull)
+  created_by        String?
+  created_at        DateTime       @default(now())
+  request           ServiceRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+  conversation      Conversation?  @relation(fields: [conversation_id], references: [id], onDelete: SetNull)
 
   @@index([request_id])
   @@index([conversation_id])
   @@map("provider_message_contexts")
+}
+
+model PaymentProof {
+  id          String         @id @default(uuid())
+  request_id  String
+  asset_id    String
+  status      String         @default("submitted") // submitted, approved, rejected
+  notes       String?
+  reviewed_by String?
+  reviewed_at DateTime?
+  created_at  DateTime       @default(now())
+  updated_at  DateTime       @updatedAt
+  request     ServiceRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+  asset       MediaAsset     @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+  reviewer    User?          @relation("PaymentProofReviewer", fields: [reviewed_by], references: [id])
+
+  @@index([request_id])
+  @@index([status])
+  @@map("payment_proofs")
 }
 
 model SiteSetting {

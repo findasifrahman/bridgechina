@@ -173,9 +173,19 @@ const router = createRouter({
           component: () => import('@/pages/app/DashboardPage.vue'),
         },
         {
+          path: 'profile',
+          name: 'app-profile',
+          component: () => import('@/pages/app/ProfilePage.vue'),
+        },
+        {
           path: 'requests',
           name: 'app-requests',
           component: () => import('@/pages/app/RequestsPage.vue'),
+        },
+        {
+          path: 'requests/:id',
+          name: 'app-request-detail',
+          component: () => import('@/pages/app/RequestDetailPage.vue'),
         },
         {
           path: 'orders',
@@ -312,6 +322,11 @@ const router = createRouter({
           path: 'inbox/:id',
           name: 'ops-inbox-detail',
           component: () => import('@/pages/ops/InboxPage.vue'),
+        },
+        {
+          path: 'offers',
+          name: 'ops-offers',
+          component: () => import('@/pages/ops/OffersPage.vue'),
         },
       ],
     },

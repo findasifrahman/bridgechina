@@ -328,6 +328,306 @@ export default async function userRoutes(fastify: FastifyInstance) {
     return reviews;
   });
 
+  // Get user's service requests
+  fastify.get('/requests', async (request: FastifyRequest) => {
+    const req = request as any;
+    const requests = await prisma.serviceRequest.findMany({
+      where: { user_id: req.user.id },
+      include: {
+        category: true,
+        city: true,
+      },
+      orderBy: { created_at: 'desc' },
+    });
+    return requests;
+  });
+
+  // Get specific service request detail
+  fastify.get('/requests/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    const req = request as any;
+    const { id } = request.params as { id: string };
+
+    const serviceRequest = await prisma.serviceRequest.findUnique({
+      where: { id },
+      include: {
+        category: true,
+        city: true,
+        providerOffers: {
+          where: { status: { in: ['approved', 'sent_to_user'] } },
+          orderBy: { submitted_at: 'desc' },
+          take: 1,
+        },
+        paymentProofs: {
+          include: {
+            asset: true,
+          },
+          orderBy: { created_at: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    if (!serviceRequest) {
+      reply.status(404).send({ error: 'Request not found' });
+      return;
+    }
+
+    if (serviceRequest.user_id !== req.user.id) {
+      reply.status(403).send({ error: 'Access denied' });
+      return;
+    }
+
+    return serviceRequest;
+  });
+
+  // Get user profile
+  fastify.get('/profile', async (request: FastifyRequest) => {
+    const req = request as any;
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        customerProfile: true,
+      },
+    });
+    return user;
+  });
+
+  // Update user profile
+  fastify.patch('/profile', async (request: FastifyRequest, reply: FastifyReply) => {
+    const req = request as any;
+    const body = request.body as { email?: string; phone?: string };
+
+    const updateData: any = {};
+    if (body.phone !== undefined) updateData.phone = body.phone;
+
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: updateData,
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+      },
+    });
+
+    return user;
+  });
+
+  // Get user addresses
+  fastify.get('/addresses', async (request: FastifyRequest) => {
+    const req = request as any;
+    const addresses = await prisma.address.findMany({
+      where: { user_id: req.user.id },
+      orderBy: { created_at: 'desc' },
+    });
+    return addresses;
+  });
+
+  // Create address
+  fastify.post('/addresses', async (request: FastifyRequest, reply: FastifyReply) => {
+    const req = request as any;
+    const body = request.body as {
+      label?: string;
+      street: string;
+      city: string;
+      postal_code?: string;
+    };
+
+    if (!body.street || !body.city) {
+      reply.status(400).send({ error: 'Street and city are required' });
+      return;
+    }
+
+    const address = await prisma.address.create({
+      data: {
+        user_id: req.user.id,
+        label: body.label || null,
+        street: body.street,
+        city: body.city,
+        postal_code: body.postal_code || null,
+      },
+    });
+
+    return address;
+  });
+
+  // Delete address
+  fastify.delete('/addresses/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    const req = request as any;
+    const { id } = request.params as { id: string };
+
+    const address = await prisma.address.findUnique({
+      where: { id },
+    });
+
+    if (!address) {
+      reply.status(404).send({ error: 'Address not found' });
+      return;
+    }
+
+    if (address.user_id !== req.user.id) {
+      reply.status(403).send({ error: 'Access denied' });
+      return;
+    }
+
+    await prisma.address.delete({
+      where: { id },
+    });
+
+    return { message: 'Address deleted' };
+  });
+
+  // Upload media file (for payment proofs and other user uploads)
+  fastify.post('/media/upload', async (request: FastifyRequest, reply: FastifyReply) => {
+    const req = request as any;
+    
+    try {
+      // Check R2 configuration
+      if (!process.env.R2_ACCOUNT_ID || !process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY || !process.env.R2_BUCKET) {
+        return reply.status(500).send({ 
+          error: 'File upload not configured' 
+        });
+      }
+
+      // Parse multipart form data
+      let fileData: any = null;
+      const parts = request.parts();
+      
+      for await (const part of parts) {
+        if (part.type === 'file') {
+          fileData = part;
+          break; // Only handle single file for now
+        }
+      }
+
+      if (!fileData) {
+        return reply.status(400).send({ error: 'No file provided' });
+      }
+
+      // Read file buffer
+      const chunks: Buffer[] = [];
+      for await (const chunk of fileData.file) {
+        chunks.push(chunk);
+      }
+      const fileBuffer = Buffer.concat(chunks);
+
+      // Validate file size (5MB max for payment proofs)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (fileBuffer.length > maxSize) {
+        return reply.status(400).send({ error: `File size exceeds maximum of ${maxSize / 1024 / 1024}MB` });
+      }
+
+      // Upload to R2
+      const { uploadToR2, getPublicUrl } = await import('../utils/r2.js');
+      const timestamp = Date.now();
+      const sanitizedFilename = fileData.filename.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const key = `uploads/payment-proofs/${timestamp}-${sanitizedFilename}`;
+
+      await uploadToR2(key, fileBuffer, fileData.mimetype);
+      const publicUrl = getPublicUrl(key);
+
+      // Create media asset record
+      const mediaAsset = await prisma.mediaAsset.create({
+        data: {
+          r2_key: key,
+          public_url: publicUrl,
+          mime_type: fileData.mimetype,
+          size: fileBuffer.length,
+          category: 'payment_proof',
+          uploaded_by: req.user.id,
+        },
+      });
+
+      return mediaAsset;
+    } catch (error: any) {
+      fastify.log.error({ error }, '[User Route] /media/upload error');
+      return reply.status(500).send({ 
+        error: error.message || 'Failed to upload file'
+      });
+    }
+  });
+
+  // Upload payment proof
+  fastify.post('/requests/:id/payment-proof', async (request: FastifyRequest, reply: FastifyReply) => {
+    const req = request as any;
+    const { id } = request.params as { id: string };
+    const body = request.body as {
+      asset_id: string;
+      notes?: string;
+    };
+
+    if (!body.asset_id) {
+      reply.status(400).send({ error: 'asset_id is required' });
+      return;
+    }
+
+    const serviceRequest = await prisma.serviceRequest.findUnique({
+      where: { id },
+    });
+
+    if (!serviceRequest) {
+      reply.status(404).send({ error: 'Request not found' });
+      return;
+    }
+
+    if (serviceRequest.user_id !== req.user.id) {
+      reply.status(403).send({ error: 'Access denied' });
+      return;
+    }
+
+    const paymentProof = await prisma.paymentProof.create({
+      data: {
+        request_id: id,
+        asset_id: body.asset_id,
+        notes: body.notes || null,
+        status: 'submitted',
+      },
+      include: {
+        asset: true,
+      },
+    });
+
+    return paymentProof;
+  });
+
+  // Get payment proof
+  fastify.get('/requests/:id/payment-proof', async (request: FastifyRequest, reply: FastifyReply) => {
+    const req = request as any;
+    const { id } = request.params as { id: string };
+
+    const serviceRequest = await prisma.serviceRequest.findUnique({
+      where: { id },
+    });
+
+    if (!serviceRequest) {
+      reply.status(404).send({ error: 'Request not found' });
+      return;
+    }
+
+    if (serviceRequest.user_id !== req.user.id) {
+      reply.status(403).send({ error: 'Access denied' });
+      return;
+    }
+
+    const paymentProof = await prisma.paymentProof.findFirst({
+      where: { request_id: id },
+      include: {
+        asset: true,
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    if (!paymentProof) {
+      reply.status(404).send({ error: 'Payment proof not found' });
+      return;
+    }
+
+    return paymentProof;
+  });
+
   // Purchase eSIM plan
   fastify.post('/esim/purchase', async (request: FastifyRequest, reply: FastifyReply) => {
     const req = request as any;

@@ -260,6 +260,132 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     return serviceRequest;
   });
 
+  // Approve payment proof
+  fastify.post('/requests/:id/payment-proof/:proofId/approve', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id: requestId, proofId } = request.params as { id: string; proofId: string };
+    const req = request as any;
+
+    // Verify service request exists
+    const serviceRequest = await prisma.serviceRequest.findUnique({
+      where: { id: requestId },
+    });
+
+    if (!serviceRequest) {
+      reply.status(404).send({ error: 'Service request not found' });
+      return;
+    }
+
+    // Verify payment proof exists and belongs to this request
+    const paymentProof = await prisma.paymentProof.findUnique({
+      where: { id: proofId },
+    });
+
+    if (!paymentProof) {
+      reply.status(404).send({ error: 'Payment proof not found' });
+      return;
+    }
+
+    if (paymentProof.request_id !== requestId) {
+      reply.status(400).send({ error: 'Payment proof does not belong to this request' });
+      return;
+    }
+
+    // Update payment proof status
+    const updatedProof = await prisma.paymentProof.update({
+      where: { id: proofId },
+      data: {
+        status: 'approved',
+        reviewed_by: req.user.id,
+        reviewed_at: new Date(),
+      },
+      include: {
+        asset: true,
+        reviewer: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    // Create activity log
+    await prisma.activityLog.create({
+      data: {
+        entity_type: 'payment_proof',
+        entity_id: proofId,
+        message: 'Payment proof approved',
+        created_by: req.user.id,
+      },
+    });
+
+    return updatedProof;
+  });
+
+  // Reject payment proof
+  fastify.post('/requests/:id/payment-proof/:proofId/reject', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id: requestId, proofId } = request.params as { id: string; proofId: string };
+    const req = request as any;
+    const body = request.body as { reason?: string };
+
+    // Verify service request exists
+    const serviceRequest = await prisma.serviceRequest.findUnique({
+      where: { id: requestId },
+    });
+
+    if (!serviceRequest) {
+      reply.status(404).send({ error: 'Service request not found' });
+      return;
+    }
+
+    // Verify payment proof exists and belongs to this request
+    const paymentProof = await prisma.paymentProof.findUnique({
+      where: { id: proofId },
+    });
+
+    if (!paymentProof) {
+      reply.status(404).send({ error: 'Payment proof not found' });
+      return;
+    }
+
+    if (paymentProof.request_id !== requestId) {
+      reply.status(400).send({ error: 'Payment proof does not belong to this request' });
+      return;
+    }
+
+    // Update payment proof status
+    const updatedProof = await prisma.paymentProof.update({
+      where: { id: proofId },
+      data: {
+        status: 'rejected',
+        reviewed_by: req.user.id,
+        reviewed_at: new Date(),
+        notes: body.reason || paymentProof.notes || null,
+      },
+      include: {
+        asset: true,
+        reviewer: {
+          select: {
+            id: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    // Create activity log
+    await prisma.activityLog.create({
+      data: {
+        entity_type: 'payment_proof',
+        entity_id: proofId,
+        message: `Payment proof rejected${body.reason ? `: ${body.reason}` : ''}`,
+        created_by: req.user.id,
+      },
+    });
+
+    return updatedProof;
+  });
+
   // Payments
   fastify.get('/payments', async (request: FastifyRequest) => {
     const payments = await prisma.payment.findMany({
@@ -4197,6 +4323,48 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     });
 
     return { success: true };
+  });
+
+  // Get eligible users for service provider assignment (with search and exclude existing)
+  fastify.get('/users/eligible-providers', async (request: FastifyRequest) => {
+    const query = request.query as { query?: string; excludeExistingProviders?: string };
+    const searchQuery = query.query || '';
+    const excludeExisting = query.excludeExistingProviders !== 'false';
+
+    const where: any = {
+      status: 'active',
+    };
+
+    // Exclude users who already have a ServiceProviderProfile
+    if (excludeExisting) {
+      where.serviceProviderProfile = null;
+    }
+
+    // Search by email or phone
+    if (searchQuery) {
+      where.OR = [
+        { email: { contains: searchQuery, mode: 'insensitive' } },
+        { phone: { contains: searchQuery, mode: 'insensitive' } },
+      ];
+    }
+
+    const users = await prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        roles: {
+          include: {
+            role: true,
+          },
+        },
+      },
+      orderBy: { email: 'asc' },
+      take: 50, // Limit results
+    });
+
+    return users;
   });
 }
 

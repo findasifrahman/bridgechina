@@ -61,10 +61,13 @@
         <Select
           v-model="form.userId"
           label="User"
-          :options="userOptions"
+          :options="userOptions.map(u => ({ value: u.value, label: u.hasProviderRole ? `${u.label} (has role)` : u.label }))"
           :disabled="editingProvider !== null"
           required
         />
+        <p v-if="userOptions.find(u => u.value === form.userId) && !userOptions.find(u => u.value === form.userId)?.hasProviderRole" class="text-sm text-yellow-600">
+          ⚠️ This user doesn't have SERVICE_PROVIDER role. Assign the role in User Management first.
+        </p>
         <div class="space-y-2">
           <label class="block text-sm font-medium text-slate-700">Categories</label>
           <div class="space-y-2">
@@ -144,7 +147,12 @@ const categoryOptions = [
   { value: 'transport', label: 'Transport' },
   { value: 'tours', label: 'Tours' },
   { value: 'hotel', label: 'Hotel' },
+  { value: 'restaurant', label: 'Restaurant' },
   { value: 'shopping', label: 'Shopping' },
+  { value: 'guide', label: 'Guide' },
+  { value: 'medical', label: 'Medical' },
+  { value: 'esim', label: 'eSIM' },
+  { value: 'sourcing', label: 'Sourcing' },
 ];
 
 const columns = [
@@ -170,10 +178,19 @@ async function loadProviders() {
 
 async function loadUsers() {
   try {
-    const response = await axios.get('/api/admin/users');
+    const response = await axios.get('/api/admin/users/eligible-providers', {
+      params: { excludeExistingProviders: true },
+    });
     users.value = response.data;
   } catch (error) {
     console.error('Failed to load users:', error);
+    // Fallback to old endpoint if new one doesn't exist
+    try {
+      const fallbackResponse = await axios.get('/api/admin/users');
+      users.value = fallbackResponse.data.filter((u: any) => !u.serviceProviderProfile);
+    } catch (fallbackError) {
+      console.error('Failed to load users (fallback):', fallbackError);
+    }
   }
 }
 
@@ -187,12 +204,13 @@ async function loadCities() {
 }
 
 const userOptions = computed(() => {
-  return users.value
-    .filter((u: any) => u.roles?.some((ur: any) => ur.role?.name === 'SERVICE_PROVIDER'))
-    .map((u: any) => ({
-      value: u.id,
-      label: u.email || u.phone || 'Unknown',
-    }));
+  // Show all eligible users (they may or may not have SERVICE_PROVIDER role yet)
+  // Admin can assign the role separately if needed
+  return users.value.map((u: any) => ({
+    value: u.id,
+    label: u.email || u.phone || 'Unknown',
+    hasProviderRole: u.roles?.some((ur: any) => ur.role?.name === 'SERVICE_PROVIDER') || false,
+  }));
 });
 
 const cityOptions = computed(() => {
