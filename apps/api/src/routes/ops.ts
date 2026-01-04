@@ -82,6 +82,8 @@ export default async function opsRoutes(fastify: FastifyInstance) {
   // Get conversation detail
   fastify.get('/conversations/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
+    const { before } = request.query as { before?: string };
+    const limit = 20; // Load 20 messages at a time
 
     const conversation = await prisma.conversation.findUnique({
       where: { id },
@@ -93,10 +95,6 @@ export default async function opsRoutes(fastify: FastifyInstance) {
             phone: true,
           },
         },
-        messages: {
-          orderBy: { created_at: 'asc' },
-          take: 50, // Last 50 messages
-        },
       },
     });
 
@@ -105,7 +103,44 @@ export default async function opsRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    return conversation;
+    // Get total message count
+    const totalMessages = await prisma.message.count({
+      where: { conversation_id: id },
+    });
+
+    // Load messages (newest first, then reverse for display)
+    let messages;
+    if (before) {
+      // Load older messages before the specified message
+      messages = await prisma.message.findMany({
+        where: {
+          conversation_id: id,
+          created_at: {
+            lt: new Date(before),
+          },
+        },
+        orderBy: { created_at: 'desc' },
+        take: limit,
+      });
+      messages.reverse(); // Reverse to show oldest first
+    } else {
+      // Load latest messages
+      messages = await prisma.message.findMany({
+        where: { conversation_id: id },
+        orderBy: { created_at: 'desc' },
+        take: limit,
+      });
+      messages.reverse(); // Reverse to show oldest first
+    }
+
+    return {
+      ...conversation,
+      messages,
+      hasMore: before
+        ? messages.length === limit
+        : totalMessages > limit,
+      totalMessages,
+    };
   });
 
   // Take over conversation (set to HUMAN mode)

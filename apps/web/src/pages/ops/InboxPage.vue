@@ -173,10 +173,12 @@
             :messages="messages"
             :reply-text="replyText"
             :sending="sending"
+            :has-more="hasMoreMessages"
             @update:reply-text="replyText = $event"
             @send="handleSend"
             @takeover="handleTakeover"
             @release="handleRelease"
+            @load-more="handleLoadMore"
           />
         </div>
       </div>
@@ -190,18 +192,20 @@
         :reply-text="replyText"
         :sending="sending"
         :mobile="true"
+        :has-more="hasMoreMessages"
         @update:reply-text="replyText = $event"
         @send="handleSend"
         @takeover="handleTakeover"
         @release="handleRelease"
         @back="showListView = true"
+        @load-more="handleLoadMore"
       />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from '@/utils/axios';
 import ConversationView from './ConversationView.vue';
@@ -221,6 +225,8 @@ const filters = ref({
 });
 const replyText = ref('');
 const showListView = ref(false); // For mobile navigation
+const hasMoreMessages = ref(false);
+const oldestMessageDate = ref<string | null>(null);
 let pollInterval: number | null = null;
 
 function formatTime(date: string | Date | null) {
@@ -280,18 +286,74 @@ async function loadConversations() {
   }
 }
 
-async function selectConversation(id: string) {
+async function selectConversation(id: string, resetMessages = true) {
   selectedConversationId.value = id;
   showListView.value = false;
+  
+  if (resetMessages) {
+    messages.value = [];
+    oldestMessageDate.value = null;
+    hasMoreMessages.value = false;
+  }
+  
   try {
     const response = await axios.get(`/api/ops/conversations/${id}`);
     selectedConversation.value = response.data;
-    messages.value = response.data.messages || [];
+    
+    if (resetMessages) {
+      messages.value = response.data.messages || [];
+      if (messages.value.length > 0) {
+        oldestMessageDate.value = messages.value[0].created_at;
+      }
+      hasMoreMessages.value = response.data.hasMore || false;
+    } else {
+      // Prepend older messages
+      const olderMessages = response.data.messages || [];
+      messages.value = [...olderMessages, ...messages.value];
+      if (olderMessages.length > 0) {
+        oldestMessageDate.value = olderMessages[0].created_at;
+      }
+      hasMoreMessages.value = response.data.hasMore || false;
+    }
     
     // Update URL
     router.replace({ query: { c: id } });
   } catch (error) {
     console.error('Failed to load conversation:', error);
+  }
+}
+
+async function handleLoadMore() {
+  if (!selectedConversationId.value || !oldestMessageDate.value || !hasMoreMessages.value) return;
+  
+  try {
+    const response = await axios.get(`/api/ops/conversations/${selectedConversationId.value}`, {
+      params: {
+        before: oldestMessageDate.value,
+      },
+    });
+    
+    const olderMessages = response.data.messages || [];
+    if (olderMessages.length > 0) {
+      // Store old scroll height for maintaining position
+      const container = document.querySelector('[data-messages-container]') as HTMLElement;
+      const oldScrollHeight = container?.scrollHeight || 0;
+      
+      messages.value = [...olderMessages, ...messages.value];
+      oldestMessageDate.value = olderMessages[0].created_at;
+      hasMoreMessages.value = response.data.hasMore || false;
+      
+      // Maintain scroll position after messages are added
+      await nextTick();
+      if (container) {
+        const newScrollHeight = container.scrollHeight;
+        container.scrollTop = newScrollHeight - oldScrollHeight;
+      }
+    } else {
+      hasMoreMessages.value = false;
+    }
+  } catch (error) {
+    console.error('Failed to load more messages:', error);
   }
 }
 
@@ -337,7 +399,7 @@ async function handleSend() {
       text: replyText.value,
     });
     replyText.value = '';
-    await selectConversation(selectedConversationId.value);
+    await selectConversation(selectedConversationId.value, false); // Reload messages without reset
   } catch (error) {
     console.error('Failed to send message:', error);
     alert('Failed to send message');
@@ -355,7 +417,7 @@ function startPolling() {
   pollInterval = window.setInterval(() => {
     loadConversations();
     if (selectedConversationId.value) {
-      selectConversation(selectedConversationId.value);
+      selectConversation(selectedConversationId.value, false); // Don't reset, just refresh
     }
   }, 120000); // 2 minutes
 }

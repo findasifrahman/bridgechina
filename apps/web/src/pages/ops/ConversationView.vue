@@ -52,10 +52,21 @@
     </div>
 
     <!-- Messages -->
-    <div class="flex-1 overflow-y-auto bg-[#ece5dd] p-4 space-y-3" ref="messagesContainer">
+    <div 
+      class="flex-1 overflow-y-auto bg-[#ece5dd] p-4 space-y-3" 
+      ref="messagesContainer"
+      data-messages-container
+      @scroll="handleScroll"
+    >
+      <!-- Load more indicator -->
+      <div v-if="loadingMore" class="text-center py-2 text-sm text-slate-500">
+        Loading older messages...
+      </div>
+      
       <div
         v-for="msg in messages"
         :key="msg.id"
+        :data-message-id="msg.id"
         :class="[
           'flex',
           msg.direction === 'OUTBOUND' ? 'justify-end' : 'justify-start'
@@ -82,7 +93,7 @@
             >
               <img
                 :src="url"
-                :alt="`Media ${idx + 1}`"
+                :alt="`Media ${Number(idx) + 1}`"
                 class="max-w-full h-auto"
                 @error="handleImageError"
               />
@@ -154,6 +165,7 @@ interface Props {
   replyText: string;
   sending: boolean;
   mobile?: boolean;
+  hasMore?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -164,10 +176,13 @@ const emit = defineEmits<{
   takeover: [];
   release: [];
   back: [];
+  'load-more': [];
 }>();
 
 const messagesContainer = ref<HTMLElement | null>(null);
 const textareaRef = ref<HTMLTextAreaElement | null>(null);
+const loadingMore = ref(false);
+const scrollThreshold = 100; // Load more when 100px from top
 
 function formatTime(date: string | Date | null) {
   if (!date) return '';
@@ -205,6 +220,17 @@ function handleEnterKey(e: KeyboardEvent) {
   }
 }
 
+function handleScroll(e: Event) {
+  const container = e.target as HTMLElement;
+  if (!container || loadingMore.value || !props.hasMore) return;
+  
+  // Check if scrolled near the top
+  if (container.scrollTop < scrollThreshold) {
+    loadingMore.value = true;
+    emit('load-more');
+  }
+}
+
 // Auto-resize textarea
 watch(() => props.replyText, () => {
   nextTick(() => {
@@ -215,12 +241,23 @@ watch(() => props.replyText, () => {
   });
 });
 
-// Scroll to bottom when new messages arrive
+// Scroll to bottom when new messages arrive (but not when loading older messages)
+let shouldScrollToBottom = true;
 watch(() => props.messages.length, () => {
   nextTick(() => {
-    scrollToBottom();
+    if (shouldScrollToBottom && messagesContainer.value) {
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+    }
+    shouldScrollToBottom = true;
   });
-}, { immediate: true });
+});
+
+// Watch for loadingMore to finish - this is handled by parent component
+watch(() => props.messages, () => {
+  if (loadingMore.value) {
+    loadingMore.value = false;
+  }
+}, { deep: true });
 
 function scrollToBottom() {
   if (messagesContainer.value) {
