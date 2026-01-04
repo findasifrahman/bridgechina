@@ -421,33 +421,99 @@ export default async function userRoutes(fastify: FastifyInstance) {
     const req = request as any;
     const addresses = await prisma.address.findMany({
       where: { user_id: req.user.id },
+      include: {
+        city: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
       orderBy: { created_at: 'desc' },
     });
-    return addresses;
+    // Map to frontend format for compatibility
+    return addresses.map(addr => {
+      const postalCode = addr.notes?.match(/Postal Code:\s*(.+)/)?.[1] || null;
+      return {
+        ...addr,
+        label: addr.name,
+        street: addr.address_line,
+        city: addr.city.name,
+        postal_code: postalCode,
+      };
+    });
   });
 
   // Create address
   fastify.post('/addresses', async (request: FastifyRequest, reply: FastifyReply) => {
     const req = request as any;
     const body = request.body as {
+      // Frontend format (for compatibility)
       label?: string;
-      street: string;
-      city: string;
+      street?: string;
+      city?: string;
       postal_code?: string;
+      // Backend format (direct)
+      name?: string;
+      phone?: string;
+      address_line?: string;
+      city_id?: string;
+      geo_lat?: number;
+      geo_lng?: number;
+      notes?: string;
     };
 
-    if (!body.street || !body.city) {
-      reply.status(400).send({ error: 'Street and city are required' });
+    // Map frontend format to backend format
+    const addressLine = body.address_line || body.street;
+    const name = body.name || body.label || 'Default';
+    const cityName = body.city;
+    const cityId = body.city_id;
+
+    if (!addressLine) {
+      reply.status(400).send({ error: 'Street address is required' });
       return;
     }
+
+    // Resolve city_id from city name if provided
+    let resolvedCityId = cityId;
+    if (!resolvedCityId && cityName) {
+      const city = await prisma.city.findFirst({
+        where: {
+          OR: [
+            { name: { equals: cityName, mode: 'insensitive' } },
+            { slug: { equals: cityName.toLowerCase().replace(/\s+/g, '-'), mode: 'insensitive' } },
+          ],
+        },
+      });
+      if (!city) {
+        reply.status(400).send({ error: `City "${cityName}" not found` });
+        return;
+      }
+      resolvedCityId = city.id;
+    }
+
+    if (!resolvedCityId) {
+      reply.status(400).send({ error: 'City ID or city name is required' });
+      return;
+    }
+
+    // Combine notes with postal code if provided
+    const notes = body.notes || (body.postal_code ? `Postal Code: ${body.postal_code}` : null);
 
     const address = await prisma.address.create({
       data: {
         user_id: req.user.id,
-        label: body.label || null,
-        street: body.street,
-        city: body.city,
-        postal_code: body.postal_code || null,
+        name: name,
+        phone: body.phone || req.user.phone || '',
+        address_line: addressLine,
+        city_id: resolvedCityId,
+        geo_lat: body.geo_lat || null,
+        geo_lng: body.geo_lng || null,
+        notes: notes,
+      },
+      include: {
+        city: true,
       },
     });
 
