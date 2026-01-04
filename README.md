@@ -186,7 +186,13 @@ pnpm dev
 - ✅ Role-Based Access Control (RBAC): ADMIN, OPS, EDITOR, SELLER, PARTNER, USER, SERVICE_PROVIDER
 - ✅ Frontend route guards for protected routes
 - ✅ API middleware for role-based access
-- ✅ User registration and login
+- ✅ Production-grade user registration with:
+  - Strong password validation (min 8 chars, uppercase, lowercase, number)
+  - Email validation (optional)
+  - Phone number validation (mandatory)
+  - Password confirmation matching
+  - Real-time validation feedback
+- ✅ User login
 - ✅ Role-based redirects after login (admin → /admin, seller → /seller, service_provider → /provider, user → /app)
 
 #### Database Schema
@@ -216,9 +222,32 @@ pnpm dev
 - ✅ **Shopping Integration**:
   - `ExternalSearchCache` - TMAPI search result caching
   - `ExternalCatalogItem` - Cached product data from TMAPI
+- ✅ **Provider Workflow System**:
+  - `ProviderDispatch` - Service request dispatches to providers with SLA tracking
+  - `ProviderOffer` - Provider offers with approval workflow (submitted/approved/rejected)
+  - `ProviderMessageContext` - User message context for providers (raw message, AI summary, extracted payload)
+  - `ServiceRequest` - Extended with dispatch tracking fields:
+    - `created_from_conversation_id`, `bundle_key`
+    - `dispatched_at`, `sla_due_at`
+    - `first_provider_response_at`, `first_ops_approval_at`, `ops_last_action_at`
+  - `ServiceProviderProfile` - Extended with `is_default` flag for single-provider categories
+- ✅ **Payment Proof System**:
+  - `PaymentProof` - User-submitted payment proofs with approval workflow
+  - Linked to service requests and media assets
+  - Status tracking (submitted/approved/rejected) with reviewer tracking
+- ✅ **Customer Profile**:
+  - `CustomerProfile` - Extended user profile with:
+    - Nationality
+    - Passport name
+    - Preferred language
 
 #### Admin Panel
-- ✅ Dashboard with KPIs (leads, requests, orders)
+- ✅ Dashboard with comprehensive KPIs:
+  - Conversations (24h, 7d)
+  - Average time to first provider response
+  - Average time to first ops approval
+  - Percentage of requests overdue SLA
+  - Offer statistics (submitted/approved/rejected counts)
 - ✅ Catalog Management (Full CRUD):
   - Cities, Hotels, Restaurants, Medical Centers, Tours, Transport Products
   - Searchable tables with filters
@@ -249,7 +278,15 @@ pnpm dev
   - Set featured listings
 - ✅ User Management:
   - List users
-  - Assign roles
+  - Assign roles (including SERVICE_PROVIDER)
+- ✅ Service Provider Management:
+  - Create/edit service provider profiles
+  - Set categories and city scope
+  - Set `is_default` flag for single-provider categories
+  - Fetch eligible provider candidates (users with SERVICE_PROVIDER role)
+- ✅ Payment Proof Management:
+  - Approve/reject payment proofs submitted by users
+  - Review payment proof images and notes
 - ✅ Payments:
   - Record cash payments
   - Link to requests/orders
@@ -262,17 +299,35 @@ pnpm dev
 - ✅ Dashboard with KPIs
 
 #### Provider Dashboard
-- ✅ View assigned service requests (dispatches)
-- ✅ View user request context (AI summary, extracted payload)
-- ✅ Submit offers with provider notes and optional structured payload
-- ✅ Track SLA countdown and request status
+- ✅ View assigned service requests (dispatches) with:
+  - SLA countdown timers
+  - Request category and city
+  - User message summary
+  - Request status (pending/viewed/responded/overdue)
+- ✅ View detailed request context:
+  - Raw user message
+  - AI-extracted English summary
+  - Structured payload (extracted fields)
+- ✅ Submit offers with:
+  - Provider notes (required)
+  - Optional structured payload (price, ETA, etc.)
+- ✅ Mark requests as viewed
+- ✅ Track SLA compliance and request status
 
 #### OPS Dashboard
 - ✅ WhatsApp inbox with AI-first + human takeover mode
-- ✅ Provider offers approval queue
-- ✅ Approve/reject offers with reasons
-- ✅ Send approved offers to users via WhatsApp (with AI message distillation)
-- ✅ Service request details with dispatch and offer history
+- ✅ Provider offers approval queue (`/ops/offers`):
+  - View all submitted offers (filtered by status)
+  - Offer details with provider notes and payload
+  - Dispatch status tracking (which providers viewed/responded/overdue)
+- ✅ Offer management:
+  - Approve/reject offers with reasons
+  - Send approved offers to users via WhatsApp (with AI message distillation)
+- ✅ Service request details:
+  - Full request context (user message, AI summary, payload)
+  - All dispatches and their statuses
+  - All offers with approval history
+- ✅ Mobile-responsive layout with drawer navigation
 
 #### Public Website
 - ✅ Homepage (Trip.com-inspired):
@@ -317,6 +372,23 @@ pnpm dev
 - ✅ Contact page
 - ✅ Gallery (location-based images)
 - ✅ Help page
+
+#### User Portal (/app)
+- ✅ User Dashboard:
+  - Overview of active requests, orders, and saved addresses
+  - Recent service requests list
+- ✅ Profile Management (`/app/profile`):
+  - Update personal information (email, phone)
+  - Manage customer profile (nationality, passport name, preferred language)
+  - Address management (add/edit/delete addresses)
+- ✅ Service Requests (`/app/requests`):
+  - View all user's service requests
+  - Request detail view with:
+    - Request status and details
+    - Approved offer summary
+    - Payment proof upload functionality
+- ✅ Orders (`/app/orders`):
+  - View user's orders
 
 #### Service Request Flow
 - ✅ 3-step wizard:
@@ -430,7 +502,7 @@ pnpm dev
 - `GET /api/public/catalog/esim` - eSIM plans
 
 ### Auth Endpoints
-- `POST /api/auth/register` - Register
+- `POST /api/auth/register` - Register (production-grade validation: phone mandatory, strong password)
 - `POST /api/auth/login` - Login
 - `POST /api/auth/logout` - Logout
 - `POST /api/auth/refresh` - Refresh token
@@ -461,6 +533,10 @@ pnpm dev
 - `PUT /api/admin/homepage/blocks/:id` - Update homepage block
 - `GET /api/admin/users` - List users
 - `PUT /api/admin/users/:id/roles` - Update user roles
+- `GET /api/admin/provider-candidates` - Get users eligible to be service providers
+- `GET /api/admin/kpi/summary` - Get KPI summary (conversations, response times, SLA, offers)
+- `POST /api/admin/requests/:id/payment-proof/:proofId/approve` - Approve payment proof
+- `POST /api/admin/requests/:id/payment-proof/:proofId/reject` - Reject payment proof
 
 ### Seller Endpoints
 - `GET /api/seller/dashboard` - Seller dashboard
@@ -476,8 +552,17 @@ pnpm dev
 - `POST /api/ops/conversations/:id/release` - Release conversation to AI
 - `POST /api/ops/conversations/:id/reply` - Send reply to conversation
 - `POST /api/ops/conversations/:id/assign` - Assign conversation to service provider (ADMIN/OPS only)
+- `GET /api/ops/offers` - List provider offers (filter by status=submitted)
+- `GET /api/ops/requests/:id` - Get service request with dispatches and offers
+- `POST /api/ops/offers/:id/approve` - Approve provider offer
+- `POST /api/ops/offers/:id/reject` - Reject provider offer (with reason)
+- `POST /api/ops/offers/:id/send-to-user` - Send approved offer to user via WhatsApp (with AI distillation)
 
 ### Provider Endpoints (SERVICE_PROVIDER, ADMIN, OPS)
+- `GET /api/provider/dispatches` - List assigned service request dispatches
+- `GET /api/provider/requests/:id` - Get service request detail with context
+- `POST /api/provider/requests/:id/mark-viewed` - Mark dispatch as viewed
+- `POST /api/provider/requests/:id/offers` - Submit offer (provider_note, optional payload_json)
 - `GET /api/provider/conversations` - List assigned conversations
 - `GET /api/provider/conversations/:id` - Get conversation detail
 - `GET /api/provider/stats` - Get provider KPIs (assigned conversations, unread, avg response time)
@@ -488,9 +573,23 @@ pnpm dev
 ### Admin Endpoints (continued)
 - `GET /api/admin/service-providers` - List service provider profiles
 - `GET /api/admin/service-providers/:id` - Get service provider profile
-- `POST /api/admin/service-providers` - Create service provider profile
-- `PUT /api/admin/service-providers/:id` - Update service provider profile
+- `POST /api/admin/service-providers` - Create service provider profile (includes is_default flag)
+- `PUT /api/admin/service-providers/:id` - Update service provider profile (includes is_default flag)
 - `DELETE /api/admin/service-providers/:id` - Delete service provider profile
+
+### User Endpoints (USER role)
+- `GET /api/user/profile` - Get user profile (with customerProfile)
+- `PATCH /api/user/profile` - Update user profile and customerProfile
+- `GET /api/user/addresses` - List user addresses
+- `POST /api/user/addresses` - Create address
+- `PUT /api/user/addresses/:id` - Update address
+- `DELETE /api/user/addresses/:id` - Delete address
+- `GET /api/user/requests` - List user's service requests
+- `GET /api/user/requests/:id` - Get service request detail (with offers and payment proofs)
+- `POST /api/user/requests/:id/payment-proof` - Upload payment proof (with media asset)
+- `GET /api/user/requests/:id/payment-proof` - Get payment proofs for request
+- `POST /api/user/media/upload` - Upload media file (multipart, for payment proofs)
+- `GET /api/user/orders` - List user's orders
 
 ## Database Schema Highlights
 
@@ -564,6 +663,35 @@ pnpm dev
 - `service_provider_profiles` - Service provider configuration:
   - User assignment, categories, active status
   - City assignment (optional)
+  - `is_default` flag for single-provider categories
+- `provider_dispatches` - Service request dispatches to providers:
+  - Request assignment, provider assignment
+  - Status tracking (pending/viewed/responded/overdue)
+  - SLA due date tracking
+- `provider_offers` - Provider offers for service requests:
+  - Provider notes and optional structured payload
+  - Status (submitted/approved/rejected)
+  - Approval workflow tracking
+- `provider_message_contexts` - Context for providers:
+  - Raw user message
+  - AI-extracted English summary
+  - Structured payload (extracted fields)
+- `payment_proofs` - User-submitted payment proofs:
+  - Linked to service requests and media assets
+  - Status (submitted/approved/rejected)
+  - Reviewer and review timestamp tracking
+- `customer_profiles` - Extended user profiles:
+  - Nationality, passport name, preferred language
+  - One-to-one relationship with users
+- `addresses` - User addresses:
+  - Label, street, city, postal code
+  - Linked to cities table
+  - User-specific address management
+- `service_requests` - Extended with dispatch tracking:
+  - `created_from_conversation_id` - Source WhatsApp conversation
+  - `bundle_key` - For grouped requests
+  - `dispatched_at`, `sla_due_at` - Dispatch and SLA tracking
+  - `first_provider_response_at`, `first_ops_approval_at`, `ops_last_action_at` - Timeline tracking
 
 ## Scripts
 
@@ -579,6 +707,9 @@ pnpm db:migrate
 
 # Seed database
 pnpm db:seed
+
+# Seed roles only (ensures all roles including SERVICE_PROVIDER exist)
+pnpm --filter @bridgechina/api db:seed:roles
 
 # Start development servers
 pnpm dev
@@ -632,18 +763,26 @@ Set all required environment variables in your hosting platform (Vercel, Railway
 
 ### Service Provider Setup
 
-1. **Create Service Provider User**:
+1. **Seed Roles** (if not already done):
+   ```bash
+   pnpm --filter @bridgechina/api db:seed:roles
+   ```
+   This ensures all roles including `SERVICE_PROVIDER` are in the database.
+
+2. **Create Service Provider User**:
    - Register a new user or use existing user
    - Assign `SERVICE_PROVIDER` role (via admin panel: `/admin/users` → Edit Roles)
 
-2. **Create Service Provider Profile** (Admin Panel):
+3. **Create Service Provider Profile** (Admin Panel):
    - Navigate to `/admin` → Service Providers (link in sidebar)
    - Create profile for user with:
+     - **User**: Select from eligible candidates (users with SERVICE_PROVIDER role)
      - **Categories**: Select categories the provider handles (transport, tours, hotel, shopping)
      - **Active**: Enable/disable provider
+     - **Is Default**: Set for single-provider categories (hotel, transport, tours, medical)
      - **City**: Optional city assignment (future feature)
 
-3. **AI Auto-Assignment & Queue System**:
+4. **AI Auto-Assignment & Queue System**:
    
    **How Assignment Works**:
    - When a user sends a WhatsApp message, the AI detects the intent (hotel, transport, tours, shopping, etc.)
@@ -662,17 +801,26 @@ Set all required environment variables in your hosting platform (Vercel, Railway
    - OPS team can manually assign conversations to providers via `/api/ops/conversations/:id/assign`
    - Service providers only see conversations where `assigned_user_id = their user ID`
 
-4. **Provider Dashboard** (`/provider`):
-   - View assigned conversations and KPIs
-   - Access inbox to reply to conversations
-   - Take over conversations to switch to HUMAN mode
-   - Release conversations back to AI mode
+5. **Provider Dashboard** (`/provider/requests`):
+   - View assigned service request dispatches with SLA countdown
+   - View request details with user context (AI summary, extracted payload)
+   - Submit offers with provider notes and optional structured data
+   - Mark requests as viewed
+   - Track SLA compliance
 
-5. **Ops Inbox** (`/ops/inbox`):
+6. **Ops Inbox** (`/ops/inbox`):
    - OPS users see ALL conversations (including unassigned `ops_queue` conversations)
    - Can take over any conversation
    - Can manually assign conversations to providers
    - Separate layout (no admin panel links) - only WhatsApp Inbox
+   - Mobile-responsive with drawer navigation
+
+7. **Ops Offers Queue** (`/ops/offers`):
+   - View all submitted provider offers (filtered by status)
+   - Review offer details (provider notes, payload, request context)
+   - Approve/reject offers with reasons
+   - Send approved offers to users via WhatsApp (with AI message distillation)
+   - Track dispatch status (which providers viewed/responded/overdue)
 
 ## Brand Guidelines
 

@@ -342,6 +342,28 @@ export default async function userRoutes(fastify: FastifyInstance) {
     return requests;
   });
 
+  // Get user's orders
+  fastify.get('/orders', async (request: FastifyRequest) => {
+    const req = request as any;
+    const orders = await prisma.order.findMany({
+      where: { user_id: req.user.id },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+        shippingAddress: {
+          include: {
+            city: true,
+          },
+        },
+      },
+      orderBy: { created_at: 'desc' },
+    });
+    return orders;
+  });
+
   // Get specific service request detail
   fastify.get('/requests/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     const req = request as any;
@@ -398,11 +420,19 @@ export default async function userRoutes(fastify: FastifyInstance) {
   // Update user profile
   fastify.patch('/profile', async (request: FastifyRequest, reply: FastifyReply) => {
     const req = request as any;
-    const body = request.body as { email?: string; phone?: string };
+    const body = request.body as { 
+      phone?: string;
+      customerProfile?: {
+        nationality?: string;
+        passport_name?: string;
+        preferred_language?: string;
+      };
+    };
 
     const updateData: any = {};
     if (body.phone !== undefined) updateData.phone = body.phone;
 
+    // Update user basic info
     const user = await prisma.user.update({
       where: { id: req.user.id },
       data: updateData,
@@ -410,8 +440,46 @@ export default async function userRoutes(fastify: FastifyInstance) {
         id: true,
         email: true,
         phone: true,
+        customerProfile: true,
       },
     });
+
+    // Upsert customer profile if provided
+    if (body.customerProfile) {
+      const profileUpdateData: any = {};
+      if (body.customerProfile.nationality !== undefined) {
+        profileUpdateData.nationality = body.customerProfile.nationality || null;
+      }
+      if (body.customerProfile.passport_name !== undefined) {
+        profileUpdateData.passport_name = body.customerProfile.passport_name || null;
+      }
+      if (body.customerProfile.preferred_language !== undefined) {
+        profileUpdateData.preferred_language = body.customerProfile.preferred_language || null;
+      }
+
+      await prisma.customerProfile.upsert({
+        where: { user_id: req.user.id },
+        update: profileUpdateData,
+        create: {
+          user_id: req.user.id,
+          nationality: body.customerProfile.nationality || null,
+          passport_name: body.customerProfile.passport_name || null,
+          preferred_language: body.customerProfile.preferred_language || null,
+        },
+      });
+
+      // Reload user with updated profile
+      const updatedUser = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: {
+          id: true,
+          email: true,
+          phone: true,
+          customerProfile: true,
+        },
+      });
+      return updatedUser;
+    }
 
     return user;
   });

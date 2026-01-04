@@ -2,6 +2,7 @@
   <div>
     <PageHeader title="My Profile" />
     <div class="grid md:grid-cols-2 gap-6">
+      <!-- Personal Information -->
       <Card>
         <CardHeader>
           <h3 class="text-lg font-semibold">Personal Information</h3>
@@ -18,6 +19,7 @@
               v-model="profileForm.phone"
               label="Phone"
               type="tel"
+              required
             />
             <div class="flex justify-end gap-3 pt-4">
               <Button variant="ghost" type="button" @click="loadProfile">Cancel</Button>
@@ -27,7 +29,38 @@
         </CardBody>
       </Card>
 
+      <!-- Customer Profile -->
       <Card>
+        <CardHeader>
+          <h3 class="text-lg font-semibold">Customer Profile</h3>
+        </CardHeader>
+        <CardBody>
+          <form @submit.prevent="updateCustomerProfile" class="space-y-4">
+            <Input
+              v-model="customerProfileForm.nationality"
+              label="Nationality"
+              placeholder="e.g., US, UK, CN"
+            />
+            <Input
+              v-model="customerProfileForm.passport_name"
+              label="Passport Name"
+              placeholder="Name as on passport"
+            />
+            <Input
+              v-model="customerProfileForm.preferred_language"
+              label="Preferred Language"
+              placeholder="e.g., en, zh, ar"
+            />
+            <div class="flex justify-end gap-3 pt-4">
+              <Button variant="ghost" type="button" @click="loadProfile">Cancel</Button>
+              <Button variant="primary" type="submit" :loading="savingProfile">Save</Button>
+            </div>
+          </form>
+        </CardBody>
+      </Card>
+
+      <!-- Addresses -->
+      <Card class="md:col-span-2">
         <CardHeader>
           <h3 class="text-lg font-semibold">Addresses</h3>
         </CardHeader>
@@ -40,7 +73,7 @@
             >
               <div>
                 <p class="font-medium">{{ address.label || 'Default' }}</p>
-                <p class="text-sm text-slate-600">{{ address.street }}, {{ address.city }}, {{ address.postal_code }}</p>
+                <p class="text-sm text-slate-600">{{ address.street }}, {{ address.city }}{{ address.postal_code ? `, ${address.postal_code}` : '' }}</p>
               </div>
               <Button variant="ghost" size="sm" @click="deleteAddress(address.id)">Delete</Button>
             </div>
@@ -77,8 +110,15 @@ const profileForm = ref({
   phone: '',
 });
 
+const customerProfileForm = ref({
+  nationality: '',
+  passport_name: '',
+  preferred_language: '',
+});
+
 const addresses = ref<any[]>([]);
 const saving = ref(false);
+const savingProfile = ref(false);
 const savingAddress = ref(false);
 const showAddAddressModal = ref(false);
 const toast = useToast();
@@ -97,6 +137,21 @@ async function loadProfile() {
       email: response.data.email || '',
       phone: response.data.phone || '',
     };
+    
+    // Load customer profile if it exists
+    if (response.data.customerProfile) {
+      customerProfileForm.value = {
+        nationality: response.data.customerProfile.nationality || '',
+        passport_name: response.data.customerProfile.passport_name || '',
+        preferred_language: response.data.customerProfile.preferred_language || '',
+      };
+    } else {
+      customerProfileForm.value = {
+        nationality: '',
+        passport_name: '',
+        preferred_language: '',
+      };
+    }
   } catch (error) {
     console.error('Failed to load profile:', error);
   }
@@ -114,12 +169,34 @@ async function loadAddresses() {
 async function updateProfile() {
   saving.value = true;
   try {
-    await axios.patch('/api/user/profile', profileForm.value);
+    await axios.patch('/api/user/profile', {
+      phone: profileForm.value.phone,
+    });
     toast.success('Profile updated');
+    await loadProfile();
   } catch (error: any) {
     toast.error(error.response?.data?.error || 'Failed to update profile');
   } finally {
     saving.value = false;
+  }
+}
+
+async function updateCustomerProfile() {
+  savingProfile.value = true;
+  try {
+    await axios.patch('/api/user/profile', {
+      customerProfile: {
+        nationality: customerProfileForm.value.nationality || null,
+        passport_name: customerProfileForm.value.passport_name || null,
+        preferred_language: customerProfileForm.value.preferred_language || null,
+      },
+    });
+    toast.success('Customer profile updated');
+    await loadProfile();
+  } catch (error: any) {
+    toast.error(error.response?.data?.error || 'Failed to update customer profile');
+  } finally {
+    savingProfile.value = false;
   }
 }
 
@@ -153,4 +230,3 @@ onMounted(async () => {
   await Promise.all([loadProfile(), loadAddresses()]);
 });
 </script>
-
