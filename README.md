@@ -261,6 +261,19 @@ pnpm dev
 - ✅ Order management (view seller's orders)
 - ✅ Dashboard with KPIs
 
+#### Provider Dashboard
+- ✅ View assigned service requests (dispatches)
+- ✅ View user request context (AI summary, extracted payload)
+- ✅ Submit offers with provider notes and optional structured payload
+- ✅ Track SLA countdown and request status
+
+#### OPS Dashboard
+- ✅ WhatsApp inbox with AI-first + human takeover mode
+- ✅ Provider offers approval queue
+- ✅ Approve/reject offers with reasons
+- ✅ Send approved offers to users via WhatsApp (with AI message distillation)
+- ✅ Service request details with dispatch and offer history
+
 #### Public Website
 - ✅ Homepage (Trip.com-inspired):
   - Compact, information-dense layout

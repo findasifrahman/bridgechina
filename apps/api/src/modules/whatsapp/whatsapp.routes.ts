@@ -35,6 +35,15 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
     };
   });
 
+  // GET health checks for webhook endpoints (for testing without Twilio)
+  fastify.get('/inbound', async (request: FastifyRequest, reply: FastifyReply) => {
+    return { ok: true, endpoint: 'twilio_whatsapp_inbound' };
+  });
+
+  fastify.get('/status', async (request: FastifyRequest, reply: FastifyReply) => {
+    return { ok: true, endpoint: 'twilio_whatsapp_status' };
+  });
+
   // Inbound message webhook
   fastify.post('/inbound', async (request: FastifyRequest, reply: FastifyReply) => {
     try {

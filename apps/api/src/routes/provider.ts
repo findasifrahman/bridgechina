@@ -267,6 +267,225 @@ export default async function providerRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // List dispatches (requests assigned to this provider)
+  fastify.get('/dispatches', async (request: FastifyRequest) => {
+    const req = request as any;
+    const query = request.query as {
+      status?: string;
+      category?: string;
+      city?: string;
+      page?: string;
+    };
+
+    const page = parseInt(query.page || '1');
+    const pageSize = 50;
+
+    const where: any = {
+      provider_user_id: req.user.id,
+    };
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    const [dispatches, total] = await Promise.all([
+      prisma.providerDispatch.findMany({
+        where,
+        include: {
+          request: {
+            include: {
+              category: true,
+              city: true,
+              providerMessageContexts: {
+                orderBy: { created_at: 'desc' },
+                take: 1, // Get latest context
+              },
+            },
+          },
+        },
+        orderBy: { sent_at: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.providerDispatch.count({ where }),
+    ]);
+
+    // Filter by category/city if provided (post-query filter for now)
+    let filtered = dispatches;
+    if (query.category) {
+      filtered = filtered.filter((d) => d.request.category.key === query.category);
+    }
+    if (query.city) {
+      filtered = filtered.filter((d) => d.request.city.slug === query.city || d.request.city.id === query.city);
+    }
+
+    return {
+      dispatches: filtered,
+      pagination: {
+        page,
+        pageSize,
+        total: filtered.length,
+        totalPages: Math.ceil(filtered.length / pageSize),
+      },
+    };
+  });
+
+  // Get request detail with context
+  fastify.get('/requests/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const req = request as any;
+
+    // Check if provider has dispatch for this request
+    const dispatch = await prisma.providerDispatch.findUnique({
+      where: {
+        request_id_provider_user_id: {
+          request_id: id,
+          provider_user_id: req.user.id,
+        },
+      },
+    });
+
+    if (!dispatch) {
+      reply.status(403).send({ error: 'Access denied - request not dispatched to you' });
+      return;
+    }
+
+    const serviceRequest = await prisma.serviceRequest.findUnique({
+      where: { id },
+      include: {
+        category: true,
+        city: true,
+        providerMessageContexts: {
+          orderBy: { created_at: 'desc' },
+          take: 1,
+        },
+        providerOffers: {
+          where: { provider_user_id: req.user.id },
+          orderBy: { submitted_at: 'desc' },
+        },
+        providerDispatches: {
+          include: {
+            provider: {
+              select: {
+                id: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!serviceRequest) {
+      reply.status(404).send({ error: 'Request not found' });
+      return;
+    }
+
+    return {
+      request: serviceRequest,
+      dispatch,
+    };
+  });
+
+  // Mark dispatch as viewed
+  fastify.post('/requests/:id/mark-viewed', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const req = request as any;
+
+    const dispatch = await prisma.providerDispatch.findUnique({
+      where: {
+        request_id_provider_user_id: {
+          request_id: id,
+          provider_user_id: req.user.id,
+        },
+      },
+    });
+
+    if (!dispatch) {
+      reply.status(403).send({ error: 'Access denied' });
+      return;
+    }
+
+    await prisma.providerDispatch.update({
+      where: { id: dispatch.id },
+      data: {
+        status: 'viewed',
+        viewed_at: new Date(),
+      },
+    });
+
+    return { success: true };
+  });
+
+  // Submit offer
+  fastify.post('/requests/:id/offers', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const req = request as any;
+    const body = request.body as {
+      provider_note: string;
+      payload_json?: any;
+    };
+
+    if (!body.provider_note || body.provider_note.trim().length === 0) {
+      reply.status(400).send({ error: 'provider_note is required' });
+      return;
+    }
+
+    // Check if provider has dispatch for this request
+    const dispatch = await prisma.providerDispatch.findUnique({
+      where: {
+        request_id_provider_user_id: {
+          request_id: id,
+          provider_user_id: req.user.id,
+        },
+      },
+      include: {
+        request: {
+          include: {
+            category: true,
+          },
+        },
+      },
+    });
+
+    if (!dispatch) {
+      reply.status(403).send({ error: 'Access denied - request not dispatched to you' });
+      return;
+    }
+
+    // Create offer
+    const offer = await prisma.providerOffer.create({
+      data: {
+        request_id: id,
+        provider_user_id: req.user.id,
+        service_type: dispatch.request.category.key,
+        provider_note: body.provider_note.trim(),
+        payload_json: body.payload_json || null,
+        status: 'submitted',
+      },
+    });
+
+    // Update dispatch
+    await prisma.providerDispatch.update({
+      where: { id: dispatch.id },
+      data: {
+        status: 'responded',
+        responded_at: new Date(),
+      },
+    });
+
+    // Update request: set first_provider_response_at if null
+    await prisma.serviceRequest.update({
+      where: { id },
+      data: {
+        first_provider_response_at: new Date(),
+      },
+    });
+
+    return { success: true, offer };
+  });
+
   // Get provider stats/KPIs
   fastify.get('/stats', async (request: FastifyRequest) => {
     const req = request as any;

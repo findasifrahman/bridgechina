@@ -19,9 +19,50 @@
       />
     </div>
 
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <router-link
+        to="/provider/requests"
+        class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer"
+      >
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-sm text-slate-600 mb-1">View Requests</div>
+            <div class="text-lg font-semibold text-teal-600">My Assigned Requests</div>
+          </div>
+          <svg class="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+        </div>
+      </router-link>
+
+      <router-link
+        to="/provider/inbox"
+        class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer"
+      >
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-sm text-slate-600 mb-1">Conversations</div>
+            <div class="text-lg font-semibold text-teal-600">WhatsApp Inbox</div>
+          </div>
+          <svg class="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+        </div>
+      </router-link>
+    </div>
+
     <Card>
       <CardHeader>
-        <h2 class="text-lg font-semibold">My Assigned Conversations</h2>
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold">My Assigned Conversations</h2>
+          <router-link
+            to="/provider/inbox"
+            class="text-sm text-teal-600 hover:text-teal-700"
+          >
+            View All →
+          </router-link>
+        </div>
       </CardHeader>
       <CardBody>
         <div v-if="loading" class="text-center py-8 text-slate-500">Loading...</div>
@@ -30,7 +71,7 @@
         </div>
         <div v-else class="divide-y">
           <div
-            v-for="conv in conversations"
+            v-for="conv in conversations.slice(0, 5)"
             :key="conv.id"
             class="p-4 hover:bg-slate-50 cursor-pointer"
             @click="$router.push(`/provider/inbox/${conv.id}`)"

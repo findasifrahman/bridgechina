@@ -330,11 +330,21 @@ const router = createRouter({
           name: 'provider-inbox',
           component: () => import('@/pages/provider/InboxPage.vue'),
         },
-        {
-          path: 'inbox/:id',
-          name: 'provider-inbox-detail',
-          component: () => import('@/pages/provider/InboxPage.vue'),
-        },
+      {
+        path: 'requests',
+        name: 'provider-requests',
+        component: () => import('@/pages/provider/RequestsPage.vue'),
+      },
+      {
+        path: 'requests/:id',
+        name: 'provider-request-detail',
+        component: () => import('@/pages/provider/RequestDetailPage.vue'),
+      },
+      {
+        path: 'inbox/:id',
+        name: 'provider-inbox-detail',
+        component: () => import('@/pages/provider/InboxPage.vue'),
+      },
       ],
     },
     {

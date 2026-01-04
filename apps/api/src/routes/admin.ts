@@ -4106,6 +4106,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         categories: body.categories || [],
         city_id: body.city_id || null,
         is_active: body.is_active !== undefined ? body.is_active : true,
+        is_default: body.is_default !== undefined ? body.is_default : false,
       },
       include: {
         user: {
@@ -4135,6 +4136,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       categories?: string[];
       city_id?: string;
       is_active?: boolean;
+      is_default?: boolean;
     };
 
     const provider = await prisma.serviceProviderProfile.findUnique({
@@ -4150,6 +4152,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     if (body.categories !== undefined) updateData.categories = body.categories;
     if (body.city_id !== undefined) updateData.city_id = body.city_id || null;
     if (body.is_active !== undefined) updateData.is_active = body.is_active;
+    if (body.is_default !== undefined) updateData.is_default = body.is_default;
 
     const updated = await prisma.serviceProviderProfile.update({
       where: { id },

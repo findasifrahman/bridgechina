@@ -145,7 +145,7 @@ export async function handleAIReply(conversationId: string): Promise<void> {
         content: m.content,
       }));
 
-    // Detect intent first for assignment
+    // Detect intent first for assignment and service request creation
     const intentResult = await detectIntent(userMessage);
     console.log('[WhatsApp Service] Intent detected:', intentResult);
 
@@ -154,6 +154,37 @@ export async function handleAIReply(conversationId: string): Promise<void> {
       console.error('[WhatsApp Service] Assignment error:', error);
     });
 
+    // Create service request and dispatch (async, non-blocking)
+    const { createOrUpdateServiceRequest } = await import('../providers/service.request.js');
+    const SINGLE_PROVIDER_CATEGORIES = ['hotel', 'transport', 'tours', 'medical'];
+    
+    // Map intent to category key
+    const intentToCategoryKey = (intent: string): string | null => {
+      const mapping: Record<string, string> = {
+        HOTEL: 'hotel',
+        TRANSPORT: 'transport',
+        TOUR: 'tours',
+        MEDICAL: 'medical',
+        HALAL_FOOD: 'halal_food',
+        SHOPPING: 'shopping',
+        ESIM: 'esim',
+      };
+      return mapping[intent] || null;
+    };
+    
+    const categoryKey = intentToCategoryKey(intentResult.intent);
+    const isServiceIntent = categoryKey && intentResult.intent !== 'GREETING' && intentResult.intent !== 'OUT_OF_SCOPE' && !(intentResult.intent === 'SHOPPING' && intentResult.subIntent === 'RETAIL');
+    
+    let requestCreated = false;
+    if (isServiceIntent) {
+      try {
+        const requestId = await createOrUpdateServiceRequest(conversationId, userMessage, intentResult);
+        requestCreated = !!requestId;
+      } catch (error) {
+        console.error('[WhatsApp Service] Service request creation error:', error);
+      }
+    }
+
     // Call existing chat agent (reuse existing logic)
     // Generate session ID from conversation ID for consistency
     const sessionId = `whatsapp_${conversationId}`;
@@ -161,6 +192,16 @@ export async function handleAIReply(conversationId: string): Promise<void> {
     const result = await processChatMessage(userMessage, sessionId);
 
     let responseText = result.message;
+    
+    // Append confirmation message for service intents
+    if (requestCreated && isServiceIntent && categoryKey) {
+      const isSingleProvider = SINGLE_PROVIDER_CATEGORIES.includes(categoryKey);
+      if (isSingleProvider) {
+        responseText += '\n\n✅ I\'ve sent your request to our team. You\'ll receive an update within ~30 minutes.';
+      } else {
+        responseText += '\n\n✅ I\'ve sent your request to our team. We\'re collecting a few quotes for you and will get back to you soon.';
+      }
+    }
     console.log('[WhatsApp Service] AI response text (full):', responseText);
     console.log('[WhatsApp Service] AI response length:', responseText.length);
 

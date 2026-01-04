@@ -90,6 +90,13 @@
             label="Active"
           />
         </div>
+        <div class="flex items-center gap-2">
+          <Checkbox
+            id="is-default"
+            v-model="form.isDefault"
+            label="Default Provider (for single-provider categories)"
+          />
+        </div>
         <div class="flex justify-end gap-3 pt-4">
           <Button variant="ghost" type="button" @click="showCreateModal = false">Cancel</Button>
           <Button variant="primary" type="submit" :loading="saving">Save</Button>
@@ -130,6 +137,7 @@ const form = ref({
   categories: [] as string[],
   cityId: '',
   isActive: true,
+  isDefault: false,
 });
 
 const categoryOptions = [
@@ -213,6 +221,7 @@ function editProvider(provider: any) {
     categories: (provider.categories as string[]) || [],
     cityId: provider.city_id || '',
     isActive: provider.is_active,
+    isDefault: provider.is_default || false,
   };
   showCreateModal.value = true;
 }
@@ -240,6 +249,7 @@ async function handleSubmit() {
       user_id: form.value.userId,
       categories: form.value.categories,
       is_active: form.value.isActive,
+      is_default: form.value.isDefault,
     };
     if (form.value.cityId) {
       payload.city_id = form.value.cityId;
@@ -260,6 +270,7 @@ async function handleSubmit() {
       categories: [],
       cityId: '',
       isActive: true,
+      isDefault: false,
     };
     await loadProviders();
   } catch (error: any) {
