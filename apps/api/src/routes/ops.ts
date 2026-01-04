@@ -465,6 +465,7 @@ export default async function opsRoutes(fastify: FastifyInstance) {
       include: {
         request: {
           include: {
+            category: true,
             providerMessageContexts: {
               orderBy: { created_at: 'desc' },
               take: 1,
@@ -548,10 +549,11 @@ export default async function opsRoutes(fastify: FastifyInstance) {
       await prisma.message.create({
         data: {
           conversation_id: conversation.id,
+          role: 'assistant',
           direction: 'OUTBOUND',
+          provider: 'twilio',
           content: userFriendlyMessage,
-          message_type: 'text',
-          external_id: `msg_${Date.now()}`,
+          status: 'sent',
         },
       });
 

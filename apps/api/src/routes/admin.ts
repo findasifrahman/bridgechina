@@ -4062,6 +4062,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       categories?: string[];
       city_id?: string;
       is_active?: boolean;
+      is_default?: boolean;
     };
 
     if (!body.user_id) {
