@@ -7,7 +7,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/prisma.js';
 import { processChatMessage } from '../modules/chat/chat.agent.js';
 import { createOrUpdateServiceRequest } from '../modules/providers/service.request.js';
-import { assignConversationToProvider } from '../modules/providers/assignment.service.js';
+import { assignConversationToProvider } from '../modules/whatsapp/assignment.service.js';
 
 // Generate session ID if not provided
 function generateSessionId(): string {
@@ -255,7 +255,7 @@ async function processAIReply(conversationId: string, userMessage: string): Prom
     if (isServiceIntent) {
       try {
         await createOrUpdateServiceRequest(conversationId, userMessage, intentResult);
-      } catch (error) {
+      } catch (error: any) {
         console.error('[WebChat] Service request creation error:', error);
       }
     }

@@ -11,6 +11,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
+import { normalizeCategoryKey, getCategoryName } from '../utils/service-category.js';
 
 // All user routes require authentication
 async function requireAuth(request: FastifyRequest, reply: FastifyReply) {

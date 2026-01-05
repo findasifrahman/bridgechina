@@ -8,6 +8,7 @@ import { prisma } from '../lib/prisma.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 import { sendText, sendMedia } from '../modules/whatsapp/twilio.client.js';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 
 const replySchema = z.object({
   text: z.string(),
@@ -681,18 +682,18 @@ export default async function providerRoutes(fastify: FastifyInstance) {
       update: {
         is_active: body.is_active,
         description: body.description,
-        pricing_info: body.pricing_info,
-        availability_info: body.availability_info,
-        specializations: body.specializations,
+        pricing_info: body.pricing_info ?? Prisma.JsonNull,
+        availability_info: body.availability_info ?? Prisma.JsonNull,
+        specializations: body.specializations ?? Prisma.JsonNull,
       },
       create: {
         provider_profile_id: providerProfile.id,
         category_key: body.category_key,
         is_active: body.is_active ?? true,
         description: body.description,
-        pricing_info: body.pricing_info,
-        availability_info: body.availability_info,
-        specializations: body.specializations,
+        pricing_info: body.pricing_info ?? Prisma.JsonNull,
+        availability_info: body.availability_info ?? Prisma.JsonNull,
+        specializations: body.specializations ?? Prisma.JsonNull,
       },
     });
 
