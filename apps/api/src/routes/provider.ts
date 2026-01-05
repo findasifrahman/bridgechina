@@ -588,10 +588,10 @@ export default async function providerRoutes(fastify: FastifyInstance) {
     languages: z.array(z.string()).optional().nullable(),
     service_area: z.string().optional().nullable(),
     address_text: z.string().optional().nullable(),
-    cover_asset_id: z.string().uuid().optional().nullable(),
+    cover_asset_id: z.preprocess((val) => val === '' ? null : val, z.string().uuid().nullable().optional()),
     gallery_asset_ids: z.array(z.string().uuid()).optional().nullable(),
     // categories field removed - only admins can manage categories via /api/admin/service-providers
-    city_id: z.string().uuid().optional().nullable(),
+    city_id: z.preprocess((val) => val === '' ? null : val, z.string().uuid().nullable().optional()),
   });
 
   fastify.patch('/profile', async (request: FastifyRequest, reply: FastifyReply) => {
