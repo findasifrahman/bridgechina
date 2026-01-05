@@ -7,13 +7,16 @@
       </CardHeader>
       <CardBody>
         <form @submit.prevent="handleLogin" class="space-y-4">
-          <Input
-            v-model="email"
-            label="Email"
-            type="email"
-            placeholder="your@email.com"
-            required
-          />
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Email or Phone</label>
+            <Input
+              v-model="emailOrPhone"
+              type="text"
+              placeholder="your@email.com or +1234567890"
+              required
+            />
+            <p class="text-xs text-slate-500 mt-1">You can sign in with either your email address or phone number</p>
+          </div>
           <Input
             v-model="password"
             label="Password"
@@ -53,23 +56,25 @@ const route = useRoute();
 const authStore = useAuthStore();
 const toast = useToast();
 
-const email = ref('');
+const emailOrPhone = ref('');
 const password = ref('');
 const loading = ref(false);
 
 onMounted(() => {
   console.log('[LoginPage] Component mounted, route:', route.path);
   console.log('[LoginPage] Component is rendering');
-  // Pre-fill email if provided in query
+  // Pre-fill email/phone if provided in query
   if (route.query.email) {
-    email.value = route.query.email as string;
+    emailOrPhone.value = route.query.email as string;
+  } else if (route.query.phone) {
+    emailOrPhone.value = route.query.phone as string;
   }
 });
 
 async function handleLogin() {
   loading.value = true;
   try {
-    await authStore.login(email.value, password.value);
+    await authStore.login(emailOrPhone.value, password.value);
     
     // Determine redirect based on user role
     let redirect = (route.query.redirect as string);

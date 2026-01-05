@@ -88,7 +88,7 @@
             </template>
             <template v-else>
               <router-link
-                :to="userRoles.includes('ADMIN') ? '/admin' : '/app'"
+                :to="userRoles.includes('ADMIN') || userRoles.includes('EDITOR') ? '/admin' : userRoles.includes('OPS') ? '/ops/inbox' : userRoles.includes('SELLER') ? '/seller' : userRoles.includes('SERVICE_PROVIDER') ? '/provider' : '/user'"
                 class="flex items-center gap-1 text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium whitespace-nowrap"
               >
                 <User class="h-4 w-4 flex-shrink-0" />

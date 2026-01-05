@@ -1,6 +1,7 @@
 <template>
   <div class="min-h-screen bg-slate-50 flex">
-    <aside class="w-64 bg-slate-50/50 border-r border-slate-200 fixed h-screen overflow-y-auto">
+    <!-- Sidebar - Desktop -->
+    <aside class="hidden lg:block w-64 bg-slate-50/50 border-r border-slate-200 fixed h-screen overflow-y-auto">
       <div class="p-4 border-b border-slate-200">
         <router-link to="/" class="flex items-center space-x-2 mb-2">
           <span class="text-xl font-bold text-teal-600">BridgeChina</span>
@@ -50,12 +51,23 @@
         </router-link>
       </nav>
     </aside>
-    <div class="flex-1 ml-64">
+    
+    <div class="flex-1 lg:ml-64">
       <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
-        <div class="px-6 py-4 flex justify-between items-center">
-          <h1 class="text-xl font-semibold text-slate-900">
-            <slot name="header-title" />
-          </h1>
+        <div class="px-4 sm:px-6 py-4 flex justify-between items-center">
+          <div class="flex items-center gap-4">
+            <!-- Mobile Menu Button -->
+            <button
+              @click="mobileMenuOpen = true"
+              class="lg:hidden p-2 text-slate-700 hover:text-teal-600 transition-colors"
+              aria-label="Toggle menu"
+            >
+              <Menu class="h-6 w-6" />
+            </button>
+            <h1 class="text-xl font-semibold text-slate-900">
+              <slot name="header-title" />
+            </h1>
+          </div>
           <div class="flex items-center space-x-4">
             <router-link
               to="/"
@@ -72,17 +84,32 @@
           </div>
         </div>
       </header>
-      <main class="p-6">
+      <main class="p-4 sm:p-6">
         <slot />
       </main>
     </div>
+
+    <!-- Mobile Drawer -->
+    <Drawer v-model="mobileMenuOpen" position="left" width="xs" title="Menu">
+      <nav class="flex flex-col space-y-2 p-4">
+        <router-link @click="mobileMenuOpen = false" to="/" class="block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-slate-100">Home</router-link>
+        <router-link @click="mobileMenuOpen = false" to="/provider" class="block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-slate-100">Dashboard</router-link>
+        <router-link @click="mobileMenuOpen = false" to="/provider/inbox" class="block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-slate-100">Inbox</router-link>
+        <router-link @click="mobileMenuOpen = false" to="/provider/requests" class="block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-slate-100">Requests</router-link>
+        <router-link @click="mobileMenuOpen = false" to="/provider/profile" class="block px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-slate-100">Profile</router-link>
+      </nav>
+    </Drawer>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { Menu } from 'lucide-vue-next';
+import Drawer from '../components/Drawer.vue';
 
 const router = useRouter();
+const mobileMenuOpen = ref(false);
 
 const emit = defineEmits<{
   logout: [];

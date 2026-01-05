@@ -14,8 +14,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!user.value && !!accessToken.value);
 
-  async function login(email: string, password: string) {
-    const response = await axios.post('/api/auth/login', { email, password });
+  async function login(emailOrPhone: string, password: string) {
+    // Support both email and phone login
+    const isEmail = emailOrPhone.includes('@');
+    const loginData = isEmail 
+      ? { email: emailOrPhone, password }
+      : { phone: emailOrPhone, password };
+    
+    const response = await axios.post('/api/auth/login', loginData);
     accessToken.value = response.data.accessToken;
     user.value = response.data.user;
     localStorage.setItem('accessToken', response.data.accessToken);

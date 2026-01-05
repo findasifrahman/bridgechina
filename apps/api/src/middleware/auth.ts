@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { prisma } from '../lib/prisma.js';
 
 export interface AuthenticatedRequest extends FastifyRequest {
   user: {
@@ -18,7 +19,6 @@ export async function authenticate(
     const payload = request.user as { id: string; email?: string; phone?: string };
     
     // Fetch user roles from database
-    const { prisma } = await import('../lib/prisma.js');
     
     const user = await prisma.user.findUnique({
       where: { id: payload.id },

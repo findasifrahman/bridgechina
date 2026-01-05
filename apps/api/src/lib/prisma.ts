@@ -9,17 +9,11 @@ declare global {
 }
 
 // Create PrismaClient with connection pooling configuration
+// Note: Connection pool settings should be in DATABASE_URL (e.g., ?connection_limit=10)
+// Railway provides pooled connection URLs - use those in production
 const createPrismaClient = () => {
   return new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL,
-      },
-    },
-    // Connection pool configuration
-    // These settings help prevent "too many connections" errors
-    // Prisma automatically manages connection pooling, but we can optimize it
   });
 };
 
@@ -31,10 +25,14 @@ if (process.env.NODE_ENV !== 'production') {
   globalThis.__prisma = prisma;
 }
 
-// Graceful shutdown
-process.on('beforeExit', async () => {
+// Graceful shutdown - properly disconnect on process termination
+const gracefulShutdown = async () => {
   await prisma.$disconnect();
-});
+};
+
+process.on('beforeExit', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
+process.on('SIGTERM', gracefulShutdown);
 
 export default prisma;
 
