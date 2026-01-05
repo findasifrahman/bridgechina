@@ -195,10 +195,12 @@ import {
   CrossSellWidget,
 } from '@bridgechina/ui';
 import axios from '@/utils/axios';
+import { useWhatsApp } from '@/composables/useWhatsApp';
 import ReviewsSection from '@/components/reviews/ReviewsSection.vue';
 
 const route = useRoute();
 const router = useRouter();
+const { openWhatsApp: openWhatsAppComposable } = useWhatsApp();
 const loading = ref(true);
 const restaurant = ref<any>(null);
 const relatedRestaurants = ref<any[]>([]);
@@ -315,9 +317,11 @@ function viewFullMenu() {
   router.push(`/services/halal-food?restaurant_id=${restaurant.value?.id}`);
 }
 
+const { openWhatsApp: openWhatsAppComposable } = useWhatsApp();
+
 function openWhatsApp() {
-  const message = encodeURIComponent(`Hi, I'm interested in ${restaurant.value?.name || 'this restaurant'}`);
-  window.open(`https://wa.me/1234567890?text=${message}`, '_blank');
+  const message = `Hi, I'm interested in ${restaurant.value?.name || 'this restaurant'}`;
+  openWhatsAppComposable(message);
 }
 
 onMounted(() => {

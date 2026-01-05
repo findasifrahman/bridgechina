@@ -375,6 +375,18 @@ export default async function providerRoutes(fastify: FastifyInstance) {
             },
           },
         },
+        paymentProofs: {
+          include: {
+            asset: true,
+            reviewer: {
+              select: {
+                id: true,
+                email: true,
+              },
+            },
+          },
+          orderBy: { created_at: 'desc' },
+        },
       },
     });
 

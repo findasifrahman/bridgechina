@@ -214,6 +214,35 @@
         </CardBody>
       </Card>
 
+      <!-- Payment Proof -->
+      <Card v-if="paymentProofs && paymentProofs.length > 0">
+        <CardHeader>
+          <h3 class="text-lg font-semibold">Payment Proof</h3>
+        </CardHeader>
+        <CardBody>
+          <div v-for="proof in paymentProofs" :key="proof.id" class="space-y-3 mb-4 pb-4 border-b last:border-0 last:mb-0 last:pb-0">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm font-medium text-slate-500">Status</p>
+                <Badge :variant="getPaymentProofVariant(proof.status)">{{ proof.status }}</Badge>
+              </div>
+              <div class="text-right">
+                <p class="text-sm text-slate-500">Uploaded</p>
+                <p class="text-sm text-slate-800">{{ new Date(proof.created_at).toLocaleString() }}</p>
+              </div>
+            </div>
+            <div v-if="proof.asset?.public_url">
+              <p class="text-sm font-medium text-slate-500 mb-2">Uploaded Image</p>
+              <img :src="proof.asset.public_url" alt="Payment proof" class="max-w-md rounded-lg border cursor-pointer hover:opacity-90" @click="window.open(proof.asset.public_url, '_blank')" />
+            </div>
+            <p v-if="proof.notes" class="text-sm text-slate-600">{{ proof.notes }}</p>
+            <div v-if="proof.reviewedBy" class="text-xs text-slate-500">
+              Reviewed by: {{ proof.reviewedBy.email }} at {{ new Date(proof.reviewed_at).toLocaleString() }}
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+
       <!-- Request Payload (JSON view) -->
       <Card v-if="request.request_payload">
         <CardHeader>
@@ -247,6 +276,7 @@ const toast = useToast();
 const request = ref<any>(null);
 const statusEvents = ref<any[]>([]);
 const bundleRequests = ref<any[]>([]);
+const paymentProofs = ref<any[]>([]);
 const loading = ref(true);
 const updatingStatus = ref(false);
 
@@ -264,6 +294,7 @@ async function loadRequest() {
     request.value = response.data.request;
     statusEvents.value = response.data.request.statusEvents || [];
     bundleRequests.value = response.data.bundleRequests || [];
+    paymentProofs.value = response.data.request.paymentProofs || [];
     
     // Initialize form with current status
     statusForm.value.status_to = request.value.status || '';
@@ -302,6 +333,15 @@ function resetStatusForm() {
     note_user: '',
     notify_user: false,
   };
+}
+
+function getPaymentProofVariant(status: string): 'default' | 'success' | 'warning' | 'danger' {
+  switch (status) {
+    case 'submitted': return 'warning';
+    case 'approved': return 'success';
+    case 'rejected': return 'danger';
+    default: return 'default';
+  }
 }
 
 onMounted(() => {

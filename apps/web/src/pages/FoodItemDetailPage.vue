@@ -234,6 +234,7 @@ import {
 } from '@bridgechina/ui';
 import axios from '@/utils/axios';
 import { useAuthStore } from '@/stores/auth';
+import { useWhatsApp } from '@/composables/useWhatsApp';
 import ReviewsSection from '@/components/reviews/ReviewsSection.vue';
 
 const route = useRoute();
@@ -387,8 +388,8 @@ function handleRelatedItemClick(item: any) {
 }
 
 function openWhatsApp() {
-  const message = encodeURIComponent(`Hi, I'm interested in ordering ${foodItem.value?.name || 'this item'}`);
-  window.open(`https://wa.me/1234567890?text=${message}`, '_blank');
+  const message = `Hi, I'm interested in ordering ${foodItem.value?.name || 'this item'}`;
+  openWhatsAppComposable(message);
 }
 
 onMounted(async () => {

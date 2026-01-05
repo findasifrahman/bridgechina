@@ -3193,5 +3193,12 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
       return [];
     }
   });
+
+  // Get public configuration (whatsapp number, etc.)
+  fastify.get('/config', async () => {
+    return {
+      whatsappNumber: process.env.BRIDGECHINA_SERVICE_PROVIDER_NUMBER || '',
+    };
+  });
 }
 

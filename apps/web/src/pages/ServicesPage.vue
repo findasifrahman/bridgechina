@@ -520,10 +520,13 @@ import {
   Button,
   Badge,
 } from '@bridgechina/ui';
+import { useWhatsApp } from '@/composables/useWhatsApp';
 
 const router = useRouter();
 
+const { openWhatsApp: openWhatsAppComposable } = useWhatsApp();
+
 function openWhatsApp() {
-  window.open('https://wa.me/1234567890', '_blank');
+  openWhatsAppComposable();
 }
 </script>

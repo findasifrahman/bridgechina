@@ -634,6 +634,18 @@ export default async function opsRoutes(fastify: FastifyInstance) {
             external_channel: true,
           },
         },
+        paymentProofs: {
+          include: {
+            asset: true,
+            reviewer: {
+              select: {
+                id: true,
+                email: true,
+              },
+            },
+          },
+          orderBy: { created_at: 'desc' },
+        },
       },
     });
 

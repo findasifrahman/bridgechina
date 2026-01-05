@@ -66,8 +66,10 @@ import ToursListPage from './ToursListPage.vue';
 import GuidesListPage from './GuidesListPage.vue';
 import RestaurantsListPage from './RestaurantsListPage.vue';
 import EsimListPage from './EsimListPage.vue';
+import { useWhatsApp } from '@/composables/useWhatsApp';
 
 const route = useRoute();
+const { openWhatsApp: openWhatsAppComposable } = useWhatsApp();
 
 const service = ref<any>(null);
 const loading = ref(true);
@@ -109,8 +111,10 @@ async function loadService() {
 }
 
 
+const { openWhatsApp: openWhatsAppComposable } = useWhatsApp();
+
 function openWhatsApp() {
-  window.open('https://wa.me/1234567890', '_blank');
+  openWhatsAppComposable();
 }
 
 onMounted(() => {

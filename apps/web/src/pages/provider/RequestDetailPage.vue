@@ -63,6 +63,41 @@
         </div>
       </div>
 
+      <!-- Payment Proof -->
+      <div v-if="request.request.paymentProofs && request.request.paymentProofs.length > 0" class="bg-white rounded-lg p-4 mb-4">
+        <div class="text-sm font-medium text-slate-900 mb-3">Payment Proof</div>
+        <div class="space-y-3">
+          <div
+            v-for="proof in request.request.paymentProofs"
+            :key="proof.id"
+            class="border border-slate-200 rounded-lg p-3"
+          >
+            <div class="flex items-center justify-between mb-2">
+              <span
+                :class="[
+                  'px-2 py-1 rounded text-xs font-medium',
+                  proof.status === 'approved' ? 'bg-green-100 text-green-700' :
+                  proof.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                  'bg-yellow-100 text-yellow-700'
+                ]"
+              >
+                {{ proof.status }}
+              </span>
+              <span class="text-xs text-slate-500">
+                {{ formatTime(proof.created_at) }}
+              </span>
+            </div>
+            <div v-if="proof.asset?.public_url" class="mb-2">
+              <img :src="proof.asset.public_url" alt="Payment proof" class="max-w-full rounded border cursor-pointer hover:opacity-90" @click="window.open(proof.asset.public_url, '_blank')" />
+            </div>
+            <div v-if="proof.notes" class="text-sm text-slate-700 mb-2">{{ proof.notes }}</div>
+            <div v-if="proof.reviewedBy" class="text-xs text-slate-500">
+              Reviewed by: {{ proof.reviewedBy.email }} at {{ formatTime(proof.reviewed_at) }}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Existing Offers -->
       <div v-if="request.request.providerOffers && request.request.providerOffers.length > 0" class="bg-white rounded-lg p-4 mb-4">
         <div class="text-sm font-medium text-slate-900 mb-3">Your Previous Offers:</div>

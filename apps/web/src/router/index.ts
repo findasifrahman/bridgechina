@@ -340,7 +340,7 @@ const router = createRouter({
         {
           path: 'requests',
           name: 'ops-requests',
-          component: () => import('@/pages/admin/RequestsPage.vue'),
+          component: () => import('@/pages/ops/RequestsPage.vue'),
         },
         {
           path: 'requests/:id',
