@@ -319,8 +319,6 @@ function handleBookTour() {
   });
 }
 
-const { openWhatsApp: openWhatsAppComposable } = useWhatsApp();
-
 function openWhatsApp() {
   const message = `Hi, I'm interested in booking ${tour.value?.name || 'this tour'}`;
   openWhatsAppComposable(message);
