@@ -89,3 +89,5 @@ Before running migrations that drop tables or make columns NOT NULL:
    - Then drops the old tables
    - Only adds new external hotel tables
 
+
+

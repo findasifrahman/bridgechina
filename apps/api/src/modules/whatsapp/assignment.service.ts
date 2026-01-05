@@ -5,6 +5,7 @@
 
 import { prisma } from '../../lib/prisma.js';
 import { IntentResult } from '../chat/chat.agent.js';
+import { normalizeCategoryKey } from '../../utils/service-category.js';
 
 /**
  * Map intent to category key
@@ -18,8 +19,11 @@ function intentToCategoryKey(intent: IntentResult['intent']): string | null {
     HALAL_FOOD: 'halal_food',
     MEDICAL: 'medical',
     ESIM: 'esim',
+    GUIDE: 'guide', // Added guide intent mapping
   };
-  return mapping[intent] || null;
+  const mapped = mapping[intent] || null;
+  // Normalize to ensure consistency
+  return mapped ? normalizeCategoryKey(mapped) : null;
 }
 
 /**
@@ -34,6 +38,8 @@ function getConfidenceThreshold(categoryKey: string): number {
     halal_food: 0.75,
     medical: 0.75,
     esim: 0.75,
+    guide: 0.75, // Added guide threshold
+    translation_help: 0.75, // Added translation_help threshold
   };
   return thresholds[categoryKey] || 1.0; // Default: require very high confidence
 }

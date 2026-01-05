@@ -1,7 +1,7 @@
 <template>
-  <div>
+  <div class="px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
     <PageHeader title="Dashboard" />
-    <div class="grid md:grid-cols-3 gap-6 mb-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
       <StatCard label="Active Requests" :value="activeRequests" icon="📋" />
       <StatCard label="Orders" :value="orders" icon="🛍️" />
       <StatCard label="Saved Addresses" :value="addresses" icon="📍" />

@@ -549,5 +549,154 @@ export default async function providerRoutes(fastify: FastifyInstance) {
       avgResponseTimeMinutes,
     };
   });
+
+  // Get provider profile
+  fastify.get('/profile', async (request: FastifyRequest, reply: FastifyReply) => {
+    const req = request as any;
+
+    const profile = await prisma.serviceProviderProfile.findUnique({
+      where: { user_id: req.user.id },
+      include: {
+        city: true,
+        coverAsset: true,
+        serviceProfiles: {
+          orderBy: { category_key: 'asc' },
+        },
+      },
+    });
+
+    if (!profile) {
+      reply.status(404).send({ error: 'Provider profile not found' });
+      return;
+    }
+
+    return profile;
+  });
+
+  // Update provider profile
+  const updateProviderProfileSchema = z.object({
+    provider_type: z.enum(['individual', 'company']).optional(),
+    display_name: z.string().optional(),
+    company_name: z.string().optional(),
+    contact_name: z.string().optional(),
+    whatsapp: z.string().optional().nullable(),
+    wechat: z.string().optional().nullable(),
+    email: z.string().email().optional().nullable(),
+    website: z.string().url().optional().nullable(),
+    description: z.string().optional().nullable(),
+    languages: z.array(z.string()).optional().nullable(),
+    service_area: z.string().optional().nullable(),
+    address_text: z.string().optional().nullable(),
+    cover_asset_id: z.string().uuid().optional().nullable(),
+    gallery_asset_ids: z.array(z.string().uuid()).optional().nullable(),
+    categories: z.array(z.string()).optional().nullable(),
+    city_id: z.string().uuid().optional().nullable(),
+  });
+
+  fastify.patch('/profile', async (request: FastifyRequest, reply: FastifyReply) => {
+    const req = request as any;
+    const body = updateProviderProfileSchema.parse(request.body);
+
+    // Check if profile exists
+    const existing = await prisma.serviceProviderProfile.findUnique({
+      where: { user_id: req.user.id },
+    });
+
+    if (!existing) {
+      reply.status(404).send({ error: 'Provider profile not found. Please contact admin to create your profile.' });
+      return;
+    }
+
+    // Prepare update data
+    const updateData: any = {};
+    if (body.provider_type !== undefined) updateData.provider_type = body.provider_type;
+    if (body.display_name !== undefined) updateData.display_name = body.display_name;
+    if (body.company_name !== undefined) updateData.company_name = body.company_name;
+    if (body.contact_name !== undefined) updateData.contact_name = body.contact_name;
+    if (body.whatsapp !== undefined) updateData.whatsapp = body.whatsapp;
+    if (body.wechat !== undefined) updateData.wechat = body.wechat;
+    if (body.email !== undefined) updateData.email = body.email;
+    if (body.website !== undefined) updateData.website = body.website;
+    if (body.description !== undefined) updateData.description = body.description;
+    if (body.languages !== undefined) updateData.languages = body.languages;
+    if (body.service_area !== undefined) updateData.service_area = body.service_area;
+    if (body.address_text !== undefined) updateData.address_text = body.address_text;
+    if (body.cover_asset_id !== undefined) updateData.cover_asset_id = body.cover_asset_id;
+    if (body.gallery_asset_ids !== undefined) updateData.gallery_asset_ids = body.gallery_asset_ids;
+    if (body.categories !== undefined) updateData.categories = body.categories;
+    if (body.city_id !== undefined) updateData.city_id = body.city_id;
+
+    // Mark onboarding as completed if key fields are filled
+    const hasRequiredFields = body.display_name || body.description || body.contact_name;
+    if (hasRequiredFields && !existing.onboarding_completed_at) {
+      updateData.onboarding_completed_at = new Date();
+    }
+
+    const updated = await prisma.serviceProviderProfile.update({
+      where: { user_id: req.user.id },
+      data: updateData,
+      include: {
+        city: true,
+        coverAsset: true,
+        serviceProfiles: {
+          orderBy: { category_key: 'asc' },
+        },
+      },
+    });
+
+    return updated;
+  });
+
+  // Service-specific profile management
+  const updateServiceProfileSchema = z.object({
+    category_key: z.string(),
+    is_active: z.boolean().optional(),
+    description: z.string().optional().nullable(),
+    pricing_info: z.record(z.any()).optional().nullable(),
+    availability_info: z.record(z.any()).optional().nullable(),
+    specializations: z.record(z.any()).optional().nullable(),
+  });
+
+  fastify.post('/profile/service', async (request: FastifyRequest, reply: FastifyReply) => {
+    const req = request as any;
+    const body = updateServiceProfileSchema.parse(request.body);
+
+    const providerProfile = await prisma.serviceProviderProfile.findUnique({
+      where: { user_id: req.user.id },
+    });
+
+    if (!providerProfile) {
+      reply.status(404).send({ error: 'Provider profile not found' });
+      return;
+    }
+
+    // Upsert service profile
+    const serviceProfile = await prisma.serviceProviderServiceProfile.upsert({
+      where: {
+        provider_profile_id_category_key: {
+          provider_profile_id: providerProfile.id,
+          category_key: body.category_key,
+        },
+      },
+      update: {
+        is_active: body.is_active,
+        description: body.description,
+        pricing_info: body.pricing_info,
+        availability_info: body.availability_info,
+        specializations: body.specializations,
+      },
+      create: {
+        provider_profile_id: providerProfile.id,
+        category_key: body.category_key,
+        is_active: body.is_active ?? true,
+        description: body.description,
+        pricing_info: body.pricing_info,
+        availability_info: body.availability_info,
+        specializations: body.specializations,
+      },
+    });
+
+    return serviceProfile;
+  });
 }
 

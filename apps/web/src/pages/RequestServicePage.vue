@@ -108,7 +108,7 @@
           </p>
           <p class="text-slate-600 mb-6">We'll contact you shortly to confirm your request.</p>
           <div class="flex gap-4 justify-center">
-            <Button variant="primary" @click="$router.push('/app')">
+            <Button variant="primary" @click="$router.push('/user/requests')">
               View My Requests
             </Button>
             <Button variant="secondary" @click="resetForm">

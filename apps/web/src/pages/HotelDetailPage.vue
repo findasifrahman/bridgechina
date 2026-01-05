@@ -89,7 +89,8 @@
                 variant="primary" 
                 full-width 
                 size="sm" 
-                @click="handleRequestBooking" 
+                @click="handleRequestBooking"
+                :loading="creatingRequest"
                 class="mb-2"
               >
                 {{ hotel.source === 'external' ? 'Book this place' : 'Request Booking' }}
@@ -405,13 +406,18 @@ import {
   CrossSellWidget,
 } from '@bridgechina/ui';
 import axios from '@/utils/axios';
+import { useAuthStore } from '@/stores/auth';
+import { useToast } from '@bridgechina/ui';
 import ReviewsSection from '@/components/reviews/ReviewsSection.vue';
 
 const route = useRoute();
 const router = useRouter();
+const authStore = useAuthStore();
+const toast = useToast();
 const loading = ref(true);
 const hotel = ref<any>(null);
 const similarHotels = ref<any[]>([]);
+const creatingRequest = ref(false);
 
 function getImageUrls(): string[] {
   if (!hotel.value) return [];
@@ -488,10 +494,11 @@ async function loadHotel() {
   }
 }
 
-function handleRequestBooking() {
+async function handleRequestBooking() {
   // Check if user is logged in
-  const token = localStorage.getItem('access_token');
-  if (!token) {
+  const token = localStorage.getItem('accessToken');
+  
+  if (!token || !authStore.isAuthenticated) {
     // Redirect to login with return path
     router.push({
       path: '/login',
@@ -502,27 +509,42 @@ function handleRequestBooking() {
     return;
   }
 
-  // For external hotels, include external_hotel_id
-  if (hotel.value?.source === 'external') {
+  // For logged-in users: directly create service request
+  creatingRequest.value = true;
+  try {
+    const payload: any = {
+      hotel_id: hotel.value?.id,
+      hotel_name: hotel.value?.name,
+    };
+
+    if (hotel.value?.source === 'external') {
+      payload.hotel_source = 'BOOKINGCOM';
+      payload.external_hotel_id = hotel.value?.id;
+    }
+
+    const response = await axios.post('/api/user/requests', {
+      categoryKey: 'hotel',
+      city_id: hotel.value?.city_id,
+      payload,
+    });
+
+    toast.success('Request created successfully!');
+    // Redirect to user requests page
+    router.push(`/user/requests/${response.data.id}`);
+  } catch (error: any) {
+    console.error('Failed to create request:', error);
+    toast.error(error.response?.data?.error || 'Failed to create request');
+    // Fallback to request form if API fails
     router.push({
       path: '/request',
       query: {
         category: 'hotel',
         hotel_id: hotel.value?.id,
         hotel_name: hotel.value?.name,
-        hotel_source: 'BOOKINGCOM',
-        external_hotel_id: hotel.value?.id,
       },
     });
-  } else {
-    router.push({
-      path: '/request',
-      query: {
-        category: 'hotel',
-        hotel_id: hotel.value?.id,
-        hotel_name: hotel.value?.name,
-      },
-    });
+  } finally {
+    creatingRequest.value = false;
   }
 }
 

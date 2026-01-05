@@ -184,3 +184,5 @@ Body:
 - Frontend displays both internal and external hotels seamlessly
 - Booking requests support both hotel sources
 
+
+

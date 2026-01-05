@@ -2692,6 +2692,13 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
       leadId = lead.id;
     }
 
+    // Build request payload with source metadata
+    const requestPayload = {
+      ...(body.request_payload || {}),
+      source: 'web_form',
+      created_via: req.user?.id ? 'service_page' : 'public_form',
+    };
+
     // Create service request
     const serviceRequest = await prisma.serviceRequest.create({
       data: {
@@ -2703,7 +2710,7 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
         phone: body.phone,
         whatsapp: body.whatsapp || null,
         email: body.email || null,
-        request_payload: body.request_payload as any,
+        request_payload: requestPayload,
         status: 'new',
       },
     });

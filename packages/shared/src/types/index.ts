@@ -3,13 +3,15 @@ export type UserRole = 'ADMIN' | 'OPS' | 'EDITOR' | 'SELLER' | 'PARTNER' | 'USER
 export type UserStatus = 'active' | 'inactive' | 'suspended';
 
 export type ServiceCategoryKey =
+  | 'guide'
   | 'hotel'
   | 'transport'
   | 'halal_food'
   | 'medical'
   | 'translation_help'
-  | 'shopping_service'
-  | 'tours';
+  | 'shopping'
+  | 'tours'
+  | 'esim';
 
 export type ServiceRequestStatus =
   | 'new'

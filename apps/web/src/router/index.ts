@@ -163,36 +163,45 @@ const router = createRouter({
       ],
     },
     {
-      path: '/app',
+      path: '/user',
       component: () => import('@/layouts/AppLayout.vue'),
       meta: { requiresAuth: true },
       children: [
         {
           path: '',
-          name: 'app-dashboard',
+          name: 'user-dashboard',
           component: () => import('@/pages/app/DashboardPage.vue'),
         },
         {
           path: 'profile',
-          name: 'app-profile',
+          name: 'user-profile',
           component: () => import('@/pages/app/ProfilePage.vue'),
         },
         {
           path: 'requests',
-          name: 'app-requests',
+          name: 'user-requests',
           component: () => import('@/pages/app/RequestsPage.vue'),
         },
         {
           path: 'requests/:id',
-          name: 'app-request-detail',
+          name: 'user-request-detail',
           component: () => import('@/pages/app/RequestDetailPage.vue'),
         },
         {
           path: 'orders',
-          name: 'app-orders',
+          name: 'user-orders',
           component: () => import('@/pages/app/OrdersPage.vue'),
         },
       ],
+    },
+    // Backward compatibility: redirect /app to /user
+    {
+      path: '/app',
+      redirect: '/user',
+    },
+    {
+      path: '/app/:pathMatch(.*)*',
+      redirect: (to) => `/user/${to.params.pathMatch}`,
     },
     {
       path: '/admin',
@@ -327,6 +336,16 @@ const router = createRouter({
           path: 'offers',
           name: 'ops-offers',
           component: () => import('@/pages/ops/OffersPage.vue'),
+        },
+        {
+          path: 'requests',
+          name: 'ops-requests',
+          component: () => import('@/pages/admin/RequestsPage.vue'),
+        },
+        {
+          path: 'requests/:id',
+          name: 'ops-request-detail',
+          component: () => import('@/pages/ops/RequestDetailPage.vue'),
         },
       ],
     },

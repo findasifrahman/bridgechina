@@ -7,6 +7,7 @@ import { prisma } from '../../lib/prisma.js';
 import { IntentResult } from '../chat/chat.agent.js';
 import { dispatchRequest, getSlaMinutesForCategory } from './provider.dispatch.js';
 import { createProviderContext } from './provider.context.js';
+import { normalizeCategoryKey } from '../../utils/service-category.js';
 
 /**
  * Map intent to service category key
@@ -20,8 +21,11 @@ function intentToCategoryKey(intent: IntentResult['intent']): string | null {
     HALAL_FOOD: 'halal_food',
     SHOPPING: 'shopping',
     ESIM: 'esim',
+    GUIDE: 'guide', // Added guide intent mapping
   };
-  return mapping[intent] || null;
+  const mapped = mapping[intent] || null;
+  // Normalize to ensure consistency
+  return mapped ? normalizeCategoryKey(mapped) : null;
 }
 
 /**
@@ -196,4 +200,5 @@ export async function createOrUpdateServiceRequest(
     return null;
   }
 }
+
 

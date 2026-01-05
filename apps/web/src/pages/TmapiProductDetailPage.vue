@@ -344,7 +344,7 @@ async function requestToBuy() {
     });
 
     toast.success('Request submitted successfully!');
-    router.push('/app/requests');
+    router.push('/user/requests');
   } catch (error: any) {
     toast.error(error.response?.data?.error || 'Failed to submit request');
   }

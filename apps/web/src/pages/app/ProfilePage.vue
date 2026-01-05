@@ -36,21 +36,91 @@
         </CardHeader>
         <CardBody>
           <form @submit.prevent="updateCustomerProfile" class="space-y-4">
-            <Input
-              v-model="customerProfileForm.nationality"
-              label="Nationality"
-              placeholder="e.g., US, UK, CN"
-            />
-            <Input
-              v-model="customerProfileForm.passport_name"
-              label="Passport Name"
-              placeholder="Name as on passport"
-            />
-            <Input
-              v-model="customerProfileForm.preferred_language"
-              label="Preferred Language"
-              placeholder="e.g., en, zh, ar"
-            />
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                v-model="customerProfileForm.full_name"
+                label="Full Name"
+                placeholder="Your full name"
+              />
+              <Input
+                v-model="customerProfileForm.nationality"
+                label="Nationality"
+                placeholder="e.g., US, UK, CN"
+              />
+              <Input
+                v-model="customerProfileForm.passport_name"
+                label="Passport Name"
+                placeholder="Name as on passport"
+              />
+              <Input
+                v-model="customerProfileForm.preferred_language"
+                label="Preferred Language"
+                placeholder="e.g., en, zh, ar"
+              />
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Gender</label>
+                <select
+                  v-model="customerProfileForm.gender"
+                  class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                >
+                  <option value="">Prefer not to say</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <Input
+                v-model.number="customerProfileForm.birth_year"
+                label="Birth Year"
+                type="number"
+                placeholder="e.g., 1990"
+                :min="1900"
+                :max="new Date().getFullYear()"
+              />
+              <Input
+                v-model="customerProfileForm.country_of_residence"
+                label="Country of Residence"
+                placeholder="e.g., US, UK"
+              />
+              <Input
+                v-model="customerProfileForm.city_of_residence"
+                label="City of Residence"
+                placeholder="e.g., New York"
+              />
+              <Input
+                v-model="customerProfileForm.preferred_currency"
+                label="Preferred Currency"
+                placeholder="e.g., USD, CNY, EUR"
+              />
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Preferred Contact Channel</label>
+                <select
+                  v-model="customerProfileForm.preferred_contact_channel"
+                  class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                >
+                  <option value="">None</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="wechat">WeChat</option>
+                  <option value="email">Email</option>
+                </select>
+              </div>
+              <Input
+                v-model="customerProfileForm.wechat_id"
+                label="WeChat ID"
+                placeholder="Your WeChat ID"
+              />
+            </div>
+            <div class="flex items-center gap-2">
+              <input
+                v-model="customerProfileForm.marketing_consent"
+                type="checkbox"
+                id="marketing_consent"
+                class="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
+              />
+              <label for="marketing_consent" class="text-sm text-slate-700">
+                I consent to receive marketing communications
+              </label>
+            </div>
             <div class="flex justify-end gap-3 pt-4">
               <Button variant="ghost" type="button" @click="loadProfile">Cancel</Button>
               <Button variant="primary" type="submit" :loading="savingProfile">Save</Button>
@@ -114,6 +184,18 @@ const customerProfileForm = ref({
   nationality: '',
   passport_name: '',
   preferred_language: '',
+  full_name: '',
+  gender: '',
+  birth_year: undefined as number | undefined,
+  country_of_residence: '',
+  city_of_residence: '',
+  preferred_currency: '',
+  preferred_contact_channel: '',
+  wechat_id: '',
+  dietary_preferences: {} as any,
+  travel_interests: {} as any,
+  budget_preferences: {} as any,
+  marketing_consent: false,
 });
 
 const addresses = ref<any[]>([]);
@@ -140,16 +222,41 @@ async function loadProfile() {
     
     // Load customer profile if it exists
     if (response.data.customerProfile) {
+      const cp = response.data.customerProfile;
       customerProfileForm.value = {
-        nationality: response.data.customerProfile.nationality || '',
-        passport_name: response.data.customerProfile.passport_name || '',
-        preferred_language: response.data.customerProfile.preferred_language || '',
+        nationality: cp.nationality || '',
+        passport_name: cp.passport_name || '',
+        preferred_language: cp.preferred_language || '',
+        full_name: cp.full_name || '',
+        gender: cp.gender || '',
+        birth_year: cp.birth_year || undefined,
+        country_of_residence: cp.country_of_residence || '',
+        city_of_residence: cp.city_of_residence || '',
+        preferred_currency: cp.preferred_currency || '',
+        preferred_contact_channel: cp.preferred_contact_channel || '',
+        wechat_id: cp.wechat_id || '',
+        dietary_preferences: cp.dietary_preferences || {},
+        travel_interests: cp.travel_interests || {},
+        budget_preferences: cp.budget_preferences || {},
+        marketing_consent: cp.marketing_consent || false,
       };
     } else {
       customerProfileForm.value = {
         nationality: '',
         passport_name: '',
         preferred_language: '',
+        full_name: '',
+        gender: '',
+        birth_year: undefined,
+        country_of_residence: '',
+        city_of_residence: '',
+        preferred_currency: '',
+        preferred_contact_channel: '',
+        wechat_id: '',
+        dietary_preferences: {},
+        travel_interests: {},
+        budget_preferences: {},
+        marketing_consent: false,
       };
     }
   } catch (error) {
@@ -189,6 +296,18 @@ async function updateCustomerProfile() {
         nationality: customerProfileForm.value.nationality || null,
         passport_name: customerProfileForm.value.passport_name || null,
         preferred_language: customerProfileForm.value.preferred_language || null,
+        full_name: customerProfileForm.value.full_name || null,
+        gender: customerProfileForm.value.gender || null,
+        birth_year: customerProfileForm.value.birth_year || null,
+        country_of_residence: customerProfileForm.value.country_of_residence || null,
+        city_of_residence: customerProfileForm.value.city_of_residence || null,
+        preferred_currency: customerProfileForm.value.preferred_currency || null,
+        preferred_contact_channel: customerProfileForm.value.preferred_contact_channel || null,
+        wechat_id: customerProfileForm.value.wechat_id || null,
+        dietary_preferences: customerProfileForm.value.dietary_preferences || null,
+        travel_interests: customerProfileForm.value.travel_interests || null,
+        budget_preferences: customerProfileForm.value.budget_preferences || null,
+        marketing_consent: customerProfileForm.value.marketing_consent,
       },
     });
     toast.success('Customer profile updated');

@@ -85,7 +85,7 @@ async function handleLogin() {
       } else if (userRoles.includes('SERVICE_PROVIDER') && !userRoles.some((role: string) => ['ADMIN', 'OPS'].includes(role))) {
         redirect = '/provider';
       } else {
-        redirect = '/app';
+        redirect = '/user';
       }
     }
     

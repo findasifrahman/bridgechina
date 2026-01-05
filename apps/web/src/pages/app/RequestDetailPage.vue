@@ -31,6 +31,99 @@
         </CardBody>
       </Card>
 
+      <!-- Status Timeline -->
+      <Card class="lg:col-span-3">
+        <CardHeader>
+          <h3 class="text-lg font-semibold">Status Timeline</h3>
+        </CardHeader>
+        <CardBody>
+          <div v-if="!statusEvents || statusEvents.length === 0" class="text-sm text-slate-500">
+            No status updates yet.
+          </div>
+          <div v-else class="space-y-4">
+            <div
+              v-for="(event, index) in statusEvents"
+              :key="event.id"
+              class="flex gap-4 pb-4 border-b last:border-0"
+            >
+              <div class="flex-shrink-0">
+                <div class="w-2 h-2 rounded-full bg-teal-500 mt-2"></div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <Badge :variant="getStatusVariant(event.status_to)">{{ event.status_to }}</Badge>
+                  <span class="text-xs text-slate-500">
+                    {{ new Date(event.created_at).toLocaleString() }}
+                  </span>
+                </div>
+                <p v-if="event.status_from" class="text-sm text-slate-600">
+                  Changed from <span class="font-medium">{{ event.status_from }}</span> to
+                  <span class="font-medium">{{ event.status_to }}</span>
+                </p>
+                <p v-else class="text-sm text-slate-600">
+                  Status set to <span class="font-medium">{{ event.status_to }}</span>
+                </p>
+                <p v-if="event.note_user" class="text-sm text-slate-800 mt-1 whitespace-pre-wrap">
+                  {{ event.note_user }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+
+      <!-- Bundle Requests -->
+      <Card class="lg:col-span-3" v-if="request.bundle_key && bundleRequests && bundleRequests.length > 0">
+        <CardHeader>
+          <h3 class="text-lg font-semibold">Related Requests (Bundle)</h3>
+        </CardHeader>
+        <CardBody>
+          <div class="space-y-3">
+            <p class="text-sm text-slate-600">
+              This request is part of a bundle with {{ bundleRequests.length }} other service request(s).
+            </p>
+            <div class="grid md:grid-cols-2 gap-3">
+              <div
+                v-for="bundleReq in bundleRequests"
+                :key="bundleReq.id"
+                class="p-3 border border-slate-200 rounded-lg hover:border-teal-300 transition-colors cursor-pointer"
+                @click="$router.push(`/user/requests/${bundleReq.id}`)"
+              >
+                <div class="flex justify-between items-start">
+                  <div>
+                    <p class="font-semibold text-sm">{{ bundleReq.category?.name || 'Service' }}</p>
+                    <p class="text-xs text-slate-600">{{ bundleReq.city?.name || 'N/A' }}</p>
+                  </div>
+                  <Badge :variant="getStatusVariant(bundleReq.status)" size="sm">
+                    {{ bundleReq.status }}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+
+      <!-- Source Badge -->
+      <Card class="lg:col-span-3" v-if="request.conversation">
+        <CardHeader>
+          <h3 class="text-lg font-semibold">Request Source</h3>
+        </CardHeader>
+        <CardBody>
+          <div class="flex items-center gap-2">
+            <Badge v-if="request.conversation.channel === 'whatsapp'" variant="success">
+              WhatsApp
+            </Badge>
+            <Badge v-else-if="request.conversation.channel === 'webchat'" variant="info">
+              WebChat
+            </Badge>
+            <Badge v-else variant="default">
+              Website Form
+            </Badge>
+          </div>
+        </CardBody>
+      </Card>
+
       <Card>
         <CardHeader>
           <h3 class="text-lg font-semibold">Provider Offer</h3>
@@ -110,6 +203,8 @@ const toast = useToast();
 const request = ref<any>(null);
 const approvedOffer = ref<any>(null);
 const paymentProof = ref<any>(null);
+const statusEvents = ref<any[]>([]);
+const bundleRequests = ref<any[]>([]);
 const loading = ref(true);
 const uploading = ref(false);
 const selectedFile = ref<File | null>(null);
@@ -161,6 +256,12 @@ async function loadRequestDetails() {
         (offer: any) => offer.status === 'sent_to_user' || offer.status === 'approved'
       );
     }
+
+    // Load status events
+    statusEvents.value = request.value.statusEvents || [];
+
+    // Load bundle requests
+    bundleRequests.value = request.value.bundleRequests || [];
 
     // Load payment proof if exists
     try {

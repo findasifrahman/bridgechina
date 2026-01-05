@@ -228,7 +228,7 @@ async function handleRegister() {
     } else if (userRoles.includes('SELLER')) {
       router.push('/seller');
     } else {
-      router.push('/app');
+      router.push('/user');
     }
     toast.success('Account created successfully!');
   } catch (error: any) {

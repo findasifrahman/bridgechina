@@ -284,28 +284,62 @@ async function createGuideRequest() {
       return;
     }
 
-    const response = await axios.post('/api/public/service-request', {
-      category_key: 'guide',
-      city_id: defaultCityId,
-      customer_name: authStore.user?.email?.split('@')[0] || authStore.user?.phone || 'User',
-      phone: authStore.user?.phone || '',
-      email: authStore.user?.email || null,
-      request_payload: {
-        guide_id: guide.value.id,
-        guide_user_id: guide.value.user_id || null,
-        guide_name: guide.value.display_name || guide.value.name,
-        guide_hourly_rate: guide.value.hourly_rate,
-        guide_daily_rate: guide.value.daily_rate,
-        guide_languages: guide.value.languages,
-      },
-    });
+    // Use user endpoint if logged in, otherwise public endpoint
+    const endpoint = authStore.isAuthenticated ? '/api/user/requests' : '/api/public/service-request';
+    
+    if (authStore.isAuthenticated) {
+      // Use new user endpoint
+      const response = await axios.post(endpoint, {
+        categoryKey: 'guide',
+        city_id: defaultCityId,
+        payload: {
+          guide_id: guide.value.id,
+          guide_user_id: guide.value.user_id || null,
+          guide_name: guide.value.display_name || guide.value.name,
+          guide_hourly_rate: guide.value.hourly_rate,
+          guide_daily_rate: guide.value.daily_rate,
+          guide_languages: guide.value.languages,
+        },
+      });
+      
+      toast.success('Request submitted successfully! We will contact you within 1 hour.');
+      showConfirmModal.value = false;
+      
+      setTimeout(() => {
+        router.push(`/user/requests/${response.data.id}`);
+      }, 2000);
+    } else {
+      // Use public endpoint (fallback, though this shouldn't happen if login modal works)
+      const response = await axios.post(endpoint, {
+        category_key: 'guide',
+        city_id: defaultCityId,
+        customer_name: authStore.user?.email?.split('@')[0] || authStore.user?.phone || 'User',
+        phone: authStore.user?.phone || '',
+        email: authStore.user?.email || null,
+        request_payload: {
+          guide_id: guide.value.id,
+          guide_user_id: guide.value.user_id || null,
+          guide_name: guide.value.display_name || guide.value.name,
+          guide_hourly_rate: guide.value.hourly_rate,
+          guide_daily_rate: guide.value.daily_rate,
+          guide_languages: guide.value.languages,
+        },
+      });
+      
+      toast.success('Request submitted successfully! We will contact you within 1 hour.');
+      showConfirmModal.value = false;
+      
+      setTimeout(() => {
+        router.push('/user/requests');
+      }, 2000);
+    }
 
     toast.success('Request submitted successfully! We will contact you within 1 hour.');
     showConfirmModal.value = false;
     
     // Optionally redirect to account page
     setTimeout(() => {
-      router.push('/app/requests');
+      router.push('/user/requests');
     }, 2000);
   } catch (error: any) {
     toast.error(error.response?.data?.error || 'Failed to submit request. Please try again.');

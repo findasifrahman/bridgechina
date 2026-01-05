@@ -37,3 +37,5 @@ If you can't rollback, we can:
 2. Recreate missing tables if needed
 3. Create a new migration that properly handles the transition
 
+
+

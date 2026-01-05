@@ -11,16 +11,16 @@ datasource db {
 }
 
 model User {
-  id                     String                  @id @default(uuid())
-  email                  String?                 @unique
+  id                     String                      @id @default(uuid())
+  email                  String?                     @unique
   phone                  String?
   password_hash          String
-  status                 String                  @default("active")
-  created_at             DateTime                @default(now())
-  updated_at             DateTime                @updatedAt
+  status                 String                      @default("active")
+  created_at             DateTime                    @default(now())
+  updated_at             DateTime                    @updatedAt
   activityLogs           ActivityLog[]
   addresses              Address[]
-  assignedConversations  Conversation[]          @relation("AssignedConversations")
+  assignedConversations  Conversation[]              @relation("AssignedConversations")
   blogPosts              BlogPost[]
   cart                   Cart?
   conversations          Conversation[]
@@ -31,17 +31,18 @@ model User {
   oauthAccounts          OAuthAccount[]
   orders                 Order[]
   payments               Payment[]
-  products               Product[]               @relation("SellerProducts")
+  products               Product[]                   @relation("SellerProducts")
   refreshTokens          RefreshToken[]
   reviews                Review[]
-  assignedRequests       ServiceRequest[]        @relation("AssignedRequests")
-  serviceRequests        ServiceRequest[]        @relation("UserRequests")
+  assignedRequests       ServiceRequest[]            @relation("AssignedRequests")
+  serviceRequests        ServiceRequest[]            @relation("UserRequests")
   roles                  UserRole[]
   serviceProviderProfile ServiceProviderProfile?
   providerDispatches     ProviderDispatch[]
-  providerOffers         ProviderOffer[]
-  approvedOffers         ProviderOffer[]         @relation("ApprovedOffers")
-  reviewedPaymentProofs  PaymentProof[]          @relation("PaymentProofReviewer")
+  providerOffers         ProviderOffer[]             @relation("ApprovedOffers")
+  reviewedPaymentProofs  PaymentProof[]              @relation("PaymentProofReviewer")
+  createdStatusEvents    ServiceRequestStatusEvent[] @relation("StatusEventCreator")
+  ProviderOffer          ProviderOffer[]
 
   @@index([email])
   @@index([phone])
@@ -95,14 +96,29 @@ model OAuthAccount {
 }
 
 model CustomerProfile {
-  user_id            String   @id
-  nationality        String?
-  passport_name      String?
-  preferred_language String?
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
-  user               User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_id                   String      @id
+  nationality               String?
+  passport_name             String?
+  preferred_language        String?
+  full_name                 String?
+  gender                    String?
+  birth_year                Int?
+  country_of_residence      String?
+  city_of_residence         String?
+  preferred_currency        String?
+  preferred_contact_channel String?
+  wechat_id                 String?
+  dietary_preferences       Json?
+  travel_interests          Json?
+  budget_preferences        Json?
+  marketing_consent         Boolean     @default(false)
+  avatar_asset_id           String?
+  created_at                DateTime    @default(now())
+  updated_at                DateTime    @updatedAt
+  user                      User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  avatarAsset               MediaAsset? @relation("CustomerProfileAvatar", fields: [avatar_asset_id], references: [id], onDelete: SetNull)
 
+  @@index([marketing_consent])
   @@map("customer_profiles")
 }
 
@@ -127,35 +143,37 @@ model Address {
 }
 
 model MediaAsset {
-  id                   String              @id @default(uuid())
-  r2_key               String              @unique
-  public_url           String
-  mime_type            String
-  size                 Int
-  uploaded_by          String
-  created_at           DateTime            @default(now())
-  category             String?
-  height               Int?
-  tags                 String[]            @default([])
-  thumbnail_key        String?
-  thumbnail_url        String?
-  width                Int?
-  cityCovers           City[]              @relation("CityCover")
-  cityPlaceCovers      CityPlace[]         @relation("CityPlaceCover")
-  esimPlans            EsimPlan[]
-  foodItemCovers       FoodItem[]          @relation("FoodItemCover")
-  galleryImages        GalleryImage[]
-  guideCovers          GuideProfile[]      @relation("GuideCover")
-  hotelCovers          Hotel[]             @relation("HotelCover")
-  uploader             User                @relation(fields: [uploaded_by], references: [id])
-  medicalCovers        MedicalCenter[]     @relation("MedicalCover")
-  productCovers        Product[]           @relation("ProductCover")
-  restaurantCovers     Restaurant[]        @relation("RestaurantCover")
-  serviceOfferCovers   ServiceBasedOffer[] @relation("ServiceOfferCover")
-  tourCovers           Tour[]              @relation("TourCover")
-  transportCovers      TransportProduct[]  @relation("TransportCover")
-  homepageBannerCovers HomepageBanner[]    @relation("HomepageBannerCover")
-  paymentProofs        PaymentProof[]
+  id                     String                   @id @default(uuid())
+  r2_key                 String                   @unique
+  public_url             String
+  mime_type              String
+  size                   Int
+  uploaded_by            String
+  created_at             DateTime                 @default(now())
+  category               String?
+  height                 Int?
+  tags                   String[]                 @default([])
+  thumbnail_key          String?
+  thumbnail_url          String?
+  width                  Int?
+  cityCovers             City[]                   @relation("CityCover")
+  cityPlaceCovers        CityPlace[]              @relation("CityPlaceCover")
+  esimPlans              EsimPlan[]
+  foodItemCovers         FoodItem[]               @relation("FoodItemCover")
+  galleryImages          GalleryImage[]
+  guideCovers            GuideProfile[]           @relation("GuideCover")
+  hotelCovers            Hotel[]                  @relation("HotelCover")
+  uploader               User                     @relation(fields: [uploaded_by], references: [id])
+  medicalCovers          MedicalCenter[]          @relation("MedicalCover")
+  productCovers          Product[]                @relation("ProductCover")
+  restaurantCovers       Restaurant[]             @relation("RestaurantCover")
+  serviceOfferCovers     ServiceBasedOffer[]      @relation("ServiceOfferCover")
+  tourCovers             Tour[]                   @relation("TourCover")
+  transportCovers        TransportProduct[]       @relation("TransportCover")
+  homepageBannerCovers   HomepageBanner[]         @relation("HomepageBannerCover")
+  paymentProofs          PaymentProof[]
+  customerProfileAvatars CustomerProfile[]        @relation("CustomerProfileAvatar")
+  serviceProviderCovers  ServiceProviderProfile[] @relation("ServiceProviderCover")
 
   @@index([uploaded_by])
   @@index([category])
@@ -437,12 +455,12 @@ model ServiceCategory {
 }
 
 model ServiceRequest {
-  id                           String                   @id @default(uuid())
+  id                           String                      @id @default(uuid())
   category_id                  String
   city_id                      String
   user_id                      String?
   lead_id                      String?
-  status                       String                   @default("new")
+  status                       String                      @default("new")
   assigned_to                  String?
   customer_name                String
   phone                        String
@@ -456,18 +474,18 @@ model ServiceRequest {
   first_ops_approval_at        DateTime?
   ops_last_action_at           DateTime?
   sla_due_at                   DateTime?
-  created_at                   DateTime                 @default(now())
-  updated_at                   DateTime                 @updatedAt
+  created_at                   DateTime                    @default(now())
+  updated_at                   DateTime                    @updatedAt
   foodDelivery                 FoodDelivery?
   guideRequest                 GuideRequest?
   hotelBooking                 HotelBooking?
   medicalAssist                MedicalAssist?
-  assignedUser                 User?                    @relation("AssignedRequests", fields: [assigned_to], references: [id])
-  category                     ServiceCategory          @relation(fields: [category_id], references: [id])
-  city                         City                     @relation(fields: [city_id], references: [id])
-  lead                         Lead?                    @relation(fields: [lead_id], references: [id])
-  user                         User?                    @relation("UserRequests", fields: [user_id], references: [id])
-  conversation                 Conversation?            @relation(fields: [created_from_conversation_id], references: [id])
+  assignedUser                 User?                       @relation("AssignedRequests", fields: [assigned_to], references: [id])
+  category                     ServiceCategory             @relation(fields: [category_id], references: [id])
+  city                         City                        @relation(fields: [city_id], references: [id])
+  lead                         Lead?                       @relation(fields: [lead_id], references: [id])
+  user                         User?                       @relation("UserRequests", fields: [user_id], references: [id])
+  conversation                 Conversation?               @relation(fields: [created_from_conversation_id], references: [id])
   tourBooking                  TourBooking?
   translationTask              TranslationTask?
   transportBooking             TransportBooking?
@@ -475,6 +493,7 @@ model ServiceRequest {
   providerOffers               ProviderOffer[]
   providerMessageContexts      ProviderMessageContext[]
   paymentProofs                PaymentProof[]
+  statusEvents                 ServiceRequestStatusEvent[]
 
   @@index([category_id])
   @@index([city_id])
@@ -988,21 +1007,62 @@ model Message {
 }
 
 model ServiceProviderProfile {
-  id         String   @id @default(uuid())
-  user_id    String   @unique
-  is_active  Boolean  @default(true)
-  categories Json? // Array of category keys: ["transport", "tours", "hotel", "shopping"]
-  city_id    String?
-  is_default Boolean  @default(false)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  city       City?    @relation(fields: [city_id], references: [id])
+  id                      String                          @id @default(uuid())
+  user_id                 String                          @unique
+  is_active               Boolean                         @default(true)
+  categories              Json? // Array of category keys: ["transport", "tours", "hotel", "shopping", "medical", "translation_help", "guide", "esim"]
+  city_id                 String?
+  is_default              Boolean                         @default(false)
+  provider_type           String? // "individual" | "company"
+  display_name            String?
+  company_name            String?
+  contact_name            String?
+  whatsapp                String?
+  wechat                  String?
+  email                   String?
+  website                 String?
+  description             String?
+  languages               Json? // Array of language codes
+  service_area            String? // Text description of service area
+  address_text            String?
+  verified                Boolean                         @default(false)
+  rating                  Float?
+  review_count            Int                             @default(0)
+  cover_asset_id          String?
+  gallery_asset_ids       Json? // Array of asset IDs
+  onboarding_completed_at DateTime?
+  created_at              DateTime                        @default(now())
+  updated_at              DateTime                        @updatedAt
+  user                    User                            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  city                    City?                           @relation(fields: [city_id], references: [id])
+  coverAsset              MediaAsset?                     @relation("ServiceProviderCover", fields: [cover_asset_id], references: [id], onDelete: SetNull)
+  serviceProfiles         ServiceProviderServiceProfile[]
 
   @@index([is_active])
   @@index([city_id])
   @@index([is_default])
+  @@index([verified])
   @@map("service_provider_profiles")
+}
+
+model ServiceProviderServiceProfile {
+  id                  String                 @id @default(uuid())
+  provider_profile_id String
+  category_key        String
+  is_active           Boolean                @default(true)
+  description         String?
+  pricing_info        Json? // Service-specific pricing info
+  availability_info   Json? // Service-specific availability info
+  specializations     Json? // Service-specific specializations/features
+  created_at          DateTime               @default(now())
+  updated_at          DateTime               @updatedAt
+  providerProfile     ServiceProviderProfile @relation(fields: [provider_profile_id], references: [id], onDelete: Cascade)
+
+  @@unique([provider_profile_id, category_key])
+  @@index([provider_profile_id])
+  @@index([category_key])
+  @@index([is_active])
+  @@map("service_provider_service_profiles")
 }
 
 model ProviderDispatch {
@@ -1085,6 +1145,24 @@ model PaymentProof {
   @@index([request_id])
   @@index([status])
   @@map("payment_proofs")
+}
+
+model ServiceRequestStatusEvent {
+  id            String         @id @default(uuid())
+  request_id    String
+  status_from   String?
+  status_to     String
+  note_internal String?
+  note_user     String?
+  created_by    String?
+  created_at    DateTime       @default(now())
+  request       ServiceRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+  createdBy     User?          @relation("StatusEventCreator", fields: [created_by], references: [id], onDelete: SetNull)
+
+  @@index([request_id])
+  @@index([status_to])
+  @@index([created_at])
+  @@map("service_request_status_events")
 }
 
 model SiteSetting {
@@ -1236,29 +1314,37 @@ model TourCityPlace {
 }
 
 model GuideProfile {
-  id             String       @id @default(uuid())
-  user_id        String?      @unique
-  city_id        String
-  display_name   String
-  bio            String?
-  languages      Json
-  hourly_rate    Float?
-  daily_rate     Float?
-  verified       Boolean      @default(false)
-  rating         Float?
-  review_count   Int          @default(0)
-  cover_asset_id String?
-  created_at     DateTime     @default(now())
-  updated_at     DateTime     @updatedAt
-  offers         GuideOffer[]
-  city           City         @relation(fields: [city_id], references: [id])
-  coverAsset     MediaAsset?  @relation("GuideCover", fields: [cover_asset_id], references: [id])
-  user           User?        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id                          String       @id @default(uuid())
+  user_id                     String?      @unique
+  city_id                     String
+  display_name                String
+  bio                         String?
+  languages                   Json
+  hourly_rate                 Float?
+  daily_rate                  Float?
+  verified                    Boolean      @default(false)
+  rating                      Float?
+  review_count                Int          @default(0)
+  cover_asset_id              String?
+  wechat                      String?
+  whatsapp                    String?
+  is_living_inside_china      Boolean?
+  current_occupation          String?
+  years_of_experience         Int?
+  identity_verified           Boolean      @default(false)
+  additional_photos_asset_ids Json? // Array of asset IDs
+  created_at                  DateTime     @default(now())
+  updated_at                  DateTime     @updatedAt
+  offers                      GuideOffer[]
+  city                        City         @relation(fields: [city_id], references: [id])
+  coverAsset                  MediaAsset?  @relation("GuideCover", fields: [cover_asset_id], references: [id])
+  user                        User?        @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([city_id])
   @@index([verified])
   @@index([rating])
   @@index([user_id])
+  @@index([identity_verified])
   @@map("guide_profiles")
 }
 

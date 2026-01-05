@@ -392,7 +392,7 @@ async function createMedicalRequest() {
     
     // Optionally redirect to account page
     setTimeout(() => {
-      router.push('/app/requests');
+      router.push('/user/requests');
     }, 2000);
   } catch (error: any) {
     toast.error(error.response?.data?.error || 'Failed to submit request. Please try again.');

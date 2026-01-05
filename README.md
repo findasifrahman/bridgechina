@@ -2,6 +2,34 @@
 
 A premium, modern, responsive web platform for international travelers in China. BridgeChina provides hotel booking assistance, airport pickup/transport, halal food discovery, medical assistance, car rental/driver booking, translation/local help, tour booking, eSIM services, and a shopping marketplace.
 
+## Recent Updates (Latest Development Cycle)
+
+### Multi-Channel Communication
+- **WebChat Integration**: New WebChat channel (separate from WhatsApp) with AI-powered responses
+- **Unified OPS Dashboard**: All conversations (WhatsApp, WebChat) visible in OPS inbox
+- **Channel-Aware Messaging**: OPS can reply to WhatsApp (via Twilio) or WebChat (direct storage)
+
+### Enhanced Service Request Management
+- **Bundle Requests**: Create multiple service requests together with shared bundle_key
+- **Status Timeline**: Complete status tracking with user-facing and internal notes
+- **Request Source Tracking**: See if requests came from WhatsApp, WebChat, or Website forms
+- **OPS Status Management**: OPS team can update request status with notifications
+- **Service Category Standardization**: All 9 core services consistently handled (guide, hotel, transport, halal_food, medical, translation_help, shopping, tours, esim)
+
+### Improved User Experience
+- **Route Migration**: `/app` routes migrated to `/user` (backward compatible)
+- **Enhanced Customer Profiles**: Marketing/persona fields, preferences, consent management
+- **Status Visibility**: Users can view request status timeline and updates
+- **Responsive Design**: Mobile-friendly user dashboard with improved layouts
+- **Provider Onboarding**: Enhanced provider profile system with per-service profiles (schema & API complete, migration pending)
+
+### API Enhancements
+- **Bundle API**: `POST /api/user/requests/bundle` for multi-service requests
+- **Status Events**: `POST /api/ops/requests/:id/status` for status updates with notifications
+- **WebChat Endpoints**: `/api/webchat/*` for session and message management
+- **Enhanced Request Details**: Request endpoints now include status events, bundle requests, and channel info
+- **Service Category Utilities**: Centralized normalization and validation for service categories
+
 ## Tech Stack
 
 - **Monorepo**: pnpm workspaces
@@ -496,7 +524,15 @@ pnpm dev
 - `POST /api/public/ai-search` - AI Chat Agent (OpenAI + Tavily)
   - Body: `{ query: string, sessionId?: string }`
   - Returns: `{ response: string, images: string[], sessionId: string, cards?: array }`
-- `POST /api/public/service-request` - Submit service request
+- `POST /api/public/service-request` - Submit service request (public, no auth)
+- `POST /api/public/lead` - Submit lead
+- `GET /api/public/geo` - City detection
+- `GET /api/public/catalog/esim` - eSIM plans
+
+**WebChat Endpoints:**
+- `POST /api/webchat/session` - Create or retrieve WebChat session
+- `GET /api/webchat/:conversationId/messages` - Get WebChat messages
+- `POST /api/webchat/:conversationId/send` - Send WebChat message
 - `POST /api/public/lead` - Submit lead
 - `GET /api/public/geo` - City detection
 - `GET /api/public/catalog/esim` - eSIM plans
@@ -577,21 +613,49 @@ pnpm dev
 - `PUT /api/admin/service-providers/:id` - Update service provider profile (includes is_default flag)
 - `DELETE /api/admin/service-providers/:id` - Delete service provider profile
 
-### User Endpoints (USER role)
-- `GET /api/user/profile` - Get user profile (with customerProfile)
-- `PATCH /api/user/profile` - Update user profile and customerProfile
+### User Endpoints (Authenticated)
+
+**Profile Management:**
+- `GET /api/user/profile` - Get user profile
+- `PATCH /api/user/profile` - Update user profile (supports enhanced customer profile fields)
+- `GET /api/user/requests` - List user's service requests (supports `?bundle_key=` query parameter)
+- `GET /api/user/requests/:id` - Get service request detail (includes statusEvents, bundleRequests, conversation)
+- `POST /api/user/requests` - Create single service request (auto-fills from profile)
+- `POST /api/user/requests/bundle` - Create multiple service requests in a bundle (shared bundle_key)
+- `GET /api/user/orders` - Get user's orders
+
+**Service Request Bundle API:**
+- `POST /api/user/requests/bundle`
+  - Body: `{ requests: Array<{ categoryKey, city_id?, citySlug?, payload? }>, city_id? }`
+  - Creates multiple ServiceRequest records with shared bundle_key
+  - Returns: `{ bundle_key: string, requests: Array<{ id, categoryKey, status }> }`
+
+**Payment Proofs:**
+- `POST /api/user/requests/:id/payment-proof` - Upload payment proof (with media asset)
+- `GET /api/user/requests/:id/payment-proof` - Get payment proofs for request
+- `POST /api/user/media/upload` - Upload media file (multipart, for payment proofs)
+
+**Addresses:**
 - `GET /api/user/addresses` - List user addresses
 - `POST /api/user/addresses` - Create address
 - `PUT /api/user/addresses/:id` - Update address
 - `DELETE /api/user/addresses/:id` - Delete address
-- `GET /api/user/requests` - List user's service requests
-- `GET /api/user/requests/:id` - Get service request detail (with offers and payment proofs)
-- `POST /api/user/requests/:id/payment-proof` - Upload payment proof (with media asset)
-- `GET /api/user/requests/:id/payment-proof` - Get payment proofs for request
-- `POST /api/user/media/upload` - Upload media file (multipart, for payment proofs)
-- `GET /api/user/orders` - List user's orders
 
 ## Database Schema Highlights
+
+### Service Categories
+The platform supports 9 core service categories (standardized keys):
+- `guide` - Guide Service
+- `hotel` - Hotel Booking
+- `transport` - Transport
+- `halal_food` - Halal Food
+- `medical` - Medical Assistance
+- `translation_help` - Translation & Help
+- `shopping` - Shopping Service
+- `tours` - Tours
+- `esim` - eSIM Plans
+
+Service categories are normalized via `apps/api/src/utils/service-category.ts` to handle variations and ensure consistency.
 
 ### Service Tables (with Image Relations)
 - `hotels` - Hotels with ratings, amenities, facilities
@@ -600,6 +664,7 @@ pnpm dev
 - `tours` - Tours with highlights, inclusions/exclusions
 - `transport_products` - Transport with vehicle types, capacity
 - `cities` - Cities with descriptions, highlights
+- `service_categories` - Service category definitions (9 core services)
 
 ### Image Tables
 - `hotel_images` - Multiple images per hotel

@@ -342,6 +342,149 @@ export default async function userRoutes(fastify: FastifyInstance) {
     return requests;
   });
 
+  // Create service request from website (for logged-in users)
+  const createServiceRequestSchema = z.object({
+    categoryKey: z.string().min(1, 'Category is required'),
+    citySlug: z.string().optional(),
+    city_id: z.string().optional(),
+    payload: z.record(z.any()).optional(),
+    bundle_key: z.string().optional(), // Optional: for creating bundles
+  });
+
+  // Create bundle of service requests (multi-service)
+  const createBundleRequestSchema = z.object({
+    requests: z.array(z.object({
+      categoryKey: z.string().min(1, 'Category is required'),
+      city_id: z.string().optional(),
+      citySlug: z.string().optional(),
+      payload: z.record(z.any()).optional(),
+    })).min(1, 'At least one request is required'),
+    city_id: z.string().optional(), // Default city for all requests if not specified
+  });
+
+  fastify.post('/requests', async (request: FastifyRequest, reply: FastifyReply) => {
+    const req = request as any;
+    const body = createServiceRequestSchema.parse(request.body);
+
+    // Find or create category
+    let category = await prisma.serviceCategory.findUnique({
+      where: { key: body.categoryKey },
+    });
+
+    if (!category) {
+      // Normalize category key (handles variations like "shopping_service" → "shopping")
+      const normalizedKey = normalizeCategoryKey(body.categoryKey);
+      if (!normalizedKey) {
+        reply.status(400).send({ error: `Invalid category key: ${body.categoryKey}` });
+        return;
+      }
+
+      category = await prisma.serviceCategory.create({
+        data: {
+          key: normalizedKey,
+          name: getCategoryName(normalizedKey),
+        },
+      });
+    }
+
+    // Resolve city_id from slug or use provided city_id
+    let cityId = body.city_id;
+    if (!cityId && body.citySlug) {
+      const city = await prisma.city.findFirst({
+        where: { slug: body.citySlug },
+      });
+      if (city) {
+        cityId = city.id;
+      }
+    }
+
+    // Default to Guangzhou if no city specified
+    if (!cityId) {
+      const defaultCity = await prisma.city.findFirst({
+        where: { slug: 'guangzhou' },
+      });
+      if (defaultCity) {
+        cityId = defaultCity.id;
+      } else {
+        reply.status(400).send({ error: 'City is required' });
+        return;
+      }
+    }
+
+    // Get user profile for contact info
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: {
+        customerProfile: true,
+      },
+    });
+
+    // Build request payload with source metadata
+    const requestPayload = {
+      ...(body.payload || {}),
+      source: 'web_form',
+      created_via: 'service_page',
+    };
+
+    // Create service request
+    const serviceRequest = await prisma.serviceRequest.create({
+      data: {
+        category_id: category.id,
+        city_id: cityId,
+        user_id: req.user.id,
+        customer_name: user?.customerProfile?.full_name || user?.email || 'User',
+        phone: user?.phone || '',
+        whatsapp: user?.customerProfile?.wechat_id || null,
+        email: user?.email || null,
+        request_payload: requestPayload,
+        status: 'new',
+      },
+    });
+
+    // Create category-specific booking record if needed
+    if (body.categoryKey === 'hotel' && body.payload) {
+      const payload = body.payload as any;
+      if (payload.checkin || payload.checkout) {
+        await prisma.hotelBooking.create({
+          data: {
+            request_id: serviceRequest.id,
+            checkin: payload.checkin ? new Date(payload.checkin) : null,
+            checkout: payload.checkout ? new Date(payload.checkout) : null,
+            guests: payload.guests || null,
+            rooms: payload.rooms || null,
+            adults: payload.adults || 1,
+            room_qty: payload.room_qty || payload.rooms || 1,
+            budget_min: payload.budget_min || null,
+            budget_max: payload.budget_max || null,
+            preferred_area: payload.preferred_area || null,
+            hotel_id: payload.hotel_id || null,
+          },
+        });
+      }
+    } else if (body.categoryKey === 'transport' && body.payload) {
+      const payload = body.payload as any;
+      if (payload.pickup_text && payload.dropoff_text) {
+        await prisma.transportBooking.create({
+          data: {
+            request_id: serviceRequest.id,
+            type: payload.type || 'pickup',
+            pickup_text: payload.pickup_text,
+            dropoff_text: payload.dropoff_text,
+            pickup_time: payload.pickup_time ? new Date(payload.pickup_time) : null,
+            passengers: payload.passengers || 1,
+            luggage: payload.luggage || 0,
+          },
+        });
+      }
+    }
+
+    return {
+      id: serviceRequest.id,
+      status: serviceRequest.status,
+      message: 'Service request created successfully',
+    };
+  });
+
   // Get user's orders
   fastify.get('/orders', async (request: FastifyRequest) => {
     const req = request as any;
@@ -386,6 +529,23 @@ export default async function userRoutes(fastify: FastifyInstance) {
           orderBy: { created_at: 'desc' },
           take: 1,
         },
+        statusEvents: {
+          select: {
+            id: true,
+            status_from: true,
+            status_to: true,
+            note_user: true, // Only user-facing notes
+            created_at: true,
+          },
+          orderBy: { created_at: 'asc' },
+        },
+        conversation: {
+          select: {
+            id: true,
+            channel: true,
+            external_channel: true,
+          },
+        },
       },
     });
 
@@ -399,7 +559,27 @@ export default async function userRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    return serviceRequest;
+    // Get sibling requests if bundle_key exists
+    let bundleRequests: any[] = [];
+    if (serviceRequest.bundle_key) {
+      bundleRequests = await prisma.serviceRequest.findMany({
+        where: {
+          bundle_key: serviceRequest.bundle_key,
+          user_id: req.user.id,
+          id: { not: id }, // Exclude current request
+        },
+        include: {
+          category: true,
+          city: true,
+        },
+        orderBy: { created_at: 'asc' },
+      });
+    }
+
+    return {
+      ...serviceRequest,
+      bundleRequests,
+    };
   });
 
   // Get user profile
@@ -411,7 +591,11 @@ export default async function userRoutes(fastify: FastifyInstance) {
         id: true,
         email: true,
         phone: true,
-        customerProfile: true,
+        customerProfile: {
+          include: {
+            avatarAsset: true,
+          },
+        },
       },
     });
     return user;
@@ -426,6 +610,19 @@ export default async function userRoutes(fastify: FastifyInstance) {
         nationality?: string;
         passport_name?: string;
         preferred_language?: string;
+        full_name?: string;
+        gender?: string;
+        birth_year?: number;
+        country_of_residence?: string;
+        city_of_residence?: string;
+        preferred_currency?: string;
+        preferred_contact_channel?: string;
+        wechat_id?: string;
+        dietary_preferences?: any;
+        travel_interests?: any;
+        budget_preferences?: any;
+        marketing_consent?: boolean;
+        avatar_asset_id?: string | null;
       };
     };
 
@@ -440,7 +637,11 @@ export default async function userRoutes(fastify: FastifyInstance) {
         id: true,
         email: true,
         phone: true,
-        customerProfile: true,
+        customerProfile: {
+          include: {
+            avatarAsset: true,
+          },
+        },
       },
     });
 
@@ -456,6 +657,45 @@ export default async function userRoutes(fastify: FastifyInstance) {
       if (body.customerProfile.preferred_language !== undefined) {
         profileUpdateData.preferred_language = body.customerProfile.preferred_language || null;
       }
+      if (body.customerProfile.full_name !== undefined) {
+        profileUpdateData.full_name = body.customerProfile.full_name || null;
+      }
+      if (body.customerProfile.gender !== undefined) {
+        profileUpdateData.gender = body.customerProfile.gender || null;
+      }
+      if (body.customerProfile.birth_year !== undefined) {
+        profileUpdateData.birth_year = body.customerProfile.birth_year || null;
+      }
+      if (body.customerProfile.country_of_residence !== undefined) {
+        profileUpdateData.country_of_residence = body.customerProfile.country_of_residence || null;
+      }
+      if (body.customerProfile.city_of_residence !== undefined) {
+        profileUpdateData.city_of_residence = body.customerProfile.city_of_residence || null;
+      }
+      if (body.customerProfile.preferred_currency !== undefined) {
+        profileUpdateData.preferred_currency = body.customerProfile.preferred_currency || null;
+      }
+      if (body.customerProfile.preferred_contact_channel !== undefined) {
+        profileUpdateData.preferred_contact_channel = body.customerProfile.preferred_contact_channel || null;
+      }
+      if (body.customerProfile.wechat_id !== undefined) {
+        profileUpdateData.wechat_id = body.customerProfile.wechat_id || null;
+      }
+      if (body.customerProfile.dietary_preferences !== undefined) {
+        profileUpdateData.dietary_preferences = body.customerProfile.dietary_preferences || null;
+      }
+      if (body.customerProfile.travel_interests !== undefined) {
+        profileUpdateData.travel_interests = body.customerProfile.travel_interests || null;
+      }
+      if (body.customerProfile.budget_preferences !== undefined) {
+        profileUpdateData.budget_preferences = body.customerProfile.budget_preferences || null;
+      }
+      if (body.customerProfile.marketing_consent !== undefined) {
+        profileUpdateData.marketing_consent = body.customerProfile.marketing_consent;
+      }
+      if (body.customerProfile.avatar_asset_id !== undefined) {
+        profileUpdateData.avatar_asset_id = body.customerProfile.avatar_asset_id || null;
+      }
 
       await prisma.customerProfile.upsert({
         where: { user_id: req.user.id },
@@ -465,6 +705,19 @@ export default async function userRoutes(fastify: FastifyInstance) {
           nationality: body.customerProfile.nationality || null,
           passport_name: body.customerProfile.passport_name || null,
           preferred_language: body.customerProfile.preferred_language || null,
+          full_name: body.customerProfile.full_name || null,
+          gender: body.customerProfile.gender || null,
+          birth_year: body.customerProfile.birth_year || null,
+          country_of_residence: body.customerProfile.country_of_residence || null,
+          city_of_residence: body.customerProfile.city_of_residence || null,
+          preferred_currency: body.customerProfile.preferred_currency || null,
+          preferred_contact_channel: body.customerProfile.preferred_contact_channel || null,
+          wechat_id: body.customerProfile.wechat_id || null,
+          dietary_preferences: body.customerProfile.dietary_preferences || null,
+          travel_interests: body.customerProfile.travel_interests || null,
+          budget_preferences: body.customerProfile.budget_preferences || null,
+          marketing_consent: body.customerProfile.marketing_consent || false,
+          avatar_asset_id: body.customerProfile.avatar_asset_id || null,
         },
       });
 
@@ -475,7 +728,11 @@ export default async function userRoutes(fastify: FastifyInstance) {
           id: true,
           email: true,
           phone: true,
-          customerProfile: true,
+          customerProfile: {
+            include: {
+              avatarAsset: true,
+            },
+          },
         },
       });
       return updatedUser;

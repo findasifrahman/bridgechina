@@ -17,14 +17,15 @@ async function main() {
   }
   console.log('✓ Roles created');
 
-  // Create service categories
+  // Create service categories (9 core services)
   const categories = [
+    { key: 'guide', name: 'Guide Service' },
     { key: 'hotel', name: 'Hotel Booking' },
     { key: 'transport', name: 'Transport' },
     { key: 'halal_food', name: 'Halal Food' },
     { key: 'medical', name: 'Medical Assistance' },
     { key: 'translation_help', name: 'Translation & Help' },
-    { key: 'shopping_service', name: 'Shopping Service' },
+    { key: 'shopping', name: 'Shopping Service' }, // Standardized from 'shopping_service'
     { key: 'tours', name: 'Tours' },
     { key: 'esim', name: 'eSIM Plans' },
   ];

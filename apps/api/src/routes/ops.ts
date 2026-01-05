@@ -237,17 +237,24 @@ export default async function opsRoutes(fastify: FastifyInstance) {
     }
 
     try {
-      let providerSid: string;
-
-      if (body.mediaUrl) {
-        // Send media message
-        providerSid = await sendMedia(externalFrom, body.mediaUrl, body.text);
-      } else {
-        // Send text message
-        providerSid = await sendText(externalFrom, body.text);
-      }
-
       const req = request as any;
+      let providerSid: string | null = null;
+
+      // Only send via Twilio for WhatsApp conversations
+      if (conversation.channel === 'whatsapp') {
+        if (body.mediaUrl) {
+          // Send media message
+          providerSid = await sendMedia(externalFrom, body.mediaUrl, body.text);
+        } else {
+          // Send text message
+          providerSid = await sendText(externalFrom, body.text);
+        }
+      }
+      // For webchat, we don't send via Twilio - just store the message
+      // The webchat widget will poll for new messages
+
+      // Determine provider based on channel
+      const provider = conversation.channel === 'whatsapp' ? 'twilio' : 'web_chat';
       
       // Store outbound message
       const message = await prisma.message.create({
@@ -255,7 +262,7 @@ export default async function opsRoutes(fastify: FastifyInstance) {
           conversation_id: id,
           role: 'assistant',
           direction: 'OUTBOUND',
-          provider: 'twilio',
+          provider: provider,
           provider_sid: providerSid,
           content: body.text,
           status: 'sent',
@@ -612,6 +619,21 @@ export default async function opsRoutes(fastify: FastifyInstance) {
           },
           orderBy: { submitted_at: 'desc' },
         },
+        statusEvents: {
+          include: {
+            createdBy: {
+              select: { id: true, email: true },
+            },
+          },
+          orderBy: { created_at: 'asc' },
+        },
+        conversation: {
+          select: {
+            id: true,
+            channel: true,
+            external_channel: true,
+          },
+        },
       },
     });
 
@@ -620,8 +642,134 @@ export default async function opsRoutes(fastify: FastifyInstance) {
       return;
     }
 
+    // Get sibling requests if bundle_key exists
+    let bundleRequests: any[] = [];
+    if (serviceRequest.bundle_key) {
+      bundleRequests = await prisma.serviceRequest.findMany({
+        where: {
+          bundle_key: serviceRequest.bundle_key,
+          id: { not: id }, // Exclude current request
+        },
+        include: {
+          category: true,
+          city: true,
+        },
+        orderBy: { created_at: 'asc' },
+      });
+    }
+
     return {
       request: serviceRequest,
+      bundleRequests,
+    };
+  });
+
+  // Update request status with timeline event
+  const updateRequestStatusSchema = z.object({
+    status_to: z.string().min(1, 'Status is required'),
+    note_internal: z.string().optional(),
+    note_user: z.string().optional(),
+    notify_user: z.boolean().optional().default(false),
+  });
+
+  fastify.post('/requests/:id/status', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const body = updateRequestStatusSchema.parse(request.body);
+    const req = request as any;
+
+    // Fetch current request
+    const serviceRequest = await prisma.serviceRequest.findUnique({
+      where: { id },
+      include: {
+        conversation: true,
+      },
+    });
+
+    if (!serviceRequest) {
+      reply.status(404).send({ error: 'Service request not found' });
+      return;
+    }
+
+    const statusFrom = serviceRequest.status;
+
+    // Update request status
+    await prisma.serviceRequest.update({
+      where: { id },
+      data: {
+        status: body.status_to,
+        ops_last_action_at: new Date(),
+        updated_at: new Date(),
+      },
+    });
+
+    // Create status event
+    await prisma.serviceRequestStatusEvent.create({
+      data: {
+        request_id: id,
+        status_from: statusFrom,
+        status_to: body.status_to,
+        note_internal: body.note_internal || null,
+        note_user: body.note_user || null,
+        created_by: req.user.id,
+      },
+    });
+
+    // Notify user if requested and conversation exists
+    let notificationSent = false;
+    if (body.notify_user && serviceRequest.conversation) {
+      const notifyText = body.note_user || `Your request status has been updated to: ${body.status_to}`;
+      
+      if (serviceRequest.conversation.channel === 'whatsapp') {
+        // Send via Twilio for WhatsApp
+        try {
+          const { sendText } = await import('../modules/whatsapp/twilio.client.js');
+          const providerSid = await sendText(serviceRequest.conversation.external_from!, notifyText);
+          
+          await prisma.message.create({
+            data: {
+              conversation_id: serviceRequest.conversation.id,
+              role: 'assistant',
+              direction: 'OUTBOUND',
+              provider: 'twilio',
+              provider_sid: providerSid,
+              content: notifyText,
+              status: 'sent',
+              meta_json: {
+                type: 'status_update',
+                request_id: id,
+                status_to: body.status_to,
+              },
+            },
+          });
+          notificationSent = true;
+        } catch (error: any) {
+          fastify.log.error({ error }, '[Ops Routes] Failed to send WhatsApp notification');
+        }
+      } else if (serviceRequest.conversation.channel === 'webchat') {
+        // Store message only for webchat (no Twilio)
+        await prisma.message.create({
+          data: {
+            conversation_id: serviceRequest.conversation.id,
+            role: 'assistant',
+            direction: 'OUTBOUND',
+            provider: 'web_chat',
+            content: notifyText,
+            status: 'sent',
+            meta_json: {
+              type: 'status_update',
+              request_id: id,
+              status_to: body.status_to,
+            },
+          },
+        });
+        notificationSent = true;
+      }
+    }
+
+    return {
+      success: true,
+      status: body.status_to,
+      notificationSent,
     };
   });
 }

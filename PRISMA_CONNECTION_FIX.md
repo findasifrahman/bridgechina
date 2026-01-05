@@ -100,3 +100,5 @@ After deploying this fix:
 - The global variable pattern prevents issues during development hot reload
 - Graceful shutdown ensures connections are properly closed on process exit
 
+
+
