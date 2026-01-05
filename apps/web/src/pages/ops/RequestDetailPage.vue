@@ -1,10 +1,15 @@
 <template>
   <div>
-    <PageHeader title="Request Details">
-      <template #actions>
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-semibold text-slate-900">Request Details</h1>
+      <div class="flex gap-2">
+        <Button variant="ghost" size="sm" @click="loadRequest" :loading="loading">
+          <RefreshCw class="h-4 w-4 mr-2" :class="{ 'animate-spin': loading }" />
+          Refresh
+        </Button>
         <Button variant="secondary" @click="$router.back()">Back</Button>
-      </template>
-    </PageHeader>
+      </div>
+    </div>
     <div v-if="loading" class="text-center py-8 text-slate-500">Loading request details...</div>
     <div v-else-if="!request" class="text-center py-8 text-red-500">Request not found.</div>
     <div v-else class="space-y-6">
@@ -163,8 +168,12 @@
                 <option value="quoted">Quoted</option>
                 <option value="confirmed">Confirmed</option>
                 <option value="paid">Paid</option>
+                <option value="partially_paid">Partially Paid</option>
                 <option value="booked">Booked</option>
+                <option value="service_done">Service Done</option>
+                <option value="payment_done">Payment Done</option>
                 <option value="done">Done</option>
+                <option value="complete">Complete</option>
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>
@@ -364,6 +373,7 @@ import {
   Button,
   Badge,
 } from '@bridgechina/ui';
+import { RefreshCw } from 'lucide-vue-next';
 
 const route = useRoute();
 const toast = useToast();

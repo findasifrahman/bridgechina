@@ -130,8 +130,12 @@ const statusOptions = [
   { value: 'quoted', label: 'Quoted' },
   { value: 'confirmed', label: 'Confirmed' },
   { value: 'paid', label: 'Paid' },
+  { value: 'partially_paid', label: 'Partially Paid' },
   { value: 'booked', label: 'Booked' },
+  { value: 'service_done', label: 'Service Done' },
+  { value: 'payment_done', label: 'Payment Done' },
   { value: 'done', label: 'Done' },
+  { value: 'complete', label: 'Complete' },
   { value: 'cancelled', label: 'Cancelled' },
 ];
 

@@ -887,6 +887,80 @@ Set all required environment variables in your hosting platform (Vercel, Railway
    - Send approved offers to users via WhatsApp (with AI message distillation)
    - Track dispatch status (which providers viewed/responded/overdue)
 
+## Service Request Status Definitions
+
+Service requests progress through a defined status lifecycle. Understanding each status is crucial for proper workflow management:
+
+### Status Flow and Meanings
+
+1. **`new`** - Initial status when a service request is first created
+   - Request is pending initial review
+   - No action has been taken yet
+
+2. **`in_progress`** - Request is actively being worked on
+   - OPS team or provider has started processing the request
+   - Request has been assigned to a provider (or providers)
+
+3. **`quoted`** - A price quote has been provided to the customer
+   - Provider/OPS has submitted pricing information
+   - Awaiting customer confirmation
+
+4. **`confirmed`** - Customer has confirmed they want to proceed
+   - Quote has been accepted
+   - Service booking is confirmed
+
+5. **`paid`** - Full payment has been received
+   - Customer has completed full payment
+   - Service can proceed
+
+6. **`partially_paid`** - Partial payment has been received
+   - Customer has made a deposit or partial payment
+   - Remaining balance pending
+
+7. **`booked`** - Service has been booked/reserved
+   - Booking confirmed with service provider (hotel, transport, etc.)
+   - Service is scheduled
+
+8. **`service_done`** - Service has been completed
+   - All service activities have been finished
+   - Service delivery is complete
+
+9. **`payment_done`** - All payments (including final balance) are complete
+   - Full payment cycle is finished
+   - Used when payment was split across multiple stages
+
+10. **`done`** - Request is fully complete
+    - All services delivered and payments received
+    - Request is closed successfully
+
+11. **`complete`** - Alternative to "done" (same meaning)
+    - Request is fully complete and closed
+    - Used interchangeably with "done"
+
+12. **`cancelled`** - Request has been cancelled
+    - Request was cancelled by customer or system
+    - No further action will be taken
+
+### Status Usage Notes
+
+- **OPS Dashboard**: All statuses are available for selection when updating requests
+- **Status Display**: Status text is automatically formatted (e.g., `in_progress` → "In Progress")
+- **Status Colors**: Each status has a distinct color for visual identification:
+  - `new`: Gray
+  - `in_progress`: Blue
+  - `quoted`, `confirmed`: Amber/Teal
+  - `paid`, `payment_done`, `done`, `complete`: Green
+  - `partially_paid`: Yellow
+  - `booked`: Purple
+  - `service_done`: Emerald
+  - `cancelled`: Red
+
+### Important Status Transitions
+
+- **Assignment Required**: When status changes to `in_progress` or `dispatched`, at least one provider must be assigned
+- **Multiple Providers**: Services like shopping, guide, and tours can have multiple providers assigned
+- **Payment Tracking**: Use `partially_paid` when payment is incomplete, then move to `paid` or `payment_done` when complete
+
 ## Brand Guidelines
 
 BridgeChina uses a consistent Teal + Amber color scheme:

@@ -174,27 +174,38 @@
     </div>
 
     <!-- Pagination -->
-    <div v-if="totalPages > 1" class="flex justify-center items-center space-x-4">
-      <Button
-        variant="ghost"
-        size="sm"
-        :disabled="currentPage === 1"
-        @click="currentPage--; loadRequests()"
-      >
-        <ChevronLeft class="h-4 w-4" />
-      </Button>
-      <span class="text-sm text-slate-600 px-4">
-        Page {{ currentPage }} of {{ totalPages }} ({{ totalItems }} total)
-      </span>
-      <Button
-        variant="ghost"
-        size="sm"
-        :disabled="currentPage === totalPages"
-        @click="currentPage++; loadRequests()"
-      >
-        <ChevronRight class="h-4 w-4" />
-      </Button>
-    </div>
+    <Card v-if="totalItems > 0">
+      <CardBody>
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div class="text-sm text-slate-600">
+            Showing {{ (currentPage - 1) * 20 + 1 }} to {{ Math.min(currentPage * 20, totalItems) }} of {{ totalItems }} requests
+          </div>
+          <div v-if="totalPages > 1" class="flex justify-center items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              :disabled="currentPage === 1"
+              @click="currentPage--; loadRequests()"
+            >
+              <ChevronLeft class="h-4 w-4" />
+              Previous
+            </Button>
+            <span class="text-sm text-slate-600 px-4">
+              Page {{ currentPage }} of {{ totalPages }}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              :disabled="currentPage === totalPages"
+              @click="currentPage++; loadRequests()"
+            >
+              Next
+              <ChevronRight class="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </CardBody>
+    </Card>
   </div>
 </template>
 
@@ -214,6 +225,9 @@ const filters = ref({
   status: '',
   category_id: '',
 });
+const dateRange = ref('today_yesterday');
+const customFromDate = ref('');
+const customToDate = ref('');
 const currentPage = ref(1);
 const totalPages = ref(1);
 const totalItems = ref(0);
@@ -246,6 +260,33 @@ async function loadRequests() {
     if (filters.value.status) params.status = filters.value.status;
     if (filters.value.category_id) params.category_id = filters.value.category_id;
     if (searchQuery.value.trim()) params.search = searchQuery.value.trim();
+
+    // Handle date range
+    if (dateRange.value === 'custom') {
+      if (customFromDate.value) params.from_date = customFromDate.value;
+      if (customToDate.value) params.to_date = customToDate.value;
+    } else if (dateRange.value === 'today') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      params.from_date = today.toISOString().split('T')[0];
+      params.to_date = today.toISOString().split('T')[0];
+    } else if (dateRange.value === 'yesterday') {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+      params.from_date = yesterday.toISOString().split('T')[0];
+      params.to_date = yesterday.toISOString().split('T')[0];
+    } else if (dateRange.value && dateRange.value !== 'today_yesterday' && dateRange.value !== 'all') {
+      const days = parseInt(dateRange.value);
+      const toDate = new Date();
+      const fromDate = new Date();
+      fromDate.setDate(fromDate.getDate() - days);
+      params.from_date = fromDate.toISOString().split('T')[0];
+      params.to_date = toDate.toISOString().split('T')[0];
+    }
+    // If today_yesterday or all, don't send date params (backend defaults to today+yesterday)
 
     const response = await axios.get('/api/ops/requests', { params });
     requests.value = response.data.requests || [];
