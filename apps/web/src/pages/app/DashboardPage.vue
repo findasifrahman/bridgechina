@@ -14,7 +14,10 @@
     </div>
     <Card>
       <CardHeader>
-        <h3 class="text-lg font-semibold">Recent Requests</h3>
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold">Recent Requests</h3>
+          <span class="text-sm text-slate-500">Showing last {{ Math.min(requests.length, 10) }} request{{ requests.length !== 1 ? 's' : '' }}</span>
+        </div>
       </CardHeader>
       <CardBody>
         <EmptyState
@@ -23,11 +26,12 @@
           description="Submit your first service request to get started"
         />
         <div v-else class="space-y-4">
-          <div v-for="request in requests" :key="request.id" class="border-b pb-4">
+          <div v-for="request in requests.slice(0, 10)" :key="request.id" class="border-b pb-4">
             <div class="flex justify-between items-center">
-              <div>
-                <p class="font-semibold">{{ request.category.name }}</p>
-                <p class="text-sm text-slate-600">{{ request.city.name }}</p>
+              <div class="flex-1 cursor-pointer" @click="$router.push(`/user/requests/${request.id}`)">
+                <p class="font-semibold">{{ request.category?.name || 'Service' }}</p>
+                <p class="text-sm text-slate-600">{{ request.city?.name || 'N/A' }}</p>
+                <p class="text-xs text-slate-500 mt-1">{{ new Date(request.created_at).toLocaleDateString() }}</p>
               </div>
               <StatusChip :status="request.status" />
             </div>
@@ -53,13 +57,14 @@ const loading = ref(false);
 async function loadData() {
   loading.value = true;
   try {
+    // Dashboard should load all requests (no date filter) to count active requests correctly
     const [requestsRes, ordersRes, addressesRes] = await Promise.all([
-      axios.get('/api/user/requests'),
+      axios.get('/api/user/requests', { params: { all_time: 'true' } }),
       axios.get('/api/user/orders'),
       axios.get('/api/user/addresses'),
     ]);
-    requests.value = requestsRes.data;
-    activeRequests.value = requests.value.filter((r: any) => r.status !== 'done' && r.status !== 'cancelled').length;
+    requests.value = requestsRes.data || [];
+    activeRequests.value = requests.value.filter((r: any) => r.status !== 'done' && r.status !== 'cancelled' && r.status !== 'complete').length;
     orders.value = ordersRes.data.length;
     addresses.value = addressesRes.data.length;
   } catch (error) {
