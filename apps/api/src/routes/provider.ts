@@ -582,15 +582,15 @@ export default async function providerRoutes(fastify: FastifyInstance) {
     contact_name: z.string().optional(),
     whatsapp: z.string().optional().nullable(),
     wechat: z.string().optional().nullable(),
-    email: z.string().email().optional().nullable(),
-    website: z.string().url().optional().nullable(),
+    email: z.preprocess((val) => val === '' ? null : val, z.string().email().nullable().optional()),
+    website: z.preprocess((val) => val === '' ? null : val, z.string().url().nullable().optional()),
     description: z.string().optional().nullable(),
     languages: z.array(z.string()).optional().nullable(),
     service_area: z.string().optional().nullable(),
     address_text: z.string().optional().nullable(),
     cover_asset_id: z.string().uuid().optional().nullable(),
     gallery_asset_ids: z.array(z.string().uuid()).optional().nullable(),
-    categories: z.array(z.string()).optional().nullable(),
+    // categories field removed - only admins can manage categories via /api/admin/service-providers
     city_id: z.string().uuid().optional().nullable(),
   });
 
@@ -624,7 +624,7 @@ export default async function providerRoutes(fastify: FastifyInstance) {
     if (body.address_text !== undefined) updateData.address_text = body.address_text;
     if (body.cover_asset_id !== undefined) updateData.cover_asset_id = body.cover_asset_id;
     if (body.gallery_asset_ids !== undefined) updateData.gallery_asset_ids = body.gallery_asset_ids;
-    if (body.categories !== undefined) updateData.categories = body.categories;
+    // categories removed - only admins can update categories via /api/admin/service-providers/:id
     if (body.city_id !== undefined) updateData.city_id = body.city_id;
 
     // Mark onboarding as completed if key fields are filled

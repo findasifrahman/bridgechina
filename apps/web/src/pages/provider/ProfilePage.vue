@@ -110,32 +110,25 @@
         </CardBody>
       </Card>
 
-      <!-- Service Categories -->
+      <!-- Service Categories (Read-only) -->
       <Card class="md:col-span-2">
         <CardHeader>
           <h3 class="text-lg font-semibold">Service Categories</h3>
+          <p class="text-sm text-slate-500 mt-1">Categories are managed by administrators. Contact admin to update your service categories.</p>
         </CardHeader>
         <CardBody>
           <div class="space-y-4">
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              <label
-                v-for="category in serviceCategories"
-                :key="category.key"
-                class="flex items-center space-x-2 p-3 border rounded-lg cursor-pointer hover:bg-slate-50"
-                :class="selectedCategories.includes(category.key) ? 'border-teal-500 bg-teal-50' : 'border-slate-200'"
-              >
-                <input
-                  type="checkbox"
-                  :value="category.key"
-                  v-model="selectedCategories"
-                  class="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
-                />
-                <span class="text-sm font-medium">{{ category.name }}</span>
-              </label>
+            <div v-if="selectedCategories.length === 0" class="text-sm text-slate-500 py-4">
+              No categories assigned. Contact admin to assign service categories.
             </div>
-            <div class="flex justify-end gap-3 pt-4">
-              <Button variant="ghost" type="button" @click="loadProfile">Cancel</Button>
-              <Button variant="primary" @click="updateCategories" :loading="saving">Save Categories</Button>
+            <div v-else class="flex flex-wrap gap-2">
+              <span
+                v-for="categoryKey in selectedCategories"
+                :key="categoryKey"
+                class="px-3 py-1.5 bg-teal-100 text-teal-700 rounded-lg text-sm font-medium"
+              >
+                {{ getCategoryName(categoryKey) }}
+              </span>
             </div>
           </div>
         </CardBody>
@@ -206,7 +199,6 @@ const profileForm = ref({
 const selectedCategories = ref<string[]>([]);
 const serviceProfiles = ref<any[]>([]);
 const cities = ref<any[]>([]);
-const serviceCategories = ref<any[]>([]);
 const saving = ref(false);
 const toast = useToast();
 
@@ -291,23 +283,10 @@ async function updateProfile() {
   }
 }
 
-async function updateCategories() {
-  saving.value = true;
-  try {
-    await axios.patch('/api/provider/profile', {
-      categories: selectedCategories.value,
-    });
-    toast.success('Categories updated');
-    await loadProfile();
-  } catch (error: any) {
-    toast.error(error.response?.data?.error || 'Failed to update categories');
-  } finally {
-    saving.value = false;
-  }
-}
+// Categories are managed by admins only - removed updateCategories function
 
 onMounted(async () => {
-  await Promise.all([loadCities(), loadServiceCategories(), loadProfile()]);
+  await Promise.all([loadCities(), loadProfile()]);
 });
 </script>
 
