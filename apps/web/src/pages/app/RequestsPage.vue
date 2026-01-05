@@ -306,8 +306,14 @@ async function loadRequests() {
   loading.value = true;
   try {
     const params: any = {};
-    if (dateFilter.value.from_date) params.from_date = dateFilter.value.from_date;
-    if (dateFilter.value.to_date) params.to_date = dateFilter.value.to_date;
+    // Send all_time param when "all" is selected
+    if (dateRange.value === 'all') {
+      params.all_time = 'true';
+    } else {
+      // Send date params for other ranges
+      if (dateFilter.value.from_date) params.from_date = dateFilter.value.from_date;
+      if (dateFilter.value.to_date) params.to_date = dateFilter.value.to_date;
+    }
     if (filters.value.status) params.status = filters.value.status;
 
     const response = await axios.get('/api/user/requests', { params });

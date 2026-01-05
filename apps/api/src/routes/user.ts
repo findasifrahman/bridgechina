@@ -337,23 +337,37 @@ export default async function userRoutes(fastify: FastifyInstance) {
       from_date?: string;
       to_date?: string;
       status?: string;
+      all_time?: string;
     };
-
-    // Default to last 7 days if no date filter provided
-    const now = new Date();
-    const sevenDaysAgo = new Date(now);
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    const fromDate = query.from_date ? new Date(query.from_date) : sevenDaysAgo;
-    const toDate = query.to_date ? new Date(query.to_date) : now;
 
     const where: any = {
       user_id: req.user.id,
-      created_at: {
-        gte: fromDate,
-        lte: toDate,
-      },
     };
+
+    // Apply date filter
+    if (query.all_time === 'true') {
+      // No date filter for "all time"
+    } else if (query.from_date || query.to_date) {
+      // Explicit date range provided
+      const now = new Date();
+      const fromDate = query.from_date ? new Date(query.from_date) : new Date(0);
+      const toDate = query.to_date ? new Date(query.to_date) : now;
+      
+      where.created_at = {
+        ...(query.from_date ? { gte: fromDate } : {}),
+        ...(query.to_date ? { lte: toDate } : {}),
+      };
+    } else {
+      // Default to last 7 days when no date params provided
+      const now = new Date();
+      const sevenDaysAgo = new Date(now);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      where.created_at = {
+        gte: sevenDaysAgo,
+        lte: now,
+      };
+    }
 
     if (query.status) {
       where.status = query.status;
