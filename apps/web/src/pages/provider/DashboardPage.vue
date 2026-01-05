@@ -1,6 +1,21 @@
 <template>
   <div>
-    <PageHeader title="Provider Dashboard" />
+    <!-- Welcome Banner -->
+    <div class="bg-gradient-to-r from-teal-500 to-teal-600 rounded-lg shadow-lg p-6 mb-6 text-white">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-2xl font-bold mb-2">Welcome to Your Provider Dashboard</h1>
+          <p class="text-teal-100">Manage your service requests and conversations in one place</p>
+        </div>
+        <div class="hidden md:block">
+          <Building2 class="w-16 h-16 text-teal-200" />
+        </div>
+      </div>
+    </div>
+
+    <PageHeader title="Dashboard Overview" />
+    
+    <!-- Stats Cards -->
     <div class="grid md:grid-cols-3 gap-6 mb-8">
       <StatCard
         label="Assigned Conversations"
@@ -23,31 +38,46 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
       <router-link
         to="/provider/requests"
-        class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer"
+        class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl hover:scale-105 transition-all cursor-pointer border border-slate-200 hover:border-teal-300"
       >
         <div class="flex items-center justify-between">
           <div>
-            <div class="text-sm text-slate-600 mb-1">View Requests</div>
+            <div class="text-sm text-slate-600 mb-1 font-medium">View Requests</div>
             <div class="text-lg font-semibold text-teal-600">My Assigned Requests</div>
           </div>
-          <svg class="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
+          <div class="bg-teal-100 p-3 rounded-lg">
+            <ClipboardList class="w-8 h-8 text-teal-600" />
+          </div>
         </div>
       </router-link>
 
       <router-link
         to="/provider/inbox"
-        class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow cursor-pointer"
+        class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl hover:scale-105 transition-all cursor-pointer border border-slate-200 hover:border-teal-300"
       >
         <div class="flex items-center justify-between">
           <div>
-            <div class="text-sm text-slate-600 mb-1">Conversations</div>
+            <div class="text-sm text-slate-600 mb-1 font-medium">Conversations</div>
             <div class="text-lg font-semibold text-teal-600">WhatsApp Inbox</div>
           </div>
-          <svg class="w-8 h-8 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
+          <div class="bg-green-100 p-3 rounded-lg">
+            <MessageCircle class="w-8 h-8 text-green-600" />
+          </div>
+        </div>
+      </router-link>
+
+      <router-link
+        to="/provider/profile"
+        class="bg-white rounded-lg shadow-md p-6 hover:shadow-xl hover:scale-105 transition-all cursor-pointer border border-slate-200 hover:border-teal-300"
+      >
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-sm text-slate-600 mb-1 font-medium">Manage Profile</div>
+            <div class="text-lg font-semibold text-teal-600">Provider Profile</div>
+          </div>
+          <div class="bg-blue-100 p-3 rounded-lg">
+            <User class="w-8 h-8 text-blue-600" />
+          </div>
         </div>
       </router-link>
     </div>
@@ -115,6 +145,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { Building2, ClipboardList, MessageCircle, User } from 'lucide-vue-next';
 import axios from '@/utils/axios';
 import { PageHeader, StatCard, Card, CardHeader, CardBody } from '@bridgechina/ui';
 

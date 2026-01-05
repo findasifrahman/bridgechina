@@ -2526,15 +2526,32 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    // Verify user exists
+    // Verify user exists and get current roles
     const user = await prisma.user.findUnique({
       where: { id },
+      include: {
+        roles: {
+          include: {
+            role: true,
+          },
+        },
+      },
     });
 
     if (!user) {
       reply.status(404).send({ error: 'User not found' });
       return;
     }
+
+    // Check if user currently has SERVICE_PROVIDER role
+    const hadServiceProviderRole = user.roles.some((ur) => ur.role.name === 'SERVICE_PROVIDER');
+
+    // Get SERVICE_PROVIDER role ID to check if it's being removed
+    const serviceProviderRole = await prisma.role.findUnique({
+      where: { name: 'SERVICE_PROVIDER' },
+    });
+
+    const hasServiceProviderRoleInNew = serviceProviderRole && body.role_ids.includes(serviceProviderRole.id);
 
     // Delete all existing user roles
     await prisma.userRole.deleteMany({
@@ -2548,6 +2565,13 @@ export default async function adminRoutes(fastify: FastifyInstance) {
           user_id: id,
           role_id,
         })),
+      });
+    }
+
+    // If SERVICE_PROVIDER role was removed, delete the service provider profile
+    if (hadServiceProviderRole && !hasServiceProviderRoleInNew) {
+      await prisma.serviceProviderProfile.deleteMany({
+        where: { user_id: id },
       });
     }
 
