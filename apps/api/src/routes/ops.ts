@@ -739,7 +739,10 @@ export default async function opsRoutes(fastify: FastifyInstance) {
     note_user: z.string().optional(),
     notify_user: z.boolean().optional().default(false),
     notify_provider: z.boolean().optional().default(false),
-    assigned_to: z.string().uuid().optional(),
+    assigned_to: z.preprocess(
+      (val) => val === '' || val === null ? undefined : val,
+      z.string().uuid().optional()
+    ),
     total_amount: z.number().positive().optional(),
     paid_amount: z.number().min(0).optional(),
     is_fully_paid: z.boolean().optional(),

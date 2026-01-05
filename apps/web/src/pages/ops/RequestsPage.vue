@@ -1,8 +1,15 @@
 <template>
   <div class="space-y-4">
-    <PageHeader title="Service Requests" />
+    <div class="flex items-center justify-between">
+      <PageHeader title="Service Requests" />
+      <Button variant="ghost" size="sm" @click="loadRequests" :loading="loading">
+        <RefreshCw class="h-4 w-4 mr-2" :class="{ 'animate-spin': loading }" />
+        Refresh
+      </Button>
+    </div>
     <FilterBar
       :filters="filterOptions"
+      :search-placeholder="'Search by ID, name, phone, email...'"
       @search="handleSearch"
       @filter="handleFilter"
     />
@@ -13,6 +20,9 @@
       @view="handleView"
       @sort="handleSort"
     >
+      <template #cell-id="{ value }">
+        <code class="text-xs bg-slate-100 px-2 py-1 rounded">{{ value?.slice(0, 8) }}</code>
+      </template>
       <template #cell-category="{ value }">
         {{ value?.name || 'N/A' }}
       </template>
@@ -45,6 +55,7 @@ import { ref, onMounted, computed } from 'vue';
 import axios from '@/utils/axios';
 import { useRouter } from 'vue-router';
 import { PageHeader, CompactTable, FilterBar, StatusChip, Button, Pagination } from '@bridgechina/ui';
+import { RefreshCw } from 'lucide-vue-next';
 
 const router = useRouter();
 
@@ -62,33 +73,41 @@ const sortBy = ref('created_at');
 const sortOrder = ref<'asc' | 'desc'>('desc');
 const loading = ref(false);
 
-const filterOptions = [
+// Status options matching the shared schema (all statuses OPS can use)
+const statusOptions = [
+  { value: '', label: 'All Statuses' },
+  { value: 'new', label: 'New' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'quoted', label: 'Quoted' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'paid', label: 'Paid' },
+  { value: 'partially_paid', label: 'Partially Paid' },
+  { value: 'booked', label: 'Booked' },
+  { value: 'service_done', label: 'Service Done' },
+  { value: 'payment_done', label: 'Payment Done' },
+  { value: 'done', label: 'Done' },
+  { value: 'complete', label: 'Complete' },
+  { value: 'cancelled', label: 'Cancelled' },
+];
+
+const filterOptions = computed(() => [
   {
     key: 'status',
     placeholder: 'All Statuses',
-    options: [
-      { value: '', label: 'All Statuses' },
-      { value: 'new', label: 'New' },
-      { value: 'in_progress', label: 'In Progress' },
-      { value: 'quoted', label: 'Quoted' },
-      { value: 'confirmed', label: 'Confirmed' },
-      { value: 'paid', label: 'Paid' },
-      { value: 'booked', label: 'Booked' },
-      { value: 'done', label: 'Done' },
-      { value: 'cancelled', label: 'Cancelled' },
-    ],
+    options: statusOptions,
   },
   {
     key: 'category_id',
     placeholder: 'All Categories',
-    options: computed(() => [
+    options: [
       { value: '', label: 'All Categories' },
       ...categories.value.map((cat) => ({ value: cat.id, label: cat.name })),
-    ]).value,
+    ],
   },
-];
+]);
 
 const columns = [
+  { key: 'id', label: 'ID', sortable: false },
   { key: 'category', label: 'Category', sortable: false },
   { key: 'customer_name', label: 'Customer', sortable: true },
   { key: 'city', label: 'City', sortable: false },
@@ -109,11 +128,12 @@ async function loadRequests() {
     const response = await axios.get('/api/admin/requests', { params });
     let allRequests = Array.isArray(response.data) ? response.data : [];
     
-    // Filter by search query if provided
+    // Filter by search query if provided (search by ID, name, phone, email)
     if (searchQuery.value) {
       const query = searchQuery.value.toLowerCase();
       allRequests = allRequests.filter((req: any) => {
         return (
+          req.id?.toLowerCase().includes(query) ||
           req.customer_name?.toLowerCase().includes(query) ||
           req.phone?.toLowerCase().includes(query) ||
           req.email?.toLowerCase().includes(query) ||
@@ -188,4 +208,3 @@ onMounted(async () => {
   await loadRequests();
 });
 </script>
-

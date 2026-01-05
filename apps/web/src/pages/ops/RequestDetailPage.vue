@@ -163,12 +163,8 @@
                 <option value="quoted">Quoted</option>
                 <option value="confirmed">Confirmed</option>
                 <option value="paid">Paid</option>
-                <option value="partially_paid">Partially Paid</option>
                 <option value="booked">Booked</option>
-                <option value="service_done">Service Done</option>
-                <option value="payment_done">Payment Done</option>
                 <option value="done">Done</option>
-                <option value="complete">Complete</option>
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>
@@ -191,17 +187,20 @@
               ></textarea>
             </div>
             <!-- Provider Assignment -->
-            <div v-if="request.status === 'new' || statusForm.status_to !== request.status">
+            <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">Assign Provider (Optional)</label>
               <select
                 v-model="statusForm.assigned_to"
                 class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                :disabled="loadingProviders"
               >
                 <option value="">No provider assignment</option>
                 <option v-for="provider in eligibleProviders" :key="provider.user_id" :value="provider.user_id">
                   {{ provider.display_name || provider.company_name || provider.user?.email || 'N/A' }} ({{ provider.user?.email }})
                 </option>
               </select>
+              <p v-if="loadingProviders" class="text-xs text-slate-500 mt-1">Loading providers...</p>
+              <p v-else-if="eligibleProviders.length === 0" class="text-xs text-slate-500 mt-1">No eligible providers found for this service category and city.</p>
             </div>
 
             <!-- Payment Amount Fields -->
@@ -391,10 +390,8 @@ async function loadRequest() {
     statusForm.value.paid_amount = request.value.paid_amount || undefined;
     statusForm.value.is_fully_paid = request.value.is_fully_paid || false;
 
-    // Load eligible providers if status is "new"
-    if (request.value.status === 'new') {
-      await loadEligibleProviders();
-    }
+    // Always load eligible providers
+    await loadEligibleProviders();
   } catch (error: any) {
     console.error('Failed to load request:', error);
     toast.error(error.response?.data?.error || 'Failed to load request');
@@ -424,7 +421,12 @@ async function handleUpdateStatus() {
 
   updatingStatus.value = true;
   try {
-    await axios.post(`/api/ops/requests/${route.params.id}/status`, statusForm.value);
+    // Prepare payload - convert empty string to undefined for assigned_to
+    const payload = {
+      ...statusForm.value,
+      assigned_to: statusForm.value.assigned_to === '' ? undefined : statusForm.value.assigned_to,
+    };
+    await axios.post(`/api/ops/requests/${route.params.id}/status`, payload);
     toast.success('Status updated successfully');
     resetStatusForm();
     await loadRequest(); // Reload to get updated timeline

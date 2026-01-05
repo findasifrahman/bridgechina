@@ -17,7 +17,7 @@
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Search by category, city, status..."
+              placeholder="Search by ID, category, city, status..."
               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
               @input="handleSearch"
             />
@@ -93,6 +93,7 @@
           <table class="w-full">
             <thead>
               <tr class="border-b border-slate-200">
+                <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700">ID</th>
                 <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700">Category</th>
                 <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700">City</th>
                 <th class="text-left py-3 px-4 text-sm font-semibold text-slate-700">Status</th>
@@ -106,6 +107,9 @@
                 :key="req.id"
                 class="border-b border-slate-100 hover:bg-slate-50 transition-colors"
               >
+                <td class="py-3 px-4">
+                  <code class="text-xs bg-slate-100 px-2 py-1 rounded font-mono">{{ req.id?.slice(0, 8) }}</code>
+                </td>
                 <td class="py-3 px-4">
                   <div class="flex items-center gap-2">
                     <Tag class="h-4 w-4 text-slate-400" />
@@ -166,6 +170,7 @@
           <div class="flex justify-between items-start">
             <div class="flex-1">
               <div class="flex items-center gap-2 mb-2">
+                <code class="text-xs bg-slate-100 px-2 py-1 rounded font-mono">{{ req.id?.slice(0, 8) }}</code>
                 <Tag class="h-4 w-4 text-slate-400" />
                 <p class="font-semibold text-slate-900">{{ req.category?.name || 'Service' }}</p>
               </div>
@@ -268,17 +273,18 @@ const dateFilter = computed(() => {
 const filteredRequests = computed(() => {
   let filtered = requests.value;
   
-  // Apply search filter
-  if (searchQuery.value.trim()) {
-    const query = searchQuery.value.toLowerCase();
-    filtered = filtered.filter((req) => {
-      return (
-        req.category?.name?.toLowerCase().includes(query) ||
-        req.city?.name?.toLowerCase().includes(query) ||
-        req.status?.toLowerCase().includes(query)
-      );
-    });
-  }
+      // Apply search filter
+      if (searchQuery.value.trim()) {
+        const query = searchQuery.value.toLowerCase();
+        filtered = filtered.filter((req) => {
+          return (
+            req.id?.toLowerCase().includes(query) ||
+            req.category?.name?.toLowerCase().includes(query) ||
+            req.city?.name?.toLowerCase().includes(query) ||
+            req.status?.toLowerCase().includes(query)
+          );
+        });
+      }
   
   return filtered;
 });
@@ -310,9 +316,14 @@ async function loadRequests() {
     if (dateRange.value === 'all') {
       params.all_time = 'true';
     } else {
-      // Send date params for other ranges
-      if (dateFilter.value.from_date) params.from_date = dateFilter.value.from_date;
-      if (dateFilter.value.to_date) params.to_date = dateFilter.value.to_date;
+      // Always send date params for other ranges to ensure API uses explicit dates
+      const dateFilterVal = dateFilter.value;
+      if (dateFilterVal.from_date) {
+        params.from_date = dateFilterVal.from_date;
+      }
+      if (dateFilterVal.to_date) {
+        params.to_date = dateFilterVal.to_date;
+      }
     }
     if (filters.value.status) params.status = filters.value.status;
 

@@ -1,6 +1,12 @@
 <template>
   <div>
-    <PageHeader :title="`Request: ${request?.category?.name || 'Service'}`" />
+    <div class="flex items-center justify-between mb-6">
+      <PageHeader :title="`Request: ${request?.category?.name || 'Service'}`" />
+      <Button variant="ghost" size="sm" @click="loadRequestDetails" :loading="loading">
+        <RefreshCw class="h-4 w-4 mr-2" :class="{ 'animate-spin': loading }" />
+        Refresh
+      </Button>
+    </div>
     
     <div v-if="loading" class="text-center py-8 text-slate-500">Loading request details...</div>
     <div v-else-if="!request" class="text-center py-8 text-red-500">Request not found.</div>
@@ -15,6 +21,13 @@
         </CardHeader>
         <CardBody>
           <div class="grid md:grid-cols-2 gap-4">
+            <div class="flex items-start gap-3">
+              <Tag class="h-5 w-5 text-slate-400 mt-0.5" />
+              <div class="flex-1">
+                <p class="text-sm font-medium text-slate-500">Request ID</p>
+                <code class="text-xs bg-slate-100 px-2 py-1 rounded font-mono">{{ request.id }}</code>
+              </div>
+            </div>
             <div class="flex items-start gap-3">
               <Tag class="h-5 w-5 text-slate-400 mt-0.5" />
               <div class="flex-1">
@@ -336,7 +349,7 @@ import { useRoute } from 'vue-router';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
 import { PageHeader, Card, CardHeader, CardBody, Badge, Textarea, Button } from '@bridgechina/ui';
-import { ClipboardList, Tag, MapPin, Activity, Clock, FileText, Sparkles, CreditCard, Upload, History, Package, MessageCircle } from 'lucide-vue-next';
+import { ClipboardList, Tag, MapPin, Activity, Clock, FileText, Sparkles, CreditCard, Upload, History, Package, MessageCircle, RefreshCw } from 'lucide-vue-next';
 
 const route = useRoute();
 const toast = useToast();
