@@ -474,6 +474,10 @@ model ServiceRequest {
   first_ops_approval_at        DateTime?
   ops_last_action_at           DateTime?
   sla_due_at                   DateTime?
+  total_amount                 Float?
+  paid_amount                  Float?                      @default(0)
+  due_amount                   Float?
+  is_fully_paid                Boolean                     @default(false)
   created_at                   DateTime                    @default(now())
   updated_at                   DateTime                    @updatedAt
   foodDelivery                 FoodDelivery?
@@ -1132,6 +1136,7 @@ model PaymentProof {
   id          String         @id @default(uuid())
   request_id  String
   asset_id    String
+  amount      Float?         // Amount for this payment proof (for partial payments)
   status      String         @default("submitted") // submitted, approved, rejected
   notes       String?
   reviewed_by String?

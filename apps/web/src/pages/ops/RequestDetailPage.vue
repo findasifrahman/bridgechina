@@ -77,6 +77,24 @@
               <p class="text-sm text-slate-600">Bundle</p>
               <Badge variant="info">Part of bundle</Badge>
             </div>
+            <div v-if="request.total_amount !== null && request.total_amount !== undefined">
+              <p class="text-sm text-slate-600">Total Amount</p>
+              <p class="font-semibold">¥{{ request.total_amount.toFixed(2) }}</p>
+            </div>
+            <div v-if="request.paid_amount !== null && request.paid_amount !== undefined">
+              <p class="text-sm text-slate-600">Paid Amount</p>
+              <p class="font-semibold">¥{{ request.paid_amount.toFixed(2) }}</p>
+            </div>
+            <div v-if="request.due_amount !== null && request.due_amount !== undefined">
+              <p class="text-sm text-slate-600">Due Amount</p>
+              <p class="font-semibold">¥{{ request.due_amount.toFixed(2) }}</p>
+            </div>
+            <div v-if="request.is_fully_paid !== null && request.is_fully_paid !== undefined">
+              <p class="text-sm text-slate-600">Payment Status</p>
+              <Badge :variant="request.is_fully_paid ? 'success' : 'warning'">
+                {{ request.is_fully_paid ? 'Fully Paid' : 'Partially Paid' }}
+              </Badge>
+            </div>
           </div>
         </CardBody>
       </Card>
@@ -145,8 +163,12 @@
                 <option value="quoted">Quoted</option>
                 <option value="confirmed">Confirmed</option>
                 <option value="paid">Paid</option>
+                <option value="partially_paid">Partially Paid</option>
                 <option value="booked">Booked</option>
+                <option value="service_done">Service Done</option>
+                <option value="payment_done">Payment Done</option>
                 <option value="done">Done</option>
+                <option value="complete">Complete</option>
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>
@@ -168,15 +190,74 @@
                 placeholder="Message to show to the user..."
               ></textarea>
             </div>
-            <div class="flex items-center gap-2">
-              <input
-                v-model="statusForm.notify_user"
-                type="checkbox"
-                id="notify_user"
-                class="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
-              />
-              <label for="notify_user" class="text-sm text-slate-700">
-                Notify user via {{ request.conversation?.channel === 'whatsapp' ? 'WhatsApp' : 'WebChat' }}
+            <!-- Provider Assignment -->
+            <div v-if="request.status === 'new' || statusForm.status_to !== request.status">
+              <label class="block text-sm font-medium text-slate-700 mb-1">Assign Provider (Optional)</label>
+              <select
+                v-model="statusForm.assigned_to"
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              >
+                <option value="">No provider assignment</option>
+                <option v-for="provider in eligibleProviders" :key="provider.user_id" :value="provider.user_id">
+                  {{ provider.display_name || provider.company_name || provider.user?.email || 'N/A' }} ({{ provider.user?.email }})
+                </option>
+              </select>
+            </div>
+
+            <!-- Payment Amount Fields -->
+            <div class="grid md:grid-cols-3 gap-4 pt-2 border-t">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Total Amount (CNY)</label>
+                <input
+                  v-model.number="statusForm.total_amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Paid Amount (CNY)</label>
+                <input
+                  v-model.number="statusForm.paid_amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                  placeholder="0.00"
+                />
+              </div>
+              <div class="flex items-end">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input
+                    v-model="statusForm.is_fully_paid"
+                    type="checkbox"
+                    class="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
+                  />
+                  <span class="text-sm text-slate-700">Fully Paid</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-4 pt-2 border-t">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  v-model="statusForm.notify_user"
+                  type="checkbox"
+                  id="notify_user"
+                  class="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
+                />
+                <span class="text-sm text-slate-700">Notify user via {{ request.conversation?.channel === 'whatsapp' ? 'WhatsApp' : 'WebChat' }}</span>
+              </label>
+              <label v-if="statusForm.assigned_to" class="flex items-center gap-2 cursor-pointer">
+                <input
+                  v-model="statusForm.notify_provider"
+                  type="checkbox"
+                  id="notify_provider"
+                  class="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
+                />
+                <span class="text-sm text-slate-700">Notify provider via WhatsApp</span>
               </label>
             </div>
             <div class="flex justify-end gap-3 pt-2">
@@ -285,7 +366,14 @@ const statusForm = ref({
   note_internal: '',
   note_user: '',
   notify_user: false,
+  notify_provider: false,
+  assigned_to: '',
+  total_amount: undefined as number | undefined,
+  paid_amount: undefined as number | undefined,
+  is_fully_paid: false,
 });
+const eligibleProviders = ref<any[]>([]);
+const loadingProviders = ref(false);
 
 async function loadRequest() {
   loading.value = true;
@@ -296,13 +384,35 @@ async function loadRequest() {
     bundleRequests.value = response.data.bundleRequests || [];
     paymentProofs.value = response.data.request.paymentProofs || [];
     
-    // Initialize form with current status
+    // Initialize form with current status and payment amounts
     statusForm.value.status_to = request.value.status || '';
+    statusForm.value.assigned_to = request.value.assigned_to || '';
+    statusForm.value.total_amount = request.value.total_amount || undefined;
+    statusForm.value.paid_amount = request.value.paid_amount || undefined;
+    statusForm.value.is_fully_paid = request.value.is_fully_paid || false;
+
+    // Load eligible providers if status is "new"
+    if (request.value.status === 'new') {
+      await loadEligibleProviders();
+    }
   } catch (error: any) {
     console.error('Failed to load request:', error);
     toast.error(error.response?.data?.error || 'Failed to load request');
   } finally {
     loading.value = false;
+  }
+}
+
+async function loadEligibleProviders() {
+  loadingProviders.value = true;
+  try {
+    const response = await axios.get(`/api/ops/requests/${route.params.id}/providers`);
+    eligibleProviders.value = response.data || [];
+  } catch (error: any) {
+    console.error('Failed to load providers:', error);
+    // Don't show error toast for providers, it's optional
+  } finally {
+    loadingProviders.value = false;
   }
 }
 
@@ -332,6 +442,11 @@ function resetStatusForm() {
     note_internal: '',
     note_user: '',
     notify_user: false,
+    notify_provider: false,
+    assigned_to: request.value?.assigned_to || '',
+    total_amount: request.value?.total_amount || undefined,
+    paid_amount: request.value?.paid_amount || undefined,
+    is_fully_paid: request.value?.is_fully_paid || false,
   };
 }
 

@@ -948,6 +948,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { id: string };
     const body = request.body as {
       asset_id: string;
+      amount?: number;
       notes?: string;
     };
 
@@ -974,6 +975,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       data: {
         request_id: id,
         asset_id: body.asset_id,
+        amount: body.amount || null,
         notes: body.notes || null,
         status: 'submitted',
       },

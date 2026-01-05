@@ -23,6 +23,26 @@
               <p class="text-sm font-medium text-slate-500">Status</p>
               <Badge :variant="getStatusVariant(request.status)">{{ request.status }}</Badge>
             </div>
+            <div v-if="request.total_amount !== null && request.total_amount !== undefined">
+              <p class="text-sm font-medium text-slate-500">Total Amount</p>
+              <p class="text-slate-800 font-semibold">¥{{ request.total_amount.toFixed(2) }}</p>
+            </div>
+            <div v-if="request.paid_amount !== null && request.paid_amount !== undefined">
+              <p class="text-sm font-medium text-slate-500">Paid Amount</p>
+              <p class="text-slate-800 font-semibold text-green-600">¥{{ request.paid_amount.toFixed(2) }}</p>
+            </div>
+            <div v-if="request.due_amount !== null && request.due_amount !== undefined">
+              <p class="text-sm font-medium text-slate-500">Due Amount</p>
+              <p class="text-slate-800 font-semibold" :class="request.due_amount > 0 ? 'text-orange-600' : 'text-green-600'">
+                ¥{{ request.due_amount.toFixed(2) }}
+              </p>
+            </div>
+            <div v-if="request.is_fully_paid !== null && request.is_fully_paid !== undefined">
+              <p class="text-sm font-medium text-slate-500">Payment Status</p>
+              <Badge :variant="request.is_fully_paid ? 'success' : 'warning'">
+                {{ request.is_fully_paid ? 'Fully Paid' : 'Partially Paid / Pending' }}
+              </Badge>
+            </div>
             <div v-if="request.request_payload">
               <p class="text-sm font-medium text-slate-500">Request Details</p>
               <pre class="bg-slate-50 p-3 rounded text-sm overflow-x-auto">{{ JSON.stringify(request.request_payload, null, 2) }}</pre>
@@ -146,44 +166,100 @@
         </CardBody>
       </Card>
 
-      <Card class="lg:col-span-3" v-if="request.status === 'quoted' || request.status === 'awaiting_payment'">
+      <!-- Payment Information Card -->
+      <Card class="lg:col-span-3" v-if="request.total_amount !== null || request.paid_amount !== null">
+        <CardHeader>
+          <h3 class="text-lg font-semibold">Payment Information</h3>
+        </CardHeader>
+        <CardBody>
+          <div class="grid md:grid-cols-3 gap-4">
+            <div>
+              <p class="text-sm font-medium text-slate-500">Total Amount</p>
+              <p class="text-xl font-bold text-slate-800">¥{{ (request.total_amount || 0).toFixed(2) }}</p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-slate-500">Paid Amount</p>
+              <p class="text-xl font-bold text-green-600">¥{{ (request.paid_amount || 0).toFixed(2) }}</p>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-slate-500">Due Amount</p>
+              <p class="text-xl font-bold" :class="(request.due_amount || 0) > 0 ? 'text-orange-600' : 'text-green-600'">
+                ¥{{ (request.due_amount || 0).toFixed(2) }}
+              </p>
+            </div>
+          </div>
+          <div class="mt-4 pt-4 border-t">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-slate-700">Payment Status</span>
+              <Badge :variant="request.is_fully_paid ? 'success' : 'warning'">
+                {{ request.is_fully_paid ? 'Fully Paid ✓' : 'Partially Paid / Pending' }}
+              </Badge>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+
+      <!-- Payment Proof Upload Card -->
+      <Card class="lg:col-span-3" v-if="request.status === 'quoted' || request.status === 'awaiting_payment' || request.status === 'partially_paid'">
         <CardHeader>
           <h3 class="text-lg font-semibold">Payment Proof</h3>
         </CardHeader>
         <CardBody>
           <div v-if="paymentProof" class="space-y-3">
-            <div>
-              <p class="text-sm font-medium text-slate-500">Status</p>
-              <Badge :variant="getPaymentProofVariant(paymentProof.status)">{{ paymentProof.status }}</Badge>
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-sm font-medium text-slate-500">Status</p>
+                <Badge :variant="getPaymentProofVariant(paymentProof.status)">{{ paymentProof.status }}</Badge>
+              </div>
+              <div v-if="paymentProof.amount" class="text-right">
+                <p class="text-sm font-medium text-slate-500">Amount</p>
+                <p class="text-slate-800 font-semibold">¥{{ paymentProof.amount.toFixed(2) }}</p>
+              </div>
             </div>
             <div v-if="paymentProof.asset?.public_url">
               <p class="text-sm font-medium text-slate-500 mb-2">Uploaded Image</p>
-              <img :src="paymentProof.asset.public_url" alt="Payment proof" class="max-w-md rounded-lg border" />
+              <img :src="paymentProof.asset.public_url" alt="Payment proof" class="max-w-md rounded-lg border cursor-pointer hover:opacity-90" @click="window.open(paymentProof.asset.public_url, '_blank')" />
             </div>
             <p v-if="paymentProof.notes" class="text-sm text-slate-600">{{ paymentProof.notes }}</p>
+            <div v-if="paymentProof.reviewer" class="text-xs text-slate-500">
+              Reviewed by: {{ paymentProof.reviewer.email }} at {{ new Date(paymentProof.reviewed_at).toLocaleString() }}
+            </div>
+            <div class="pt-4 border-t">
+              <p class="text-sm text-slate-600 mb-2">You can upload additional payment proof documents below.</p>
+            </div>
           </div>
-          <div v-else>
-            <form @submit.prevent="uploadPaymentProof" class="space-y-4">
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-2">Upload Payment Proof</label>
-                <input
-                  ref="fileInput"
-                  type="file"
-                  accept="image/*"
-                  @change="handleFileSelect"
-                  class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
-                />
-              </div>
-              <Textarea
-                v-model="paymentProofForm.notes"
-                label="Notes (optional)"
-                rows="3"
+          <form @submit.prevent="uploadPaymentProof" class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-2">Upload Payment Proof</label>
+              <input
+                ref="fileInput"
+                type="file"
+                accept="image/*"
+                @change="handleFileSelect"
+                class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
               />
-              <Button type="submit" variant="primary" :loading="uploading" :disabled="!selectedFile">
-                Upload Payment Proof
-              </Button>
-            </form>
-          </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Amount (CNY) - Optional</label>
+              <input
+                v-model.number="paymentProofForm.amount"
+                type="number"
+                step="0.01"
+                min="0"
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                placeholder="Enter amount for this payment proof"
+              />
+              <p class="text-xs text-slate-500 mt-1">Leave empty if this is a full payment proof</p>
+            </div>
+            <Textarea
+              v-model="paymentProofForm.notes"
+              label="Notes (optional)"
+              rows="3"
+            />
+            <Button type="submit" variant="primary" :loading="uploading" :disabled="!selectedFile">
+              Upload Payment Proof
+            </Button>
+          </form>
         </CardBody>
       </Card>
     </div>
@@ -212,6 +288,7 @@ const fileInput = ref<HTMLInputElement | null>(null);
 
 const paymentProofForm = ref({
   notes: '',
+  amount: undefined as number | undefined,
 });
 
 function getStatusVariant(status: string): 'default' | 'success' | 'warning' | 'danger' {
@@ -299,6 +376,7 @@ async function uploadPaymentProof() {
     // Step 2: Create payment proof record
     await axios.post(`/api/user/requests/${requestId}/payment-proof`, {
       asset_id: assetResponse.data.id,
+      amount: paymentProofForm.value.amount || null,
       notes: paymentProofForm.value.notes || null,
     });
 
@@ -309,6 +387,7 @@ async function uploadPaymentProof() {
     }
     selectedFile.value = null;
     paymentProofForm.value.notes = '';
+    paymentProofForm.value.amount = undefined;
   } catch (error: any) {
     console.error('Failed to upload payment proof:', error);
     toast.error(error.response?.data?.error || 'Failed to upload payment proof');

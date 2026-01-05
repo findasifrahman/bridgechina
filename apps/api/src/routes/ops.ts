@@ -676,12 +676,73 @@ export default async function opsRoutes(fastify: FastifyInstance) {
     };
   });
 
+  // Get providers for a service category and city (for assignment)
+  fastify.get('/requests/:id/providers', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+
+    const serviceRequest = await prisma.serviceRequest.findUnique({
+      where: { id },
+      include: {
+        category: true,
+        city: true,
+      },
+    });
+
+    if (!serviceRequest) {
+      reply.status(404).send({ error: 'Service request not found' });
+      return;
+    }
+
+    // Get all active providers and filter by category key in JSON array
+    const allProviders = await prisma.serviceProviderProfile.findMany({
+      where: {
+        is_active: true,
+        OR: [
+          { city_id: serviceRequest.city_id },
+          { city_id: null }, // Providers with no city scope (any city)
+        ],
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            phone: true,
+            status: true,
+          },
+        },
+        city: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    // Filter providers that have this category key in their categories JSON array
+    const categoryKey = serviceRequest.category.key;
+    const eligibleProviders = allProviders.filter((provider) => {
+      if (provider.user.status !== 'active') return false;
+      const categories = (provider.categories as string[]) || [];
+      return categories.includes(categoryKey);
+    });
+
+    return eligibleProviders;
+  });
+
   // Update request status with timeline event
   const updateRequestStatusSchema = z.object({
     status_to: z.string().min(1, 'Status is required'),
     note_internal: z.string().optional(),
     note_user: z.string().optional(),
     notify_user: z.boolean().optional().default(false),
+    notify_provider: z.boolean().optional().default(false),
+    assigned_to: z.string().uuid().optional(),
+    total_amount: z.number().positive().optional(),
+    paid_amount: z.number().min(0).optional(),
+    is_fully_paid: z.boolean().optional(),
   });
 
   fastify.post('/requests/:id/status', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -694,6 +755,7 @@ export default async function opsRoutes(fastify: FastifyInstance) {
       where: { id },
       include: {
         conversation: true,
+        category: true,
       },
     });
 
@@ -704,14 +766,48 @@ export default async function opsRoutes(fastify: FastifyInstance) {
 
     const statusFrom = serviceRequest.status;
 
-    // Update request status
+    // Calculate due_amount if payment amounts are provided
+    let dueAmount: number | null = null;
+    if (body.total_amount !== undefined && body.paid_amount !== undefined) {
+      dueAmount = Math.max(0, body.total_amount - body.paid_amount);
+    } else if (serviceRequest.total_amount !== null && body.paid_amount !== undefined) {
+      dueAmount = Math.max(0, serviceRequest.total_amount - body.paid_amount);
+    } else if (body.total_amount !== undefined && serviceRequest.paid_amount !== null) {
+      dueAmount = Math.max(0, body.total_amount - serviceRequest.paid_amount);
+    } else if (serviceRequest.total_amount !== null && serviceRequest.paid_amount !== null) {
+      dueAmount = Math.max(0, serviceRequest.total_amount - serviceRequest.paid_amount);
+    }
+
+    // Update request status and payment fields
+    const updateData: any = {
+      status: body.status_to,
+      ops_last_action_at: new Date(),
+      updated_at: new Date(),
+    };
+
+    if (body.total_amount !== undefined) {
+      updateData.total_amount = body.total_amount;
+    }
+    if (body.paid_amount !== undefined) {
+      updateData.paid_amount = body.paid_amount;
+    }
+    if (body.is_fully_paid !== undefined) {
+      updateData.is_fully_paid = body.is_fully_paid;
+    }
+    if (dueAmount !== null) {
+      updateData.due_amount = dueAmount;
+      // Auto-set is_fully_paid if due_amount is 0
+      if (dueAmount === 0 && body.is_fully_paid === undefined) {
+        updateData.is_fully_paid = true;
+      }
+    }
+    if (body.assigned_to !== undefined) {
+      updateData.assigned_to = body.assigned_to;
+    }
+
     await prisma.serviceRequest.update({
       where: { id },
-      data: {
-        status: body.status_to,
-        ops_last_action_at: new Date(),
-        updated_at: new Date(),
-      },
+      data: updateData,
     });
 
     // Create status event
@@ -725,6 +821,35 @@ export default async function opsRoutes(fastify: FastifyInstance) {
         created_by: req.user.id,
       },
     });
+
+    // Assign provider and create dispatch if assigned_to is provided
+    let providerDispatchCreated = false;
+    if (body.assigned_to) {
+      try {
+        await prisma.providerDispatch.upsert({
+          where: {
+            request_id_provider_user_id: {
+              request_id: id,
+              provider_user_id: body.assigned_to,
+            },
+          },
+          update: {
+            // Update dispatch if it already exists
+            status: 'sent',
+            sent_at: new Date(),
+          },
+          create: {
+            request_id: id,
+            provider_user_id: body.assigned_to,
+            status: 'sent',
+            sent_at: new Date(),
+          },
+        });
+        providerDispatchCreated = true;
+      } catch (error: any) {
+        fastify.log.error({ error }, '[Ops Routes] Failed to create provider dispatch');
+      }
+    }
 
     // Notify user if requested and conversation exists
     let notificationSent = false;
@@ -778,10 +903,34 @@ export default async function opsRoutes(fastify: FastifyInstance) {
       }
     }
 
+    // Notify provider if requested and assigned
+    let providerNotificationSent = false;
+    if (body.notify_provider && body.assigned_to) {
+      try {
+        const provider = await prisma.user.findUnique({
+          where: { id: body.assigned_to },
+          include: {
+            serviceProviderProfile: true,
+          },
+        });
+
+        if (provider?.serviceProviderProfile?.whatsapp) {
+          const notifyText = `You have been assigned to service request #${id.substring(0, 8)}. Category: ${serviceRequest.category?.name || 'Service'}. Status: ${body.status_to}.${body.note_internal ? ` Note: ${body.note_internal}` : ''}`;
+          const { sendText } = await import('../modules/whatsapp/twilio.client.js');
+          await sendText(provider.serviceProviderProfile.whatsapp, notifyText);
+          providerNotificationSent = true;
+        }
+      } catch (error: any) {
+        fastify.log.error({ error }, '[Ops Routes] Failed to send provider WhatsApp notification');
+      }
+    }
+
     return {
       success: true,
       status: body.status_to,
       notificationSent,
+      providerNotificationSent,
+      providerDispatchCreated,
     };
   });
 }

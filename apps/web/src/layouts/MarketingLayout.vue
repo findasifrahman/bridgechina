@@ -53,16 +53,20 @@ async function handleLoadOffers() {
 }
 
 async function loadOffers() {
-  if (!layoutRef.value) return;
-  
   try {
-    layoutRef.value.setLoading(true);
+    if (layoutRef.value) {
+      layoutRef.value.setLoading(true);
+    }
     const response = await axios.get('/api/public/offers');
     const offers = response.data || [];
-    layoutRef.value.setOffers(offers);
+    if (layoutRef.value) {
+      layoutRef.value.setOffers(offers);
+    }
   } catch (error) {
     console.error('Failed to load offers:', error);
-    layoutRef.value.setOffers([]);
+    if (layoutRef.value) {
+      layoutRef.value.setOffers([]);
+    }
   }
 }
 </script>

@@ -19,8 +19,12 @@ export type ServiceRequestStatus =
   | 'quoted'
   | 'confirmed'
   | 'paid'
+  | 'partially_paid'
   | 'booked'
+  | 'service_done'
+  | 'payment_done'
   | 'done'
+  | 'complete'
   | 'cancelled';
 
 export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
