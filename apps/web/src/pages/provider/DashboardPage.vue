@@ -139,6 +139,68 @@
         </div>
       </CardBody>
     </Card>
+
+    <!-- Service Requests -->
+    <Card>
+      <CardHeader>
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-semibold">My Assigned Service Requests</h2>
+          <router-link
+            to="/provider/requests"
+            class="text-sm text-teal-600 hover:text-teal-700"
+          >
+            View All →
+          </router-link>
+        </div>
+      </CardHeader>
+      <CardBody>
+        <div v-if="loadingRequests" class="text-center py-8 text-slate-500">Loading...</div>
+        <div v-else-if="serviceRequests.length === 0" class="text-center py-8 text-slate-500">
+          No assigned service requests
+        </div>
+        <div v-else class="divide-y">
+          <div
+            v-for="dispatch in serviceRequests.slice(0, 5)"
+            :key="dispatch.id"
+            class="p-4 hover:bg-slate-50 cursor-pointer"
+            @click="$router.push(`/provider/requests/${dispatch.request.id}`)"
+          >
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="px-2 py-0.5 bg-teal-100 text-teal-700 rounded text-xs font-medium">
+                    {{ dispatch.request.category?.key || 'N/A' }}
+                  </span>
+                  <span
+                    :class="[
+                      'px-2 py-0.5 rounded text-xs font-medium',
+                      dispatch.status === 'viewed' ? 'bg-yellow-100 text-yellow-700' :
+                      dispatch.status === 'responded' ? 'bg-green-100 text-green-700' :
+                      dispatch.status === 'skipped' ? 'bg-slate-100 text-slate-700' :
+                      'bg-blue-100 text-blue-700'
+                    ]"
+                  >
+                    {{ dispatch.status }}
+                  </span>
+                  <span v-if="dispatch.request.sla_due_at" class="text-xs text-slate-500">
+                    SLA: {{ formatSlaTime(dispatch.request.sla_due_at) }}
+                  </span>
+                </div>
+                <div class="text-sm font-medium text-slate-900 mb-1">
+                  {{ dispatch.request.city?.name || 'N/A' }}
+                </div>
+                <p v-if="dispatch.request.providerMessageContexts?.[0]" class="text-sm text-slate-600 line-clamp-2">
+                  {{ dispatch.request.providerMessageContexts[0].extracted_summary || dispatch.request.providerMessageContexts[0].user_message_text }}
+                </p>
+                <div class="text-xs text-slate-500 mt-1">
+                  Sent: {{ formatTime(dispatch.sent_at) }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </CardBody>
+    </Card>
   </div>
 </template>
 
@@ -152,7 +214,9 @@ import { PageHeader, StatCard, Card, CardHeader, CardBody } from '@bridgechina/u
 const router = useRouter();
 const stats = ref<any>({});
 const conversations = ref<any[]>([]);
+const serviceRequests = ref<any[]>([]);
 const loading = ref(true);
+const loadingRequests = ref(true);
 
 function formatTime(date: string | Date | null) {
   if (!date) return '';
@@ -168,6 +232,19 @@ function formatTime(date: string | Date | null) {
   const diffDays = Math.floor(diffHours / 24);
   if (diffDays < 7) return `${diffDays}d ago`;
   return d.toLocaleDateString();
+}
+
+function formatSlaTime(date: string | Date | null) {
+  if (!date) return '';
+  const d = new Date(date);
+  const now = new Date();
+  const diffMs = d.getTime() - now.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  
+  if (diffMins < 0) return 'Overdue';
+  if (diffMins < 60) return `${diffMins}m`;
+  const diffHours = Math.floor(diffMins / 60);
+  return `${diffHours}h`;
 }
 
 async function loadData() {
@@ -186,8 +263,21 @@ async function loadData() {
   }
 }
 
+async function loadServiceRequests() {
+  loadingRequests.value = true;
+  try {
+    const response = await axios.get('/api/provider/dispatches', { params: { page: 1 } });
+    serviceRequests.value = response.data.dispatches || [];
+  } catch (error) {
+    console.error('Failed to load service requests:', error);
+  } finally {
+    loadingRequests.value = false;
+  }
+}
+
 onMounted(() => {
   loadData();
+  loadServiceRequests();
 });
 </script>
 

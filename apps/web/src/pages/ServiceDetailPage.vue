@@ -110,9 +110,6 @@ async function loadService() {
   }
 }
 
-
-const { openWhatsApp: openWhatsAppComposable } = useWhatsApp();
-
 function openWhatsApp() {
   openWhatsAppComposable();
 }
