@@ -317,8 +317,6 @@ function viewFullMenu() {
   router.push(`/services/halal-food?restaurant_id=${restaurant.value?.id}`);
 }
 
-const { openWhatsApp: openWhatsAppComposable } = useWhatsApp();
-
 function openWhatsApp() {
   const message = `Hi, I'm interested in ${restaurant.value?.name || 'this restaurant'}`;
   openWhatsAppComposable(message);
