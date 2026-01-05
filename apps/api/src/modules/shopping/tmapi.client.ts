@@ -522,6 +522,202 @@ class TMAPIClient {
       throw new Error(`Failed to get item sales stats: ${error.message}`);
     }
   }
+
+  /**
+   * Get 1688 product details in multiple languages (By ID)
+   * Based on TMAPI docs: GET /1688/global/item_detail
+   * https://tmapi.top/docs/ali/multi-language-apis/get-item-detail-by-id
+   */
+  async getItemDetailMultilingual(itemId: string, language: string = 'en'): Promise<any> {
+    try {
+      const params: any = {
+        apiToken: this.apiToken,
+        item_id: itemId,
+        language,
+      };
+
+      console.log('[TMAPI Client] getItemDetailMultilingual request:', {
+        baseURL: this.client.defaults.baseURL,
+        endpoint: '/1688/global/item_detail',
+        itemId,
+        language,
+      });
+
+      const response = await this.client.get('/1688/global/item_detail', { params });
+      
+      console.log('[TMAPI Client] getItemDetailMultilingual response:', {
+        status: response.status,
+        dataCode: response.data?.code,
+        dataMsg: response.data?.msg,
+        hasData: !!response.data?.data,
+      });
+
+      return response.data;
+    } catch (error: any) {
+      console.error('[TMAPI Client] getItemDetailMultilingual error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      throw new Error(`Failed to get item detail (multilingual): ${error.message}`);
+    }
+  }
+
+  /**
+   * Get 1688 product details in multiple languages (By URL)
+   * Based on TMAPI docs: POST /1688/global/item_detail_by_url
+   * https://tmapi.top/docs/ali/multi-language-apis/get-item-detail-by-url
+   */
+  async getItemDetailByUrlMultilingual(url: string, language: string = 'en'): Promise<any> {
+    try {
+      console.log('[TMAPI Client] getItemDetailByUrlMultilingual request:', {
+        baseURL: this.client.defaults.baseURL,
+        endpoint: '/1688/global/item_detail_by_url',
+        url: url.substring(0, 100) + (url.length > 100 ? '...' : ''),
+        language,
+      });
+
+      const response = await this.client.post(
+        '/1688/global/item_detail_by_url',
+        { url, language },
+        {
+          params: {
+            apiToken: this.apiToken,
+          },
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      console.log('[TMAPI Client] getItemDetailByUrlMultilingual response:', {
+        status: response.status,
+        dataCode: response.data?.code,
+        dataMsg: response.data?.msg,
+        hasData: !!response.data?.data,
+      });
+
+      return response.data;
+    } catch (error: any) {
+      console.error('[TMAPI Client] getItemDetailByUrlMultilingual error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      throw new Error(`Failed to get item detail by URL (multilingual): ${error.message}`);
+    }
+  }
+
+  /**
+   * Search for 1688 products by image (Multilingual version)
+   * Based on TMAPI docs: GET /1688/global/search/image
+   * https://tmapi.top/docs/ali/multi-language-apis/search-items-by-image-url
+   */
+  async searchByImageMultilingual(
+    imgUrl: string,
+    language: string = 'en',
+    opts?: {
+      category?: string;
+      page?: number;
+      pageSize?: number;
+      sort?: string;
+    }
+  ): Promise<any> {
+    try {
+      const params: any = {
+        apiToken: this.apiToken,
+        img_url: imgUrl,
+        language,
+      };
+
+      if (opts?.page) params.page = opts.page;
+      if (opts?.pageSize) params.page_size = opts.pageSize;
+      if (opts?.sort) params.sort = opts.sort || 'default';
+
+      console.log('[TMAPI Client] searchByImageMultilingual request:', {
+        baseURL: this.client.defaults.baseURL,
+        endpoint: '/1688/global/search/image',
+        imgUrl: imgUrl.substring(0, 100) + '...',
+        language,
+        params: { ...params, apiToken: params.apiToken ? '[REDACTED]' : 'MISSING' },
+      });
+
+      const response = await this.client.get('/1688/global/search/image', { params });
+      
+      console.log('[TMAPI Client] searchByImageMultilingual response:', {
+        status: response.status,
+        dataCode: response.data?.code,
+        dataMsg: response.data?.msg,
+        itemsCount: response.data?.data?.items?.length || 0,
+        totalCount: response.data?.data?.total_count,
+      });
+
+      return response.data;
+    } catch (error: any) {
+      console.error('[TMAPI Client] searchByImageMultilingual error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      throw new Error(`Failed to search by image (multilingual): ${error.message}`);
+    }
+  }
+
+  /**
+   * Search for 1688 products by keywords (Multilingual version)
+   * Based on TMAPI docs: GET /1688/global/search/items
+   * https://tmapi.top/docs/ali/multi-language-apis/search-items-by-keyword
+   */
+  async searchByKeywordMultilingual(
+    keyword: string,
+    language: string = 'en',
+    opts?: {
+      category?: string;
+      page?: number;
+      pageSize?: number;
+      sort?: string;
+    }
+  ): Promise<any> {
+    try {
+      const params: any = {
+        apiToken: this.apiToken,
+        keyword,
+        language,
+      };
+
+      if (opts?.page) params.page = opts.page;
+      if (opts?.pageSize) params.page_size = opts.pageSize;
+      if (opts?.sort) params.sort = opts.sort || 'default';
+      if (opts?.category) params.category = opts.category;
+
+      console.log('[TMAPI Client] searchByKeywordMultilingual request:', {
+        baseURL: this.client.defaults.baseURL,
+        endpoint: '/1688/global/search/items',
+        keyword,
+        language,
+        params: { ...params, apiToken: params.apiToken ? '[REDACTED]' : 'MISSING' },
+      });
+
+      const response = await this.client.get('/1688/global/search/items', { params });
+      
+      console.log('[TMAPI Client] searchByKeywordMultilingual response:', {
+        status: response.status,
+        dataCode: response.data?.code,
+        dataMsg: response.data?.msg,
+        itemsCount: response.data?.data?.items?.length || 0,
+        totalCount: response.data?.data?.total_count,
+      });
+
+      return response.data;
+    } catch (error: any) {
+      console.error('[TMAPI Client] searchByKeywordMultilingual error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      throw new Error(`Failed to search by keyword (multilingual): ${error.message}`);
+    }
+  }
 }
 
 // Export singleton instance

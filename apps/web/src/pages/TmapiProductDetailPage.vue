@@ -161,14 +161,24 @@
                   </button>
                 </div>
               </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex gap-3 mt-4">
               <Button
                 variant="primary"
-                :disabled="quantity < 1"
-                @click="requestToBuy"
-                class="flex-1 h-10"
+                @click="requestQuote"
+                class="flex-1"
               >
-                <ShoppingCart class="h-4 w-4 mr-2" />
-                Request to Buy
+                Request Quote
+              </Button>
+              <Button
+                variant="secondary"
+                @click="openWhatsApp"
+                class="flex-1"
+              >
+                <MessageCircle class="h-4 w-4 mr-2" />
+                Contact via WhatsApp
               </Button>
             </div>
 
@@ -246,23 +256,26 @@ import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
-import { Package, ShoppingCart, Star, Plus, Minus } from 'lucide-vue-next';
+import { Package, ShoppingCart, Star, Plus, Minus, MessageCircle } from 'lucide-vue-next';
 import {
   Button,
   Badge,
   Input,
   EmptyState,
 } from '@bridgechina/ui';
+import { useWhatsApp } from '@/composables/useWhatsApp';
 
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
+const { openWhatsApp: openWhatsAppComposable } = useWhatsApp();
 
 const product = ref<any>(null);
 const loading = ref(true);
 const quantity = ref(1);
 const selectedImage = ref<string | null>(null);
 const selectedSkus = ref<Record<string, number>>({});
+const selectedLanguage = ref<'en' | 'zh'>('zh');
 
 function formatNumber(num: number): string {
   if (num >= 1000000) {
@@ -284,7 +297,12 @@ async function loadProduct() {
   loading.value = true;
   try {
     const externalId = route.params.externalId as string;
-    const response = await axios.get(`/api/public/shopping/item/${externalId}`);
+    const query = route.query as { language?: string };
+    const language = query.language === 'en' ? 'en' : 'zh';
+    selectedLanguage.value = language;
+    const response = await axios.get(`/api/public/shopping/item/${externalId}`, {
+      params: { language },
+    });
     product.value = response.data;
     
     // Set initial selected image
@@ -304,7 +322,7 @@ async function loadProduct() {
   }
 }
 
-async function requestToBuy() {
+async function requestQuote() {
   try {
     // Calculate total quantity if SKUs are selected
     let totalQty = quantity.value;
@@ -313,8 +331,7 @@ async function requestToBuy() {
     if (product.value.skus && Object.keys(selectedSkus.value).length > 0) {
       totalQty = Object.values(selectedSkus.value).reduce((sum, qty) => sum + qty, 0);
       if (totalQty === 0) {
-        toast.error('Please select at least one item');
-        return;
+        totalQty = quantity.value; // Use default quantity if no SKUs selected
       }
       
       // Collect selected SKU details
@@ -329,9 +346,9 @@ async function requestToBuy() {
     }
 
     // Create service request for shopping
-    const response = await axios.post('/api/user/service-request', {
-      category: 'shopping',
-      request_payload: {
+    const response = await axios.post('/api/user/requests', {
+      categoryKey: 'shopping',
+      payload: {
         externalId: product.value.externalId,
         title: product.value.title,
         qty: totalQty,
@@ -348,6 +365,11 @@ async function requestToBuy() {
   } catch (error: any) {
     toast.error(error.response?.data?.error || 'Failed to submit request');
   }
+}
+
+function openWhatsApp() {
+  const message = `Hi, I'm interested in getting a quote for ${product.value?.title || 'this product'}`;
+  openWhatsAppComposable(message);
 }
 
 onMounted(() => {

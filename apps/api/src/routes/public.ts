@@ -2415,6 +2415,7 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
           page: query.page,
           pageSize: query.pageSize,
           sort: query.sort,
+          language: query.language || 'zh',
         });
         
         console.log('[Public Route] Returning results:', {
@@ -2456,6 +2457,7 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
         page: body.page,
         pageSize: body.pageSize,
         sort: body.sort,
+        language: body.language || 'zh',
       });
     }
   );
@@ -2463,7 +2465,9 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
   // Get item detail by external ID
   fastify.get('/shopping/item/:externalId', async (request: FastifyRequest, reply: FastifyReply) => {
     const { externalId } = request.params as { externalId: string };
-    const item = await getItemDetail(externalId);
+    const query = request.query as { language?: string };
+    const language = query.language === 'en' ? 'en' : 'zh';
+    const item = await getItemDetail(externalId, language);
     if (!item) {
       reply.status(404).send({ error: 'Item not found' });
       return;

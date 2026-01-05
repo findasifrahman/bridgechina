@@ -62,18 +62,21 @@ export async function searchByKeyword(
     page?: number;
     pageSize?: number;
     sort?: string;
+    language?: string; // 'en' for English, 'zh' for Chinese (default)
   }
 ): Promise<SearchResult> {
   // If no keyword but category provided, use category name as keyword
   const searchKeyword = keyword?.trim() || opts?.category || 'products';
+  const language = opts?.language || 'zh';
   
   console.log('[Shopping Service] searchByKeyword called:', { 
     originalKeyword: keyword, 
     searchKeyword,
+    language,
     opts 
   });
   
-  const cacheKey = generateCacheKey('keyword', { keyword: searchKeyword, ...opts });
+  const cacheKey = generateCacheKey('keyword', { keyword: searchKeyword, language, ...opts });
   console.log('[Shopping Service] Cache key:', cacheKey);
 
   const page = opts?.page || 1;
@@ -113,8 +116,10 @@ export async function searchByKeyword(
 
   console.log('[Shopping Service] Calling TMAPI...');
   try {
-    // Call TMAPI
-    const response = await tmapiClient.searchByKeyword(searchKeyword, opts);
+    // Call TMAPI - use multilingual API if language is 'en', otherwise use regular API
+    const response = language === 'en'
+      ? await tmapiClient.searchByKeywordMultilingual(searchKeyword, language, opts)
+      : await tmapiClient.searchByKeyword(searchKeyword, opts);
     console.log('[Shopping Service] TMAPI response received:', {
       responseCode: response.code,
       responseMsg: response.msg,
@@ -390,10 +395,13 @@ export async function searchByImage(
     page?: number;
     pageSize?: number;
     sort?: string;
+    language?: string; // 'en' for English, 'zh' for Chinese (default)
   }
 ): Promise<ProductCard[]> {
+  const language = opts?.language || 'zh';
   console.log('[Shopping Service] searchByImage called:', {
     originalUrl: r2PublicUrl.substring(0, 100) + (r2PublicUrl.length > 100 ? '...' : ''),
+    language,
     opts,
   });
 
@@ -418,7 +426,7 @@ export async function searchByImage(
   }
 
   // Step 2: Check cache
-  const cacheKey = generateCacheKey('image', { imgUrl: convertedUrl, ...opts });
+  const cacheKey = generateCacheKey('image', { imgUrl: convertedUrl, language, ...opts });
   const cached = await getCachedSearch(SOURCE, cacheKey);
   if (cached) {
     console.log('[Shopping Service] Using cached image search results');
@@ -433,7 +441,9 @@ export async function searchByImage(
   // The conversion API returns a path like "/search/imgextra4/xxx.jpeg" which is already on Alibaba CDN
   // We use it as-is (path format) as that's what TMAPI returns and expects
   console.log('[Shopping Service] Step 3: Calling TMAPI image search with converted URL...');
-  const response = await tmapiClient.searchByImage(convertedUrl, opts);
+  const response = language === 'en'
+    ? await tmapiClient.searchByImageMultilingual(convertedUrl, language, opts)
+    : await tmapiClient.searchByImage(convertedUrl, opts);
 
   console.log('[Shopping Service] Image search response:', {
     hasData: !!response.data,
@@ -468,7 +478,7 @@ export async function searchByImage(
 /**
  * Get item detail with caching - saves to ExternalCatalogItem
  */
-export async function getItemDetail(externalId: string): Promise<ProductDetail | null> {
+export async function getItemDetail(externalId: string, language: string = 'zh'): Promise<ProductDetail | null> {
   // Check DB cache (ExternalCatalogItem)
   let cached;
   try {
@@ -550,8 +560,10 @@ export async function getItemDetail(externalId: string): Promise<ProductDetail |
     return normalized;
   }
 
-  // Call TMAPI
-  const response = await tmapiClient.getItemDetail(externalId);
+  // Call TMAPI - use multilingual API if language is 'en', otherwise use regular API
+  const response = language === 'en'
+    ? await tmapiClient.getItemDetailMultilingual(externalId, language)
+    : await tmapiClient.getItemDetail(externalId);
   // TMAPI response structure: { code: 200, msg: "success", data: { ...item data... } }
   // The client returns response.data (the full TMAPI response), so response is already { code, msg, data }
   // So we need response.data to get the actual item data object (the inner data field)

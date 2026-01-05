@@ -10,6 +10,7 @@ export const searchByKeywordSchema = z.object({
   page: z.coerce.number().int().min(1).max(100).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(50).optional().default(20),
   sort: z.enum(['default', 'price_asc', 'price_desc', 'popular']).optional(),
+  language: z.enum(['en', 'zh']).optional().default('zh'), // Language: 'en' for English, 'zh' for Chinese
 }).refine((data) => data.keyword || data.category, {
   message: "Either keyword or category must be provided",
 });
@@ -20,6 +21,7 @@ export const searchByImageSchema = z.object({
   page: z.coerce.number().int().min(1).max(100).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(50).optional().default(20),
   sort: z.enum(['default', 'price_asc', 'price_desc', 'popular']).optional(),
+  language: z.enum(['en', 'zh']).optional().default('zh'), // Language: 'en' for English, 'zh' for Chinese
 });
 
 export const getHotItemsSchema = z.object({
@@ -28,5 +30,6 @@ export const getHotItemsSchema = z.object({
 
 export const getItemDetailSchema = z.object({
   externalId: z.string().min(1),
+  language: z.enum(['en', 'zh']).optional().default('zh'), // Language: 'en' for English, 'zh' for Chinese
 });
 

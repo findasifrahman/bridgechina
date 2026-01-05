@@ -11,9 +11,36 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <!-- Unified Search Section -->
       <div class="bg-gradient-to-r from-teal-50 to-amber-50 rounded-xl shadow-md border border-teal-100 p-6 mb-6">
-        <div class="flex items-center gap-2 mb-4">
-          <Search class="h-5 w-5 text-teal-600" />
-          <h2 class="text-lg font-semibold text-slate-900">Search Products</h2>
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <Search class="h-5 w-5 text-teal-600" />
+            <h2 class="text-lg font-semibold text-slate-900">Search Products</h2>
+          </div>
+          <!-- Language Tabs -->
+          <div class="flex gap-2 border border-teal-200 rounded-lg p-1 bg-white">
+            <button
+              @click="selectedLanguage = 'zh'"
+              :class="[
+                'px-4 py-1.5 rounded text-sm font-medium transition-colors',
+                selectedLanguage === 'zh'
+                  ? 'bg-teal-600 text-white'
+                  : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50'
+              ]"
+            >
+              中文
+            </button>
+            <button
+              @click="selectedLanguage = 'en'"
+              :class="[
+                'px-4 py-1.5 rounded text-sm font-medium transition-colors',
+                selectedLanguage === 'en'
+                  ? 'bg-teal-600 text-white'
+                  : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50'
+              ]"
+            >
+              English
+            </button>
+          </div>
         </div>
         
         <!-- Single Unified Search Bar -->
@@ -204,11 +231,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
-import { Search, Upload, X, Package, RefreshCw, ChevronLeft, ChevronRight, Camera } from 'lucide-vue-next';
+import { Search, X, Package, RefreshCw, ChevronLeft, ChevronRight, Camera } from 'lucide-vue-next';
 import {
   Card,
   CardBody,
@@ -235,6 +262,7 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const currentPage = ref(1);
 const pageSize = ref(20);
 const totalPages = ref(1);
+const selectedLanguage = ref<'en' | 'zh'>('zh');
 
 const categoryOptions = computed(() => [
   { value: '', label: 'All Categories' },
@@ -305,6 +333,7 @@ async function handleImageSearch() {
       category: selectedCategory.value || undefined,
       page: currentPage.value,
       pageSize: pageSize.value,
+      language: selectedLanguage.value,
     });
 
     console.log('[ShoppingPage] Image search response:', {
@@ -361,6 +390,7 @@ async function handleKeywordSearch() {
     const params: any = {
       page: currentPage.value,
       pageSize: pageSize.value,
+      language: selectedLanguage.value,
     };
     
     if (keyword) {
@@ -436,7 +466,10 @@ function clearSearch() {
 }
 
 function handleProductClick(product: any) {
-  router.push(`/shopping/tmapi/${product.externalId}`);
+  router.push({
+    path: `/shopping/tmapi/${product.externalId}`,
+    query: { language: selectedLanguage.value },
+  });
 }
 
 function handleRequestBuy(product: any) {
