@@ -1,6 +1,12 @@
 <template>
   <div>
-    <PageHeader title="My Orders" />
+    <div class="flex items-center justify-between mb-6">
+      <PageHeader title="My Orders" />
+      <Button variant="ghost" size="sm" @click="loadOrders" :loading="loading">
+        <RefreshCw class="h-4 w-4 mr-2" :class="{ 'animate-spin': loading }" />
+        Refresh
+      </Button>
+    </div>
     <Card>
       <CardBody>
         <EmptyState
@@ -28,17 +34,26 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import axios from '@/utils/axios';
-import { PageHeader, Card, CardBody, StatusChip, EmptyState } from '@bridgechina/ui';
+import { PageHeader, Card, CardBody, StatusChip, EmptyState, Button } from '@bridgechina/ui';
+import { RefreshCw } from 'lucide-vue-next';
 
 const orders = ref<any[]>([]);
+const loading = ref(false);
 
-onMounted(async () => {
+async function loadOrders() {
+  loading.value = true;
   try {
     const response = await axios.get('/api/user/orders');
     orders.value = response.data;
   } catch (error) {
     console.error('Failed to load orders');
+  } finally {
+    loading.value = false;
   }
+}
+
+onMounted(() => {
+  loadOrders();
 });
 </script>
 

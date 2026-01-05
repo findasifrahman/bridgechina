@@ -19,18 +19,10 @@
           <Button
             variant="primary"
             size="sm"
-            class="bg-white/90 hover:bg-white text-slate-900"
+            class="bg-teal/90 hover:bg-white text-slate-900"
             @click.stop="$emit('click', product)"
           >
             View
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            class="bg-teal-600 hover:bg-teal-700 text-white"
-            @click.stop="$emit('request-buy', product)"
-          >
-            Request to Buy
           </Button>
         </div>
       </div>

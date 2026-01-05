@@ -19,7 +19,7 @@
       <!-- Header -->
       <div class="bg-teal-600 text-white p-3 sm:p-4 rounded-t-lg flex justify-between items-center flex-shrink-0">
         <div class="min-w-0 flex-1">
-          <h3 class="font-semibold text-sm sm:text-base truncate">BridgeChina Assistant</h3>
+          <h3 class="font-semibold text-sm sm:text-base text-yellow-100 truncate">BridgeChina Assistant</h3>
           <p class="text-xs text-white/80 hidden sm:block">Ask me anything about China services</p>
         </div>
         <button 

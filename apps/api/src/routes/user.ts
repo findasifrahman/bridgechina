@@ -11,6 +11,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
+import argon2 from 'argon2';
 import { normalizeCategoryKey, getCategoryName } from '../utils/service-category.js';
 
 // All user routes require authentication
@@ -332,8 +333,34 @@ export default async function userRoutes(fastify: FastifyInstance) {
   // Get user's service requests
   fastify.get('/requests', async (request: FastifyRequest) => {
     const req = request as any;
+    const query = request.query as {
+      from_date?: string;
+      to_date?: string;
+      status?: string;
+    };
+
+    // Default to last 7 days if no date filter provided
+    const now = new Date();
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const fromDate = query.from_date ? new Date(query.from_date) : sevenDaysAgo;
+    const toDate = query.to_date ? new Date(query.to_date) : now;
+
+    const where: any = {
+      user_id: req.user.id,
+      created_at: {
+        gte: fromDate,
+        lte: toDate,
+      },
+    };
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
     const requests = await prisma.serviceRequest.findMany({
-      where: { user_id: req.user.id },
+      where,
       include: {
         category: true,
         city: true,
@@ -583,6 +610,47 @@ export default async function userRoutes(fastify: FastifyInstance) {
     };
   });
 
+  // Cancel/Update service request
+  fastify.patch('/requests/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    const req = request as any;
+    const { id } = request.params as { id: string };
+    const body = request.body as { status?: string };
+
+    const serviceRequest = await prisma.serviceRequest.findUnique({
+      where: { id },
+    });
+
+    if (!serviceRequest) {
+      reply.status(404).send({ error: 'Request not found' });
+      return;
+    }
+
+    if (serviceRequest.user_id !== req.user.id) {
+      reply.status(403).send({ error: 'Access denied' });
+      return;
+    }
+
+    // Only allow cancellation for requests not in final states
+    if (body.status === 'cancelled') {
+      const finalStatuses = ['completed', 'done', 'cancelled', 'payment_done', 'service_done', 'complete'];
+      if (finalStatuses.includes(serviceRequest.status)) {
+        reply.status(400).send({ error: 'Cannot cancel request in final state' });
+        return;
+      }
+    }
+
+    const updated = await prisma.serviceRequest.update({
+      where: { id },
+      data: body.status ? { status: body.status as any } : {},
+      include: {
+        category: true,
+        city: true,
+      },
+    });
+
+    return updated;
+  });
+
   // Get user profile
   fastify.get('/profile', async (request: FastifyRequest) => {
     const req = request as any;
@@ -740,6 +808,57 @@ export default async function userRoutes(fastify: FastifyInstance) {
     }
 
     return user;
+  });
+
+  // Change password
+  fastify.patch('/password', async (request: FastifyRequest, reply: FastifyReply) => {
+    const req = request as any;
+    const body = request.body as {
+      current_password: string;
+      new_password: string;
+    };
+
+    if (!body.current_password || !body.new_password) {
+      reply.status(400).send({ error: 'Current password and new password are required' });
+      return;
+    }
+
+    if (body.new_password.length < 8) {
+      reply.status(400).send({ error: 'New password must be at least 8 characters long' });
+      return;
+    }
+
+    // Get user with password hash
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        password_hash: true,
+      },
+    });
+
+    if (!user) {
+      reply.status(404).send({ error: 'User not found' });
+      return;
+    }
+
+    // Verify current password
+    const valid = await argon2.verify(user.password_hash, body.current_password);
+    if (!valid) {
+      reply.status(401).send({ error: 'Current password is incorrect' });
+      return;
+    }
+
+    // Hash new password
+    const newPasswordHash = await argon2.hash(body.new_password);
+
+    // Update password
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { password_hash: newPasswordHash },
+    });
+
+    return { message: 'Password changed successfully' };
   });
 
   // Get user addresses
@@ -1015,8 +1134,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
     });
 
     if (!paymentProof) {
-      reply.status(404).send({ error: 'Payment proof not found' });
-      return;
+      // Return null instead of 404 - frontend expects this for "no payment proof yet"
+      return null;
     }
 
     return paymentProof;

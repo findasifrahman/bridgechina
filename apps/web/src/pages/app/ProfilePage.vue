@@ -5,7 +5,10 @@
       <!-- Personal Information -->
       <Card>
         <CardHeader>
-          <h3 class="text-lg font-semibold">Personal Information</h3>
+          <div class="flex items-center gap-2">
+            <User class="h-5 w-5 text-teal-600" />
+            <h3 class="text-lg font-semibold">Personal Information</h3>
+          </div>
         </CardHeader>
         <CardBody>
           <form @submit.prevent="updateProfile" class="space-y-4">
@@ -29,10 +32,69 @@
         </CardBody>
       </Card>
 
-      <!-- Customer Profile -->
+      <!-- Password Change -->
       <Card>
         <CardHeader>
-          <h3 class="text-lg font-semibold">Customer Profile</h3>
+          <div class="flex items-center gap-2">
+            <Lock class="h-5 w-5 text-teal-600" />
+            <h3 class="text-lg font-semibold">Change Password</h3>
+          </div>
+        </CardHeader>
+        <CardBody>
+          <form @submit.prevent="changePassword" class="space-y-4">
+            <Input
+              v-model="passwordForm.current_password"
+              label="Current Password"
+              type="password"
+              required
+            />
+            <div>
+              <Input
+                v-model="passwordForm.new_password"
+                label="New Password"
+                type="password"
+                required
+              />
+              <div v-if="passwordForm.new_password" class="mt-2 space-y-1">
+                <div class="flex items-center text-xs" :class="passwordChecks.length ? 'text-slate-600' : 'text-green-600'">
+                  <span class="w-4">{{ passwordChecks.length ? '○' : '✓' }}</span>
+                  <span>At least 8 characters</span>
+                </div>
+                <div class="flex items-center text-xs" :class="passwordChecks.uppercase ? 'text-slate-600' : 'text-green-600'">
+                  <span class="w-4">{{ passwordChecks.uppercase ? '○' : '✓' }}</span>
+                  <span>One uppercase letter</span>
+                </div>
+                <div class="flex items-center text-xs" :class="passwordChecks.lowercase ? 'text-slate-600' : 'text-green-600'">
+                  <span class="w-4">{{ passwordChecks.lowercase ? '○' : '✓' }}</span>
+                  <span>One lowercase letter</span>
+                </div>
+                <div class="flex items-center text-xs" :class="passwordChecks.number ? 'text-slate-600' : 'text-green-600'">
+                  <span class="w-4">{{ passwordChecks.number ? '○' : '✓' }}</span>
+                  <span>One number</span>
+                </div>
+              </div>
+            </div>
+            <Input
+              v-model="passwordForm.confirm_password"
+              label="Confirm New Password"
+              type="password"
+              required
+            />
+            <div class="flex justify-end gap-3 pt-4">
+              <Button variant="ghost" type="button" @click="resetPasswordForm">Cancel</Button>
+              <Button variant="primary" type="submit" :loading="changingPassword" :disabled="!isPasswordFormValid">Change Password</Button>
+            </div>
+          </form>
+        </CardBody>
+      </Card>
+
+      <!-- Customer Profile -->
+      <Card class="md:col-span-2">
+        <CardHeader>
+          <div class="flex items-center gap-2">
+            <UserCircle class="h-5 w-5 text-teal-600" />
+            <h3 class="text-lg font-semibold">Customer Profile</h3>
+          </div>
         </CardHeader>
         <CardBody>
           <form @submit.prevent="updateCustomerProfile" class="space-y-4">
@@ -132,22 +194,40 @@
       <!-- Addresses -->
       <Card class="md:col-span-2">
         <CardHeader>
-          <h3 class="text-lg font-semibold">Addresses</h3>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <MapPin class="h-5 w-5 text-teal-600" />
+              <h3 class="text-lg font-semibold">Addresses</h3>
+            </div>
+            <Button variant="primary" @click="showAddAddressModal = true" class="flex items-center gap-2">
+              <Plus class="h-4 w-4" />
+              Add Address
+            </Button>
+          </div>
         </CardHeader>
         <CardBody>
-          <div class="space-y-3">
+          <div v-if="addresses.length === 0" class="text-center py-8 text-slate-500">
+            <MapPin class="h-12 w-12 mx-auto mb-4 text-slate-300" />
+            <p>No addresses saved yet</p>
+            <p class="text-sm mt-1">Click "Add Address" above to add your first address</p>
+          </div>
+          <div v-else class="space-y-3">
             <div
               v-for="address in addresses"
               :key="address.id"
-              class="p-3 bg-slate-50 rounded-lg flex justify-between items-start"
+              class="p-4 bg-slate-50 rounded-lg border border-slate-200 flex justify-between items-start hover:bg-slate-100 transition-colors"
             >
-              <div>
-                <p class="font-medium">{{ address.label || 'Default' }}</p>
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-2">
+                  <Tag class="h-4 w-4 text-slate-400" />
+                  <p class="font-semibold text-slate-900">{{ address.label || 'Default' }}</p>
+                </div>
                 <p class="text-sm text-slate-600">{{ address.street }}, {{ address.city }}{{ address.postal_code ? `, ${address.postal_code}` : '' }}</p>
               </div>
-              <Button variant="ghost" size="sm" @click="deleteAddress(address.id)">Delete</Button>
+              <Button variant="ghost" size="sm" @click="deleteAddress(address.id)" class="text-red-600 hover:text-red-700 hover:bg-red-50">
+                Delete
+              </Button>
             </div>
-            <Button variant="ghost" @click="showAddAddressModal = true">+ Add Address</Button>
           </div>
         </CardBody>
       </Card>
@@ -170,14 +250,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
 import { PageHeader, Card, CardHeader, CardBody, Input, Button, Modal } from '@bridgechina/ui';
+import { User, Lock, UserCircle, MapPin, Plus, Tag } from 'lucide-vue-next';
 
 const profileForm = ref({
   email: '',
   phone: '',
+});
+
+const passwordForm = ref({
+  current_password: '',
+  new_password: '',
+  confirm_password: '',
 });
 
 const customerProfileForm = ref({
@@ -202,6 +289,7 @@ const addresses = ref<any[]>([]);
 const saving = ref(false);
 const savingProfile = ref(false);
 const savingAddress = ref(false);
+const changingPassword = ref(false);
 const showAddAddressModal = ref(false);
 const toast = useToast();
 
@@ -210,6 +298,27 @@ const addressForm = ref({
   street: '',
   city: '',
   postal_code: '',
+});
+
+const passwordChecks = computed(() => {
+  const pwd = passwordForm.value.new_password;
+  return {
+    length: pwd.length < 8,
+    uppercase: !/[A-Z]/.test(pwd),
+    lowercase: !/[a-z]/.test(pwd),
+    number: !/[0-9]/.test(pwd),
+  };
+});
+
+const isPasswordFormValid = computed(() => {
+  return (
+    passwordForm.value.current_password.length > 0 &&
+    passwordForm.value.new_password.length >= 8 &&
+    /[A-Z]/.test(passwordForm.value.new_password) &&
+    /[a-z]/.test(passwordForm.value.new_password) &&
+    /[0-9]/.test(passwordForm.value.new_password) &&
+    passwordForm.value.new_password === passwordForm.value.confirm_password
+  );
 });
 
 async function loadProfile() {
@@ -286,6 +395,35 @@ async function updateProfile() {
   } finally {
     saving.value = false;
   }
+}
+
+async function changePassword() {
+  if (!isPasswordFormValid.value) {
+    toast.error('Please fill all fields correctly');
+    return;
+  }
+
+  changingPassword.value = true;
+  try {
+    await axios.patch('/api/user/password', {
+      current_password: passwordForm.value.current_password,
+      new_password: passwordForm.value.new_password,
+    });
+    toast.success('Password changed successfully');
+    resetPasswordForm();
+  } catch (error: any) {
+    toast.error(error.response?.data?.error || 'Failed to change password');
+  } finally {
+    changingPassword.value = false;
+  }
+}
+
+function resetPasswordForm() {
+  passwordForm.value = {
+    current_password: '',
+    new_password: '',
+    confirm_password: '',
+  };
 }
 
 async function updateCustomerProfile() {

@@ -262,7 +262,7 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const currentPage = ref(1);
 const pageSize = ref(20);
 const totalPages = ref(1);
-const selectedLanguage = ref<'en' | 'zh'>('zh');
+const selectedLanguage = ref<'en' | 'zh'>('en');
 
 const categoryOptions = computed(() => [
   { value: '', label: 'All Categories' },

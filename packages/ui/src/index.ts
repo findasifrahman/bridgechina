@@ -43,6 +43,7 @@ export { default as MarketingLayout } from './layouts/MarketingLayout.vue';
 export { default as AppLayout } from './layouts/AppLayout.vue';
 export { default as AdminLayout } from './layouts/AdminLayout.vue';
 export { default as SellerLayout } from './layouts/SellerLayout.vue';
+export { default as UserLayout } from './layouts/UserLayout.vue';
 
 export { useToast } from './composables/useToast';
 
