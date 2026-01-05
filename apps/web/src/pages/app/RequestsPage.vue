@@ -227,13 +227,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { useRouter } from 'vue-router';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
 import { PageHeader, Card, CardBody, StatusChip, Button, EmptyState } from '@bridgechina/ui';
 import { RefreshCw, Tag, MapPin, Clock, ChevronLeft, ChevronRight } from 'lucide-vue-next';
 
-const router = useRouter();
 const toast = useToast();
 
 const requests = ref<any[]>([]);
@@ -264,6 +262,9 @@ const dateFilter = computed(() => {
   const toDate = new Date();
   const fromDate = new Date();
   fromDate.setDate(fromDate.getDate() - days);
+  // Add 12 hours buffer at start of day to account for timezone differences
+  fromDate.setHours(-48, 0, 0, 0);
+  toDate.setHours(23, 59, 59, 999); // End of day
   return {
     from_date: fromDate.toISOString().split('T')[0],
     to_date: toDate.toISOString().split('T')[0],

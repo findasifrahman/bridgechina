@@ -186,21 +186,28 @@
                 placeholder="Message to show to the user..."
               ></textarea>
             </div>
-            <!-- Provider Assignment -->
+            <!-- Provider Assignment (Multiple) -->
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Assign Provider (Optional)</label>
+              <label class="block text-sm font-medium text-slate-700 mb-1">
+                Assign Provider(s) <span class="text-red-500">*</span>
+                <span class="text-xs font-normal text-slate-500 ml-2">(Select multiple for shopping, guide, tour, etc.)</span>
+              </label>
               <select
-                v-model="statusForm.assigned_to"
-                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                v-model="statusForm.assigned_providers"
+                multiple
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 min-h-[120px]"
                 :disabled="loadingProviders"
+                required
               >
-                <option value="">No provider assignment</option>
                 <option v-for="provider in eligibleProviders" :key="provider.user_id" :value="provider.user_id">
                   {{ provider.display_name || provider.company_name || provider.user?.email || 'N/A' }} ({{ provider.user?.email }})
                 </option>
               </select>
               <p v-if="loadingProviders" class="text-xs text-slate-500 mt-1">Loading providers...</p>
-              <p v-else-if="eligibleProviders.length === 0" class="text-xs text-slate-500 mt-1">No eligible providers found for this service category and city.</p>
+              <p v-else-if="eligibleProviders.length === 0" class="text-xs text-red-500 mt-1">No eligible providers found. Cannot save without provider assignment.</p>
+              <p v-else class="text-xs text-slate-500 mt-1">
+                {{ statusForm.assigned_providers.length }} provider(s) selected. Hold Ctrl/Cmd to select multiple.
+              </p>
             </div>
 
             <!-- Payment Amount Fields -->
@@ -249,19 +256,26 @@
                 />
                 <span class="text-sm text-slate-700">Notify user via {{ request.conversation?.channel === 'whatsapp' ? 'WhatsApp' : 'WebChat' }}</span>
               </label>
-              <label v-if="statusForm.assigned_to" class="flex items-center gap-2 cursor-pointer">
+              <label v-if="statusForm.assigned_providers && statusForm.assigned_providers.length > 0" class="flex items-center gap-2 cursor-pointer">
                 <input
                   v-model="statusForm.notify_provider"
                   type="checkbox"
                   id="notify_provider"
                   class="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
                 />
-                <span class="text-sm text-slate-700">Notify provider via WhatsApp</span>
+                <span class="text-sm text-slate-700">Notify provider(s) via WhatsApp</span>
               </label>
             </div>
             <div class="flex justify-end gap-3 pt-2">
               <Button variant="ghost" type="button" @click="resetStatusForm">Cancel</Button>
-              <Button variant="primary" type="submit" :loading="updatingStatus">Update Status</Button>
+              <Button 
+                variant="primary" 
+                type="submit" 
+                :loading="updatingStatus"
+                :disabled="!canSave"
+              >
+                Update Status
+              </Button>
             </div>
           </form>
         </CardBody>
@@ -337,7 +351,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
@@ -366,10 +380,14 @@ const statusForm = ref({
   note_user: '',
   notify_user: false,
   notify_provider: false,
-  assigned_to: '',
+  assigned_providers: [] as string[],
   total_amount: undefined as number | undefined,
   paid_amount: undefined as number | undefined,
   is_fully_paid: false,
+});
+
+const canSave = computed(() => {
+  return statusForm.value.status_to && statusForm.value.assigned_providers.length > 0;
 });
 const eligibleProviders = ref<any[]>([]);
 const loadingProviders = ref(false);
@@ -385,7 +403,15 @@ async function loadRequest() {
     
     // Initialize form with current status and payment amounts
     statusForm.value.status_to = request.value.status || '';
-    statusForm.value.assigned_to = request.value.assigned_to || '';
+    // Load assigned providers from dispatches
+    if (request.value.providerDispatches && request.value.providerDispatches.length > 0) {
+      statusForm.value.assigned_providers = request.value.providerDispatches.map((d: any) => d.provider_user_id);
+    } else if (request.value.assigned_to) {
+      // Fallback to single assigned_to for backward compatibility
+      statusForm.value.assigned_providers = [request.value.assigned_to];
+    } else {
+      statusForm.value.assigned_providers = [];
+    }
     statusForm.value.total_amount = request.value.total_amount || undefined;
     statusForm.value.paid_amount = request.value.paid_amount || undefined;
     statusForm.value.is_fully_paid = request.value.is_fully_paid || false;
@@ -418,13 +444,25 @@ async function handleUpdateStatus() {
     toast.error('Please select a status');
     return;
   }
+  if (!statusForm.value.assigned_providers || statusForm.value.assigned_providers.length === 0) {
+    toast.error('Please assign at least one provider');
+    return;
+  }
 
   updatingStatus.value = true;
   try {
-    // Prepare payload - convert empty string to undefined for assigned_to
+    // Prepare payload with assigned_providers array
     const payload = {
-      ...statusForm.value,
-      assigned_to: statusForm.value.assigned_to === '' ? undefined : statusForm.value.assigned_to,
+      status_to: statusForm.value.status_to,
+      note_internal: statusForm.value.note_internal || undefined,
+      note_user: statusForm.value.note_user || undefined,
+      notify_user: statusForm.value.notify_user,
+      notify_provider: statusForm.value.notify_provider,
+      assigned_providers: statusForm.value.assigned_providers,
+      assigned_to: statusForm.value.assigned_providers[0], // First provider for backward compatibility
+      total_amount: statusForm.value.total_amount || undefined,
+      paid_amount: statusForm.value.paid_amount || undefined,
+      is_fully_paid: statusForm.value.is_fully_paid,
     };
     await axios.post(`/api/ops/requests/${route.params.id}/status`, payload);
     toast.success('Status updated successfully');
@@ -439,17 +477,21 @@ async function handleUpdateStatus() {
 }
 
 function resetStatusForm() {
-  statusForm.value = {
-    status_to: request.value?.status || '',
-    note_internal: '',
-    note_user: '',
-    notify_user: false,
-    notify_provider: false,
-    assigned_to: request.value?.assigned_to || '',
-    total_amount: request.value?.total_amount || undefined,
-    paid_amount: request.value?.paid_amount || undefined,
-    is_fully_paid: request.value?.is_fully_paid || false,
-  };
+  if (request.value?.providerDispatches && request.value.providerDispatches.length > 0) {
+    statusForm.value.assigned_providers = request.value.providerDispatches.map((d: any) => d.provider_user_id);
+  } else if (request.value?.assigned_to) {
+    statusForm.value.assigned_providers = [request.value.assigned_to];
+  } else {
+    statusForm.value.assigned_providers = [];
+  }
+  statusForm.value.status_to = request.value?.status || '';
+  statusForm.value.note_internal = '';
+  statusForm.value.note_user = '';
+  statusForm.value.notify_user = false;
+  statusForm.value.notify_provider = false;
+  statusForm.value.total_amount = request.value?.total_amount || undefined;
+  statusForm.value.paid_amount = request.value?.paid_amount || undefined;
+  statusForm.value.is_fully_paid = request.value?.is_fully_paid || false;
 }
 
 function getPaymentProofVariant(status: string): 'default' | 'success' | 'warning' | 'danger' {

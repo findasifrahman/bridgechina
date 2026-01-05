@@ -588,6 +588,99 @@ export default async function opsRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Get service requests list for OPS (with pagination and filtering)
+  fastify.get('/requests', async (request: FastifyRequest) => {
+    const query = request.query as {
+      page?: string;
+      limit?: string;
+      status?: string;
+      category_id?: string;
+      search?: string; // Search by ID, name, phone, email
+      from_date?: string;
+      to_date?: string;
+    };
+
+    const page = parseInt(query.page || '1');
+    const limit = parseInt(query.limit || '20');
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+
+    // Default to today and yesterday if no date range provided
+    if (!query.from_date && !query.to_date) {
+      const now = new Date();
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+      now.setHours(23, 59, 59, 999);
+      where.created_at = {
+        gte: yesterday,
+        lte: now,
+      };
+    } else {
+      // Apply date filter if provided
+      if (query.from_date || query.to_date) {
+        const fromDate = query.from_date ? new Date(query.from_date) : new Date(0);
+        const toDate = query.to_date ? new Date(query.to_date) : new Date();
+        toDate.setHours(23, 59, 59, 999);
+        where.created_at = {
+          ...(query.from_date ? { gte: fromDate } : {}),
+          ...(query.to_date ? { lte: toDate } : {}),
+        };
+      }
+    }
+
+    // Apply filters
+    if (query.status) {
+      where.status = query.status;
+    }
+    if (query.category_id) {
+      where.category_id = query.category_id;
+    }
+
+    // Apply search filter
+    if (query.search) {
+      const searchTerm = query.search;
+      where.OR = [
+        { id: { contains: searchTerm } }, // UUID field
+        { customer_name: { contains: searchTerm, mode: 'insensitive' } },
+        { phone: { contains: searchTerm, mode: 'insensitive' } },
+        { email: { contains: searchTerm, mode: 'insensitive' } },
+      ];
+    }
+
+    const [requests, total] = await Promise.all([
+      prisma.serviceRequest.findMany({
+        where,
+        include: {
+          category: true,
+          city: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              phone: true,
+            },
+          },
+        },
+        orderBy: { created_at: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.serviceRequest.count({ where }),
+    ]);
+
+    return {
+      requests,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  });
+
   // Get a specific service request for OPS
   fastify.get('/requests/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
@@ -743,6 +836,7 @@ export default async function opsRoutes(fastify: FastifyInstance) {
       (val) => val === '' || val === null ? undefined : val,
       z.string().uuid().optional()
     ),
+    assigned_providers: z.array(z.string().uuid()).optional(), // Multiple providers
     total_amount: z.number().positive().optional(),
     paid_amount: z.number().min(0).optional(),
     is_fully_paid: z.boolean().optional(),
@@ -804,10 +898,20 @@ export default async function opsRoutes(fastify: FastifyInstance) {
         updateData.is_fully_paid = true;
       }
     }
-    if (body.assigned_to !== undefined) {
+    // Assign providers and create dispatches if assigned_providers array is provided
+    let providerDispatchCreated = false;
+    const providerIds = body.assigned_providers && body.assigned_providers.length > 0 
+      ? body.assigned_providers 
+      : (body.assigned_to ? [body.assigned_to] : []);
+    
+    // Set assigned_to to first provider (for backward compatibility) before update
+    if (providerIds.length > 0) {
+      updateData.assigned_to = providerIds[0];
+    } else if (body.assigned_to !== undefined) {
       updateData.assigned_to = body.assigned_to;
     }
 
+    // Update the request
     await prisma.serviceRequest.update({
       where: { id },
       data: updateData,
@@ -825,29 +929,32 @@ export default async function opsRoutes(fastify: FastifyInstance) {
       },
     });
 
-    // Assign provider and create dispatch if assigned_to is provided
-    let providerDispatchCreated = false;
-    if (body.assigned_to) {
+    // Create provider dispatches
+    if (providerIds.length > 0) {
       try {
-        await prisma.providerDispatch.upsert({
-          where: {
-            request_id_provider_user_id: {
-              request_id: id,
-              provider_user_id: body.assigned_to,
-            },
-          },
-          update: {
-            // Update dispatch if it already exists
-            status: 'sent',
-            sent_at: new Date(),
-          },
-          create: {
-            request_id: id,
-            provider_user_id: body.assigned_to,
-            status: 'sent',
-            sent_at: new Date(),
-          },
-        });
+        // Create/update dispatches for all providers
+        await Promise.all(
+          providerIds.map((providerId: string) =>
+            prisma.providerDispatch.upsert({
+              where: {
+                request_id_provider_user_id: {
+                  request_id: id,
+                  provider_user_id: providerId,
+                },
+              },
+              update: {
+                status: 'sent',
+                sent_at: new Date(),
+              },
+              create: {
+                request_id: id,
+                provider_user_id: providerId,
+                status: 'sent',
+                sent_at: new Date(),
+              },
+            })
+          )
+        );
         providerDispatchCreated = true;
       } catch (error: any) {
         fastify.log.error({ error }, '[Ops Routes] Failed to create provider dispatch');
