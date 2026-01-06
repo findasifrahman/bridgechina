@@ -111,3 +111,4 @@ After applying the migration, verify:
 2. TypeScript errors in `provider.ts` will resolve automatically
 3. Create provider profile UI (`apps/web/src/pages/provider/ProfilePage.vue`)
 
+
