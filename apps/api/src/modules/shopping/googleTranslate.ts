@@ -75,7 +75,11 @@ async function translateWithGoogle(text: string): Promise<string> {
       throw new Error(`Google Translate API error: ${response.status}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as {
+      data?: {
+        translations?: Array<{ translatedText?: string }>;
+      };
+    };
     const translated = data.data?.translations?.[0]?.translatedText;
     
     if (!translated) {
