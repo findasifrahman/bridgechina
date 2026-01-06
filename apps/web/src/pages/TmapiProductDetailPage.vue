@@ -161,7 +161,7 @@
                 <Package class="h-4 w-4 text-slate-600" />
                 <div class="text-sm font-semibold text-slate-700">Size / Price / Stock / Quantity</div>
               </div>
-              <div class="grid md:grid-cols-2 gap-3">
+              <div class="grid md:grid-cols-1 gap-3">
                 <div v-for="(sku, idx) in product.skus.slice(0, 6)" :key="idx" class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-teal-300 transition-colors">
                   <div class="flex-1 min-w-0">
                     <div class="text-sm font-medium text-slate-900 mb-1">{{ sku.props_names || sku.specid || `SKU ${String(Number(idx) + 1)}` }}</div>
@@ -347,7 +347,7 @@
           <Package class="h-5 w-5 text-teal-600" />
           Similar Products
         </h2>
-        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-3 gap-4">
           <ProductCard
             v-for="item in similarProducts"
             :key="item.externalId"
