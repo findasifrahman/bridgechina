@@ -14,13 +14,23 @@
         ← Back to Shopping
       </Button>
 
-      <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-        <div class="grid md:grid-cols-2 gap-8 p-6">
+      <div class="grid lg:grid-cols-3 gap-6">
+        <!-- Main Product Info (2 columns on desktop) -->
+        <div class="lg:col-span-2">
+          <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div class="grid md:grid-cols-2 gap-8 p-6">
           <!-- Product Images -->
           <div>
             <div class="aspect-square bg-slate-100 rounded-lg overflow-hidden mb-4 border border-slate-200">
+              <!-- Video Player -->
+              <video
+                v-if="product.videoUrl && selectedImage === product.videoUrl"
+                :src="product.videoUrl"
+                controls
+                class="w-full h-full object-contain"
+              />
               <img
-                v-if="selectedImage || product.imageUrl"
+                v-else-if="selectedImage || product.imageUrl"
                 :src="selectedImage || product.imageUrl"
                 :alt="product.title"
                 class="w-full h-full object-cover"
@@ -29,9 +39,19 @@
                 <Package class="h-32 w-32" />
               </div>
             </div>
-            <div v-if="product.images && product.images.length > 1" class="grid grid-cols-4 gap-2">
+            <div v-if="(product.images && product.images.length > 1) || product.videoUrl" class="grid grid-cols-4 gap-2">
+              <!-- Video Thumbnail -->
+              <div
+                v-if="product.videoUrl"
+                @click="selectedImage = product.videoUrl"
+                class="aspect-square rounded border-2 cursor-pointer transition-all bg-slate-100 flex items-center justify-center"
+                :class="selectedImage === product.videoUrl ? 'border-teal-500' : 'border-slate-200 hover:border-teal-300'"
+              >
+                <Play class="h-8 w-8 text-slate-600" />
+              </div>
+              <!-- Image Thumbnails -->
               <img
-                v-for="(img, idx) in product.images.slice(0, 8)"
+                v-for="(img, idx) in (product.images || []).slice(0, product.videoUrl ? 7 : 8)"
                 :key="idx"
                 :src="img"
                 :alt="`${product.title} ${idx + 1}`"
@@ -62,13 +82,30 @@
 
             <!-- Pricing -->
             <div class="border-t border-b border-slate-200 py-4">
-              <div class="text-4xl font-bold text-teal-600 mb-3">
-                <span v-if="product.priceMin && product.priceMax && product.priceMin !== product.priceMax">
-                  ¥{{ product.priceMin }} - ¥{{ product.priceMax }}
-                </span>
-                <span v-else-if="product.priceMin">¥{{ product.priceMin }}</span>
-                <span v-else>Price on request</span>
-                <span class="text-lg text-slate-600 ml-2">{{ product.currency }}</span>
+              <div class="flex items-center justify-between mb-2">
+                <div class="text-4xl font-bold text-teal-600">
+                  <span v-if="product.priceMin && product.priceMax && product.priceMin !== product.priceMax">
+                    {{ formatPrice(product.priceMin) }} - {{ formatPrice(product.priceMax) }}
+                  </span>
+                  <span v-else-if="product.priceMin">{{ formatPrice(product.priceMin) }}</span>
+                  <span v-else>Price on request</span>
+                </div>
+                <!-- Currency Selector -->
+                <div class="flex gap-1 border border-slate-200 rounded-lg p-1 bg-white">
+                  <button
+                    v-for="curr in ['CNY', 'BDT', 'USD'] as const"
+                    :key="curr"
+                    @click="selectedCurrency = curr"
+                    :class="[
+                      'px-2 py-1 rounded text-xs font-medium transition-colors',
+                      selectedCurrency === curr
+                        ? 'bg-teal-600 text-white'
+                        : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50'
+                    ]"
+                  >
+                    {{ curr }}
+                  </button>
+                </div>
               </div>
               
               <!-- Tiered Pricing -->
@@ -81,6 +118,15 @@
                   <span class="font-semibold text-teal-600">¥{{ tier.price }}</span>
                 </div>
               </div>
+            </div>
+
+            <!-- Estimated Weight -->
+            <div v-if="product.estimatedWeightKg !== null && product.estimatedWeightKg !== undefined" class="text-sm bg-slate-50 rounded-lg p-3">
+              <span class="font-semibold text-slate-700">Estimated Weight:</span>
+              <span class="ml-2 text-slate-600">{{ formatWeight(product.estimatedWeightKg) }} kg</span>
+            </div>
+            <div v-else class="text-sm bg-amber-50 rounded-lg p-3 border border-amber-200">
+              <span class="font-semibold text-amber-800">Weight unknown — agent will confirm</span>
             </div>
 
             <!-- Availability -->
@@ -164,18 +210,22 @@
             </div>
 
             <!-- Action Buttons -->
-            <div class="flex gap-3 mt-4">
+            <div class="space-y-3 mt-4">
               <Button
                 variant="primary"
                 @click="requestQuote"
-                class="flex-1"
+                class="w-full"
+                size="lg"
               >
-                Request Quote
+                Request Purchase & Shipping
               </Button>
+              <p class="text-xs text-slate-600 text-center">
+                No payment now. Agent confirms final quote → You approve → We purchase & ship.
+              </p>
               <Button
                 variant="secondary"
                 @click="openWhatsApp"
-                class="flex-1"
+                class="w-full"
               >
                 <MessageCircle class="h-4 w-4 mr-2" />
                 Contact via WhatsApp
@@ -214,8 +264,26 @@
             </div>
           </div>
         </div>
+        </div>
 
-        <!-- Description Section -->
+        <!-- Shipping Card (Sticky on desktop, collapsible on mobile) -->
+        <div class="lg:col-span-1">
+          <ShippingCard
+            :shipping-data="product.bridgechinaShipping"
+            :estimated-weight-kg="product.estimatedWeightKg"
+            :quantity="totalQuantity"
+            :has-battery="hasBattery"
+            :is-sticky="true"
+            :currency="selectedCurrency"
+            :conversion-rates="conversionRates"
+            @method-change="selectedShippingMethod = $event"
+            @weight-change="manualWeight = $event"
+          />
+        </div>
+      </div>
+
+      <!-- Description Section (Full width below) -->
+      <div class="mt-6 bg-white rounded-lg shadow-sm overflow-hidden">
         <div v-if="product.description" class="border-t border-slate-200 p-6">
           <h2 class="text-xl font-bold text-slate-900 mb-4">Product Description</h2>
           <div 
@@ -256,7 +324,7 @@ import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
-import { Package, ShoppingCart, Star, Plus, Minus, MessageCircle } from 'lucide-vue-next';
+import { Package, ShoppingCart, Star, Plus, Minus, MessageCircle, Play } from 'lucide-vue-next';
 import {
   Button,
   Badge,
@@ -264,6 +332,7 @@ import {
   EmptyState,
 } from '@bridgechina/ui';
 import { useWhatsApp } from '@/composables/useWhatsApp';
+import ShippingCard from '@/components/shopping/ShippingCard.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -276,6 +345,11 @@ const quantity = ref(1);
 const selectedImage = ref<string | null>(null);
 const selectedSkus = ref<Record<string, number>>({});
 const selectedLanguage = ref<'en' | 'zh'>('zh');
+const selectedCurrency = ref<'CNY' | 'BDT' | 'USD'>('CNY');
+const selectedShippingMethod = ref<string>('');
+const hasBattery = ref(false);
+const manualWeight = ref<number | null>(null);
+const conversionRates = ref<{ CNY_TO_BDT?: number; CNY_TO_USD?: number }>({});
 
 function formatNumber(num: number): string {
   if (num >= 1000000) {
@@ -286,6 +360,39 @@ function formatNumber(num: number): string {
   }
   return num.toString();
 }
+
+function formatWeight(kg: number): string {
+  return kg.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function formatPrice(price: number): string {
+  const currency = selectedCurrency.value;
+  
+  if (currency === 'CNY') {
+    return `¥${price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  }
+  
+  if (currency === 'BDT') {
+    const rate = conversionRates.value.CNY_TO_BDT || 15; // Fallback rate
+    const bdtPrice = price * rate;
+    return `৳${bdtPrice.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  }
+  
+  if (currency === 'USD') {
+    const rate = conversionRates.value.CNY_TO_USD || 0.14; // Fallback rate
+    const usdPrice = price * rate;
+    return `$${usdPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  
+  return `¥${price}`;
+}
+
+const totalQuantity = computed(() => {
+  if (product.value?.skus && Object.keys(selectedSkus.value).length > 0) {
+    return Object.values(selectedSkus.value).reduce((sum, qty) => sum + qty, 0) || quantity.value;
+  }
+  return quantity.value;
+});
 
 function updateSkuQuantity(sku: any, delta: number) {
   const key = sku.specid || sku.skuid || String(Math.random());
@@ -311,6 +418,12 @@ async function loadProduct() {
     } else if (product.value.imageUrl) {
       selectedImage.value = product.value.imageUrl;
     }
+
+    // Load conversion rates
+    conversionRates.value = {
+      CNY_TO_BDT: 15, // Default fallback
+      CNY_TO_USD: 0.14, // Default fallback
+    };
   } catch (error: any) {
     if (error.response?.status === 404) {
       product.value = null;

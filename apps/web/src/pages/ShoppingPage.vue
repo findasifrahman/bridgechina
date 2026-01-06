@@ -16,30 +16,48 @@
             <Search class="h-5 w-5 text-teal-600" />
             <h2 class="text-lg font-semibold text-slate-900">Search Products</h2>
           </div>
-          <!-- Language Tabs -->
-          <div class="flex gap-2 border border-teal-200 rounded-lg p-1 bg-white">
-            <button
-              @click="selectedLanguage = 'zh'"
-              :class="[
-                'px-4 py-1.5 rounded text-sm font-medium transition-colors',
-                selectedLanguage === 'zh'
-                  ? 'bg-teal-600 text-white'
-                  : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50'
-              ]"
-            >
-              中文
-            </button>
-            <button
-              @click="selectedLanguage = 'en'"
-              :class="[
-                'px-4 py-1.5 rounded text-sm font-medium transition-colors',
-                selectedLanguage === 'en'
-                  ? 'bg-teal-600 text-white'
-                  : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50'
-              ]"
-            >
-              English
-            </button>
+          <div class="flex gap-2">
+            <!-- Language Tabs -->
+            <div class="flex gap-2 border border-teal-200 rounded-lg p-1 bg-white">
+              <button
+                @click="selectedLanguage = 'zh'"
+                :class="[
+                  'px-4 py-1.5 rounded text-sm font-medium transition-colors',
+                  selectedLanguage === 'zh'
+                    ? 'bg-teal-600 text-white'
+                    : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50'
+                ]"
+              >
+                中文
+              </button>
+              <button
+                @click="selectedLanguage = 'en'"
+                :class="[
+                  'px-4 py-1.5 rounded text-sm font-medium transition-colors',
+                  selectedLanguage === 'en'
+                    ? 'bg-teal-600 text-white'
+                    : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50'
+                ]"
+              >
+                English
+              </button>
+            </div>
+            <!-- Currency Selector -->
+            <div class="flex gap-2 border border-teal-200 rounded-lg p-1 bg-white">
+              <button
+                v-for="curr in ['CNY', 'BDT', 'USD'] as const"
+                :key="curr"
+                @click="selectedCurrency = curr"
+                :class="[
+                  'px-3 py-1.5 rounded text-sm font-medium transition-colors',
+                  selectedCurrency === curr
+                    ? 'bg-teal-600 text-white'
+                    : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50'
+                ]"
+              >
+                {{ curr }}
+              </button>
+            </div>
           </div>
         </div>
         
@@ -120,6 +138,21 @@
         </div>
       </div>
 
+      <!-- Recent Searches -->
+      <div v-if="recentSearches.length > 0" class="mb-6">
+        <h3 class="text-sm font-semibold text-slate-700 mb-3">Recent Searches</h3>
+        <div class="flex flex-wrap gap-2">
+          <button
+            v-for="(keyword, idx) in recentSearches"
+            :key="idx"
+            @click="handleRecentSearchClick(keyword)"
+            class="px-3 py-1.5 rounded-lg text-sm font-medium bg-white text-slate-700 border border-slate-200 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700 transition-all"
+          >
+            {{ keyword }}
+          </button>
+        </div>
+      </div>
+
       <!-- Category Pills - Enhanced Styling -->
       <div class="mb-6">
         <h3 class="text-sm font-semibold text-slate-700 mb-3">Browse by Category</h3>
@@ -158,6 +191,8 @@
             v-for="item in hotItems"
             :key="item.externalId"
             :product="item"
+            :selected-currency="selectedCurrency"
+            :conversion-rates="conversionRates"
             @click="handleProductClick(item)"
             @request-buy="handleRequestBuy(item)"
           />
@@ -185,6 +220,8 @@
             v-for="item in searchResults"
             :key="item.externalId"
             :product="item"
+            :selected-currency="selectedCurrency"
+            :conversion-rates="conversionRates"
             @click="handleProductClick(item)"
             @request-buy="handleRequestBuy(item)"
           />
@@ -263,6 +300,9 @@ const currentPage = ref(1);
 const pageSize = ref(20);
 const totalPages = ref(1);
 const selectedLanguage = ref<'en' | 'zh'>('en');
+const selectedCurrency = ref<'CNY' | 'BDT' | 'USD'>('CNY');
+const recentSearches = ref<string[]>([]);
+const conversionRates = ref<{ CNY_TO_BDT?: number; CNY_TO_USD?: number }>({});
 
 const categoryOptions = computed(() => [
   { value: '', label: 'All Categories' },
@@ -374,6 +414,11 @@ function handleCategoryClick(categorySlug: string) {
   selectedCategory.value = categorySlug;
   // Load hot products for this category
   loadHotItems();
+}
+
+function handleRecentSearchClick(keyword: string) {
+  searchQuery.value = keyword;
+  handleKeywordSearch();
 }
 
 async function handleKeywordSearch() {
@@ -524,9 +569,43 @@ async function loadHotItems() {
 }
 
 
+async function loadRecentSearches() {
+  try {
+    const response = await axios.get('/api/public/shopping/recent-searches', {
+      params: {
+        limit: 8,
+        language: selectedLanguage.value,
+      },
+    });
+    recentSearches.value = Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    console.error('Failed to load recent searches:', error);
+    recentSearches.value = [];
+  }
+}
+
+async function loadConversionRates() {
+  // In a real app, these would come from an API or env
+  // For now, use defaults or fetch from backend
+  conversionRates.value = {
+    CNY_TO_BDT: 15, // Default fallback
+    CNY_TO_USD: 0.14, // Default fallback
+  };
+  
+  // Try to get from backend if available
+  try {
+    // Backend could expose these via env or API
+    // For now, use defaults
+  } catch (error) {
+    console.warn('Failed to load conversion rates, using defaults');
+  }
+}
+
 onMounted(() => {
   loadCategories();
   loadHotItems(); // Load hot products on mount
+  loadRecentSearches();
+  loadConversionRates();
 });
 </script>
 

@@ -20,6 +20,7 @@ import {
   getCachedItem,
   setCachedItem,
 } from './cache.js';
+import { translateKeywordToChinese } from './googleTranslate.js';
 const SOURCE = 'tmapi_1688';
 
 // Shopping categories (can be moved to DB later)
@@ -50,6 +51,7 @@ export interface SearchResult {
   page?: number;
   pageSize?: number;
   totalPages?: number;
+  hasNextPage?: boolean;
 }
 
 /**
@@ -66,8 +68,22 @@ export async function searchByKeyword(
   }
 ): Promise<SearchResult> {
   // If no keyword but category provided, use category name as keyword
-  const searchKeyword = keyword?.trim() || opts?.category || 'products';
+  let searchKeyword = keyword?.trim() || opts?.category || 'products';
   const language = opts?.language || 'zh';
+  
+  // Translate English keyword to Chinese if language is 'zh' and keyword looks non-Chinese
+  if (language === 'zh' && searchKeyword && searchKeyword !== 'products') {
+    try {
+      const translated = await translateKeywordToChinese(searchKeyword);
+      if (translated !== searchKeyword) {
+        console.log('[Shopping Service] Translated keyword:', { original: searchKeyword, translated });
+        searchKeyword = translated;
+      }
+    } catch (error: any) {
+      console.warn('[Shopping Service] Translation failed, using original keyword:', error.message);
+      // Continue with original keyword
+    }
+  }
   
   console.log('[Shopping Service] searchByKeyword called:', { 
     originalKeyword: keyword, 
@@ -75,35 +91,39 @@ export async function searchByKeyword(
     language,
     opts 
   });
-  
-  const cacheKey = generateCacheKey('keyword', { keyword: searchKeyword, language, ...opts });
-  console.log('[Shopping Service] Cache key:', cacheKey);
 
-  const page = opts?.page || 1;
-  const pageSize = opts?.pageSize || 20;
+  const page = opts?.page ?? 1;
+  const pageSize = opts?.pageSize ?? 20;
+  const category = opts?.category || undefined;
+  const sort = opts?.sort || 'default';
+  
+  // Include all params explicitly in cache key to avoid collisions
+  const cacheKey = generateCacheKey('keyword', { 
+    keyword: searchKeyword, 
+    language, 
+    category,
+    sort,
+    page,
+    pageSize,
+  });
+  console.log('[Shopping Service] Cache key:', cacheKey);
 
   // Check search cache
   const cached = await getCachedSearch(SOURCE, cacheKey);
   if (cached) {
     console.log('[Shopping Service] Using cached search results');
-    console.log('[Shopping Service] Cached data structure:', {
-      hasData: !!cached?.data,
-      hasItems: !!cached?.data?.items,
-      cachedKeys: Object.keys(cached || {}),
-      dataKeys: cached?.data ? Object.keys(cached.data) : [],
-      itemsType: Array.isArray(cached?.data?.items) ? 'array' : typeof cached?.data?.items,
-      itemsLength: Array.isArray(cached?.data?.items) ? cached.data.items.length : 'not array',
-    });
     // getCachedSearch returns cached.results_json, which is the full TMAPI response
     // Structure: { code: 200, msg: "success", data: { items: [...], total_count: ... } }
     const items = cached?.data?.items || cached?.items || [];
     const normalized = normalizeProductCards(items);
     const totalCount = cached?.data?.total_count || normalized.length;
     const totalPages = Math.ceil(totalCount / pageSize);
+    const hasNextPage = page < totalPages;
     console.log('[Shopping Service] Cached results:', {
       itemsCount: normalized.length,
       totalCount,
       totalPages,
+      hasNextPage,
     });
     return {
       items: normalized,
@@ -111,6 +131,7 @@ export async function searchByKeyword(
       page,
       pageSize,
       totalPages,
+      hasNextPage,
     };
   }
 
@@ -153,12 +174,14 @@ export async function searchByKeyword(
     });
 
     console.log('[Shopping Service] Normalized items count:', normalized.length);
+    const hasNextPage = page < totalPages;
     return {
       items: normalized,
       totalCount,
       page,
       pageSize,
       totalPages,
+      hasNextPage,
     };
   } catch (error: any) {
     console.error('[Shopping Service] TMAPI error:', {
@@ -212,12 +235,14 @@ export async function searchByKeyword(
       
       if (paginated.length > 0) {
         console.log(`[Shopping Service] Returning ${paginated.length} cached items as fallback`);
+        const hasNextPage = page < totalPages;
         return {
           items: paginated,
           totalCount,
           page,
           pageSize,
           totalPages,
+          hasNextPage,
         };
       }
     } catch (fallbackError) {
@@ -232,6 +257,7 @@ export async function searchByKeyword(
       page,
       pageSize,
       totalPages: 0,
+      hasNextPage: false,
     };
   }
 }
@@ -530,12 +556,19 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
     }
     
     try {
-      const shippingResponse = await tmapiClient.getItemShipping(externalId);
+      // Always include province to avoid 422 error
+      const shippingResponse = await tmapiClient.getItemShipping(externalId, {
+        province: process.env.TMAPI_DEFAULT_PROVINCE || '广东',
+      });
       if (shippingResponse.data?.data) {
         shipping = shippingResponse.data.data;
       }
-    } catch (error) {
-      console.warn('[Shopping Service] Failed to fetch shipping for cached item:', error);
+    } catch (error: any) {
+      // Log once but don't crash - shipping is optional
+      console.warn('[Shopping Service] Failed to fetch shipping for cached item (non-critical):', {
+        message: error.message,
+        status: error.response?.status,
+      });
     }
     
     const normalized = normalizeProductDetail(cached.raw_json as any, description);
@@ -556,6 +589,46 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
         normalized.ratingCount = ratingsList.length;
       }
     }
+
+    // Add BridgeChina shipping information
+    normalized.bridgechinaShipping = {
+      currency: 'BDT',
+      moq_billable_kg: 3,
+      methods: [
+        {
+          code: 'FAST_AIR',
+          label: 'Fast Air (<10kg)',
+          minKg: 0,
+          maxKg: 9.999,
+          ratePerKg: 2200,
+          batteryRatePerKg: null,
+        },
+        {
+          code: 'AIR',
+          label: 'Air Cargo (10kg+)',
+          minKg: 10,
+          ratePerKg: 750,
+          batteryRatePerKg: 1300,
+        },
+        {
+          code: 'SEA',
+          label: 'Sea Cargo (100kg+)',
+          minKg: 100,
+          ratePerKg: null,
+          batteryRatePerKg: null,
+          quoteRequired: true,
+        },
+      ],
+      marketing: {
+        highlightKg: [20, 40],
+        highlightText: 'Best value tiers: 20kg & 40kg bundles — cheaper per kg and faster processing.',
+      },
+      disclaimerLines: [
+        'No payment now. Agent confirms final quote → You approve → We purchase & ship.',
+        'Final weight & restrictions confirmed after packing.',
+        'Battery/liquid/magnet/brand items may be restricted or higher rate.',
+      ],
+    };
     
     return normalized;
   }
@@ -593,12 +666,20 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
   }
   
   try {
-    const shippingResponse = await tmapiClient.getItemShipping(externalId);
+    // Always include province to avoid 422 error
+    const shippingResponse = await tmapiClient.getItemShipping(externalId, {
+      province: process.env.TMAPI_DEFAULT_PROVINCE || '广东',
+    });
     if (shippingResponse.data?.data) {
       shipping = shippingResponse.data.data;
     }
-  } catch (error) {
-    console.warn('[Shopping Service] Failed to fetch item shipping:', error);
+  } catch (error: any) {
+    // Log once but don't crash - shipping is optional
+    console.warn('[Shopping Service] Failed to fetch item shipping (non-critical):', {
+      message: error.message,
+      status: error.response?.status,
+    });
+    // Continue without shipping data
   }
 
   // Normalize to extract data (pass description if fetched)
@@ -616,6 +697,46 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
       normalized.ratingCount = ratingsList.length;
     }
   }
+
+  // Add BridgeChina shipping information
+  normalized.bridgechinaShipping = {
+    currency: 'BDT',
+    moq_billable_kg: 3,
+    methods: [
+      {
+        code: 'FAST_AIR',
+        label: 'Fast Air (<10kg)',
+        minKg: 0,
+        maxKg: 9.999,
+        ratePerKg: 2200,
+        batteryRatePerKg: null,
+      },
+      {
+        code: 'AIR',
+        label: 'Air Cargo (10kg+)',
+        minKg: 10,
+        ratePerKg: 750,
+        batteryRatePerKg: 1300,
+      },
+      {
+        code: 'SEA',
+        label: 'Sea Cargo (100kg+)',
+        minKg: 100,
+        ratePerKg: null,
+        batteryRatePerKg: null,
+        quoteRequired: true,
+      },
+    ],
+    marketing: {
+      highlightKg: [20, 40],
+      highlightText: 'Best value tiers: 20kg & 40kg bundles — cheaper per kg and faster processing.',
+    },
+    disclaimerLines: [
+      'No payment now. Agent confirms final quote → You approve → We purchase & ship.',
+      'Final weight & restrictions confirmed after packing.',
+      'Battery/liquid/magnet/brand items may be restricted or higher rate.',
+    ],
+  };
 
   // Save to ExternalCatalogItem cache
   const expiresAt = new Date();

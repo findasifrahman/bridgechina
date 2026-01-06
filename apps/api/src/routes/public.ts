@@ -2475,6 +2475,70 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
     return item;
   });
 
+  // Get recent searches (distinct keywords from search cache)
+  fastify.get('/shopping/recent-searches', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const query = request.query as { limit?: string; language?: string };
+      const limit = parseInt(query.limit || '8', 10);
+      const language = query.language || 'zh';
+
+      // Get recent search cache entries
+      const recentSearches = await prisma.externalSearchCache.findMany({
+        where: {
+          source: 'tmapi_1688',
+        },
+        orderBy: {
+          created_at: 'desc',
+        },
+        take: limit * 3, // Get more to filter distinct
+      });
+
+      // Extract and normalize keywords from query_json
+      const keywords = new Map<string, Date>(); // Map<normalizedKeyword, mostRecentDate>
+      
+      for (const search of recentSearches) {
+        try {
+          const queryJson = search.query_json as any;
+          let keyword: string | undefined;
+
+          // Handle different query_json shapes
+          if (typeof queryJson === 'string') {
+            try {
+              const parsed = JSON.parse(queryJson);
+              keyword = parsed.keyword || parsed.keywords;
+            } catch {
+              // Not JSON, skip
+            }
+          } else if (typeof queryJson === 'object' && queryJson !== null) {
+            keyword = queryJson.keyword || queryJson.keywords;
+          }
+
+          if (keyword && typeof keyword === 'string' && keyword.trim()) {
+            const normalized = keyword.trim().toLowerCase();
+            // Only keep if we don't have it yet, or this one is more recent
+            if (!keywords.has(normalized) || (search.created_at && search.created_at > (keywords.get(normalized) || new Date(0)))) {
+              keywords.set(normalized, search.created_at || new Date());
+            }
+          }
+        } catch (error) {
+          // Skip invalid entries
+          continue;
+        }
+      }
+
+      // Convert to array and sort by date, take limit
+      const result = Array.from(keywords.entries())
+        .sort((a, b) => b[1].getTime() - a[1].getTime())
+        .slice(0, limit)
+        .map(([keyword]) => keyword);
+
+      return result;
+    } catch (error: any) {
+      fastify.log.error({ error, stack: error.stack }, '[Public Route] /shopping/recent-searches error');
+      reply.status(500).send({ error: error.message || 'Failed to get recent searches' });
+    }
+  });
+
   // Translate product title (stub implementation with caching)
   fastify.post('/shopping/translate', async (request: FastifyRequest, reply: FastifyReply) => {
     try {

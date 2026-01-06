@@ -59,6 +59,27 @@ export interface ProductDetail extends ProductCard {
   productProps?: any[];
   serviceTags?: string[];
   stock?: number;
+  videoUrl?: string;
+  detailUrl?: string;
+  estimatedWeightKg?: number;
+  bridgechinaShipping?: {
+    currency: string;
+    moq_billable_kg: number;
+    methods: Array<{
+      code: string;
+      label: string;
+      minKg?: number;
+      maxKg?: number;
+      ratePerKg?: number;
+      batteryRatePerKg?: number;
+      quoteRequired?: boolean;
+    }>;
+    marketing?: {
+      highlightKg: number[];
+      highlightText: string;
+    };
+    disclaimerLines: string[];
+  };
 }
 
 /**
@@ -250,6 +271,27 @@ export function normalizeProductDetail(item: any, descriptionData?: any): Produc
     shippingInfo.shipIn48h = Boolean(item.ship_in_48h);
   }
 
+  // Extract video URL and detail URL
+  const videoUrl = item.video_url || item.video || null;
+  const detailUrl = item.detail_url || item.url || item.link || card.sourceUrl || null;
+
+  // Extract estimated weight from delivery_info
+  let estimatedWeightKg: number | undefined;
+  if (item.delivery_info) {
+    if (item.delivery_info.weight) {
+      const weight = parseFloat(String(item.delivery_info.weight));
+      if (!isNaN(weight) && weight > 0) {
+        estimatedWeightKg = weight;
+      }
+    }
+    if (!estimatedWeightKg && item.delivery_info.unit_weight) {
+      const unitWeight = parseFloat(String(item.delivery_info.unit_weight));
+      if (!isNaN(unitWeight) && unitWeight > 0) {
+        estimatedWeightKg = unitWeight;
+      }
+    }
+  }
+
   const detail: ProductDetail = {
     ...card,
     description,
@@ -264,6 +306,9 @@ export function normalizeProductDetail(item: any, descriptionData?: any): Produc
     productProps: item.product_props || item.props || null,
     serviceTags: item.service_tags || item.tags || null,
     stock: item.stock ? parseInt(String(item.stock)) : undefined,
+    videoUrl: videoUrl || undefined,
+    detailUrl: detailUrl || undefined,
+    estimatedWeightKg: estimatedWeightKg || undefined,
   };
 
   return detail;

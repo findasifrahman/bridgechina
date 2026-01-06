@@ -33,9 +33,9 @@
       <div class="flex items-center justify-between">
         <span class="text-lg font-bold text-teal-600">
           <span v-if="product.priceMin && product.priceMax">
-            ¥{{ product.priceMin }}{{ product.priceMin !== product.priceMax ? ' - ¥' + product.priceMax : '' }}
+            {{ formatPrice(product.priceMin) }}{{ product.priceMin !== product.priceMax ? ' - ' + formatPrice(product.priceMax) : '' }}
           </span>
-          <span v-else-if="product.priceMin">¥{{ product.priceMin }}</span>
+          <span v-else-if="product.priceMin">{{ formatPrice(product.priceMin) }}</span>
           <span v-else class="text-slate-500 text-sm">Price on request</span>
         </span>
       </div>
@@ -44,10 +44,11 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { Package } from 'lucide-vue-next';
 import { Card, CardBody, Button } from '@bridgechina/ui';
 
-defineProps<{
+const props = defineProps<{
   product: {
     externalId: string;
     title: string;
@@ -57,11 +58,38 @@ defineProps<{
     imageUrl?: string;
     sellerName?: string;
   };
+  selectedCurrency?: 'CNY' | 'BDT' | 'USD';
+  conversionRates?: {
+    CNY_TO_BDT?: number;
+    CNY_TO_USD?: number;
+  };
 }>();
 
 defineEmits<{
   click: [product: any];
   'request-buy': [product: any];
 }>();
+
+function formatPrice(price: number): string {
+  const currency = props.selectedCurrency || 'CNY';
+  
+  if (currency === 'CNY') {
+    return `¥${price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  }
+  
+  if (currency === 'BDT') {
+    const rate = props.conversionRates?.CNY_TO_BDT || 15; // Fallback rate
+    const bdtPrice = price * rate;
+    return `৳${bdtPrice.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  }
+  
+  if (currency === 'USD') {
+    const rate = props.conversionRates?.CNY_TO_USD || 0.14; // Fallback rate
+    const usdPrice = price * rate;
+    return `$${usdPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  
+  return `¥${price}`;
+}
 </script>
 

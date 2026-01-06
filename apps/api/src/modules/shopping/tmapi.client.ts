@@ -475,7 +475,8 @@ class TMAPIClient {
         item_id: itemId,
       };
 
-      if (opts?.province) params.province = opts.province;
+      // Always include province (required by TMAPI) - default to Guangdong if not provided
+      params.province = opts?.province ?? process.env.TMAPI_DEFAULT_PROVINCE ?? '广东';
       if (opts?.totalQuantity) params.total_quantity = opts.totalQuantity;
       if (opts?.totalWeight) params.total_weight = opts.totalWeight;
 
