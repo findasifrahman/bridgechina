@@ -91,7 +91,7 @@ export async function searchByKeyword(
     language,
     opts 
   });
-
+  
   const page = opts?.page ?? 1;
   const pageSize = opts?.pageSize ?? 20;
   const category = opts?.category || undefined;
@@ -591,6 +591,9 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
     }
 
     // Add BridgeChina shipping information
+    // Rates are in BDT: 1 CNY = 18 BDT
+    // FAST_AIR: 2200 BDT = ~122 CNY
+    // AIR: 750-1250 BDT = ~42-69 CNY
     normalized.bridgechinaShipping = {
       currency: 'BDT',
       moq_billable_kg: 3,
@@ -600,15 +603,20 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
           label: 'Fast Air (<10kg)',
           minKg: 0,
           maxKg: 9.999,
-          ratePerKg: 2200,
+          ratePerKg: 2200, // BDT
+          ratePerKgCNY: 122.22, // Converted to CNY (2200/18)
           batteryRatePerKg: undefined,
         },
         {
           code: 'AIR',
           label: 'Air Cargo (10kg+)',
           minKg: 10,
-          ratePerKg: 750,
-          batteryRatePerKg: 1300,
+          ratePerKg: 750, // BDT min
+          ratePerKgMax: 1250, // BDT max
+          ratePerKgCNY: 41.67, // CNY min (750/18)
+          ratePerKgMaxCNY: 69.44, // CNY max (1250/18)
+          batteryRatePerKg: 1300, // BDT
+          batteryRatePerKgCNY: 72.22, // CNY (1300/18)
         },
         {
           code: 'SEA',

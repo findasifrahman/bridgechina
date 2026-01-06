@@ -78,10 +78,31 @@
               </div>
               <div class="text-xs text-slate-600 mt-1">
                 <div v-if="method.ratePerKg">
-                  {{ formatCurrency(method.ratePerKg) }}/kg
-                  <span v-if="hasBattery && method.batteryRatePerKg">
-                    ({{ formatCurrency(method.batteryRatePerKg) }}/kg with battery)
-                  </span>
+                  <template v-if="currency === 'BDT'">
+                    <span v-if="method.ratePerKgMax && method.ratePerKg !== method.ratePerKgMax">
+                      {{ formatCurrency(method.ratePerKg) }} - {{ formatCurrency(method.ratePerKgMax) }}/kg
+                    </span>
+                    <span v-else>
+                      {{ formatCurrency(method.ratePerKg) }}/kg
+                    </span>
+                    <span v-if="hasBattery && method.batteryRatePerKg" class="block mt-1">
+                      ({{ formatCurrency(method.batteryRatePerKg) }}/kg with battery)
+                    </span>
+                  </template>
+                  <template v-else-if="currency === 'CNY' && method.ratePerKgCNY">
+                    <span v-if="method.ratePerKgMaxCNY && method.ratePerKgCNY !== method.ratePerKgMaxCNY">
+                      {{ formatCurrency(method.ratePerKgCNY) }} - {{ formatCurrency(method.ratePerKgMaxCNY) }}/kg
+                    </span>
+                    <span v-else>
+                      {{ formatCurrency(method.ratePerKgCNY) }}/kg
+                    </span>
+                    <span v-if="hasBattery && method.batteryRatePerKgCNY" class="block mt-1">
+                      ({{ formatCurrency(method.batteryRatePerKgCNY) }}/kg with battery)
+                    </span>
+                  </template>
+                  <template v-else>
+                    {{ formatCurrency(method.ratePerKg) }}/kg
+                  </template>
                 </div>
                 <div v-else-if="method.quoteRequired" class="text-amber-600">
                   Quote required
@@ -110,7 +131,25 @@
           <div class="text-xs text-slate-600">
             <div>Billable weight: {{ formatWeight(billableWeightKg) }} kg (MOQ: {{ shippingData.moq_billable_kg }} kg)</div>
             <div v-if="selectedMethodData.ratePerKg">
-              Rate: {{ formatCurrency(selectedMethodData.ratePerKg) }}/kg
+              <template v-if="currency === 'BDT'">
+                <span v-if="selectedMethodData.ratePerKgMax && selectedMethodData.ratePerKg !== selectedMethodData.ratePerKgMax">
+                  Rate: {{ formatCurrency(selectedMethodData.ratePerKg) }} - {{ formatCurrency(selectedMethodData.ratePerKgMax) }}/kg
+                </span>
+                <span v-else>
+                  Rate: {{ formatCurrency(selectedMethodData.ratePerKg) }}/kg
+                </span>
+              </template>
+              <template v-else-if="currency === 'CNY' && selectedMethodData.ratePerKgCNY">
+                <span v-if="selectedMethodData.ratePerKgMaxCNY && selectedMethodData.ratePerKgCNY !== selectedMethodData.ratePerKgMaxCNY">
+                  Rate: {{ formatCurrency(selectedMethodData.ratePerKgCNY) }} - {{ formatCurrency(selectedMethodData.ratePerKgMaxCNY) }}/kg
+                </span>
+                <span v-else>
+                  Rate: {{ formatCurrency(selectedMethodData.ratePerKgCNY) }}/kg
+                </span>
+              </template>
+              <template v-else>
+                Rate: {{ formatCurrency(selectedMethodData.ratePerKg) }}/kg
+              </template>
             </div>
           </div>
         </div>
@@ -148,7 +187,11 @@ interface ShippingMethod {
   minKg?: number;
   maxKg?: number;
   ratePerKg?: number;
+  ratePerKgMax?: number;
+  ratePerKgCNY?: number;
+  ratePerKgMaxCNY?: number;
   batteryRatePerKg?: number;
+  batteryRatePerKgCNY?: number;
   quoteRequired?: boolean;
 }
 
@@ -208,9 +251,38 @@ const selectedMethodData = computed(() => {
 const estimatedShippingCost = computed(() => {
   if (!selectedMethodData.value || billableWeightKg.value <= 0) return 0;
   
-  const rate = props.hasBattery && selectedMethodData.value.batteryRatePerKg
-    ? selectedMethodData.value.batteryRatePerKg
-    : selectedMethodData.value.ratePerKg;
+  // Get rate based on currency and battery
+  let rate: number | undefined;
+  
+  if (props.currency === 'BDT') {
+    if (props.hasBattery && selectedMethodData.value.batteryRatePerKg) {
+      rate = selectedMethodData.value.batteryRatePerKg;
+    } else if (selectedMethodData.value.ratePerKgMax && selectedMethodData.value.ratePerKg !== selectedMethodData.value.ratePerKgMax) {
+      // For AIR cargo with range, use average or max based on weight
+      // Use max rate for heavier items
+      rate = billableWeightKg.value >= 20 ? selectedMethodData.value.ratePerKgMax : selectedMethodData.value.ratePerKg;
+    } else {
+      rate = selectedMethodData.value.ratePerKg;
+    }
+  } else if (props.currency === 'CNY') {
+    if (props.hasBattery && selectedMethodData.value.batteryRatePerKgCNY) {
+      rate = selectedMethodData.value.batteryRatePerKgCNY;
+    } else if (selectedMethodData.value.ratePerKgMaxCNY && selectedMethodData.value.ratePerKgCNY !== selectedMethodData.value.ratePerKgMaxCNY) {
+      rate = billableWeightKg.value >= 20 ? selectedMethodData.value.ratePerKgMaxCNY : selectedMethodData.value.ratePerKgCNY;
+    } else {
+      rate = selectedMethodData.value.ratePerKgCNY;
+    }
+  } else {
+    // USD - convert from CNY
+    const cnyRate = props.hasBattery && selectedMethodData.value.batteryRatePerKgCNY
+      ? selectedMethodData.value.batteryRatePerKgCNY
+      : (selectedMethodData.value.ratePerKgMaxCNY && selectedMethodData.value.ratePerKgCNY !== selectedMethodData.value.ratePerKgMaxCNY
+        ? (billableWeightKg.value >= 20 ? selectedMethodData.value.ratePerKgMaxCNY : selectedMethodData.value.ratePerKgCNY)
+        : selectedMethodData.value.ratePerKgCNY);
+    if (cnyRate && props.conversionRates?.CNY_TO_USD) {
+      rate = cnyRate * props.conversionRates.CNY_TO_USD;
+    }
+  }
   
   if (!rate) return 0;
   
@@ -239,15 +311,16 @@ function formatCurrency(amount: number): string {
     return `৳${amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   }
   
-  if (props.currency === 'USD') {
-    const usdAmount = props.conversionRates?.CNY_TO_USD 
-      ? amount / props.conversionRates.CNY_TO_USD 
-      : amount / 7.2; // Fallback rate
-    return `$${usdAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  if (props.currency === 'CNY') {
+    return `¥${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
   
-  // CNY
-  return `¥${amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  if (props.currency === 'USD') {
+    return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  
+  // Default to BDT
+  return `৳${amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 function handleManualWeight() {

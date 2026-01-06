@@ -24,6 +24,15 @@
           >
             View
           </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            class="bg-white/90 hover:bg-white text-slate-900"
+            @click.stop="$emit('add-to-cart', product)"
+          >
+            <ShoppingCart class="h-3 w-3 mr-1" />
+            Add
+          </Button>
         </div>
       </div>
     </div>
@@ -45,7 +54,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { Package } from 'lucide-vue-next';
+import { Package, ShoppingCart } from 'lucide-vue-next';
 import { Card, CardBody, Button } from '@bridgechina/ui';
 
 const props = defineProps<{
@@ -68,6 +77,7 @@ const props = defineProps<{
 defineEmits<{
   click: [product: any];
   'request-buy': [product: any];
+  'add-to-cart': [product: any];
 }>();
 
 function formatPrice(price: number): string {

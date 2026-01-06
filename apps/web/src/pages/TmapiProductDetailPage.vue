@@ -21,13 +21,14 @@
             <div class="grid md:grid-cols-2 gap-8 p-6">
           <!-- Product Images -->
           <div>
-            <div class="aspect-square bg-slate-100 rounded-lg overflow-hidden mb-4 border border-slate-200">
+            <div class="aspect-square bg-slate-100 rounded-lg overflow-hidden mb-4 border border-slate-200 relative group cursor-pointer" @click="openFullscreen(selectedImage || product.imageUrl)">
               <!-- Video Player -->
               <video
                 v-if="product.videoUrl && selectedImage === product.videoUrl"
                 :src="product.videoUrl"
                 controls
                 class="w-full h-full object-contain"
+                @click.stop
               />
               <img
                 v-else-if="selectedImage || product.imageUrl"
@@ -37,6 +38,10 @@
               />
               <div v-else class="w-full h-full flex items-center justify-center text-slate-400">
                 <Package class="h-32 w-32" />
+              </div>
+              <!-- Fullscreen Icon Overlay -->
+              <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded p-2">
+                <Maximize2 class="h-5 w-5 text-white" />
               </div>
             </div>
             <div v-if="(product.images && product.images.length > 1) || product.videoUrl" class="grid grid-cols-4 gap-2">
@@ -83,7 +88,7 @@
             <!-- Pricing -->
             <div class="border-t border-b border-slate-200 py-4">
               <div class="flex items-center justify-between mb-2">
-                <div class="text-4xl font-bold text-teal-600">
+                <div class="text-2xl font-bold text-teal-600">
                   <span v-if="product.priceMin && product.priceMax && product.priceMin !== product.priceMax">
                     {{ formatPrice(product.priceMin) }} - {{ formatPrice(product.priceMax) }}
                   </span>
@@ -130,30 +135,47 @@
             </div>
 
             <!-- Availability -->
-            <div v-if="product.availableQuantity !== undefined" class="text-sm">
+            <div v-if="product.availableQuantity !== undefined" class="text-sm flex items-center gap-2">
+              <Package class="h-4 w-4 text-slate-500" />
               <span class="font-semibold text-slate-700">Available Quantity:</span>
-              <span class="ml-2 text-slate-600">{{ formatNumber(product.availableQuantity) }}</span>
+              <span class="text-slate-600">{{ formatNumber(product.availableQuantity) }}</span>
             </div>
 
-            <!-- Stock -->
-            <div v-if="product.stock !== undefined" class="text-sm">
-              <span class="font-semibold text-slate-700">Stock:</span>
-              <span class="ml-2 text-slate-600">{{ formatNumber(product.stock) }}</span>
+            <!-- Total Amount (when quantity selected) -->
+            <div v-if="totalQuantity > 0 && (product.priceMin || product.tieredPricing)" class="text-sm bg-teal-50 rounded-lg p-3 border border-teal-200">
+              <div class="flex items-center justify-between">
+                <span class="font-semibold text-slate-700 flex items-center gap-2">
+                  <ShoppingCart class="h-4 w-4 text-teal-600" />
+                  Total Amount:
+                </span>
+                <span class="text-lg font-bold text-teal-600">{{ formatTotalAmount() }}</span>
+              </div>
+              <div class="text-xs text-slate-600 mt-1">
+                {{ totalQuantity }} × {{ formatPrice(getUnitPrice()) }}
+              </div>
             </div>
 
             <!-- SKU Selection -->
             <div v-if="product.skus && product.skus.length > 0" class="border border-slate-200 rounded-lg p-4">
-              <div class="text-sm font-semibold text-slate-700 mb-3">Size / Price / Stock / Quantity</div>
-              <div class="space-y-2">
-                <div v-for="(sku, idx) in product.skus.slice(0, 5)" :key="idx" class="flex items-center justify-between p-2 bg-slate-50 rounded">
-                  <div class="flex-1">
-                    <div class="text-sm font-medium text-slate-900">{{ sku.props_names || sku.specid || `SKU ${String(Number(idx) + 1)}` }}</div>
-                    <div class="text-xs text-slate-600">
-                      Price: ¥{{ sku.sale_price || sku.price || 'N/A' }} | 
-                      Stock: {{ formatNumber(sku.stock || 0) }}
+              <div class="flex items-center gap-2 mb-3">
+                <Package class="h-4 w-4 text-slate-600" />
+                <div class="text-sm font-semibold text-slate-700">Size / Price / Stock / Quantity</div>
+              </div>
+              <div class="grid md:grid-cols-2 gap-3">
+                <div v-for="(sku, idx) in product.skus.slice(0, 6)" :key="idx" class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-teal-300 transition-colors">
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-slate-900 mb-1">{{ sku.props_names || sku.specid || `SKU ${String(Number(idx) + 1)}` }}</div>
+                    <div class="text-xs text-slate-600 space-y-1">
+                      <div class="flex items-center gap-2">
+                        <span class="font-medium text-teal-600">{{ formatPrice(sku.sale_price || sku.price || 0) }}</span>
+                      </div>
+                      <div class="flex items-center gap-1">
+                        <Package class="h-3 w-3 text-slate-400" />
+                        <span>Stock: {{ formatNumber(sku.stock || 0) }}</span>
+                      </div>
                     </div>
                   </div>
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-2 ml-3">
                     <button
                       @click="updateSkuQuantity(sku, -1)"
                       class="w-8 h-8 flex items-center justify-center border border-red-300 text-red-600 rounded hover:bg-red-50"
@@ -176,8 +198,8 @@
                   </div>
                 </div>
               </div>
-              <button v-if="product.skus.length > 5" class="mt-2 text-sm text-teal-600 hover:text-teal-700">
-                VIEW ALL ↓
+              <button v-if="product.skus.length > 6" class="mt-3 w-full text-sm text-teal-600 hover:text-teal-700 font-medium py-2 border border-teal-200 rounded-lg hover:bg-teal-50 transition-colors">
+                View All {{ product.skus.length }} Variants →
               </button>
             </div>
 
@@ -211,19 +233,30 @@
 
             <!-- Action Buttons -->
             <div class="space-y-3 mt-4">
-              <Button
-                variant="primary"
-                @click="requestQuote"
-                class="w-full"
-                size="lg"
-              >
-                Request Purchase & Shipping
-              </Button>
+              <div class="flex gap-2">
+                <Button
+                  variant="secondary"
+                  @click="addToCart"
+                  class="flex-1"
+                  :disabled="totalQuantity <= 0"
+                >
+                  <ShoppingCart class="h-4 w-4 mr-2" />
+                  Add to Cart
+                </Button>
+                <Button
+                  variant="primary"
+                  @click="requestQuote"
+                  class="flex-1"
+                  size="lg"
+                >
+                  Request Purchase & Shipping
+                </Button>
+              </div>
               <p class="text-xs text-slate-600 text-center">
                 No payment now. Agent confirms final quote → You approve → We purchase & ship.
               </p>
               <Button
-                variant="secondary"
+                variant="ghost"
                 @click="openWhatsApp"
                 class="w-full"
               >
@@ -295,13 +328,34 @@
 
         <!-- Product Properties -->
         <div v-if="product.productProps && product.productProps.length > 0" class="border-t border-slate-200 p-6">
-          <h2 class="text-xl font-bold text-slate-900 mb-4">Product Properties</h2>
-          <div class="grid md:grid-cols-2 gap-4">
-            <div v-for="(prop, idx) in product.productProps" :key="idx" class="flex">
-              <span class="font-medium text-slate-700 w-32">{{ Object.keys(prop)[0] }}:</span>
-              <span class="text-slate-600">{{ Object.values(prop)[0] }}</span>
+          <h2 class="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+            <Package class="h-5 w-5 text-teal-600" />
+            Product Properties
+          </h2>
+          <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div v-for="(prop, idx) in product.productProps" :key="idx" class="bg-slate-50 rounded-lg p-3 border border-slate-200 hover:border-teal-300 transition-colors">
+              <div class="text-xs font-semibold text-slate-500 uppercase mb-1">{{ Object.keys(prop)[0] }}</div>
+              <div class="text-sm font-medium text-slate-900">{{ Object.values(prop)[0] }}</div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Similar Products -->
+      <div v-if="similarProducts.length > 0" class="mt-6 bg-white rounded-lg shadow-sm overflow-hidden p-6">
+        <h2 class="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <Package class="h-5 w-5 text-teal-600" />
+          Similar Products
+        </h2>
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+          <ProductCard
+            v-for="item in similarProducts"
+            :key="item.externalId"
+            :product="item"
+            :selected-currency="selectedCurrency"
+            :conversion-rates="conversionRates"
+            @click="handleProductClick(item)"
+          />
         </div>
       </div>
     </div>
@@ -317,6 +371,26 @@
         </Button>
       </div>
     </div>
+
+    <!-- Fullscreen Image Modal -->
+    <div
+      v-if="fullscreenImage"
+      class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+      @click="fullscreenImage = null"
+    >
+      <button
+        class="absolute top-4 right-4 text-white hover:text-slate-300 transition-colors"
+        @click="fullscreenImage = null"
+      >
+        <X class="h-8 w-8" />
+      </button>
+      <img
+        :src="fullscreenImage"
+        :alt="product?.title"
+        class="max-w-full max-h-full object-contain"
+        @click.stop
+      />
+    </div>
   </div>
 </template>
 
@@ -325,7 +399,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
-import { Package, Star, Plus, Minus, MessageCircle, Play } from 'lucide-vue-next';
+import { Package, Star, Plus, Minus, MessageCircle, Play, ShoppingCart, X, Maximize2 } from 'lucide-vue-next';
 import {
   Button,
   Badge,
@@ -333,12 +407,15 @@ import {
   EmptyState,
 } from '@bridgechina/ui';
 import { useWhatsApp } from '@/composables/useWhatsApp';
+import { useShoppingCart } from '@/composables/useShoppingCart';
 import ShippingCard from '@/components/shopping/ShippingCard.vue';
+import ProductCard from '@/components/shopping/ProductCard.vue';
 
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
 const { openWhatsApp: openWhatsAppComposable } = useWhatsApp();
+const { addToCart: addToCartComposable } = useShoppingCart();
 
 const product = ref<any>(null);
 const loading = ref(true);
@@ -351,6 +428,8 @@ const selectedShippingMethod = ref<string>('');
 const hasBattery = ref(false);
 const manualWeight = ref<number | null>(null);
 const conversionRates = ref<{ CNY_TO_BDT?: number; CNY_TO_USD?: number }>({});
+const fullscreenImage = ref<string | null>(null);
+const similarProducts = ref<any[]>([]);
 
 function formatNumber(num: number): string {
   if (num >= 1000000) {
@@ -386,6 +465,72 @@ function formatPrice(price: number): string {
   }
   
   return `¥${price}`;
+}
+
+function getUnitPrice(): number {
+  if (!product.value) return 0;
+  
+  // Check tiered pricing first
+  if (product.value.tieredPricing && product.value.tieredPricing.length > 0) {
+    // Find matching tier
+    const matchingTier = product.value.tieredPricing
+      .slice()
+      .reverse()
+      .find((tier: any) => totalQuantity.value >= tier.minQty);
+    
+    if (matchingTier) {
+      return matchingTier.price;
+    }
+    // Use first tier if quantity is less than minimum
+    return product.value.tieredPricing[0].price;
+  }
+  
+  // Use priceMin if available
+  if (product.value.priceMin) {
+    return product.value.priceMin;
+  }
+  
+  return 0;
+}
+
+function formatTotalAmount(): string {
+  const unitPrice = getUnitPrice();
+  const total = unitPrice * totalQuantity.value;
+  return formatPrice(total);
+}
+
+function openFullscreen(imageUrl: string | null) {
+  if (imageUrl) {
+    fullscreenImage.value = imageUrl;
+  }
+}
+
+function handleProductClick(item: any) {
+  router.push({
+    path: `/shopping/tmapi/${item.externalId}`,
+    query: { language: selectedLanguage.value },
+  });
+}
+
+async function loadSimilarProducts() {
+  try {
+    // Get similar products from cache (exclude current product)
+    const response = await axios.get('/api/public/shopping/hot', {
+      params: {
+        page: 1,
+        pageSize: 8,
+      },
+    });
+    
+    const products = Array.isArray(response.data) ? response.data : [];
+    // Filter out current product
+    similarProducts.value = products
+      .filter((p: any) => p.externalId !== product.value?.externalId)
+      .slice(0, 8);
+  } catch (error) {
+    console.error('Failed to load similar products:', error);
+    similarProducts.value = [];
+  }
 }
 
 const totalQuantity = computed(() => {
@@ -425,6 +570,9 @@ async function loadProduct() {
       CNY_TO_BDT: 15, // Default fallback
       CNY_TO_USD: 0.14, // Default fallback
     };
+
+    // Load similar products
+    await loadSimilarProducts();
   } catch (error: any) {
     if (error.response?.status === 404) {
       product.value = null;
@@ -479,6 +627,35 @@ async function requestQuote() {
   } catch (error: any) {
     toast.error(error.response?.data?.error || 'Failed to submit request');
   }
+}
+
+function addToCart() {
+  if (!product.value || totalQuantity.value <= 0) {
+    toast.error('Please select a quantity');
+    return;
+  }
+
+  // Collect SKU details if available
+  let skuDetails: any[] | undefined;
+  if (product.value.skus && Object.keys(selectedSkus.value).length > 0) {
+    skuDetails = [];
+    for (const [specId, qty] of Object.entries(selectedSkus.value)) {
+      if (qty > 0) {
+        const sku = product.value.skus.find((s: any) => (s.specid || s.skuid) === specId);
+        if (sku) {
+          skuDetails.push({ specId, qty, sku });
+        }
+      }
+    }
+  }
+
+  addToCartComposable(
+    product.value,
+    totalQuantity.value,
+    skuDetails && skuDetails.length > 0 ? skuDetails : undefined
+  );
+
+  toast.success('Added to cart!');
 }
 
 function openWhatsApp() {

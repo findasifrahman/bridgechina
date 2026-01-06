@@ -3,8 +3,22 @@
     <!-- Minimal Header (no banner) -->
     <div class="border-b border-slate-200 bg-white">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <h1 class="text-2xl font-bold text-slate-900">Shopping</h1>
-        <p class="text-sm text-slate-600 mt-1">Discover quality products from trusted sellers in China</p>
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-2xl font-bold text-slate-900">Shopping</h1>
+            <p class="text-sm text-slate-600 mt-1">Discover quality products from trusted sellers in China</p>
+          </div>
+          <Button
+            variant="ghost"
+            @click="router.push('/shopping/cart')"
+            class="relative"
+          >
+            <ShoppingCart class="h-5 w-5" />
+            <span v-if="totalItems > 0" class="absolute -top-1 -right-1 bg-teal-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+              {{ totalItems > 9 ? '9+' : totalItems }}
+            </span>
+          </Button>
+        </div>
       </div>
     </div>
 
@@ -17,30 +31,30 @@
             <h2 class="text-lg font-semibold text-slate-900">Search Products</h2>
           </div>
           <div class="flex gap-2">
-            <!-- Language Tabs -->
-            <div class="flex gap-2 border border-teal-200 rounded-lg p-1 bg-white">
-              <button
-                @click="selectedLanguage = 'zh'"
-                :class="[
-                  'px-4 py-1.5 rounded text-sm font-medium transition-colors',
-                  selectedLanguage === 'zh'
-                    ? 'bg-teal-600 text-white'
-                    : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50'
-                ]"
-              >
-                中文
-              </button>
-              <button
-                @click="selectedLanguage = 'en'"
-                :class="[
-                  'px-4 py-1.5 rounded text-sm font-medium transition-colors',
-                  selectedLanguage === 'en'
-                    ? 'bg-teal-600 text-white'
-                    : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50'
-                ]"
-              >
-                English
-              </button>
+          <!-- Language Tabs -->
+          <div class="flex gap-2 border border-teal-200 rounded-lg p-1 bg-white">
+            <button
+              @click="selectedLanguage = 'zh'"
+              :class="[
+                'px-4 py-1.5 rounded text-sm font-medium transition-colors',
+                selectedLanguage === 'zh'
+                  ? 'bg-teal-600 text-white'
+                  : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50'
+              ]"
+            >
+              中文
+            </button>
+            <button
+              @click="selectedLanguage = 'en'"
+              :class="[
+                'px-4 py-1.5 rounded text-sm font-medium transition-colors',
+                selectedLanguage === 'en'
+                  ? 'bg-teal-600 text-white'
+                  : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50'
+              ]"
+            >
+              English
+            </button>
             </div>
             <!-- Currency Selector -->
             <div class="flex gap-2 border border-teal-200 rounded-lg p-1 bg-white">
@@ -195,6 +209,7 @@
             :conversion-rates="conversionRates"
             @click="handleProductClick(item)"
             @request-buy="handleRequestBuy(item)"
+            @add-to-cart="handleAddToCart"
           />
         </div>
       </div>
@@ -203,7 +218,10 @@
       <div v-if="hasSearchResults" class="mb-8">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-xl font-bold text-slate-900">
-            {{ searchResults.length }} Results
+            {{ totalCount || searchResults.length }} Results
+            <span v-if="totalCount && totalCount !== searchResults.length" class="text-sm font-normal text-slate-600">
+              (showing {{ searchResults.length }})
+            </span>
           </h2>
           <Button variant="ghost" size="sm" @click="clearSearch">
             Clear Search
@@ -224,6 +242,7 @@
             :conversion-rates="conversionRates"
             @click="handleProductClick(item)"
             @request-buy="handleRequestBuy(item)"
+            @add-to-cart="handleAddToCart"
           />
         </div>
         
@@ -272,7 +291,8 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
-import { Search, X, Package, RefreshCw, ChevronLeft, ChevronRight, Camera } from 'lucide-vue-next';
+import { useShoppingCart } from '@/composables/useShoppingCart';
+import { Search, X, Package, RefreshCw, ChevronLeft, ChevronRight, Camera, ShoppingCart } from 'lucide-vue-next';
 import {
   Card,
   CardBody,
@@ -285,6 +305,7 @@ import ProductCard from '@/components/shopping/ProductCard.vue';
 
 const router = useRouter();
 const toast = useToast();
+const { cartItems, totalItems, addToCart } = useShoppingCart();
 
 const categories = ref<any[]>([]);
 const hotItems = ref<any[]>([]);
@@ -299,6 +320,7 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const currentPage = ref(1);
 const pageSize = ref(20);
 const totalPages = ref(1);
+const totalCount = ref<number | null>(null);
 const selectedLanguage = ref<'en' | 'zh'>('en');
 const selectedCurrency = ref<'CNY' | 'BDT' | 'USD'>('CNY');
 const recentSearches = ref<string[]>([]);
@@ -466,6 +488,12 @@ async function handleKeywordSearch() {
     } else if (response.data?.items) {
       searchResults.value = response.data.items;
       totalPages.value = response.data.totalPages || 1;
+      currentPage.value = response.data.page || currentPage.value;
+      totalCount.value = response.data.totalCount || null;
+      // Update total count display
+      if (response.data.totalCount) {
+        console.log('[ShoppingPage] Total products found:', response.data.totalCount);
+      }
     } else {
       searchResults.value = [];
       totalPages.value = 1;
@@ -503,6 +531,7 @@ function clearSearch() {
   selectedImage.value = null;
   imagePreview.value = '';
   currentPage.value = 1;
+  totalCount.value = null;
   if (fileInput.value) {
     fileInput.value.value = '';
   }
@@ -518,18 +547,14 @@ function handleProductClick(product: any) {
 }
 
 function handleRequestBuy(product: any) {
-  router.push({
-    path: '/request',
-    query: {
-      category: 'shopping',
-      external_id: product.externalId,
-      title: product.title,
-      image_url: product.imageUrl,
-      source_url: product.sourceUrl,
-      price_min: product.priceMin,
-      price_max: product.priceMax,
-    },
-  });
+  // Add to cart instead of direct request
+  addToCart(product, 1);
+  toast.success('Added to cart!');
+}
+
+function handleAddToCart(product: any) {
+  addToCart(product, 1);
+  toast.success('Added to cart!');
 }
 
 async function loadCategories() {
