@@ -54,7 +54,7 @@
                 v-for="(img, idx) in (product.images || []).slice(0, product.videoUrl ? 7 : 8)"
                 :key="idx"
                 :src="img"
-                :alt="`${product.title} ${idx + 1}`"
+                :alt="`${product.title} ${String(Number(idx) + 1)}`"
                 class="aspect-square object-cover rounded border-2 cursor-pointer transition-all"
                 :class="selectedImage === img ? 'border-teal-500' : 'border-slate-200 hover:border-teal-300'"
                 @click="selectedImage = img"
@@ -147,7 +147,7 @@
               <div class="space-y-2">
                 <div v-for="(sku, idx) in product.skus.slice(0, 5)" :key="idx" class="flex items-center justify-between p-2 bg-slate-50 rounded">
                   <div class="flex-1">
-                    <div class="text-sm font-medium text-slate-900">{{ sku.props_names || sku.specid || `SKU ${idx + 1}` }}</div>
+                    <div class="text-sm font-medium text-slate-900">{{ sku.props_names || sku.specid || `SKU ${String(Number(idx) + 1)}` }}</div>
                     <div class="text-xs text-slate-600">
                       Price: ¥{{ sku.sale_price || sku.price || 'N/A' }} | 
                       Stock: {{ formatNumber(sku.stock || 0) }}
@@ -265,6 +265,7 @@
           </div>
         </div>
         </div>
+        </div>
 
         <!-- Shipping Card (Sticky on desktop, collapsible on mobile) -->
         <div class="lg:col-span-1">
@@ -320,11 +321,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
-import { Package, ShoppingCart, Star, Plus, Minus, MessageCircle, Play } from 'lucide-vue-next';
+import { Package, Star, Plus, Minus, MessageCircle, Play } from 'lucide-vue-next';
 import {
   Button,
   Badge,
@@ -459,7 +460,7 @@ async function requestQuote() {
     }
 
     // Create service request for shopping
-    const response = await axios.post('/api/user/requests', {
+    await axios.post('/api/user/requests', {
       categoryKey: 'shopping',
       payload: {
         externalId: product.value.externalId,
