@@ -481,7 +481,7 @@ export async function searchByImage(
     sort?: string; // 'sales', 'price_asc', 'price_desc', 'popular', 'default'
     language?: string; // 'en' for English, 'zh' for Chinese (default)
   }
-): Promise<ProductCard[]> {
+): Promise<SearchResult> {
   const language = opts?.language || 'zh';
   const sort = opts?.sort || 'sales'; // Default to sales sort
   const page = opts?.page ?? 1;
@@ -516,14 +516,32 @@ export async function searchByImage(
   }
 
   // Step 2: Check cache
-  const cacheKey = generateCacheKey('image', { imgUrl: convertedUrl, language, ...opts });
+  const cacheKey = generateCacheKey('image', {
+    imgUrl: convertedUrl,
+    language,
+    sort,
+    page,
+    pageSize,
+    category: opts?.category,
+  });
   const cached = await getCachedSearch(SOURCE, cacheKey);
   if (cached) {
     console.log('[Shopping Service] Using cached image search results');
     // Cached response structure: { code: 200, msg: "success", data: { items: [...] } }
     // The cached response is the full TMAPI response, so we need cached.results_json.data.items
     const items = cached.results_json?.data?.items || cached.results_json?.items || [];
-    return normalizeProductCards(items);
+    const normalized = normalizeProductCards(items);
+    const totalCount = cached.results_json?.data?.total_count || normalized.length;
+    const totalPages = Math.ceil(totalCount / pageSize);
+    const hasNextPage = page < totalPages;
+    return {
+      items: normalized,
+      totalCount,
+      page,
+      pageSize,
+      totalPages,
+      hasNextPage,
+    };
   }
 
   // Step 3: Call TMAPI image search with converted URL

@@ -114,9 +114,17 @@ export function useShoppingCart() {
     return cartItems.value.length === 0;
   });
 
+  const totalPrice = computed(() => {
+    return cartItems.value.reduce((sum, item) => {
+      const itemPrice = item.priceMin || 0;
+      return sum + (itemPrice * item.quantity);
+    }, 0);
+  });
+
   return {
     cartItems: computed(() => cartItems.value),
     totalItems,
+    totalPrice,
     isEmpty,
     addToCart,
     removeFromCart,

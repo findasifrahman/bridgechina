@@ -66,6 +66,11 @@ const router = createRouter({
           component: () => import('@/pages/TmapiProductDetailPage.vue'),
         },
         {
+          path: 'shopping/cart',
+          name: 'shopping-cart',
+          component: () => import('@/pages/ShoppingCartPage.vue'),
+        },
+        {
           path: 'login',
           name: 'login',
           component: () => import('@/pages/LoginPage.vue'),
