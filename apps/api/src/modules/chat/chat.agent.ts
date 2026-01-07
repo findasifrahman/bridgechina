@@ -90,6 +90,7 @@ const GUANGZHOU_AREAS = [
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  ts: number; // Timestamp in milliseconds
 }
 
 export interface IntentResult {
@@ -124,6 +125,10 @@ export interface ChatResponse {
  * In production, use Redis or similar
  */
 const conversationMemory = new Map<string, ChatMessage[]>();
+const lastActiveAt = new Map<string, number>();
+
+// Inactivity reset threshold: 1 hour
+const INACTIVITY_RESET_MS = 1 * 60 * 60 * 1000;
 
 /**
  * Get conversation history for a session
@@ -133,11 +138,39 @@ function getConversationHistory(sessionId: string): ChatMessage[] {
 }
 
 /**
+ * Check if session should be reset based on inactivity and message type
+ */
+function shouldResetSession(sessionId: string, userMessage: string): boolean {
+  const now = Date.now();
+  const last = lastActiveAt.get(sessionId) ?? 0;
+  const gapMs = now - last;
+  
+  const isShort = userMessage.trim().length <= 20;
+  const greeting = isGreeting(userMessage);
+  
+  // Check if user references past conversation
+  const referencesPast = /previous|before|earlier|as i said|continue|same as|about that|last time|yesterday|আগের|আগে|আগেরটা/i.test(userMessage);
+  
+  // If user references past, keep context
+  if (referencesPast) {
+    return false;
+  }
+  
+  // If inactive for > 1 hour AND (greeting OR short message), reset
+  if (gapMs > INACTIVITY_RESET_MS && (greeting || isShort)) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
  * Add message to conversation history
  */
 function addToHistory(sessionId: string, role: 'user' | 'assistant', content: string) {
   const history = getConversationHistory(sessionId);
-  history.push({ role, content });
+  const now = Date.now();
+  history.push({ role, content, ts: now });
   
   // Keep only last 5 turns (10 messages)
   if (history.length > 10) {
@@ -145,13 +178,15 @@ function addToHistory(sessionId: string, role: 'user' | 'assistant', content: st
   }
   
   conversationMemory.set(sessionId, history);
+  lastActiveAt.set(sessionId, now);
 }
 
 /**
- * Clear conversation history (on 6th turn)
+ * Clear conversation history (on 6th turn or inactivity reset)
  */
 function clearHistory(sessionId: string) {
   conversationMemory.delete(sessionId);
+  lastActiveAt.set(sessionId, Date.now());
 }
 
 /**
@@ -901,6 +936,15 @@ export async function processChatMessage(
   userMessage: string,
   sessionId: string
 ): Promise<ChatResponse> {
+  // Check if session should be reset due to inactivity
+  if (shouldResetSession(sessionId, userMessage)) {
+    clearHistory(sessionId);
+    return {
+      message: 'Hi! 👋 Welcome back to BridgeChina. What do you need today?\n\n1) Hotel 2) Shopping 3) Tours 4) Transport 5) Medical 6) eSIM 7) Sourcing\n\nVisit: https://bridgechina-web.vercel.app/',
+      shouldReset: true,
+    };
+  }
+  
   const history = getConversationHistory(sessionId);
   
   // Check if this is the 6th user message (reset needed)

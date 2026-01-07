@@ -513,8 +513,10 @@ export async function handleAIReply(conversationId: string): Promise<void> {
       }
     } else {
       // Call existing chat agent (reuse existing logic)
-      // Generate session ID from conversation ID for consistency
-      const sessionId = `whatsapp_${conversationId}`;
+      // Generate session ID from conversation ID and phone number for better isolation
+      const phoneNumber = conversation.external_from?.replace(/^whatsapp:/, '') || '';
+      const phoneDigits = phoneNumber.replace(/\D/g, '').substring(0, 10); // Last 10 digits for privacy
+      const sessionId = `whatsapp_${conversationId}${phoneDigits ? `_${phoneDigits}` : ''}`;
       console.log('[WhatsApp Service] Processing AI reply for conversation:', conversationId, 'userMessage:', userMessage);
       const result = await processChatMessage(userMessage, sessionId);
 
