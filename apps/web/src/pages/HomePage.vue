@@ -1,5 +1,16 @@
 <template>
   <div class="bg-slate-50 min-h-screen">
+    <!-- Launch Offer Modal -->
+    <LaunchOfferModal
+      v-model="launchModal.isOpen.value"
+      mode="video"
+      :src="LAUNCH_VIDEO_URL"
+      @close="handleLaunchModalClose"
+      @primary="handleLaunchPrimary"
+      @secondary="handleLaunchSecondary"
+      @tertiary="handleLaunchTertiary"
+    />
+
     <!-- Offer Strip -->
     <OfferStrip :offer="spotlightOffer" @click="handleOfferClick" />
 
@@ -586,8 +597,14 @@ import {
 } from '@bridgechina/ui';
 import axios from '@/utils/axios';
 import ProductCard from '@/components/shopping/ProductCard.vue';
+import LaunchOfferModal from '@/components/LaunchOfferModal.vue';
+import { useLaunchOfferModal } from '@/composables/useLaunchOfferModal';
 
 const router = useRouter();
+
+// Launch Modal Setup
+const LAUNCH_VIDEO_URL = 'https://pub-01637ccce9644ffc8b9c5b8dd003cf33.r2.dev/korban_video.mp4';
+const launchModal = useLaunchOfferModal();
 
 const spotlightOffer = ref<any>(null);
 const currentCity = ref<any>(null);
@@ -960,6 +977,23 @@ if (offerModalHandler) {
   });
 }
 
+function handleLaunchModalClose(dontShowForDays?: number) {
+  launchModal.close(dontShowForDays);
+}
+
+function handleLaunchPrimary() {
+  // Navigate to contact page
+  router.push('/contact');
+}
+
+function handleLaunchSecondary() {
+  // Scroll to services is handled by modal component
+}
+
+function handleLaunchTertiary() {
+  // WhatsApp opening is handled by modal component
+}
+
 onMounted(() => {
   loadHomepageData();
   loadBanners();
@@ -967,5 +1001,7 @@ onMounted(() => {
   if (activeTab.value === 'shopping') {
     loadHotProducts();
   }
+  // Show launch modal if cooldown expired
+  launchModal.openIfDue();
 });
 </script>
