@@ -14,28 +14,29 @@
         ← Back to Shopping
       </Button>
 
+      <!-- Desktop: 2 columns (media left, purchase panel right). Mobile stays stacked. -->
       <div class="grid lg:grid-cols-12 gap-6">
         <!-- Media (left) -->
-        <div class="lg:col-span-5">
+        <div class="lg:col-span-7">
           <div class="bg-white rounded-lg shadow-sm overflow-hidden p-6">
             <div class="lg:flex lg:gap-4">
-              <!-- Desktop vertical thumbnails (left of media) -->
-              <div v-if="(product.images && product.images.length > 1) || product.videoUrl" class="hidden lg:flex lg:flex-col gap-2 w-20">
+              <!-- Desktop vertical thumbnails -->
+              <div v-if="(product.images && product.images.length > 1) || product.videoUrl" class="hidden lg:flex lg:flex-col gap-2 w-16">
                 <button
                   v-if="product.videoUrl"
                   type="button"
-                  class="aspect-square rounded border-2 cursor-pointer transition-all bg-slate-100 flex items-center justify-center"
-                  :class="selectedImage === product.videoUrl ? 'border-teal-500' : 'border-slate-200 hover:border-teal-300'"
+                  class="aspect-square rounded-lg border cursor-pointer transition-all bg-slate-50 flex items-center justify-center"
+                  :class="selectedImage === product.videoUrl ? 'border-teal-500 ring-2 ring-teal-200' : 'border-slate-200 hover:border-teal-300'"
                   @click="selectVideo()"
                 >
-                  <Play class="h-6 w-6 text-slate-600" />
+                  <Play class="h-5 w-5 text-slate-600" />
                 </button>
                 <button
                   v-for="(img, idx) in (product.images || []).slice(0, 8)"
                   :key="idx"
                   type="button"
-                  class="aspect-square rounded border-2 overflow-hidden cursor-pointer transition-all bg-slate-100"
-                  :class="selectedImage === img ? 'border-teal-500' : 'border-slate-200 hover:border-teal-300'"
+                  class="aspect-square rounded-lg border overflow-hidden cursor-pointer transition-all bg-slate-50"
+                  :class="selectedImage === img ? 'border-teal-500 ring-2 ring-teal-200' : 'border-slate-200 hover:border-teal-300'"
                   @click="selectImage(img)"
                 >
                   <img :src="img" :alt="`${product.title} ${String(Number(idx) + 1)}`" class="w-full h-full object-cover" />
@@ -43,8 +44,8 @@
               </div>
 
               <!-- Main media -->
-              <div class="flex-1">
-                <div class="aspect-square bg-slate-100 rounded-lg overflow-hidden mb-4 border border-slate-200 relative group cursor-pointer" @click="openFullscreen(activeMediaUrl)">
+              <div class="flex-1 min-w-0">
+                <div class="aspect-square bg-slate-100 rounded-xl overflow-hidden border border-slate-200 relative group cursor-pointer" @click="openFullscreen(activeMediaUrl)">
                   <video
                     v-if="showVideo"
                     ref="videoRef"
@@ -72,44 +73,39 @@
                 </div>
 
                 <!-- Mobile thumbnails -->
-                <div v-if="(product.images && product.images.length > 1) || product.videoUrl" class="grid grid-cols-4 gap-2 lg:hidden">
-                  <div
+                <div v-if="(product.images && product.images.length > 1) || product.videoUrl" class="grid grid-cols-5 gap-2 mt-4 lg:hidden">
+                  <button
                     v-if="product.videoUrl"
+                    type="button"
                     @click="selectVideo()"
-                    class="aspect-square rounded border-2 cursor-pointer transition-all bg-slate-100 flex items-center justify-center"
-                    :class="selectedImage === product.videoUrl ? 'border-teal-500' : 'border-slate-200 hover:border-teal-300'"
+                    class="aspect-square rounded-lg border cursor-pointer transition-all bg-slate-50 flex items-center justify-center"
+                    :class="selectedImage === product.videoUrl ? 'border-teal-500 ring-2 ring-teal-200' : 'border-slate-200 hover:border-teal-300'"
                   >
-                    <Play class="h-8 w-8 text-slate-600" />
-                  </div>
-                  <img
-                    v-for="(img, idx) in (product.images || []).slice(0, product.videoUrl ? 7 : 8)"
+                    <Play class="h-7 w-7 text-slate-600" />
+                  </button>
+                  <button
+                    v-for="(img, idx) in (product.images || []).slice(0, product.videoUrl ? 9 : 10)"
                     :key="idx"
-                    :src="img"
-                    :alt="`${product.title} ${String(Number(idx) + 1)}`"
-                    class="aspect-square object-cover rounded border-2 cursor-pointer transition-all"
-                    :class="selectedImage === img ? 'border-teal-500' : 'border-slate-200 hover:border-teal-300'"
+                    type="button"
+                    class="aspect-square rounded-lg border overflow-hidden cursor-pointer transition-all bg-slate-50"
+                    :class="selectedImage === img ? 'border-teal-500 ring-2 ring-teal-200' : 'border-slate-200 hover:border-teal-300'"
                     @click="selectImage(img)"
-                  />
-                </div>
-
-                <!-- Title below media on desktop -->
-                <div class="hidden lg:block mt-4">
-                  <h1 class="text-2xl font-bold text-slate-900">{{ product.title }}</h1>
+                  >
+                    <img :src="img" :alt="`${product.title} ${String(Number(idx) + 1)}`" class="w-full h-full object-cover" />
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Product Info (middle) -->
-        <div class="lg:col-span-4">
+        <!-- Purchase Panel (right) -->
+        <div class="lg:col-span-5 space-y-6">
           <div class="bg-white rounded-lg shadow-sm overflow-hidden p-6">
-            <div class="space-y-6">
-              <div class="lg:hidden">
-                <h1 class="text-3xl font-bold text-slate-900 mb-3">{{ product.title }}</h1>
-              
-              <!-- Rating and Sales -->
-              <div class="flex items-center gap-4 mb-4">
+            <h1 class="text-2xl lg:text-3xl font-bold text-slate-900 mb-3">{{ product.title }}</h1>
+
+            <!-- Rating and Sales -->
+            <div class="flex items-center gap-4 mb-4">
                 <div v-if="product.rating" class="flex items-center gap-1">
                   <Star v-for="i in 5" :key="i" class="h-5 w-5" :class="i <= Math.round(product.rating) ? 'text-amber-400 fill-amber-400' : 'text-slate-300'" />
                   <span class="ml-2 text-sm font-medium text-slate-700">{{ product.rating.toFixed(1) }}</span>
@@ -119,7 +115,6 @@
                   Total sold: {{ formatNumber(product.totalSold) }}
                 </div>
               </div>
-            </div>
 
             <!-- Pricing -->
             <div class="border-t border-b border-slate-200 py-4">
@@ -192,29 +187,37 @@
             </div>
 
             <!-- SKU Selection -->
-            <div v-if="product.skus && product.skus.length > 0" class="border border-slate-200 rounded-lg p-4">
-              <div class="flex items-center gap-2 mb-3">
-                <Package class="h-4 w-4 text-slate-600" />
-                <div class="text-sm font-semibold text-slate-700">Size / Price / Stock / Quantity</div>
+            <div v-if="product.skus && product.skus.length > 0" class="border border-slate-200 rounded-xl overflow-hidden">
+              <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <Package class="h-4 w-4 text-slate-600" />
+                  <div class="text-sm font-semibold text-slate-700">Size / Price / Stock / Quantity</div>
+                </div>
+                <div class="text-xs text-slate-500">Select variants</div>
               </div>
-              <div class="grid md:grid-cols-1 gap-3">
-                <div v-for="(sku, idx) in product.skus.slice(0, 6)" :key="idx" class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-teal-300 transition-colors">
-                  <div class="flex-1 min-w-0">
-                    <div class="text-sm font-medium text-slate-900 mb-1">{{ sku.props_names || sku.specid || `SKU ${String(Number(idx) + 1)}` }}</div>
-                    <div class="text-xs text-slate-600 space-y-1">
-                      <div class="flex items-center gap-2">
-                        <span class="font-medium text-teal-600">{{ formatPrice(sku.sale_price || sku.price || 0) }}</span>
-                      </div>
-                      <div class="flex items-center gap-1">
+              <div class="max-h-[360px] overflow-auto divide-y divide-slate-100">
+                <div
+                  v-for="(sku, idx) in product.skus.slice(0, 10)"
+                  :key="idx"
+                  class="px-4 py-3 flex items-center gap-4"
+                >
+                  <div class="min-w-0 flex-1">
+                    <div class="text-sm font-medium text-slate-900 truncate">
+                      {{ sku.props_names || sku.specid || `SKU ${String(Number(idx) + 1)}` }}
+                    </div>
+                    <div class="mt-1 flex items-center gap-3 text-xs text-slate-600">
+                      <span class="font-semibold text-teal-700">{{ formatPrice(sku.sale_price || sku.price || 0) }}</span>
+                      <span class="text-slate-400">•</span>
+                      <span class="flex items-center gap-1">
                         <Package class="h-3 w-3 text-slate-400" />
-                        <span>Stock: {{ formatNumber(sku.stock || 0) }}</span>
-                      </div>
+                        Stock: {{ formatNumber(sku.stock || 0) }}
+                      </span>
                     </div>
                   </div>
-                  <div class="flex items-center gap-2 ml-3">
+                  <div class="flex items-center gap-2">
                     <button
                       @click="updateSkuQuantity(sku, -1)"
-                      class="w-8 h-8 flex items-center justify-center border border-red-300 text-red-600 rounded hover:bg-red-50"
+                      class="w-9 h-9 flex items-center justify-center border border-red-200 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50"
                       :disabled="!selectedSkus[sku.specid || idx] || selectedSkus[sku.specid || idx] <= 0"
                     >
                       <Minus class="h-4 w-4" />
@@ -223,11 +226,11 @@
                       v-model.number="selectedSkus[sku.specid || idx]"
                       type="number"
                       min="0"
-                      class="w-16 h-8 text-center border border-slate-300 rounded text-sm"
+                      class="w-16 h-9 text-center border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-teal-200 focus:border-teal-400"
                     />
                     <button
                       @click="updateSkuQuantity(sku, 1)"
-                      class="w-8 h-8 flex items-center justify-center border border-teal-300 text-teal-600 rounded hover:bg-teal-50"
+                      class="w-9 h-9 flex items-center justify-center border border-teal-200 text-teal-700 rounded-lg hover:bg-teal-50"
                     >
                       <Plus class="h-4 w-4" />
                     </button>
@@ -301,8 +304,6 @@
               </Button>
             </div>
 
-              </div>
-
               <!-- Seller Info -->
               <div v-if="product.sellerName" class="border-t border-slate-200 pt-4">
                 <h3 class="font-semibold text-slate-900 mb-2">Seller</h3>
@@ -334,10 +335,8 @@
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Shipping Card (right) -->
-        <div class="lg:col-span-3">
+          <!-- Shipping Card (sticky inside right column on desktop) -->
           <ShippingCard
             :shipping-data="product.bridgechinaShipping"
             :estimated-weight-kg="product.estimatedWeightKg"
