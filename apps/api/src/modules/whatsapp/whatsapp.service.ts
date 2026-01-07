@@ -373,6 +373,42 @@ export async function handleAIReply(conversationId: string): Promise<void> {
 
     const userMessage = lastInbound.content;
 
+    // GREETING HARD INTERRUPT: Check for pure greetings BEFORE any search/intent detection
+    // Import isPureGreeting from chat.agent
+    const { isPureGreeting } = await import('../chat/chat.agent.js');
+    if (isPureGreeting(userMessage)) {
+      // Send greeting menu without triggering any search or intent detection
+      const greetingResponse = 'Hi 👋 Welcome to BridgeChina.\nWhat do you need today?\n1) Hotel 2) Shopping 3) Tours 4) Transport 5) Medical 6) eSIM 7) Sourcing\n\nYou can also use the website: https://bridgechina-web.vercel.app/';
+      
+      try {
+        const providerSid = await sendText(conversation.external_from!, greetingResponse);
+        
+        await prisma.message.create({
+          data: {
+            conversation_id: conversationId,
+            role: 'assistant',
+            direction: 'OUTBOUND',
+            provider: 'twilio',
+            provider_sid: providerSid,
+            content: greetingResponse,
+            status: 'sent',
+          },
+        });
+
+        await prisma.conversation.update({
+          where: { id: conversationId },
+          data: {
+            last_outbound_at: new Date(),
+            last_message_preview: greetingResponse.substring(0, 100),
+          },
+        });
+      } catch (error: any) {
+        console.error('[WhatsApp Service] Failed to send greeting:', error);
+      }
+      
+      return; // Exit early, no further processing
+    }
+
     // Build conversation history for AI (last 10 messages, alternating user/assistant)
     const historyMessages = conversation.messages
       .filter(m => m.role === 'user' || m.role === 'assistant')

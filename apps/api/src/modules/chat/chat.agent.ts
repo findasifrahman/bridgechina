@@ -1,6 +1,15 @@
 /**
  * BridgeChina AI Chat Agent
  * Handles intent detection, conversation memory, and routed responses
+ * 
+ * TEST CASES for isPureGreeting():
+ * - "Hi" => true (greeting menu)
+ * - "Hello" => true (greeting menu)
+ * - "assalamu alaikum" => true (greeting menu)
+ * - "Hi shoes" => false (normal flow, has intent keyword)
+ * - "hello, I need hotel in Guangzhou" => false (normal flow, has intent keywords)
+ * - "hey there" => true (greeting + 1 word, no intent)
+ * - "hi need" => false (has intent keyword "need")
  */
 
 import OpenAI from 'openai';
@@ -190,6 +199,75 @@ function clearHistory(sessionId: string) {
 }
 
 /**
+ * Check if message is a pure greeting (no intent keywords)
+ * Returns true only for standalone greetings like "hi", "hello", "assalamu alaikum"
+ * Returns false if user includes intent keywords like "hi need shoes"
+ * 
+ * TEST CASES:
+ * - "Hi" => true (greeting menu)
+ * - "Hello" => true (greeting menu)
+ * - "assalamu alaikum" => true (greeting menu)
+ * - "Hi shoes" => false (normal flow, has intent keyword)
+ * - "hello, I need hotel in Guangzhou" => false (normal flow, has intent keywords)
+ * - "hey there" => true (greeting + 1 word, no intent)
+ * - "hi need" => false (has intent keyword "need")
+ */
+export function isPureGreeting(text: string): boolean {
+  // Normalize text
+  let t = text.trim().toLowerCase();
+  // Remove punctuation safely (Unicode-aware)
+  t = t.replace(/[^\p{L}\p{N}\s]/gu, '');
+  // Normalize whitespace
+  t = t.replace(/\s+/g, ' ').trim();
+  
+  // Define greeting set
+  const greetings = [
+    'hi',
+    'hello',
+    'hey',
+    'assalamualaikum',
+    'assalamu alaikum',
+    'salam',
+    'hola',
+    'good morning',
+    'good afternoon',
+    'good evening',
+    'আসসালামু আলাইকুম',
+    'হাই',
+    'হ্যালো',
+    'হেলো',
+  ];
+  
+  // Check if exact match
+  if (greetings.includes(t)) {
+    return true;
+  }
+  
+  // Check if starts with greeting and total words <= 2
+  const words = t.split(/\s+/).filter(w => w.length > 0);
+  if (words.length <= 2) {
+    const firstWord = words[0];
+    const greetingMatch = greetings.some(g => {
+      const greetingWords = g.split(/\s+/);
+      return greetingWords[0] === firstWord || firstWord.startsWith(greetingWords[0]);
+    });
+    
+    if (greetingMatch) {
+      // Check for intent keywords that indicate it's NOT a pure greeting
+      const intentKeywords = [
+        'need', 'want', 'looking', 'find', 'search', 'book', 'buy', 'price',
+        'hotel', 'shopping', 'tour', 'transport', 'medical', 'esim', 'sourcing',
+        'product', 'shoes', 'clothing', 'factory', 'supplier', 'help', 'question'
+      ];
+      const hasIntent = words.some(w => intentKeywords.some(kw => w.includes(kw)));
+      return !hasIntent;
+    }
+  }
+  
+  return false;
+}
+
+/**
  * Check if message is a greeting or small talk
  */
 function isGreeting(userMessage: string): boolean {
@@ -253,7 +331,16 @@ function detectShoppingSubIntent(userMessage: string): 'RETAIL' | 'FACTORY' | 'U
  * STEP 1: Intent Detection
  */
 export async function detectIntent(userMessage: string): Promise<IntentResult> {
-  // Check for greeting first - short-circuit
+  // Check for pure greeting first - short-circuit (but this should be caught earlier in processChatMessage)
+  if (isPureGreeting(userMessage)) {
+    return {
+      intent: 'GREETING',
+      city: null,
+      confidence: 0.95,
+    };
+  }
+  
+  // Check for general greeting - short-circuit
   if (isGreeting(userMessage)) {
     return {
       intent: 'GREETING',
@@ -936,6 +1023,18 @@ export async function processChatMessage(
   userMessage: string,
   sessionId: string
 ): Promise<ChatResponse> {
+  // GREETING HARD INTERRUPT: Check for pure greetings BEFORE any history/intent/search
+  // This prevents old shopping results from appearing in greeting responses
+  if (isPureGreeting(userMessage)) {
+    // DO NOT clear history (so real follow-up can still happen),
+    // but DO NOT send history to model for this turn.
+    // Return a greeting response that asks what they want NOW.
+    return {
+      message: 'Hi 👋 Welcome to BridgeChina.\nWhat do you need today?\n1) Hotel 2) Shopping 3) Tours 4) Transport 5) Medical 6) eSIM 7) Sourcing\n\nYou can also use the website: https://bridgechina-web.vercel.app/',
+      shouldReset: false,
+    };
+  }
+  
   // Check if session should be reset due to inactivity
   if (shouldResetSession(sessionId, userMessage)) {
     clearHistory(sessionId);
@@ -1090,7 +1189,7 @@ export async function processChatMessage(
           });
 
           response = itemLines.join('\n\n');
-          response += '\n\nWould you like me to help you place an order or check delivery inside China?';
+          response += '\n\nFor details Please check our website?';
           
           // Store items in context for return (structured cards)
           context.items = items;
