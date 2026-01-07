@@ -205,6 +205,52 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
         },
       });
 
+      // new by me
+      // Detect media types (audio/image) so we can avoid confusing AI replies
+      const mediaTypes: string[] = [];
+      for (let i = 0; i < 3; i++) {
+        const t = (payload as any)[`MediaContentType${i}`];
+        if (t) mediaTypes.push(String(t));
+      }
+
+      const hasMedia = (NumMedia ? parseInt(NumMedia) : 0) > 0;
+      const hasAudio = hasMedia && mediaTypes.some((t) => t.startsWith('audio/'));
+      const hasImage = hasMedia && mediaTypes.some((t) => t.startsWith('image/'));
+
+      if (hasAudio && (!Body || !Body.trim())) {
+        // Save message (so ops can see it) but don't trigger AI confusion
+        await prisma.message.create({
+          data: {
+            conversation_id: conversation.id,
+            role: 'user',
+            direction: 'INBOUND',
+            provider: 'twilio',
+            provider_sid: MessageSid,
+            content: '(voice note)',
+            status: 'received',
+            meta_json: {
+              profileName: ProfileName,
+              mediaUrls,
+              mediaTypes,
+              numMedia: NumMedia ? parseInt(NumMedia) : 0,
+            },
+          },
+        });
+      
+        // Reply with a single cheap message (no extra AI calls)
+        await sendText(  From,
+          "I received a voice note 🎤.\n" +
+          "Voice transcription isn’t enabled yet.\n" +
+          "Please send your question as text, or upload an image to search products.\n\n" +
+          "Website: https://bridgechina-web.vercel.app/");
+      
+        reply.type('text/xml').code(200).send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
+        return;
+      }
+      
+      /// end by me
+
+
       // Check for human takeover request
       const bodyText = Body?.toLowerCase().trim() || '';
       if (requestsHumanTakeover(bodyText)) {

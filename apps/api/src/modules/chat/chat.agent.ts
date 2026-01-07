@@ -948,14 +948,14 @@ export async function processChatMessage(
   const history = getConversationHistory(sessionId);
   
   // Check if this is the 6th user message (reset needed)
-  const userMessages = history.filter(m => m.role === 'user');
+  /*const userMessages = history.filter(m => m.role === 'user');
   if (userMessages.length >= 5) {
     clearHistory(sessionId);
     return {
       message: 'Hi again 👋 How can I help you today?',
       shouldReset: true,
     };
-  }
+  }*/
 
   // STEP 1: Intent Detection
   const intent = await detectIntent(userMessage);

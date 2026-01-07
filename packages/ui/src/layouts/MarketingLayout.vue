@@ -170,7 +170,7 @@
                 <ul class="space-y-2 text-sm">
                   <li><router-link to="/help" class="flex items-center space-x-2 text-slate-600 hover:text-teal-700 transition-colors"><HelpCircle class="h-4 w-4" /><span>Help Center</span></router-link></li>
                   <li><a href="https://wa.me/1234567890" target="_blank" class="flex items-center space-x-2 text-slate-600 hover:text-teal-700 transition-colors"><MessageCircle class="h-4 w-4" /><span>WhatsApp</span></a></li>
-                  <li><a href="tel:+861234567890" class="flex items-center space-x-2 text-slate-600 hover:text-teal-700 transition-colors"><Phone class="h-4 w-4" /><span>Emergency: +86 123 4567 890</span></a></li>
+                  <li><a href="tel:+861234567890" class="flex items-center space-x-2 text-slate-600 hover:text-teal-700 transition-colors"><Phone class="h-4 w-4" /><span>Emergency: +8801718066252</span></a></li>
                 </ul>
               </div>
               <div>
