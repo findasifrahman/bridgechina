@@ -167,31 +167,38 @@
         </div>
       </div>
 
-      <!-- Category Dropdown with Subcategories -->
+      <!-- Categories (compact chips) + Subcategories -->
       <div class="mb-6">
-        <div class="flex items-center gap-4">
-          <div class="flex-1">
-            <label class="block text-sm font-semibold text-slate-700 mb-2">Browse by Category</label>
-            <Select
-              v-model="selectedCategory"
-              :options="categoryOptions.filter((opt, idx, self) => 
-                idx === 0 || self.findIndex(o => o.value === opt.value) === idx
-              )"
-              placeholder="All Categories"
-              class="w-full"
-              @update:model-value="(val: string | number) => handleCategorySelect(String(val))"
-            />
-          </div>
-          <!-- Subcategory Dropdown (shown when category selected) -->
-          <div v-if="selectedCategory && selectedSubcategoryOptions.length > 0" class="flex-1">
-            <label class="block text-sm font-semibold text-slate-700 mb-2">Subcategory</label>
-            <Select
-              v-model="selectedSubcategory"
-              :options="selectedSubcategoryOptions"
-              placeholder="All Subcategories"
-              class="w-full"
-              @update:model-value="(val: string | number) => handleSubcategorySelect(String(val))"
-            />
+        <h3 class="text-sm font-semibold text-slate-700 mb-3">Browse by Category</h3>
+        <div class="flex flex-wrap gap-2">
+          <button
+            v-for="cat in categories"
+            :key="cat.slug"
+            type="button"
+            @click="handleCategoryChipClick(cat.slug)"
+            :class="[
+              'px-3 py-1.5 rounded-lg text-sm font-medium border transition-all flex items-center gap-2',
+              selectedCategory === cat.slug
+                ? 'bg-teal-600 text-white border-teal-600'
+                : 'bg-white text-slate-700 border-slate-200 hover:border-teal-300 hover:bg-teal-50'
+            ]"
+          >
+            <span class="text-base">{{ cat.icon || '📦' }}</span>
+            <span>{{ cat.name }}</span>
+          </button>
+        </div>
+        <div v-if="selectedCategory && currentSubcategories.length > 0" class="mt-3">
+          <div class="text-xs font-semibold text-slate-600 mb-2">Subcategories</div>
+          <div class="flex flex-wrap gap-2">
+            <button
+              v-for="sub in currentSubcategories"
+              :key="sub"
+              type="button"
+              @click="handleSubcategoryChipClick(sub)"
+              class="px-3 py-1.5 rounded-lg text-sm font-medium bg-white text-slate-700 border border-slate-200 hover:border-amber-300 hover:bg-amber-50 transition-all"
+            >
+              {{ sub }}
+            </button>
           </div>
         </div>
       </div>
@@ -354,23 +361,18 @@ const categoryOptions = computed(() => {
   return options;
 });
 
-const selectedSubcategoryOptions = computed(() => {
-  if (!selectedCategory.value) return [];
-  const category = categories.value.find(c => c.slug === selectedCategory.value);
-  if (!category || !category.subcategories) return [];
-  
-  return [
-    { value: '', label: 'All Subcategories' },
-    ...category.subcategories.map((sub: string) => ({ value: sub.toLowerCase().replace(/\s+/g, '-'), label: sub }))
-  ];
-});
-
 const hasSearchResults = computed(() => {
   // Show search results section if:
   // 1. We have actual results, OR
   // 2. We're currently loading a search, OR
   // 3. We have a search query and have finished loading (even if empty)
   return searchResults.value.length > 0 || loading.value || (searchQuery.value.trim().length > 0 && !loading.value);
+});
+
+const currentSubcategories = computed<string[]>(() => {
+  if (!selectedCategory.value) return [];
+  const cat = categories.value.find((c: any) => c.slug === selectedCategory.value);
+  return Array.isArray(cat?.subcategories) ? cat.subcategories.slice(0, 10) : [];
 });
 
 function handleFileSelect(event: Event) {
@@ -470,42 +472,23 @@ async function handleImageSearch() {
   }
 }
 
-function handleCategorySelect(value: string) {
-  selectedCategory.value = value;
-  selectedSubcategory.value = '';
-  if (value) {
-    // Load hot products for this category
-    loadHotItems();
-  }
-}
-
-function handleSubcategorySelect(value: string) {
-  selectedSubcategory.value = value;
-  if (value) {
-    // Search by subcategory keyword
-    const category = categories.value.find(c => c.slug === selectedCategory.value);
-    if (category && category.subcategories) {
-      const subcategory = category.subcategories.find((sub: string) => 
-        sub.toLowerCase().replace(/\s+/g, '-') === value
-      );
-      if (subcategory) {
-        searchQuery.value = subcategory;
-        currentPage.value = 1;
-        handleKeywordSearch();
-      }
-    }
-  }
-}
-
-function handleCategoryClick(categorySlug: string) {
-  selectedCategory.value = categorySlug;
-  selectedSubcategory.value = '';
-  // Load hot products for this category
-  loadHotItems();
-}
 
 function handleRecentSearchClick(keyword: string) {
   searchQuery.value = keyword;
+  handleKeywordSearch();
+}
+
+function handleCategoryChipClick(slug: string) {
+  selectedCategory.value = slug;
+  selectedSubcategory.value = '';
+  // keep behavior: refresh hot items for selected category
+  loadHotItems();
+}
+
+function handleSubcategoryChipClick(sub: string) {
+  selectedSubcategory.value = sub;
+  searchQuery.value = sub;
+  currentPage.value = 1;
   handleKeywordSearch();
 }
 
@@ -684,13 +667,13 @@ async function loadTopSalesAndLowestPrice() {
         .slice(0, 4);
     }
     
-    // Get lowest price - search with sort=price_asc, limit to 4
+    // Get lowest price - TMAPI sort: price_up
     const lowestPriceRes = await axios.get('/api/public/shopping/search', {
       params: {
         keyword: selectedCategory.value || 'products',
         page: 1,
         pageSize: 4,
-        sort: 'price_asc',
+        sort: 'price_up',
         language: selectedLanguage.value,
       },
     });

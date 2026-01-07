@@ -54,6 +54,22 @@ class TMAPIClient {
   }
 
   /**
+   * TMAPI sort mapping.
+   * Docs: default, sales, price_up, price_down
+   * We also accept legacy/internal aliases (price_asc/price_desc).
+   */
+  private normalizeSort(sort?: string): string | undefined {
+    if (!sort) return undefined;
+    const s = String(sort);
+    if (s === 'price_asc') return 'price_up';
+    if (s === 'price_desc') return 'price_down';
+    // Keep documented values as-is
+    if (s === 'default' || s === 'sales' || s === 'price_up' || s === 'price_down') return s;
+    // Fallback: keep as-is (TMAPI may ignore unknown values)
+    return s;
+  }
+
+  /**
    * Convert image URL to Alibaba-affiliated URL for image search
    * Based on TMAPI docs: POST /1688/tools/image/convert_url
    * https://tmapi.top/docs/ali/tool-apis/image-url-convert
@@ -201,7 +217,7 @@ class TMAPIClient {
 
       if (opts?.page) params.page = opts.page;
       if (opts?.pageSize) params.page_size = opts.pageSize;
-      if (opts?.sort) params.sort = opts.sort || 'sales'; // Default to sales
+      params.sort = this.normalizeSort(opts?.sort || 'sales'); // Default to sales
 
       console.log('[TMAPI Client] searchByImage request:', {
         baseURL: this.client.defaults.baseURL,
@@ -264,7 +280,7 @@ class TMAPIClient {
 
       if (opts?.page) params.page = opts.page;
       if (opts?.pageSize) params.page_size = opts.pageSize;
-      if (opts?.sort) params.sort = opts.sort || 'sales'; // Default to sales
+      params.sort = this.normalizeSort(opts?.sort || 'sales'); // Default to sales
       if (opts?.category) params.category = opts.category;
 
       console.log('[TMAPI Client] searchByKeyword request:', {
@@ -329,7 +345,7 @@ class TMAPIClient {
 
       if (opts?.page) params.page = opts.page;
       if (opts?.pageSize) params.page_size = opts.pageSize;
-      if (opts?.sort) params.sort = opts.sort || 'sales'; // Default to sales
+      params.sort = this.normalizeSort(opts?.sort || 'sales'); // Default to sales
 
       console.log('[TMAPI Client] searchFactoriesByKeyword request:', {
         baseURL: this.client.defaults.baseURL,
@@ -633,7 +649,7 @@ class TMAPIClient {
 
       if (opts?.page) params.page = opts.page;
       if (opts?.pageSize) params.page_size = opts.pageSize;
-      if (opts?.sort) params.sort = opts.sort || 'sales'; // Default to sales
+      params.sort = this.normalizeSort(opts?.sort || 'sales'); // Default to sales
 
       console.log('[TMAPI Client] searchByImageMultilingual request:', {
         baseURL: this.client.defaults.baseURL,
@@ -688,7 +704,7 @@ class TMAPIClient {
 
       if (opts?.page) params.page = opts.page;
       if (opts?.pageSize) params.page_size = opts.pageSize;
-      if (opts?.sort) params.sort = opts.sort || 'sales'; // Default to sales
+      params.sort = this.normalizeSort(opts?.sort || 'sales'); // Default to sales
       if (opts?.category) params.category = opts.category;
 
       console.log('[TMAPI Client] searchByKeywordMultilingual request:', {

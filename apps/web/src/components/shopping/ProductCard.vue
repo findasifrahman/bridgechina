@@ -38,11 +38,8 @@
     </div>
     <CardBody class="p-4">
       <h3 class="font-semibold text-slate-900 mb-1 line-clamp-2 min-h-[2.5rem]">{{ product.title }}</h3>
-      <div v-if="product.sellerName || product.totalSold" class="flex items-center gap-3 mb-2 text-xs">
-        <p v-if="product.sellerName" class="text-slate-500">{{ product.sellerName }}</p>
-        <span v-if="product.totalSold" class="text-teal-600 font-medium">
-          {{ formatSales(product.totalSold) }} sold
-        </span>
+      <div v-if="product.totalSold" class="flex items-center gap-3 mb-2 text-xs">
+        <p v-if="product.totalSold" class="text-slate-500">{{ formatSales(product.totalSold) }} sold</p>
       </div>
       <div class="flex items-center justify-between">
         <span class="text-lg font-bold text-teal-600">
