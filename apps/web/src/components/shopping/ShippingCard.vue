@@ -103,9 +103,9 @@
 
         <!-- Estimated Shipping Cost -->
         <div v-if="selectedMethodData && billableWeightKg > 0" class="bg-teal-50 rounded-lg p-3 border border-teal-200">
-          <div class="flex items-center justify-between mb-1">
+          <div class="flex items-start justify-between gap-3 mb-1">
             <span class="text-sm font-medium text-slate-700">Estimated Shipping Cost:</span>
-            <span class="text-lg font-bold text-teal-600">
+            <span class="text-lg font-bold text-teal-600 shrink-0 whitespace-nowrap">
               <span v-if="estimatedShippingCostMax && estimatedShippingCostMin !== estimatedShippingCostMax">
                 {{ formatCurrency(estimatedShippingCostMin) }} - {{ formatCurrency(estimatedShippingCostMax) }}
               </span>
