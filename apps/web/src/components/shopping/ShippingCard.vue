@@ -77,32 +77,13 @@
                 </Badge>
               </div>
               <div class="text-xs text-slate-600 mt-1">
-                <div v-if="method.ratePerKg">
-                  <template v-if="currency === 'BDT'">
-                    <span v-if="method.ratePerKgMax && method.ratePerKg !== method.ratePerKgMax">
-                      {{ formatCurrency(method.ratePerKg) }} - {{ formatCurrency(method.ratePerKgMax) }}/kg
-                    </span>
-                    <span v-else>
-                      {{ formatCurrency(method.ratePerKg) }}/kg
-                    </span>
-                    <span v-if="hasBattery && method.batteryRatePerKg" class="block mt-1">
-                      ({{ formatCurrency(method.batteryRatePerKg) }}/kg with battery)
-                    </span>
-                  </template>
-                  <template v-else-if="currency === 'CNY' && method.ratePerKgCNY">
-                    <span v-if="method.ratePerKgMaxCNY && method.ratePerKgCNY !== method.ratePerKgMaxCNY">
-                      {{ formatCurrency(method.ratePerKgCNY) }} - {{ formatCurrency(method.ratePerKgMaxCNY) }}/kg
-                    </span>
-                    <span v-else>
-                      {{ formatCurrency(method.ratePerKgCNY) }}/kg
-                    </span>
-                    <span v-if="hasBattery && method.batteryRatePerKgCNY" class="block mt-1">
-                      ({{ formatCurrency(method.batteryRatePerKgCNY) }}/kg with battery)
-                    </span>
-                  </template>
-                  <template v-else>
-                    {{ formatCurrency(method.ratePerKg) }}/kg
-                  </template>
+                <div v-if="method.ratePerKg || method.ratePerKgCNY">
+                  <span v-if="getDisplayRateMax(method) && getDisplayRateMin(method) !== getDisplayRateMax(method)">
+                    {{ formatCurrency(getDisplayRateMin(method)) }} - {{ formatCurrency(getDisplayRateMax(method)!) }}/kg
+                  </span>
+                  <span v-else>
+                    {{ formatCurrency(getDisplayRateMin(method)) }}/kg
+                  </span>
                 </div>
                 <div v-else-if="method.quoteRequired" class="text-amber-600">
                   Quote required
@@ -125,31 +106,23 @@
           <div class="flex items-center justify-between mb-1">
             <span class="text-sm font-medium text-slate-700">Estimated Shipping Cost:</span>
             <span class="text-lg font-bold text-teal-600">
-              {{ formatCurrency(estimatedShippingCost) }}
+              <span v-if="estimatedShippingCostMax && estimatedShippingCostMin !== estimatedShippingCostMax">
+                {{ formatCurrency(estimatedShippingCostMin) }} - {{ formatCurrency(estimatedShippingCostMax) }}
+              </span>
+              <span v-else>
+                {{ formatCurrency(estimatedShippingCostMin) }}
+              </span>
             </span>
           </div>
           <div class="text-xs text-slate-600">
             <div>Billable weight: {{ formatWeight(billableWeightKg) }} kg (MOQ: {{ shippingData.moq_billable_kg }} kg)</div>
             <div v-if="selectedMethodData.ratePerKg">
-              <template v-if="currency === 'BDT'">
-                <span v-if="selectedMethodData.ratePerKgMax && selectedMethodData.ratePerKg !== selectedMethodData.ratePerKgMax">
-                  Rate: {{ formatCurrency(selectedMethodData.ratePerKg) }} - {{ formatCurrency(selectedMethodData.ratePerKgMax) }}/kg
-                </span>
-                <span v-else>
-                  Rate: {{ formatCurrency(selectedMethodData.ratePerKg) }}/kg
-                </span>
-              </template>
-              <template v-else-if="currency === 'CNY' && selectedMethodData.ratePerKgCNY">
-                <span v-if="selectedMethodData.ratePerKgMaxCNY && selectedMethodData.ratePerKgCNY !== selectedMethodData.ratePerKgMaxCNY">
-                  Rate: {{ formatCurrency(selectedMethodData.ratePerKgCNY) }} - {{ formatCurrency(selectedMethodData.ratePerKgMaxCNY) }}/kg
-                </span>
-                <span v-else>
-                  Rate: {{ formatCurrency(selectedMethodData.ratePerKgCNY) }}/kg
-                </span>
-              </template>
-              <template v-else>
-                Rate: {{ formatCurrency(selectedMethodData.ratePerKg) }}/kg
-              </template>
+              <span v-if="ratePerKgMaxDisplay && ratePerKgDisplay !== ratePerKgMaxDisplay">
+                Rate: {{ formatCurrency(ratePerKgDisplay) }} - {{ formatCurrency(ratePerKgMaxDisplay) }}/kg
+              </span>
+              <span v-else>
+                Rate: {{ formatCurrency(ratePerKgDisplay) }}/kg
+              </span>
             </div>
           </div>
         </div>
@@ -248,45 +221,58 @@ const selectedMethodData = computed(() => {
   return availableMethods.value.find(m => m.code === selectedMethod.value);
 });
 
-const estimatedShippingCost = computed(() => {
-  if (!selectedMethodData.value || billableWeightKg.value <= 0) return 0;
-  
-  // Get rate based on currency and battery
-  let rate: number | undefined;
-  
-  if (props.currency === 'BDT') {
-    if (props.hasBattery && selectedMethodData.value.batteryRatePerKg) {
-      rate = selectedMethodData.value.batteryRatePerKg;
-    } else if (selectedMethodData.value.ratePerKgMax && selectedMethodData.value.ratePerKg !== selectedMethodData.value.ratePerKgMax) {
-      // For AIR cargo with range, use average or max based on weight
-      // Use max rate for heavier items
-      rate = billableWeightKg.value >= 20 ? selectedMethodData.value.ratePerKgMax : selectedMethodData.value.ratePerKg;
-    } else {
-      rate = selectedMethodData.value.ratePerKg;
-    }
-  } else if (props.currency === 'CNY') {
-    if (props.hasBattery && selectedMethodData.value.batteryRatePerKgCNY) {
-      rate = selectedMethodData.value.batteryRatePerKgCNY;
-    } else if (selectedMethodData.value.ratePerKgMaxCNY && selectedMethodData.value.ratePerKgCNY !== selectedMethodData.value.ratePerKgMaxCNY) {
-      rate = billableWeightKg.value >= 20 ? selectedMethodData.value.ratePerKgMaxCNY : selectedMethodData.value.ratePerKgCNY;
-    } else {
-      rate = selectedMethodData.value.ratePerKgCNY;
-    }
-  } else {
-    // USD - convert from CNY
-    const cnyRate = props.hasBattery && selectedMethodData.value.batteryRatePerKgCNY
-      ? selectedMethodData.value.batteryRatePerKgCNY
-      : (selectedMethodData.value.ratePerKgMaxCNY && selectedMethodData.value.ratePerKgCNY !== selectedMethodData.value.ratePerKgMaxCNY
-        ? (billableWeightKg.value >= 20 ? selectedMethodData.value.ratePerKgMaxCNY : selectedMethodData.value.ratePerKgCNY)
-        : selectedMethodData.value.ratePerKgCNY);
-    if (cnyRate && props.conversionRates?.CNY_TO_USD) {
-      rate = cnyRate * props.conversionRates.CNY_TO_USD;
-    }
+function getRateRangeCNY(method: ShippingMethod): { min?: number; max?: number } {
+  // Prefer explicit CNY fields; fallback to ratePerKg fields if CNY not present
+  const min = method.ratePerKgCNY ?? method.ratePerKg;
+  const max = method.ratePerKgMaxCNY ?? method.ratePerKgMax ?? min;
+  return { min, max };
+}
+
+function convertFromCNY(amountCny: number): number {
+  if (props.currency === 'CNY') return amountCny;
+  if (props.currency === 'USD') {
+    return amountCny * (props.conversionRates?.CNY_TO_USD ?? 0.14);
   }
-  
-  if (!rate) return 0;
-  
-  return rate * billableWeightKg.value;
+  // BDT (default)
+  return amountCny * (props.conversionRates?.CNY_TO_BDT ?? 15);
+}
+
+function getDisplayRateMin(method: ShippingMethod): number {
+  const { min } = getRateRangeCNY(method);
+  return min ? convertFromCNY(min) : 0;
+}
+
+function getDisplayRateMax(method: ShippingMethod): number | undefined {
+  const { min, max } = getRateRangeCNY(method);
+  const use = max ?? min;
+  return use ? convertFromCNY(use) : undefined;
+}
+
+const ratePerKgDisplay = computed(() => {
+  if (!selectedMethodData.value) return 0;
+  const { min } = getRateRangeCNY(selectedMethodData.value);
+  return min ? convertFromCNY(min) : 0;
+});
+
+const ratePerKgMaxDisplay = computed(() => {
+  if (!selectedMethodData.value) return 0;
+  const { max } = getRateRangeCNY(selectedMethodData.value);
+  return max ? convertFromCNY(max) : 0;
+});
+
+const estimatedShippingCostMin = computed(() => {
+  if (!selectedMethodData.value || billableWeightKg.value <= 0) return 0;
+  const { min } = getRateRangeCNY(selectedMethodData.value);
+  if (!min) return 0;
+  return convertFromCNY(min) * billableWeightKg.value;
+});
+
+const estimatedShippingCostMax = computed(() => {
+  if (!selectedMethodData.value || billableWeightKg.value <= 0) return 0;
+  const { max, min } = getRateRangeCNY(selectedMethodData.value);
+  const use = max ?? min;
+  if (!use) return 0;
+  return convertFromCNY(use) * billableWeightKg.value;
 });
 
 function isMethodAvailable(method: ShippingMethod): boolean {

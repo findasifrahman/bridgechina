@@ -14,63 +14,99 @@
         ← Back to Shopping
       </Button>
 
-      <div class="grid lg:grid-cols-3 gap-6">
-        <!-- Main Product Info (2 columns on desktop) -->
-        <div class="lg:col-span-2">
-          <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div class="grid md:grid-cols-2 gap-8 p-6">
-          <!-- Product Images -->
-          <div>
-            <div class="aspect-square bg-slate-100 rounded-lg overflow-hidden mb-4 border border-slate-200 relative group cursor-pointer" @click="openFullscreen(selectedImage || product.imageUrl)">
-              <!-- Video Player -->
-              <video
-                v-if="product.videoUrl && selectedImage === product.videoUrl"
-                :src="product.videoUrl"
-                controls
-                class="w-full h-full object-contain"
-                @click.stop
-              />
-              <img
-                v-else-if="selectedImage || product.imageUrl"
-                :src="selectedImage || product.imageUrl"
-                :alt="product.title"
-                class="w-full h-full object-cover"
-              />
-              <div v-else class="w-full h-full flex items-center justify-center text-slate-400">
-                <Package class="h-32 w-32" />
+      <div class="grid lg:grid-cols-12 gap-6">
+        <!-- Media (left) -->
+        <div class="lg:col-span-5">
+          <div class="bg-white rounded-lg shadow-sm overflow-hidden p-6">
+            <div class="lg:flex lg:gap-4">
+              <!-- Desktop vertical thumbnails (left of media) -->
+              <div v-if="(product.images && product.images.length > 1) || product.videoUrl" class="hidden lg:flex lg:flex-col gap-2 w-20">
+                <button
+                  v-if="product.videoUrl"
+                  type="button"
+                  class="aspect-square rounded border-2 cursor-pointer transition-all bg-slate-100 flex items-center justify-center"
+                  :class="selectedImage === product.videoUrl ? 'border-teal-500' : 'border-slate-200 hover:border-teal-300'"
+                  @click="selectVideo()"
+                >
+                  <Play class="h-6 w-6 text-slate-600" />
+                </button>
+                <button
+                  v-for="(img, idx) in (product.images || []).slice(0, 8)"
+                  :key="idx"
+                  type="button"
+                  class="aspect-square rounded border-2 overflow-hidden cursor-pointer transition-all bg-slate-100"
+                  :class="selectedImage === img ? 'border-teal-500' : 'border-slate-200 hover:border-teal-300'"
+                  @click="selectImage(img)"
+                >
+                  <img :src="img" :alt="`${product.title} ${String(Number(idx) + 1)}`" class="w-full h-full object-cover" />
+                </button>
               </div>
-              <!-- Fullscreen Icon Overlay -->
-              <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded p-2">
-                <Maximize2 class="h-5 w-5 text-white" />
+
+              <!-- Main media -->
+              <div class="flex-1">
+                <div class="aspect-square bg-slate-100 rounded-lg overflow-hidden mb-4 border border-slate-200 relative group cursor-pointer" @click="openFullscreen(activeMediaUrl)">
+                  <video
+                    v-if="showVideo"
+                    ref="videoRef"
+                    :src="product.videoUrl"
+                    :autoplay="videoMode === 'auto'"
+                    :muted="videoMode === 'auto'"
+                    playsinline
+                    loop
+                    controls
+                    class="w-full h-full object-contain"
+                    @click.stop
+                  />
+                  <img
+                    v-else-if="activeMediaUrl"
+                    :src="activeMediaUrl"
+                    :alt="product.title"
+                    class="w-full h-full object-cover"
+                  />
+                  <div v-else class="w-full h-full flex items-center justify-center text-slate-400">
+                    <Package class="h-32 w-32" />
+                  </div>
+                  <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded p-2">
+                    <Maximize2 class="h-5 w-5 text-white" />
+                  </div>
+                </div>
+
+                <!-- Mobile thumbnails -->
+                <div v-if="(product.images && product.images.length > 1) || product.videoUrl" class="grid grid-cols-4 gap-2 lg:hidden">
+                  <div
+                    v-if="product.videoUrl"
+                    @click="selectVideo()"
+                    class="aspect-square rounded border-2 cursor-pointer transition-all bg-slate-100 flex items-center justify-center"
+                    :class="selectedImage === product.videoUrl ? 'border-teal-500' : 'border-slate-200 hover:border-teal-300'"
+                  >
+                    <Play class="h-8 w-8 text-slate-600" />
+                  </div>
+                  <img
+                    v-for="(img, idx) in (product.images || []).slice(0, product.videoUrl ? 7 : 8)"
+                    :key="idx"
+                    :src="img"
+                    :alt="`${product.title} ${String(Number(idx) + 1)}`"
+                    class="aspect-square object-cover rounded border-2 cursor-pointer transition-all"
+                    :class="selectedImage === img ? 'border-teal-500' : 'border-slate-200 hover:border-teal-300'"
+                    @click="selectImage(img)"
+                  />
+                </div>
+
+                <!-- Title below media on desktop -->
+                <div class="hidden lg:block mt-4">
+                  <h1 class="text-2xl font-bold text-slate-900">{{ product.title }}</h1>
+                </div>
               </div>
-            </div>
-            <div v-if="(product.images && product.images.length > 1) || product.videoUrl" class="grid grid-cols-4 gap-2">
-              <!-- Video Thumbnail -->
-              <div
-                v-if="product.videoUrl"
-                @click="selectedImage = product.videoUrl"
-                class="aspect-square rounded border-2 cursor-pointer transition-all bg-slate-100 flex items-center justify-center"
-                :class="selectedImage === product.videoUrl ? 'border-teal-500' : 'border-slate-200 hover:border-teal-300'"
-              >
-                <Play class="h-8 w-8 text-slate-600" />
-              </div>
-              <!-- Image Thumbnails -->
-              <img
-                v-for="(img, idx) in (product.images || []).slice(0, product.videoUrl ? 7 : 8)"
-                :key="idx"
-                :src="img"
-                :alt="`${product.title} ${String(Number(idx) + 1)}`"
-                class="aspect-square object-cover rounded border-2 cursor-pointer transition-all"
-                :class="selectedImage === img ? 'border-teal-500' : 'border-slate-200 hover:border-teal-300'"
-                @click="selectedImage = img"
-              />
             </div>
           </div>
+        </div>
 
-          <!-- Product Info -->
-          <div class="space-y-6">
-            <div>
-              <h1 class="text-3xl font-bold text-slate-900 mb-3">{{ product.title }}</h1>
+        <!-- Product Info (middle) -->
+        <div class="lg:col-span-4">
+          <div class="bg-white rounded-lg shadow-sm overflow-hidden p-6">
+            <div class="space-y-6">
+              <div class="lg:hidden">
+                <h1 class="text-3xl font-bold text-slate-900 mb-3">{{ product.title }}</h1>
               
               <!-- Rating and Sales -->
               <div class="flex items-center gap-4 mb-4">
@@ -265,11 +301,13 @@
               </Button>
             </div>
 
-            <!-- Seller Info -->
-            <div v-if="product.sellerName" class="border-t border-slate-200 pt-4">
-              <h3 class="font-semibold text-slate-900 mb-2">Seller</h3>
-              <p class="text-slate-700">{{ product.sellerName }}</p>
-            </div>
+              </div>
+
+              <!-- Seller Info -->
+              <div v-if="product.sellerName" class="border-t border-slate-200 pt-4">
+                <h3 class="font-semibold text-slate-900 mb-2">Seller</h3>
+                <p class="text-slate-700">{{ product.sellerName }}</p>
+              </div>
 
             <!-- Shipping Info -->
             <div v-if="product.shippingInfo" class="border-t border-slate-200 pt-4">
@@ -297,11 +335,9 @@
             </div>
           </div>
         </div>
-        </div>
-        </div>
 
-        <!-- Shipping Card (Sticky on desktop, collapsible on mobile) -->
-        <div class="lg:col-span-1">
+        <!-- Shipping Card (right) -->
+        <div class="lg:col-span-3">
           <ShippingCard
             :shipping-data="product.bridgechinaShipping"
             :estimated-weight-kg="product.estimatedWeightKg"
@@ -395,7 +431,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
@@ -421,6 +457,8 @@ const product = ref<any>(null);
 const loading = ref(true);
 const quantity = ref(1);
 const selectedImage = ref<string | null>(null);
+const videoRef = ref<HTMLVideoElement | null>(null);
+const videoMode = ref<'none' | 'auto' | 'user'>('none');
 const selectedSkus = ref<Record<string, number>>({});
 const selectedLanguage = ref<'en' | 'zh'>('zh');
 const selectedCurrency = ref<'CNY' | 'BDT' | 'USD'>('CNY');
@@ -499,9 +537,43 @@ function formatTotalAmount(): string {
   return formatPrice(total);
 }
 
+const activeMediaUrl = computed(() => {
+  if (selectedImage.value) return selectedImage.value;
+  return product.value?.imageUrl || null;
+});
+
+const showVideo = computed(() => {
+  return !!(product.value?.videoUrl && selectedImage.value === product.value.videoUrl && videoMode.value !== 'none');
+});
+
 function openFullscreen(imageUrl: string | null) {
   if (imageUrl) {
     fullscreenImage.value = imageUrl;
+  }
+}
+
+function selectImage(img: string) {
+  selectedImage.value = img;
+}
+
+function selectVideo() {
+  if (!product.value?.videoUrl) return;
+  videoMode.value = 'user';
+  selectedImage.value = product.value.videoUrl;
+}
+
+async function tryAutoplayVideo() {
+  if (!product.value?.videoUrl) return;
+  if (videoMode.value !== 'auto') return;
+  if (!videoRef.value) return;
+  try {
+    videoRef.value.muted = true;
+    await videoRef.value.play();
+  } catch {
+    // Autoplay blocked: fallback to image
+    videoMode.value = 'none';
+    const firstImg = product.value?.images?.[0] || product.value?.imageUrl || null;
+    selectedImage.value = firstImg;
   }
 }
 
@@ -559,7 +631,13 @@ async function loadProduct() {
     product.value = response.data;
     
     // Set initial selected image
-    if (product.value.images && product.value.images.length > 0) {
+    if (product.value.videoUrl) {
+      // Try autoplay (muted). If blocked, fallback to image.
+      videoMode.value = 'auto';
+      selectedImage.value = product.value.videoUrl;
+      await nextTick();
+      await tryAutoplayVideo();
+    } else if (product.value.images && product.value.images.length > 0) {
       selectedImage.value = product.value.images[0];
     } else if (product.value.imageUrl) {
       selectedImage.value = product.value.imageUrl;
@@ -583,6 +661,13 @@ async function loadProduct() {
     loading.value = false;
   }
 }
+
+watch(selectedImage, async () => {
+  if (product.value?.videoUrl && selectedImage.value === product.value.videoUrl && videoMode.value === 'auto') {
+    await nextTick();
+    await tryAutoplayVideo();
+  }
+});
 
 async function requestQuote() {
   try {
