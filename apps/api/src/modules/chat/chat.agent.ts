@@ -776,7 +776,7 @@ function generateFallbackResponse(
       const supplier = item.supplier || 'Supplier';
       return `${index + 1}. ${item.title} - ${price} - ${supplier}`;
     });
-    return lines.join('\n') + '\n\nWould you like me to help you place an order or check delivery inside China?';
+    return lines.join('\n') + '\n\nYou can get more information on our website?';
   }
   
   // Handle service data (hotels, transport, etc.)
