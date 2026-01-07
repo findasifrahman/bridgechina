@@ -339,6 +339,14 @@ export async function handleAIReply(conversationId: string): Promise<void> {
           orderBy: { created_at: 'asc' },
           take: 20, // Last 20 messages for context
         },
+        lead: {
+          select: {
+            id: true,
+            name: true,
+            whatsapp: true,
+            email: true,
+          },
+        },
       },
     });
 
@@ -528,18 +536,23 @@ export async function handleAIReply(conversationId: string): Promise<void> {
       try {
         // Check if login hint was sent in last 24h
         const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        const recentLoginHint = await prisma.message.findFirst({
+        // Get recent assistant messages and check meta_json in code
+        const recentMessages = await prisma.message.findMany({
           where: {
             conversation_id: conversationId,
             role: 'assistant',
-            meta_json: {
-              path: ['loginHintSentAt'],
-              not: null,
-            },
             created_at: {
               gte: oneDayAgo,
             },
           },
+          select: {
+            meta_json: true,
+          },
+        });
+        
+        const recentLoginHint = recentMessages.find((msg) => {
+          const meta = msg.meta_json as any;
+          return meta && meta.loginHintSentAt;
         });
 
         if (!recentLoginHint) {
@@ -572,66 +585,6 @@ Please change it after login.`;
     
     console.log('[WhatsApp Service] AI response text (full):', responseText);
     console.log('[WhatsApp Service] AI response length:', responseText.length);
-
-    // Handle shopping results specially (format for WhatsApp) - only if not from image search
-    if (!imageSearchResults.length && result.items && result.items.length > 0) {
-      const items = result.items.slice(0, 3); // Top 3 only
-      const firstItem = items[0];
-      const remainingItems = items.slice(1);
-
-      // Translate first item title
-      const firstItemEnglishTitle = await translateTitleToEnglish(firstItem.title);
-      const firstItemPrice = firstItem.price || 'Price on request';
-      const firstItemSupplier = firstItem.supplier || 'N/A';
-
-      // Send first item as media (if image available)
-      if (firstItem.imageUrl) {
-        try {
-          const caption = `${firstItemEnglishTitle}\n${firstItemPrice} - ${firstItemSupplier}\n\nView on website: https://bridgechina-web.vercel.app/`;
-          const providerSid = await sendMedia(conversation.external_from!, firstItem.imageUrl, caption);
-          
-          // Store outbound message
-          await prisma.message.create({
-            data: {
-              conversation_id: conversationId,
-              role: 'assistant',
-              direction: 'OUTBOUND',
-              provider: 'twilio',
-              provider_sid: providerSid,
-              content: caption,
-              status: 'sent',
-              meta_json: {
-                type: 'media',
-                mediaUrl: firstItem.imageUrl,
-              },
-            },
-          });
-
-          await prisma.conversation.update({
-            where: { id: conversationId },
-            data: { last_outbound_at: new Date() },
-          });
-        } catch (error) {
-          console.error('[WhatsApp Service] Failed to send media:', error);
-          // Fallback to text - will be included in summary below
-        }
-      }
-
-      // Send remaining items as text summary (with translated titles)
-      if (remainingItems.length > 0) {
-        const summaryLines: string[] = [];
-        for (const item of remainingItems) {
-          const englishTitle = await translateTitleToEnglish(item.title);
-          const price = item.price || 'Price on request';
-          const supplier = item.supplier || 'N/A';
-          summaryLines.push(`${englishTitle} - ${price} - ${supplier}`);
-        }
-        responseText = summaryLines.join('\n\n') + '\n\nView on website: https://bridgechina-web.vercel.app/';
-      } else {
-        // Only one item, send follow-up with website link
-        responseText = 'View details and order on our website: https://bridgechina-web.vercel.app/';
-      }
-    }
 
     // Ensure responseText is not empty
     if (!responseText || responseText.trim().length === 0) {
