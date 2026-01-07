@@ -14,14 +14,15 @@
         ← Back to Shopping
       </Button>
 
-      <!-- Desktop: 2 columns (media left, purchase panel right). Mobile stays stacked. -->
+      <!-- Desktop: 2 columns (media+shipping left, purchase panel right). Mobile stays stacked. -->
       <div class="grid lg:grid-cols-12 gap-6">
-        <!-- Media (left) -->
-        <div class="lg:col-span-7">
+        <!-- Left Column: Media + Shipping Card -->
+        <div class="lg:col-span-7 space-y-6">
+          <!-- Image Gallery -->
           <div class="bg-white rounded-lg shadow-sm overflow-hidden p-6">
             <div class="lg:flex lg:gap-4">
               <!-- Desktop vertical thumbnails -->
-              <div v-if="(product.images && product.images.length > 1) || product.videoUrl" class="hidden lg:flex lg:flex-col gap-2 w-16">
+              <div v-if="(product.images && product.images.length > 1) || product.videoUrl" class="hidden lg:flex lg:flex-col gap-2 w-16 flex-shrink-0">
                 <button
                   v-if="product.videoUrl"
                   type="button"
@@ -97,12 +98,27 @@
               </div>
             </div>
           </div>
+
+          <!-- Shipping Card (below image on desktop, same width) -->
+          <div class="hidden lg:block">
+            <ShippingCard
+              :shipping-data="product.bridgechinaShipping"
+              :estimated-weight-kg="product.estimatedWeightKg"
+              :quantity="totalQuantity"
+              :has-battery="hasBattery"
+              :is-sticky="false"
+              :currency="selectedCurrency"
+              :conversion-rates="conversionRates"
+              @method-change="selectedShippingMethod = $event"
+              @weight-change="manualWeight = $event"
+            />
+          </div>
         </div>
 
         <!-- Purchase Panel (right) -->
         <div class="lg:col-span-5 space-y-6">
           <div class="bg-white rounded-lg shadow-sm overflow-hidden p-6">
-            <h1 class="text-2xl lg:text-3xl font-bold text-slate-900 mb-3">{{ product.title }}</h1>
+            <h1 class="text-2xl lg:text-3xl font-bold text-teal-700 mb-3">{{ product.title }}</h1>
 
             <!-- Rating and Sales -->
             <div class="flex items-center gap-4 mb-4">
@@ -270,38 +286,38 @@
               </div>
             </div>
 
-            <!-- Action Buttons -->
-            <div class="space-y-3 mt-4">
-              <div class="flex gap-2">
-                <Button
-                  variant="secondary"
-                  @click="addToCart"
-                  class="flex-1"
-                  :disabled="totalQuantity <= 0"
-                >
-                  <ShoppingCart class="h-4 w-4 mr-2" />
-                  Add to Cart
-                </Button>
-                <Button
-                  variant="primary"
-                  @click="requestQuote"
-                  class="flex-1"
-                  size="lg"
-                >
-                  Request Purchase & Shipping
-                </Button>
-              </div>
-              <p class="text-xs text-slate-600 text-center">
-                No payment now. Agent confirms final quote → You approve → We purchase & ship.
-              </p>
+            <!-- Action Buttons - Prominent Design -->
+            <div class="space-y-4 mt-6 pt-6 border-t-2 border-slate-200">
               <Button
-                variant="ghost"
-                @click="openWhatsApp"
-                class="w-full"
+                variant="primary"
+                @click="requestQuote"
+                class="w-full h-14 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
+                size="lg"
               >
-                <MessageCircle class="h-4 w-4 mr-2" />
+                Request Purchase & Shipping
+              </Button>
+              
+              <Button
+                @click="addToCart"
+                class="w-full h-12 text-base font-semibold bg-white border-2 border-teal-600 text-teal-600 hover:bg-teal-50 hover:border-teal-700 transition-all"
+                :disabled="totalQuantity <= 0"
+                :class="totalQuantity <= 0 ? 'opacity-50 cursor-not-allowed' : ''"
+              >
+                <ShoppingCart class="h-5 w-5 mr-2" />
+                Add to Cart
+              </Button>
+              
+              <Button
+                @click="openWhatsApp"
+                class="w-full h-11 text-base font-medium bg-green-600 hover:bg-green-700 text-white border-0 shadow-md hover:shadow-lg transition-all"
+              >
+                <MessageCircle class="h-5 w-5 mr-2" />
                 Contact via WhatsApp
               </Button>
+              
+              <p class="text-xs text-slate-500 text-center pt-2">
+                No payment now. Agent confirms final quote → You approve → We purchase & ship.
+              </p>
             </div>
 
               <!-- Seller Info -->
@@ -336,18 +352,20 @@
             </div>
           </div>
 
-          <!-- Shipping Card (sticky inside right column on desktop) -->
-          <ShippingCard
-            :shipping-data="product.bridgechinaShipping"
-            :estimated-weight-kg="product.estimatedWeightKg"
-            :quantity="totalQuantity"
-            :has-battery="hasBattery"
-            :is-sticky="true"
-            :currency="selectedCurrency"
-            :conversion-rates="conversionRates"
-            @method-change="selectedShippingMethod = $event"
-            @weight-change="manualWeight = $event"
-          />
+          <!-- Shipping Card (mobile only - desktop shows below image) -->
+          <div class="lg:hidden">
+            <ShippingCard
+              :shipping-data="product.bridgechinaShipping"
+              :estimated-weight-kg="product.estimatedWeightKg"
+              :quantity="totalQuantity"
+              :has-battery="hasBattery"
+              :is-sticky="false"
+              :currency="selectedCurrency"
+              :conversion-rates="conversionRates"
+              @method-change="selectedShippingMethod = $event"
+              @weight-change="manualWeight = $event"
+            />
+          </div>
         </div>
       </div>
 
