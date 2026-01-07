@@ -298,6 +298,7 @@
               </Button>
               
               <Button
+                variant="danger"
                 @click="addToCart"
                 class="w-full h-12 text-base font-semibold bg-white border-2 border-teal-600 text-teal-600 hover:bg-teal-50 hover:border-teal-700 transition-all"
                 :disabled="totalQuantity <= 0"
