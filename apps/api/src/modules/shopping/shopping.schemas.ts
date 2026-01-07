@@ -20,7 +20,7 @@ export const searchByImageSchema = z.object({
   category: z.string().optional(),
   page: z.coerce.number().int().min(1).max(100).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(50).optional().default(20),
-  sort: z.enum(['default', 'price_asc', 'price_desc', 'popular']).optional(),
+  sort: z.enum(['default', 'sales', 'price_asc', 'price_desc', 'popular']).optional().default('sales'),
   language: z.enum(['en', 'zh']).optional().default('zh'), // Language: 'en' for English, 'zh' for Chinese
 });
 

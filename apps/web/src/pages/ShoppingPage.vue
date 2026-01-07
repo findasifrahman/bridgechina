@@ -167,23 +167,32 @@
         </div>
       </div>
 
-      <!-- Category Pills - Enhanced Styling -->
+      <!-- Category Dropdown with Subcategories -->
       <div class="mb-6">
-        <h3 class="text-sm font-semibold text-slate-700 mb-3">Browse by Category</h3>
-        <div class="flex flex-wrap gap-3">
-          <button
-            v-for="cat in categories"
-            :key="cat.slug"
-            @click="handleCategoryClick(cat.slug)"
-            :class="[
-              'px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 shadow-sm',
-              selectedCategory === cat.slug
-                ? 'bg-teal-600 text-white shadow-md scale-105'
-                : 'bg-white text-slate-700 border border-slate-200 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700'
-            ]"
-          >
-            {{ cat.name }}
-          </button>
+        <div class="flex items-center gap-4">
+          <div class="flex-1">
+            <label class="block text-sm font-semibold text-slate-700 mb-2">Browse by Category</label>
+            <Select
+              v-model="selectedCategory"
+              :options="categoryOptions.filter((opt, idx, self) => 
+                idx === 0 || self.findIndex(o => o.value === opt.value) === idx
+              )"
+              placeholder="All Categories"
+              class="w-full"
+              @update:model-value="(val: string | number) => handleCategorySelect(String(val))"
+            />
+          </div>
+          <!-- Subcategory Dropdown (shown when category selected) -->
+          <div v-if="selectedCategory && selectedSubcategoryOptions.length > 0" class="flex-1">
+            <label class="block text-sm font-semibold text-slate-700 mb-2">Subcategory</label>
+            <Select
+              v-model="selectedSubcategory"
+              :options="selectedSubcategoryOptions"
+              placeholder="All Subcategories"
+              class="w-full"
+              @update:model-value="(val: string | number) => handleSubcategorySelect(String(val))"
+            />
+          </div>
         </div>
       </div>
 
@@ -305,7 +314,7 @@ import ProductCard from '@/components/shopping/ProductCard.vue';
 
 const router = useRouter();
 const toast = useToast();
-const { cartItems, totalItems, addToCart } = useShoppingCart();
+const { totalItems, addToCart: addToCartComposable } = useShoppingCart();
 
 const categories = ref<any[]>([]);
 const hotItems = ref<any[]>([]);
@@ -325,11 +334,36 @@ const selectedLanguage = ref<'en' | 'zh'>('en');
 const selectedCurrency = ref<'CNY' | 'BDT' | 'USD'>('CNY');
 const recentSearches = ref<string[]>([]);
 const conversionRates = ref<{ CNY_TO_BDT?: number; CNY_TO_USD?: number }>({});
+const selectedSubcategory = ref<string>('');
+const topSalesProducts = ref<any[]>([]);
+const lowestPriceProducts = ref<any[]>([]);
 
-const categoryOptions = computed(() => [
-  { value: '', label: 'All Categories' },
-  ...categories.value.map((c) => ({ value: c.slug, label: c.name })),
-]);
+const categoryOptions = computed(() => {
+  const options = [{ value: '', label: 'All Categories' }];
+  // Add categories with icons (avoid duplicates)
+  const seen = new Set<string>();
+  categories.value.forEach((c) => {
+    if (!seen.has(c.slug)) {
+      seen.add(c.slug);
+      options.push({ 
+        value: c.slug, 
+        label: `${c.icon || '📦'} ${c.name}` 
+      });
+    }
+  });
+  return options;
+});
+
+const selectedSubcategoryOptions = computed(() => {
+  if (!selectedCategory.value) return [];
+  const category = categories.value.find(c => c.slug === selectedCategory.value);
+  if (!category || !category.subcategories) return [];
+  
+  return [
+    { value: '', label: 'All Subcategories' },
+    ...category.subcategories.map((sub: string) => ({ value: sub.toLowerCase().replace(/\s+/g, '-'), label: sub }))
+  ];
+});
 
 const hasSearchResults = computed(() => {
   // Show search results section if:
@@ -361,6 +395,9 @@ function clearImage() {
 }
 
 async function handleUnifiedSearch() {
+  // Reset to page 1 when starting a new search
+  currentPage.value = 1;
+  
   // If image is selected, do image search
   if (selectedImage.value) {
     await handleImageSearch();
@@ -376,7 +413,7 @@ async function handleImageSearch() {
 
   uploadingImage.value = true;
   loading.value = true;
-  currentPage.value = 1;
+  // Don't reset currentPage here - let goToPage handle it
 
   try {
     // Step 1: Upload image to backend (server-side upload to R2 - avoids CORS)
@@ -396,6 +433,7 @@ async function handleImageSearch() {
       page: currentPage.value,
       pageSize: pageSize.value,
       language: selectedLanguage.value,
+      sort: 'sales', // Default to sales sort
     });
 
     console.log('[ShoppingPage] Image search response:', {
@@ -432,8 +470,36 @@ async function handleImageSearch() {
   }
 }
 
+function handleCategorySelect(value: string) {
+  selectedCategory.value = value;
+  selectedSubcategory.value = '';
+  if (value) {
+    // Load hot products for this category
+    loadHotItems();
+  }
+}
+
+function handleSubcategorySelect(value: string) {
+  selectedSubcategory.value = value;
+  if (value) {
+    // Search by subcategory keyword
+    const category = categories.value.find(c => c.slug === selectedCategory.value);
+    if (category && category.subcategories) {
+      const subcategory = category.subcategories.find((sub: string) => 
+        sub.toLowerCase().replace(/\s+/g, '-') === value
+      );
+      if (subcategory) {
+        searchQuery.value = subcategory;
+        currentPage.value = 1;
+        handleKeywordSearch();
+      }
+    }
+  }
+}
+
 function handleCategoryClick(categorySlug: string) {
   selectedCategory.value = categorySlug;
+  selectedSubcategory.value = '';
   // Load hot products for this category
   loadHotItems();
 }
@@ -451,13 +517,14 @@ async function handleKeywordSearch() {
   }
 
   loading.value = true;
-  currentPage.value = 1;
+  // Don't reset currentPage here - let goToPage handle it
 
   try {
     const params: any = {
       page: currentPage.value,
       pageSize: pageSize.value,
       language: selectedLanguage.value,
+      sort: 'sales', // Default to sales sort
     };
     
     if (keyword) {
@@ -548,12 +615,12 @@ function handleProductClick(product: any) {
 
 function handleRequestBuy(product: any) {
   // Add to cart instead of direct request
-  addToCart(product, 1);
+  addToCartComposable(product, 1);
   toast.success('Added to cart!');
 }
 
 function handleAddToCart(product: any) {
-  addToCart(product, 1);
+  addToCartComposable(product, 1);
   toast.success('Added to cart!');
 }
 
@@ -585,11 +652,58 @@ async function loadHotItems() {
     });
     hotItems.value = Array.isArray(response.data) ? response.data : [];
     console.log('[ShoppingPage] Loaded', hotItems.value.length, 'hot items');
+    
+    // Load top sales and lowest price
+    await loadTopSalesAndLowestPrice();
   } catch (error) {
     console.error('[ShoppingPage] Failed to load hot items:', error);
     hotItems.value = [];
   } finally {
     loading.value = false;
+  }
+}
+
+async function loadTopSalesAndLowestPrice() {
+  try {
+    // Get top sales - search with sort=sales, limit to 4
+    const topSalesRes = await axios.get('/api/public/shopping/search', {
+      params: {
+        keyword: selectedCategory.value || 'products',
+        page: 1,
+        pageSize: 4,
+        sort: 'sales',
+        language: selectedLanguage.value,
+      },
+    });
+    
+    if (topSalesRes.data?.items) {
+      // Sort by totalSold if available
+      topSalesProducts.value = topSalesRes.data.items
+        .filter((item: any) => item.totalSold)
+        .sort((a: any, b: any) => (b.totalSold || 0) - (a.totalSold || 0))
+        .slice(0, 4);
+    }
+    
+    // Get lowest price - search with sort=price_asc, limit to 4
+    const lowestPriceRes = await axios.get('/api/public/shopping/search', {
+      params: {
+        keyword: selectedCategory.value || 'products',
+        page: 1,
+        pageSize: 4,
+        sort: 'price_asc',
+        language: selectedLanguage.value,
+      },
+    });
+    
+    if (lowestPriceRes.data?.items) {
+      // Sort by priceMin
+      lowestPriceProducts.value = lowestPriceRes.data.items
+        .filter((item: any) => item.priceMin)
+        .sort((a: any, b: any) => (a.priceMin || Infinity) - (b.priceMin || Infinity))
+        .slice(0, 4);
+    }
+  } catch (error) {
+    console.error('[ShoppingPage] Failed to load top sales/lowest price:', error);
   }
 }
 

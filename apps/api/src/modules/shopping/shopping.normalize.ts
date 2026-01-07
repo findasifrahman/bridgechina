@@ -39,6 +39,7 @@ export interface ProductCard {
   images?: string[];
   sellerName?: string;
   sourceUrl?: string;
+  totalSold?: number; // Sales count from sale_info
 }
 
 export interface ProductDetail extends ProductCard {
@@ -71,7 +72,11 @@ export interface ProductDetail extends ProductCard {
       minKg?: number;
       maxKg?: number;
       ratePerKg?: number;
+      ratePerKgMax?: number;
+      ratePerKgCNY?: number;
+      ratePerKgMaxCNY?: number;
       batteryRatePerKg?: number;
+      batteryRatePerKgCNY?: number;
       quoteRequired?: boolean;
     }>;
     marketing?: {
@@ -151,6 +156,20 @@ export function normalizeProductCard(item: any): ProductCard {
   }
   if (!card.sellerName && (item.seller_name || item.seller?.name || item.company_name)) {
     card.sellerName = item.seller_name || item.seller?.name || item.company_name;
+  }
+
+  // Sales info - TMAPI uses sale_info
+  if (item.sale_info) {
+    // Get sales count from sale_info
+    if (item.sale_info.sale_quantity_90days) {
+      card.totalSold = parseInt(String(item.sale_info.sale_quantity_90days)) || undefined;
+    } else if (item.sale_info.sale_quantity) {
+      const qty = String(item.sale_info.sale_quantity).replace(/[^0-9]/g, '');
+      card.totalSold = parseInt(qty) || undefined;
+    } else if (item.sale_info.item_sold) {
+      const qty = String(item.sale_info.item_sold).replace(/[^0-9]/g, '');
+      card.totalSold = parseInt(qty) || undefined;
+    }
   }
 
   // Source URL - TMAPI uses 'product_url' field

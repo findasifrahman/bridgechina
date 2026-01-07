@@ -23,16 +23,74 @@ import {
 import { translateKeywordToChinese } from './googleTranslate.js';
 const SOURCE = 'tmapi_1688';
 
-// Shopping categories (can be moved to DB later)
+// Shopping categories with subcategories
 export const SHOPPING_CATEGORIES = [
-  { slug: 'electronics', name: 'Electronics' },
-  { slug: 'clothing', name: 'Clothing & Apparel' },
-  { slug: 'home', name: 'Home & Garden' },
-  { slug: 'toys', name: 'Toys & Games' },
-  { slug: 'beauty', name: 'Beauty & Personal Care' },
-  { slug: 'sports', name: 'Sports & Outdoors' },
-  { slug: 'automotive', name: 'Automotive' },
-  { slug: 'industrial', name: 'Industrial & Business' },
+  { 
+    slug: 'electronics', 
+    name: 'Electronics',
+    icon: '📱',
+    subcategories: ['iPhone', 'Xiaomi', 'Laptop', 'Tablet', 'Headphones', 'Camera', 'Smartwatch', 'Charger']
+  },
+  { 
+    slug: 'clothing', 
+    name: 'Clothing & Apparel',
+    icon: '👕',
+    subcategories: ['T-Shirt', 'Jeans', 'Dress', 'Jacket', 'Shoes', 'Accessories', 'Underwear', 'Socks']
+  },
+  { 
+    slug: 'home', 
+    name: 'Home & Garden',
+    icon: '🏠',
+    subcategories: ['Furniture', 'Kitchen', 'Bedding', 'Decoration', 'Garden', 'Lighting', 'Storage', 'Tools']
+  },
+  { 
+    slug: 'toys', 
+    name: 'Toys & Games',
+    icon: '🧸',
+    subcategories: ['Action Figures', 'Board Games', 'Puzzles', 'Educational', 'Outdoor', 'RC Toys', 'Dolls', 'Building Blocks']
+  },
+  { 
+    slug: 'beauty', 
+    name: 'Beauty & Personal Care',
+    icon: '💄',
+    subcategories: ['Skincare', 'Makeup', 'Hair Care', 'Fragrance', 'Tools', 'Men\'s Care', 'Bath & Body', 'Nail Care']
+  },
+  { 
+    slug: 'sports', 
+    name: 'Sports & Outdoors',
+    icon: '⚽',
+    subcategories: ['Fitness', 'Running', 'Cycling', 'Camping', 'Swimming', 'Yoga', 'Outdoor Gear', 'Sports Apparel']
+  },
+  { 
+    slug: 'automotive', 
+    name: 'Automotive',
+    icon: '🚗',
+    subcategories: ['Car Parts', 'Accessories', 'Tools', 'Maintenance', 'Electronics', 'Interior', 'Exterior', 'Motorcycle']
+  },
+  { 
+    slug: 'industrial', 
+    name: 'Industrial & Business',
+    icon: '🏭',
+    subcategories: ['Machinery', 'Tools', 'Equipment', 'Supplies', 'Safety', 'Packaging', 'Office', 'Materials']
+  },
+  { 
+    slug: 'jewelry', 
+    name: 'Jewelry',
+    icon: '💍',
+    subcategories: ['Necklace', 'Ring', 'Earring', 'Bracelet', 'Pendant', 'Brooch', 'Hair Accessories', 'Anklet']
+  },
+  { 
+    slug: 'eyewear', 
+    name: 'Eyewear',
+    icon: '👓',
+    subcategories: ['Sunglasses', 'Reading Glasses', 'Frames', 'Lenses', 'Cases', 'Accessories', 'Prescription', 'Fashion']
+  },
+  { 
+    slug: 'chocolate', 
+    name: 'Chocolate',
+    icon: '🍫',
+    subcategories: ['Dark Chocolate', 'Milk Chocolate', 'White Chocolate', 'Truffles', 'Bars', 'Gift Box', 'Bulk', 'Sugar Free']
+  },
 ];
 
 /**
@@ -63,7 +121,7 @@ export async function searchByKeyword(
     category?: string;
     page?: number;
     pageSize?: number;
-    sort?: string;
+    sort?: string; // 'sales', 'price_asc', 'price_desc', 'popular', 'default'
     language?: string; // 'en' for English, 'zh' for Chinese (default)
   }
 ): Promise<SearchResult> {
@@ -95,7 +153,7 @@ export async function searchByKeyword(
   const page = opts?.page ?? 1;
   const pageSize = opts?.pageSize ?? 20;
   const category = opts?.category || undefined;
-  const sort = opts?.sort || 'default';
+  const sort = opts?.sort || 'sales'; // Default to sales sort
   
   // Include all params explicitly in cache key to avoid collisions
   const cacheKey = generateCacheKey('keyword', { 
@@ -420,14 +478,20 @@ export async function searchByImage(
     category?: string;
     page?: number;
     pageSize?: number;
-    sort?: string;
+    sort?: string; // 'sales', 'price_asc', 'price_desc', 'popular', 'default'
     language?: string; // 'en' for English, 'zh' for Chinese (default)
   }
 ): Promise<ProductCard[]> {
   const language = opts?.language || 'zh';
+  const sort = opts?.sort || 'sales'; // Default to sales sort
+  const page = opts?.page ?? 1;
+  const pageSize = opts?.pageSize ?? 20;
   console.log('[Shopping Service] searchByImage called:', {
     originalUrl: r2PublicUrl.substring(0, 100) + (r2PublicUrl.length > 100 ? '...' : ''),
     language,
+    sort,
+    page,
+    pageSize,
     opts,
   });
 
@@ -468,8 +532,8 @@ export async function searchByImage(
   // We use it as-is (path format) as that's what TMAPI returns and expects
   console.log('[Shopping Service] Step 3: Calling TMAPI image search with converted URL...');
   const response = language === 'en'
-    ? await tmapiClient.searchByImageMultilingual(convertedUrl, language, opts)
-    : await tmapiClient.searchByImage(convertedUrl, opts);
+    ? await tmapiClient.searchByImageMultilingual(convertedUrl, language, { ...opts, sort })
+    : await tmapiClient.searchByImage(convertedUrl, { ...opts, sort });
 
   console.log('[Shopping Service] Image search response:', {
     hasData: !!response.data,
@@ -485,7 +549,7 @@ export async function searchByImage(
   });
 
   // Step 4: Cache results
-  await setCachedSearch(SOURCE, cacheKey, { imgUrl: convertedUrl, ...opts }, response);
+  await setCachedSearch(SOURCE, cacheKey, { imgUrl: convertedUrl, sort, page, pageSize, category: opts?.category }, response);
 
   // Step 5: Normalize and return
   // TMAPI response structure: { code: 200, msg: "success", data: { items: [...] } }
@@ -498,7 +562,19 @@ export async function searchByImage(
     console.warn('[Shopping Service] Image search returned 0 results. This may be legitimate (no matching products found) or could indicate an API issue.');
   }
   
-  return normalizeProductCards(items);
+  const normalized = normalizeProductCards(items);
+  const totalCount = response.data?.total_count || normalized.length;
+  const totalPages = Math.ceil(totalCount / pageSize);
+  const hasNextPage = page < totalPages;
+  
+  return {
+    items: normalized,
+    totalCount,
+    page,
+    pageSize,
+    totalPages,
+    hasNextPage,
+  };
 }
 
 /**

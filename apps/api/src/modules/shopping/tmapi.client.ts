@@ -201,7 +201,7 @@ class TMAPIClient {
 
       if (opts?.page) params.page = opts.page;
       if (opts?.pageSize) params.page_size = opts.pageSize;
-      if (opts?.sort) params.sort = opts.sort || 'default';
+      if (opts?.sort) params.sort = opts.sort || 'sales'; // Default to sales
 
       console.log('[TMAPI Client] searchByImage request:', {
         baseURL: this.client.defaults.baseURL,
@@ -264,7 +264,7 @@ class TMAPIClient {
 
       if (opts?.page) params.page = opts.page;
       if (opts?.pageSize) params.page_size = opts.pageSize;
-      if (opts?.sort) params.sort = opts.sort || 'default';
+      if (opts?.sort) params.sort = opts.sort || 'sales'; // Default to sales
       if (opts?.category) params.category = opts.category;
 
       console.log('[TMAPI Client] searchByKeyword request:', {
@@ -329,7 +329,7 @@ class TMAPIClient {
 
       if (opts?.page) params.page = opts.page;
       if (opts?.pageSize) params.page_size = opts.pageSize;
-      if (opts?.sort) params.sort = opts.sort || 'default';
+      if (opts?.sort) params.sort = opts.sort || 'sales'; // Default to sales
 
       console.log('[TMAPI Client] searchFactoriesByKeyword request:', {
         baseURL: this.client.defaults.baseURL,
@@ -633,7 +633,7 @@ class TMAPIClient {
 
       if (opts?.page) params.page = opts.page;
       if (opts?.pageSize) params.page_size = opts.pageSize;
-      if (opts?.sort) params.sort = opts.sort || 'default';
+      if (opts?.sort) params.sort = opts.sort || 'sales'; // Default to sales
 
       console.log('[TMAPI Client] searchByImageMultilingual request:', {
         baseURL: this.client.defaults.baseURL,
@@ -688,7 +688,7 @@ class TMAPIClient {
 
       if (opts?.page) params.page = opts.page;
       if (opts?.pageSize) params.page_size = opts.pageSize;
-      if (opts?.sort) params.sort = opts.sort || 'default';
+      if (opts?.sort) params.sort = opts.sort || 'sales'; // Default to sales
       if (opts?.category) params.category = opts.category;
 
       console.log('[TMAPI Client] searchByKeywordMultilingual request:', {

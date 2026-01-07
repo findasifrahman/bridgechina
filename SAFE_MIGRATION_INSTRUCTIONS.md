@@ -112,3 +112,4 @@ After applying the migration, verify:
 3. Create provider profile UI (`apps/web/src/pages/provider/ProfilePage.vue`)
 
 
+
