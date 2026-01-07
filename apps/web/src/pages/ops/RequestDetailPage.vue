@@ -376,19 +376,29 @@
                         <span v-else-if="item.priceMin" class="font-medium text-teal-600">¥{{ item.priceMin }}</span>
                       </div>
                       <div v-if="item.externalId" class="text-xs text-slate-400">
-                        <span class="text-slate-500">External ID:</span> {{ item.externalId }}
+                        <span class="text-slate-500">Product ID:</span> {{ item.externalId }}
                       </div>
                       <div v-if="item.sourceUrl" class="text-xs">
                         <a :href="item.sourceUrl" target="_blank" class="text-teal-600 hover:underline break-all">
-                          View Source →
+                          View Product Page (Tmall/1688) →
                         </a>
+                      </div>
+                      <div v-if="item.weight" class="text-xs text-slate-500">
+                        <span>Weight:</span> <span class="text-slate-700">{{ item.weight }}kg</span>
+                      </div>
+                      <div v-if="item.estimatedCost" class="text-xs text-slate-500">
+                        <span>Estimated Cost:</span> <span class="text-teal-600 font-medium">¥{{ item.estimatedCost }}</span>
                       </div>
                       <div v-if="item.skuDetails && item.skuDetails.length > 0" class="md:col-span-2 mt-2 pt-2 border-t border-slate-200">
                         <p class="text-xs font-medium text-slate-500 mb-1">SKU Details:</p>
-                        <div class="space-y-1">
-                          <div v-for="(sku, skuIdx) in item.skuDetails" :key="skuIdx" class="text-xs text-slate-600 bg-slate-50 p-2 rounded">
-                            {{ sku.sku?.props_names || `SKU ${skuIdx + 1}` }} - Qty: {{ sku.qty }}
-                            <span v-if="sku.sku?.sale_price" class="text-teal-600">(¥{{ sku.sku.sale_price }})</span>
+                        <div class="space-y-2">
+                          <div v-for="(sku, skuIdx) in item.skuDetails" :key="skuIdx" class="text-xs text-slate-600 bg-slate-50 p-3 rounded border border-slate-200">
+                            <div class="font-medium mb-1">{{ sku.sku?.props_names || `Option ${skuIdx + 1}` }}</div>
+                            <div class="grid grid-cols-2 gap-2">
+                              <div>Qty: <span class="font-medium">{{ sku.qty }}</span></div>
+                              <div v-if="sku.sku?.sale_price">Price: <span class="font-medium text-teal-600">¥{{ sku.sku.sale_price }}</span></div>
+                              <div v-if="sku.sku?.specid" class="text-slate-400">Spec ID: {{ sku.sku.specid }}</div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -430,36 +440,60 @@
 
             <!-- Hotel Request -->
             <template v-else-if="request.category?.key === 'hotel'">
-              <div class="grid md:grid-cols-2 gap-4">
-                <div v-if="request.request_payload.hotel_name || request.request_payload.hotelName">
-                  <p class="text-sm font-medium text-slate-500 mb-1">Hotel Name</p>
-                  <p class="text-slate-900 font-semibold bg-white p-3 rounded border border-slate-200">
-                    {{ request.request_payload.hotel_name || request.request_payload.hotelName }}
-                  </p>
+              <div class="space-y-4">
+                <div class="grid md:grid-cols-2 gap-4">
+                  <div v-if="request.request_payload.hotel_name || request.request_payload.hotelName">
+                    <p class="text-sm font-medium text-slate-500 mb-1">Hotel Name</p>
+                    <p class="text-slate-900 font-semibold bg-white p-3 rounded border border-slate-200">
+                      {{ request.request_payload.hotel_name || request.request_payload.hotelName }}
+                    </p>
+                  </div>
+                  <div v-if="request.request_payload.hotel_id || request.request_payload.hotelId">
+                    <p class="text-sm font-medium text-slate-500 mb-1">Hotel ID</p>
+                    <p class="text-slate-600 text-sm bg-white p-3 rounded border border-slate-200">
+                      {{ request.request_payload.hotel_id || request.request_payload.hotelId }}
+                    </p>
+                  </div>
+                  <div v-if="request.request_payload.check_in || request.request_payload.checkIn">
+                    <p class="text-sm font-medium text-slate-500 mb-1">Check-in Date</p>
+                    <p class="text-slate-900 bg-white p-3 rounded border border-slate-200">
+                      {{ request.request_payload.check_in || request.request_payload.checkIn }}
+                    </p>
+                  </div>
+                  <div v-if="request.request_payload.check_out || request.request_payload.checkOut">
+                    <p class="text-sm font-medium text-slate-500 mb-1">Check-out Date</p>
+                    <p class="text-slate-900 bg-white p-3 rounded border border-slate-200">
+                      {{ request.request_payload.check_out || request.request_payload.checkOut }}
+                    </p>
+                  </div>
+                  <div v-if="request.request_payload.guests">
+                    <p class="text-sm font-medium text-slate-500 mb-1">Guests</p>
+                    <p class="text-slate-900 bg-white p-3 rounded border border-slate-200">{{ request.request_payload.guests }}</p>
+                  </div>
+                  <div v-if="request.request_payload.rooms || request.request_payload.room_qty">
+                    <p class="text-sm font-medium text-slate-500 mb-1">Rooms</p>
+                    <p class="text-slate-900 bg-white p-3 rounded border border-slate-200">
+                      {{ request.request_payload.rooms || request.request_payload.room_qty }}
+                    </p>
+                  </div>
+                  <div v-if="request.request_payload.price || request.request_payload.total_price">
+                    <p class="text-sm font-medium text-slate-500 mb-1">Price</p>
+                    <p class="text-teal-600 font-bold text-lg bg-white p-3 rounded border border-slate-200">
+                      ¥{{ request.request_payload.price || request.request_payload.total_price }}
+                    </p>
+                  </div>
                 </div>
-                <div v-if="request.request_payload.check_in || request.request_payload.checkIn">
-                  <p class="text-sm font-medium text-slate-500 mb-1">Check-in Date</p>
-                  <p class="text-slate-900 bg-white p-3 rounded border border-slate-200">
-                    {{ request.request_payload.check_in || request.request_payload.checkIn }}
-                  </p>
+                <div v-if="request.request_payload.hotel_url || request.request_payload.booking_url || request.request_payload.sourceUrl" class="pt-2 border-t border-slate-300">
+                  <p class="text-sm font-medium text-slate-500 mb-1">Booking URL</p>
+                  <a 
+                    :href="request.request_payload.hotel_url || request.request_payload.booking_url || request.request_payload.sourceUrl" 
+                    target="_blank" 
+                    class="text-teal-600 hover:underline break-all bg-white p-3 rounded border border-slate-200 block"
+                  >
+                    {{ request.request_payload.hotel_url || request.request_payload.booking_url || request.request_payload.sourceUrl }}
+                  </a>
                 </div>
-                <div v-if="request.request_payload.check_out || request.request_payload.checkOut">
-                  <p class="text-sm font-medium text-slate-500 mb-1">Check-out Date</p>
-                  <p class="text-slate-900 bg-white p-3 rounded border border-slate-200">
-                    {{ request.request_payload.check_out || request.request_payload.checkOut }}
-                  </p>
-                </div>
-                <div v-if="request.request_payload.guests">
-                  <p class="text-sm font-medium text-slate-500 mb-1">Guests</p>
-                  <p class="text-slate-900 bg-white p-3 rounded border border-slate-200">{{ request.request_payload.guests }}</p>
-                </div>
-                <div v-if="request.request_payload.rooms || request.request_payload.room_qty">
-                  <p class="text-sm font-medium text-slate-500 mb-1">Rooms</p>
-                  <p class="text-slate-900 bg-white p-3 rounded border border-slate-200">
-                    {{ request.request_payload.rooms || request.request_payload.room_qty }}
-                  </p>
-                </div>
-                <div v-if="request.request_payload.special_requests || request.request_payload.specialRequests" class="md:col-span-2">
+                <div v-if="request.request_payload.special_requests || request.request_payload.specialRequests" class="pt-2 border-t border-slate-300">
                   <p class="text-sm font-medium text-slate-500 mb-1">Special Requests</p>
                   <p class="text-slate-900 whitespace-pre-wrap bg-white p-3 rounded border border-slate-200">
                     {{ request.request_payload.special_requests || request.request_payload.specialRequests }}
