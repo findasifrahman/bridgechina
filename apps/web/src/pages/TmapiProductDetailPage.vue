@@ -300,9 +300,9 @@
               <Button
                 variant="primary"
                 @click="addToCart"
-                class="w-full h-12 text-base font-semibold bg-white border-2 border-teal-600 text-teal-600 hover:bg-teal-50 hover:border-teal-700 transition-all"
+                class="w-full h-14 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
                 :disabled="totalQuantity <= 0"
-                :class="totalQuantity <= 0 ? 'opacity-50 cursor-not-allowed' : ''"
+                :class="totalQuantity <= 0 ? 'cursor-not-allowed' : ''"
               >
                 <ShoppingCart class="h-5 w-5 mr-2" />
                 Add to Cart
