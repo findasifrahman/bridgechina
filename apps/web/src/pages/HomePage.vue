@@ -978,7 +978,7 @@ if (offerModalHandler) {
 }
 
 function handleLaunchModalClose(dontShowForDays?: number) {
-  launchModal.close(dontShowForDays);
+  launchModal.close(0);
 }
 
 function handleLaunchPrimary() {

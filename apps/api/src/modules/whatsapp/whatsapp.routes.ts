@@ -136,6 +136,45 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
         },
       });
 
+      // Auto-create user account from WhatsApp lead (on first message per conversation)
+      // This ensures every WhatsApp lead becomes a website account
+      if (!conversation.user_id) {
+        try {
+          const { ensureUserFromWhatsappLead } = await import('./whatsapp.service.js');
+          const userInfo = await ensureUserFromWhatsappLead(phoneNumber, ProfileName || lead.name);
+          
+          // Link user to conversation if user was created
+          if (userInfo.created) {
+            const user = await prisma.user.findFirst({
+              where: {
+                OR: [
+                  { phone: userInfo.phone },
+                  { email: userInfo.email },
+                ],
+              },
+            });
+            
+            if (user) {
+              await prisma.conversation.update({
+                where: { id: conversation.id },
+                data: { user_id: user.id },
+              });
+              
+              // Update lead email if empty
+              if (!lead.email) {
+                await prisma.lead.update({
+                  where: { id: lead.id },
+                  data: { email: userInfo.email },
+                });
+              }
+            }
+          }
+        } catch (error: any) {
+          // Log but don't fail - user creation is best effort
+          fastify.log.warn({ error: error.message }, '[WhatsApp Routes] Failed to create user from lead');
+        }
+      }
+
       // Collect media URLs
       const mediaUrls: string[] = [];
       if (NumMedia && parseInt(NumMedia) > 0) {

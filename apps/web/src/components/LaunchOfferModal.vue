@@ -18,7 +18,7 @@
 
       <!-- Modal Card -->
       <div
-        class="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
+        class="relative w-full max-w-7xl lg:w-[92vw] xl:w-[88vw] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden lg:h-[80vh] lg:max-h-[86vh]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
@@ -34,17 +34,17 @@
           </svg>
         </button>
 
-        <div class="grid lg:grid-cols-2 gap-0">
+        <div class="grid lg:grid-cols-2 gap-0 lg:h-full">
           <!-- Left: Content Section -->
-          <div class="p-6 lg:p-8 flex flex-col justify-center bg-gradient-to-br from-slate-50 to-white">
+          <div class="p-6 lg:p-8 flex flex-col justify-center bg-gradient-to-br from-slate-50 to-white lg:h-full overflow-y-auto">
             <!-- Badge -->
             <div class="inline-flex items-center gap-2 mb-4 px-3 py-1.5 rounded-full bg-teal-50 border border-teal-200 w-fit">
-              <span class="text-xs font-semibold text-teal-700">MalishaGroup Venture • Early Access</span>
+              <span class="text-xs font-semibold text-teal-700">MalishaGroup Venture • Korban Ali</span>
             </div>
 
             <!-- Title -->
-            <h2 id="modal-title" class="text-3xl lg:text-4xl font-bold text-slate-900 mb-3">
-              BridgeChina is launching soon
+            <h2 id="modal-title" class="text-3xl lg:text-4xl font-bold text-slate-900 mb-3 ">
+              MalishaGroup's BridgeChina is launching soon
             </h2>
 
             <!-- Subtitle -->
@@ -93,16 +93,16 @@
                   class="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
                 />
                 <span class="text-sm text-slate-600 group-hover:text-slate-900">
-                  Don't show again for 7 days
+                  Join Us
                 </span>
               </label>
             </div>
           </div>
 
           <!-- Right: Media Section -->
-          <div class="relative bg-slate-100 lg:bg-slate-900/5">
+          <div class="relative bg-slate-100 lg:bg-slate-900/5 lg:h-full">
             <!-- Video -->
-            <div v-if="!shouldUseImage && mode === 'video' && videoSrc" class="relative w-full h-full min-h-[300px] lg:min-h-[500px]">
+            <div v-if="!shouldUseImage && mode === 'video' && videoSrc" class="relative w-full h-full min-h-[320px] lg:min-h-0 lg:h-full">
               <video
                 ref="videoRef"
                 :src="videoSrc"
@@ -128,7 +128,7 @@
             </div>
 
             <!-- Image -->
-            <div v-else-if="(shouldUseImage || mode === 'image') && imageSrc" class="relative w-full h-full min-h-[300px] lg:min-h-[500px]">
+            <div v-else-if="(shouldUseImage || mode === 'image') && imageSrc" class="relative w-full h-full min-h-[320px] lg:min-h-0 lg:h-full">
               <img
                 :src="imageSrc"
                 :alt="title || 'Launch announcement'"
@@ -137,7 +137,7 @@
             </div>
 
             <!-- Fallback placeholder -->
-            <div v-else class="relative w-full h-full min-h-[300px] lg:min-h-[500px] flex items-center justify-center bg-gradient-to-br from-teal-100 to-teal-200">
+            <div v-else class="relative w-full h-full min-h-[320px] lg:min-h-0 lg:h-full flex items-center justify-center bg-gradient-to-br from-teal-100 to-teal-200">
               <div class="text-center p-8">
                 <svg class="w-16 h-16 text-teal-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
