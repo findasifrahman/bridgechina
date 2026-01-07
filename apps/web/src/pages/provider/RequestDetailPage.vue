@@ -58,8 +58,137 @@
         </div>
 
         <div v-if="request.request.providerMessageContexts?.[0]?.extracted_payload" class="mb-4">
-          <div class="text-sm font-medium text-slate-900 mb-2">Details:</div>
+          <div class="text-sm font-medium text-slate-900 mb-2">AI Extracted Details:</div>
           <pre class="text-xs text-slate-600 bg-slate-50 p-3 rounded overflow-auto">{{ JSON.stringify(request.request.providerMessageContexts[0].extracted_payload, null, 2) }}</pre>
+        </div>
+      </div>
+
+      <!-- Request Payload (Organized View) -->
+      <div v-if="request.request.request_payload" class="bg-white rounded-lg p-4 mb-4">
+        <div class="text-sm font-medium text-slate-900 mb-3">Request Details</div>
+        <div class="bg-slate-50 rounded-lg p-4 space-y-3">
+          <!-- Shopping Request (Cart Items) -->
+          <template v-if="request.request.category?.key === 'shopping' && request.request.request_payload.items && Array.isArray(request.request.request_payload.items)">
+            <div class="space-y-3">
+              <div v-for="(item, idx) in request.request.request_payload.items" :key="idx" class="bg-white rounded-lg p-3 border border-slate-200">
+                <div class="flex gap-3">
+                  <img
+                    v-if="item.imageUrl"
+                    :src="item.imageUrl"
+                    :alt="item.title"
+                    class="w-16 h-16 object-cover rounded border border-slate-200 flex-shrink-0"
+                  />
+                  <div class="flex-1">
+                    <h6 class="font-semibold text-slate-900 text-sm mb-1">{{ item.title }}</h6>
+                    <div class="text-xs space-y-1">
+                      <div><span class="text-slate-500">Qty:</span> <span class="font-medium">{{ item.qty }}</span></div>
+                      <div v-if="item.priceMin || item.priceMax">
+                        <span class="text-slate-500">Price:</span>
+                        <span v-if="item.priceMin && item.priceMax && item.priceMin !== item.priceMax" class="font-medium text-teal-600">
+                          ¥{{ item.priceMin }}-{{ item.priceMax }}
+                        </span>
+                        <span v-else-if="item.priceMin" class="font-medium text-teal-600">¥{{ item.priceMin }}</span>
+                      </div>
+                      <div v-if="item.externalId" class="text-slate-400">
+                        ID: {{ item.externalId }}
+                      </div>
+                      <div v-if="item.skuDetails && item.skuDetails.length > 0" class="mt-2 pt-2 border-t border-slate-200">
+                        <div v-for="(sku, skuIdx) in item.skuDetails" :key="skuIdx" class="text-xs text-slate-600">
+                          • {{ sku.sku?.props_names || `Option ${skuIdx + 1}` }} - Qty: {{ sku.qty }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- Shopping Request (Simple Form) -->
+          <template v-else-if="request.request.category?.key === 'shopping'">
+            <div class="space-y-2 text-sm">
+              <div v-if="request.request.request_payload.items_description">
+                <span class="font-medium text-slate-700">Items:</span>
+                <p class="text-slate-900 mt-1">{{ request.request.request_payload.items_description }}</p>
+              </div>
+              <div v-if="request.request.request_payload.budget" class="flex gap-4">
+                <div>
+                  <span class="font-medium text-slate-700">Budget:</span>
+                  <span class="text-slate-900 ml-2">¥{{ request.request.request_payload.budget }}</span>
+                </div>
+                <div v-if="request.request.request_payload.preferred_stores">
+                  <span class="font-medium text-slate-700">Stores:</span>
+                  <span class="text-slate-900 ml-2">{{ request.request.request_payload.preferred_stores }}</span>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- Hotel Request -->
+          <template v-else-if="request.request.category?.key === 'hotel'">
+            <div class="grid grid-cols-2 gap-3 text-sm">
+              <div v-if="request.request.request_payload.hotel_name || request.request.request_payload.hotelName">
+                <span class="font-medium text-slate-700">Hotel:</span>
+                <p class="text-slate-900">{{ request.request.request_payload.hotel_name || request.request.request_payload.hotelName }}</p>
+              </div>
+              <div v-if="request.request.request_payload.check_in || request.request.request_payload.checkIn">
+                <span class="font-medium text-slate-700">Check-in:</span>
+                <p class="text-slate-900">{{ request.request.request_payload.check_in || request.request.request_payload.checkIn }}</p>
+              </div>
+              <div v-if="request.request.request_payload.check_out || request.request.request_payload.checkOut">
+                <span class="font-medium text-slate-700">Check-out:</span>
+                <p class="text-slate-900">{{ request.request.request_payload.check_out || request.request.request_payload.checkOut }}</p>
+              </div>
+              <div v-if="request.request.request_payload.guests">
+                <span class="font-medium text-slate-700">Guests:</span>
+                <p class="text-slate-900">{{ request.request.request_payload.guests }}</p>
+              </div>
+              <div v-if="request.request.request_payload.rooms || request.request.request_payload.room_qty">
+                <span class="font-medium text-slate-700">Rooms:</span>
+                <p class="text-slate-900">{{ request.request.request_payload.rooms || request.request.request_payload.room_qty }}</p>
+              </div>
+            </div>
+          </template>
+
+          <!-- Transport Request -->
+          <template v-else-if="request.request.category?.key === 'transport'">
+            <div class="grid grid-cols-2 gap-3 text-sm">
+              <div v-if="request.request.request_payload.from_location || request.request.request_payload.fromLocation">
+                <span class="font-medium text-slate-700">From:</span>
+                <p class="text-slate-900">{{ request.request.request_payload.from_location || request.request.request_payload.fromLocation }}</p>
+              </div>
+              <div v-if="request.request.request_payload.to_location || request.request.request_payload.toLocation">
+                <span class="font-medium text-slate-700">To:</span>
+                <p class="text-slate-900">{{ request.request.request_payload.to_location || request.request.request_payload.toLocation }}</p>
+              </div>
+              <div v-if="request.request.request_payload.date">
+                <span class="font-medium text-slate-700">Date:</span>
+                <p class="text-slate-900">{{ request.request.request_payload.date }}</p>
+              </div>
+              <div v-if="request.request.request_payload.time">
+                <span class="font-medium text-slate-700">Time:</span>
+                <p class="text-slate-900">{{ request.request.request_payload.time }}</p>
+              </div>
+              <div v-if="request.request.request_payload.passengers">
+                <span class="font-medium text-slate-700">Passengers:</span>
+                <p class="text-slate-900">{{ request.request.request_payload.passengers }}</p>
+              </div>
+              <div v-if="request.request.request_payload.vehicle_type || request.request.request_payload.vehicleType">
+                <span class="font-medium text-slate-700">Vehicle:</span>
+                <p class="text-slate-900">{{ request.request.request_payload.vehicle_type || request.request.request_payload.vehicleType }}</p>
+              </div>
+            </div>
+          </template>
+
+          <!-- Generic Display -->
+          <template v-else>
+            <div class="space-y-2 text-sm">
+              <div v-for="(value, key) in request.request.request_payload" :key="key">
+                <span class="font-medium text-slate-700">{{ formatKey(key) }}:</span>
+                <span class="text-slate-900 ml-2">{{ typeof value === 'object' ? JSON.stringify(value) : value }}</span>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
 
@@ -247,6 +376,13 @@ function getOfferStatusClass(status: string) {
     sent_to_user: 'bg-blue-100 text-blue-700',
   };
   return classes[status] || 'bg-slate-100 text-slate-700';
+}
+
+function formatKey(key: string): string {
+  return key
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 async function loadRequest() {

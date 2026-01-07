@@ -58,55 +58,165 @@
             </div>
           </div>
 
-          <!-- Formatted Request Payload -->
-          <div v-if="request.request_payload" class="mt-6 pt-6 border-t border-slate-200">
+          <!-- Formatted Request Payload - User-Friendly Display -->
+          <div v-if="request.request_payload && formattedRequestInfo" class="mt-6 pt-6 border-t border-slate-200">
             <div class="flex items-center gap-2 mb-4">
               <FileText class="h-5 w-5 text-teal-600" />
-              <h4 class="font-semibold text-slate-900">Request Information</h4>
+              <h4 class="font-semibold text-slate-900">Request Details</h4>
             </div>
-            <div class="bg-slate-50 rounded-lg p-4 space-y-3">
-              <div v-if="formattedPayload.title" class="grid md:grid-cols-2 gap-3">
-                <div>
-                  <p class="text-xs font-medium text-slate-500 uppercase">Title</p>
-                  <p class="text-sm text-slate-900 font-medium">{{ formattedPayload.title }}</p>
-                </div>
-              </div>
-              <div v-if="formattedPayload.qty" class="grid md:grid-cols-2 gap-3">
-                <div>
-                  <p class="text-xs font-medium text-slate-500 uppercase">Quantity</p>
-                  <p class="text-sm text-slate-900">{{ formattedPayload.qty }}</p>
-                </div>
-              </div>
-              <div v-if="formattedPayload.imageUrl && typeof formattedPayload.imageUrl === 'string'" class="grid md:grid-cols-2 gap-3">
-                <div class="md:col-span-2">
-                  <p class="text-xs font-medium text-slate-500 uppercase mb-2">Image</p>
-                  <img :src="formattedPayload.imageUrl" alt="Product" class="max-w-xs rounded-lg border border-slate-200" />
-                </div>
-              </div>
-              <div v-if="formattedPayload.sourceUrl" class="grid md:grid-cols-2 gap-3">
-                <div class="md:col-span-2">
-                  <p class="text-xs font-medium text-slate-500 uppercase">Source URL</p>
-                  <a :href="formattedPayload.sourceUrl" target="_blank" class="text-sm text-teal-600 hover:underline break-all">
-                    {{ formattedPayload.sourceUrl }}
-                  </a>
-                </div>
-              </div>
-              <div v-if="formattedPayload.skuDetails && formattedPayload.skuDetails.length > 0" class="grid md:grid-cols-2 gap-3">
-                <div class="md:col-span-2">
-                  <p class="text-xs font-medium text-slate-500 uppercase mb-2">SKU Details</p>
-                  <div class="space-y-2">
-                    <div v-for="(sku, idx) in formattedPayload.skuDetails" :key="idx" class="bg-white p-3 rounded border border-slate-200">
-                      <p class="text-xs text-slate-600">Qty: {{ sku.qty }}</p>
-                      <p v-if="sku.sku?.sale_price" class="text-sm font-semibold text-teal-600">Price: ¥{{ sku.sku.sale_price }}</p>
-                      <p v-if="sku.sku?.props_names" class="text-xs text-slate-500">{{ sku.sku.props_names }}</p>
+            <div class="bg-slate-50 rounded-lg p-6 space-y-4">
+              <!-- Shopping Request (Cart Items) -->
+              <template v-if="request.category?.key === 'shopping' && formattedRequestInfo.items">
+                <div class="space-y-4">
+                  <h5 class="font-semibold text-slate-900 mb-3">Items in Your Order</h5>
+                  <div v-for="(item, idx) in formattedRequestInfo.items" :key="idx" class="bg-white rounded-lg p-4 border border-slate-200">
+                    <div class="flex gap-4">
+                      <img
+                        v-if="item.imageUrl"
+                        :src="item.imageUrl"
+                        :alt="item.title"
+                        class="w-20 h-20 object-cover rounded-lg border border-slate-200 flex-shrink-0"
+                      />
+                      <div class="flex-1">
+                        <h6 class="font-semibold text-slate-900 mb-2">{{ item.title }}</h6>
+                        <div class="space-y-1 text-sm">
+                          <div v-if="item.priceMin || item.priceMax" class="text-teal-600 font-medium">
+                            Price: 
+                            <span v-if="item.priceMin && item.priceMax && item.priceMin !== item.priceMax">
+                              ¥{{ item.priceMin }} - ¥{{ item.priceMax }}
+                            </span>
+                            <span v-else-if="item.priceMin">
+                              ¥{{ item.priceMin }}
+                            </span>
+                          </div>
+                          <div v-if="item.qty" class="text-slate-600">
+                            Quantity: <span class="font-medium">{{ item.qty }}</span>
+                          </div>
+                          <div v-if="item.skuDetails && item.skuDetails.length > 0" class="mt-2 pt-2 border-t border-slate-200">
+                            <p class="text-xs font-medium text-slate-500 mb-1">Selected Options:</p>
+                            <div class="space-y-1">
+                              <div v-for="(sku, skuIdx) in item.skuDetails" :key="skuIdx" class="text-xs text-slate-600">
+                                • {{ sku.sku?.props_names || `Option ${skuIdx + 1}` }} - Quantity: {{ sku.qty }}
+                                <span v-if="sku.sku?.sale_price" class="text-teal-600">(¥{{ sku.sku.sale_price }})</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div v-if="formattedRequestInfo.totalItems" class="bg-white rounded-lg p-4 border border-slate-200">
+                    <div class="flex justify-between items-center">
+                      <span class="font-medium text-slate-700">Total Items:</span>
+                      <span class="font-semibold text-slate-900">{{ formattedRequestInfo.totalItems }}</span>
+                    </div>
+                    <div v-if="formattedRequestInfo.estimatedTotalPrice" class="flex justify-between items-center mt-2 pt-2 border-t border-slate-200">
+                      <span class="font-medium text-slate-700">Estimated Total:</span>
+                      <span class="text-lg font-bold text-teal-600">¥{{ formattedRequestInfo.estimatedTotalPrice }}</span>
                     </div>
                   </div>
                 </div>
-              </div>
-              <!-- Fallback for other payload structures -->
-              <div v-if="!formattedPayload.title && !formattedPayload.qty && Object.keys(request.request_payload).length > 0" class="text-xs text-slate-500">
-                <pre class="bg-white p-3 rounded border border-slate-200 overflow-x-auto">{{ JSON.stringify(request.request_payload, null, 2) }}</pre>
-              </div>
+              </template>
+
+              <!-- Shopping Request (Simple Form) -->
+              <template v-else-if="request.category?.key === 'shopping'">
+                <div class="space-y-3">
+                  <div v-if="formattedRequestInfo.items_description">
+                    <p class="text-sm font-medium text-slate-500 mb-1">Items Description</p>
+                    <p class="text-slate-900 whitespace-pre-wrap">{{ formattedRequestInfo.items_description }}</p>
+                  </div>
+                  <div v-if="formattedRequestInfo.budget" class="grid grid-cols-2 gap-4">
+                    <div>
+                      <p class="text-sm font-medium text-slate-500 mb-1">Budget</p>
+                      <p class="text-slate-900 font-semibold">¥{{ formattedRequestInfo.budget }}</p>
+                    </div>
+                    <div v-if="formattedRequestInfo.preferred_stores">
+                      <p class="text-sm font-medium text-slate-500 mb-1">Preferred Stores/Areas</p>
+                      <p class="text-slate-900">{{ formattedRequestInfo.preferred_stores }}</p>
+                    </div>
+                  </div>
+                </div>
+              </template>
+
+              <!-- Hotel Request -->
+              <template v-else-if="request.category?.key === 'hotel'">
+                <div class="space-y-3">
+                  <div v-if="formattedRequestInfo.hotel_name" class="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <p class="text-sm font-medium text-slate-500 mb-1">Hotel Name</p>
+                      <p class="text-slate-900 font-semibold">{{ formattedRequestInfo.hotel_name }}</p>
+                    </div>
+                    <div v-if="formattedRequestInfo.check_in">
+                      <p class="text-sm font-medium text-slate-500 mb-1">Check-in Date</p>
+                      <p class="text-slate-900">{{ formattedRequestInfo.check_in }}</p>
+                    </div>
+                    <div v-if="formattedRequestInfo.check_out">
+                      <p class="text-sm font-medium text-slate-500 mb-1">Check-out Date</p>
+                      <p class="text-slate-900">{{ formattedRequestInfo.check_out }}</p>
+                    </div>
+                    <div v-if="formattedRequestInfo.guests">
+                      <p class="text-sm font-medium text-slate-500 mb-1">Guests</p>
+                      <p class="text-slate-900">{{ formattedRequestInfo.guests }}</p>
+                    </div>
+                    <div v-if="formattedRequestInfo.rooms">
+                      <p class="text-sm font-medium text-slate-500 mb-1">Rooms</p>
+                      <p class="text-slate-900">{{ formattedRequestInfo.rooms }}</p>
+                    </div>
+                  </div>
+                  <div v-if="formattedRequestInfo.special_requests" class="mt-4">
+                    <p class="text-sm font-medium text-slate-500 mb-1">Special Requests</p>
+                    <p class="text-slate-900 whitespace-pre-wrap">{{ formattedRequestInfo.special_requests }}</p>
+                  </div>
+                </div>
+              </template>
+
+              <!-- Transport Request -->
+              <template v-else-if="request.category?.key === 'transport'">
+                <div class="space-y-3">
+                  <div class="grid md:grid-cols-2 gap-4">
+                    <div v-if="formattedRequestInfo.from_location">
+                      <p class="text-sm font-medium text-slate-500 mb-1">From</p>
+                      <p class="text-slate-900 font-semibold">{{ formattedRequestInfo.from_location }}</p>
+                    </div>
+                    <div v-if="formattedRequestInfo.to_location">
+                      <p class="text-sm font-medium text-slate-500 mb-1">To</p>
+                      <p class="text-slate-900 font-semibold">{{ formattedRequestInfo.to_location }}</p>
+                    </div>
+                    <div v-if="formattedRequestInfo.date">
+                      <p class="text-sm font-medium text-slate-500 mb-1">Date</p>
+                      <p class="text-slate-900">{{ formattedRequestInfo.date }}</p>
+                    </div>
+                    <div v-if="formattedRequestInfo.time">
+                      <p class="text-sm font-medium text-slate-500 mb-1">Time</p>
+                      <p class="text-slate-900">{{ formattedRequestInfo.time }}</p>
+                    </div>
+                    <div v-if="formattedRequestInfo.passengers">
+                      <p class="text-sm font-medium text-slate-500 mb-1">Passengers</p>
+                      <p class="text-slate-900">{{ formattedRequestInfo.passengers }}</p>
+                    </div>
+                    <div v-if="formattedRequestInfo.vehicle_type">
+                      <p class="text-sm font-medium text-slate-500 mb-1">Vehicle Type</p>
+                      <p class="text-slate-900">{{ formattedRequestInfo.vehicle_type }}</p>
+                    </div>
+                  </div>
+                  <div v-if="formattedRequestInfo.special_requests" class="mt-4">
+                    <p class="text-sm font-medium text-slate-500 mb-1">Special Requests</p>
+                    <p class="text-slate-900 whitespace-pre-wrap">{{ formattedRequestInfo.special_requests }}</p>
+                  </div>
+                </div>
+              </template>
+
+              <!-- Generic Request Display -->
+              <template v-else>
+                <div class="space-y-3">
+                  <div v-for="(value, key) in formattedRequestInfo" :key="key" class="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <p class="text-sm font-medium text-slate-500 mb-1">{{ formatKey(key) }}</p>
+                      <p class="text-slate-900">{{ typeof value === 'object' ? JSON.stringify(value) : value }}</p>
+                    </div>
+                  </div>
+                </div>
+              </template>
             </div>
           </div>
         </CardBody>
@@ -369,19 +479,79 @@ const paymentProofForm = ref({
   amount: undefined as number | undefined,
 });
 
-// Format request payload for display
-const formattedPayload = computed(() => {
-  if (!request.value?.request_payload) return {};
+// Format request payload for user-friendly display (hide technical fields)
+const formattedRequestInfo = computed(() => {
+  if (!request.value?.request_payload) return null;
   const payload = request.value.request_payload;
-  return {
-    title: payload.title,
-    qty: payload.qty,
-    imageUrl: payload.imageUrl,
-    sourceUrl: payload.sourceUrl,
-    externalId: payload.externalId,
-    skuDetails: payload.skuDetails || [],
-  };
+  const categoryKey = request.value.category?.key;
+
+  // Shopping requests from cart
+  if (categoryKey === 'shopping' && payload.items && Array.isArray(payload.items)) {
+    return {
+      items: payload.items.map((item: any) => ({
+        title: item.title,
+        qty: item.qty,
+        priceMin: item.priceMin,
+        priceMax: item.priceMax,
+        imageUrl: item.imageUrl, // Show image for users
+        skuDetails: item.skuDetails || [],
+      })),
+      totalItems: payload.totalItems,
+      estimatedTotalPrice: payload.estimatedTotalPrice,
+    };
+  }
+
+  // Shopping requests from form
+  if (categoryKey === 'shopping') {
+    return {
+      items_description: payload.items_description,
+      budget: payload.budget,
+      preferred_stores: payload.preferred_stores,
+    };
+  }
+
+  // Hotel requests
+  if (categoryKey === 'hotel') {
+    return {
+      hotel_name: payload.hotel_name || payload.hotelName,
+      check_in: payload.check_in || payload.checkIn,
+      check_out: payload.check_out || payload.checkOut,
+      guests: payload.guests,
+      rooms: payload.rooms || payload.room_qty,
+      special_requests: payload.special_requests || payload.specialRequests,
+    };
+  }
+
+  // Transport requests
+  if (categoryKey === 'transport') {
+    return {
+      from_location: payload.from_location || payload.fromLocation,
+      to_location: payload.to_location || payload.toLocation,
+      date: payload.date,
+      time: payload.time,
+      passengers: payload.passengers,
+      vehicle_type: payload.vehicle_type || payload.vehicleType,
+      special_requests: payload.special_requests || payload.specialRequests,
+    };
+  }
+
+  // Generic: filter out technical fields for users
+  const filtered: any = {};
+  const hideFields = ['externalId', 'sourceUrl', 'imageUrl'];
+  for (const [key, value] of Object.entries(payload)) {
+    if (!hideFields.includes(key)) {
+      filtered[key] = value;
+    }
+  }
+  return Object.keys(filtered).length > 0 ? filtered : null;
 });
+
+function formatKey(key: string): string {
+  return key
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
 
 // Payment info display logic
 const showPaymentInfo = computed(() => {

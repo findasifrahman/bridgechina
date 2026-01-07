@@ -346,13 +346,191 @@
         </CardBody>
       </Card>
 
-      <!-- Request Payload (JSON view) -->
+      <!-- Request Payload (Organized View for OPS) -->
       <Card v-if="request.request_payload">
         <CardHeader>
           <h3 class="text-lg font-semibold">Request Details</h3>
         </CardHeader>
         <CardBody>
-          <pre class="bg-slate-50 p-3 rounded text-sm overflow-x-auto">{{ JSON.stringify(request.request_payload, null, 2) }}</pre>
+          <div class="bg-slate-50 rounded-lg p-6 space-y-4">
+            <!-- Shopping Request (Cart Items) -->
+            <template v-if="request.category?.key === 'shopping' && request.request_payload.items && Array.isArray(request.request_payload.items)">
+              <h5 class="font-semibold text-slate-900 mb-3">Items in Order</h5>
+              <div v-for="(item, idx) in request.request_payload.items" :key="idx" class="bg-white rounded-lg p-4 border border-slate-200 mb-3">
+                <div class="flex gap-4">
+                  <img
+                    v-if="item.imageUrl"
+                    :src="item.imageUrl"
+                    :alt="item.title"
+                    class="w-20 h-20 object-cover rounded-lg border border-slate-200 flex-shrink-0"
+                  />
+                  <div class="flex-1">
+                    <h6 class="font-semibold text-slate-900 mb-2">{{ item.title }}</h6>
+                    <div class="grid md:grid-cols-2 gap-2 text-sm">
+                      <div><span class="text-slate-500">Quantity:</span> <span class="font-medium">{{ item.qty }}</span></div>
+                      <div v-if="item.priceMin || item.priceMax">
+                        <span class="text-slate-500">Price:</span>
+                        <span v-if="item.priceMin && item.priceMax && item.priceMin !== item.priceMax" class="font-medium text-teal-600">
+                          ¥{{ item.priceMin }} - ¥{{ item.priceMax }}
+                        </span>
+                        <span v-else-if="item.priceMin" class="font-medium text-teal-600">¥{{ item.priceMin }}</span>
+                      </div>
+                      <div v-if="item.externalId" class="text-xs text-slate-400">
+                        <span class="text-slate-500">External ID:</span> {{ item.externalId }}
+                      </div>
+                      <div v-if="item.sourceUrl" class="text-xs">
+                        <a :href="item.sourceUrl" target="_blank" class="text-teal-600 hover:underline break-all">
+                          View Source →
+                        </a>
+                      </div>
+                      <div v-if="item.skuDetails && item.skuDetails.length > 0" class="md:col-span-2 mt-2 pt-2 border-t border-slate-200">
+                        <p class="text-xs font-medium text-slate-500 mb-1">SKU Details:</p>
+                        <div class="space-y-1">
+                          <div v-for="(sku, skuIdx) in item.skuDetails" :key="skuIdx" class="text-xs text-slate-600 bg-slate-50 p-2 rounded">
+                            {{ sku.sku?.props_names || `SKU ${skuIdx + 1}` }} - Qty: {{ sku.qty }}
+                            <span v-if="sku.sku?.sale_price" class="text-teal-600">(¥{{ sku.sku.sale_price }})</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div v-if="request.request_payload.totalItems || request.request_payload.estimatedTotalPrice" class="bg-white rounded-lg p-4 border border-slate-200">
+                <div class="flex justify-between items-center">
+                  <span class="font-medium text-slate-700">Total Items:</span>
+                  <span class="font-semibold text-slate-900">{{ request.request_payload.totalItems || 0 }}</span>
+                </div>
+                <div v-if="request.request_payload.estimatedTotalPrice" class="flex justify-between items-center mt-2 pt-2 border-t border-slate-200">
+                  <span class="font-medium text-slate-700">Estimated Total:</span>
+                  <span class="text-lg font-bold text-teal-600">¥{{ request.request_payload.estimatedTotalPrice }}</span>
+                </div>
+              </div>
+            </template>
+
+            <!-- Shopping Request (Simple Form) -->
+            <template v-else-if="request.category?.key === 'shopping'">
+              <div class="space-y-3">
+                <div v-if="request.request_payload.items_description">
+                  <p class="text-sm font-medium text-slate-500 mb-1">Items Description</p>
+                  <p class="text-slate-900 whitespace-pre-wrap bg-white p-3 rounded border border-slate-200">{{ request.request_payload.items_description }}</p>
+                </div>
+                <div class="grid md:grid-cols-2 gap-4">
+                  <div v-if="request.request_payload.budget">
+                    <p class="text-sm font-medium text-slate-500 mb-1">Budget</p>
+                    <p class="text-slate-900 font-semibold bg-white p-3 rounded border border-slate-200">¥{{ request.request_payload.budget }}</p>
+                  </div>
+                  <div v-if="request.request_payload.preferred_stores">
+                    <p class="text-sm font-medium text-slate-500 mb-1">Preferred Stores/Areas</p>
+                    <p class="text-slate-900 bg-white p-3 rounded border border-slate-200">{{ request.request_payload.preferred_stores }}</p>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <!-- Hotel Request -->
+            <template v-else-if="request.category?.key === 'hotel'">
+              <div class="grid md:grid-cols-2 gap-4">
+                <div v-if="request.request_payload.hotel_name || request.request_payload.hotelName">
+                  <p class="text-sm font-medium text-slate-500 mb-1">Hotel Name</p>
+                  <p class="text-slate-900 font-semibold bg-white p-3 rounded border border-slate-200">
+                    {{ request.request_payload.hotel_name || request.request_payload.hotelName }}
+                  </p>
+                </div>
+                <div v-if="request.request_payload.check_in || request.request_payload.checkIn">
+                  <p class="text-sm font-medium text-slate-500 mb-1">Check-in Date</p>
+                  <p class="text-slate-900 bg-white p-3 rounded border border-slate-200">
+                    {{ request.request_payload.check_in || request.request_payload.checkIn }}
+                  </p>
+                </div>
+                <div v-if="request.request_payload.check_out || request.request_payload.checkOut">
+                  <p class="text-sm font-medium text-slate-500 mb-1">Check-out Date</p>
+                  <p class="text-slate-900 bg-white p-3 rounded border border-slate-200">
+                    {{ request.request_payload.check_out || request.request_payload.checkOut }}
+                  </p>
+                </div>
+                <div v-if="request.request_payload.guests">
+                  <p class="text-sm font-medium text-slate-500 mb-1">Guests</p>
+                  <p class="text-slate-900 bg-white p-3 rounded border border-slate-200">{{ request.request_payload.guests }}</p>
+                </div>
+                <div v-if="request.request_payload.rooms || request.request_payload.room_qty">
+                  <p class="text-sm font-medium text-slate-500 mb-1">Rooms</p>
+                  <p class="text-slate-900 bg-white p-3 rounded border border-slate-200">
+                    {{ request.request_payload.rooms || request.request_payload.room_qty }}
+                  </p>
+                </div>
+                <div v-if="request.request_payload.special_requests || request.request_payload.specialRequests" class="md:col-span-2">
+                  <p class="text-sm font-medium text-slate-500 mb-1">Special Requests</p>
+                  <p class="text-slate-900 whitespace-pre-wrap bg-white p-3 rounded border border-slate-200">
+                    {{ request.request_payload.special_requests || request.request_payload.specialRequests }}
+                  </p>
+                </div>
+              </div>
+            </template>
+
+            <!-- Transport Request -->
+            <template v-else-if="request.category?.key === 'transport'">
+              <div class="grid md:grid-cols-2 gap-4">
+                <div v-if="request.request_payload.from_location || request.request_payload.fromLocation">
+                  <p class="text-sm font-medium text-slate-500 mb-1">From</p>
+                  <p class="text-slate-900 font-semibold bg-white p-3 rounded border border-slate-200">
+                    {{ request.request_payload.from_location || request.request_payload.fromLocation }}
+                  </p>
+                </div>
+                <div v-if="request.request_payload.to_location || request.request_payload.toLocation">
+                  <p class="text-sm font-medium text-slate-500 mb-1">To</p>
+                  <p class="text-slate-900 font-semibold bg-white p-3 rounded border border-slate-200">
+                    {{ request.request_payload.to_location || request.request_payload.toLocation }}
+                  </p>
+                </div>
+                <div v-if="request.request_payload.date">
+                  <p class="text-sm font-medium text-slate-500 mb-1">Date</p>
+                  <p class="text-slate-900 bg-white p-3 rounded border border-slate-200">{{ request.request_payload.date }}</p>
+                </div>
+                <div v-if="request.request_payload.time">
+                  <p class="text-sm font-medium text-slate-500 mb-1">Time</p>
+                  <p class="text-slate-900 bg-white p-3 rounded border border-slate-200">{{ request.request_payload.time }}</p>
+                </div>
+                <div v-if="request.request_payload.passengers">
+                  <p class="text-sm font-medium text-slate-500 mb-1">Passengers</p>
+                  <p class="text-slate-900 bg-white p-3 rounded border border-slate-200">{{ request.request_payload.passengers }}</p>
+                </div>
+                <div v-if="request.request_payload.vehicle_type || request.request_payload.vehicleType">
+                  <p class="text-sm font-medium text-slate-500 mb-1">Vehicle Type</p>
+                  <p class="text-slate-900 bg-white p-3 rounded border border-slate-200">
+                    {{ request.request_payload.vehicle_type || request.request_payload.vehicleType }}
+                  </p>
+                </div>
+                <div v-if="request.request_payload.special_requests || request.request_payload.specialRequests" class="md:col-span-2">
+                  <p class="text-sm font-medium text-slate-500 mb-1">Special Requests</p>
+                  <p class="text-slate-900 whitespace-pre-wrap bg-white p-3 rounded border border-slate-200">
+                    {{ request.request_payload.special_requests || request.request_payload.specialRequests }}
+                  </p>
+                </div>
+              </div>
+            </template>
+
+            <!-- Generic / Fallback: Show all fields organized -->
+            <template v-else>
+              <div class="grid md:grid-cols-2 gap-4">
+                <div v-for="(value, key) in request.request_payload" :key="key" :class="typeof value === 'object' ? 'md:col-span-2' : ''">
+                  <p class="text-sm font-medium text-slate-500 mb-1">{{ formatKey(key) }}</p>
+                  <div class="bg-white p-3 rounded border border-slate-200">
+                    <pre v-if="typeof value === 'object'" class="text-xs text-slate-700 whitespace-pre-wrap overflow-x-auto">{{ JSON.stringify(value, null, 2) }}</pre>
+                    <p v-else class="text-slate-900">{{ value }}</p>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <!-- Technical Details Collapsible (for OPS) -->
+            <details class="mt-4 pt-4 border-t border-slate-300">
+              <summary class="cursor-pointer text-sm font-medium text-slate-600 hover:text-slate-900">
+                View Raw JSON
+              </summary>
+              <pre class="mt-2 bg-slate-900 text-slate-100 p-4 rounded text-xs overflow-x-auto">{{ JSON.stringify(request.request_payload, null, 2) }}</pre>
+            </details>
+          </div>
         </CardBody>
       </Card>
     </div>
@@ -511,6 +689,13 @@ function getPaymentProofVariant(status: string): 'default' | 'success' | 'warnin
     case 'rejected': return 'danger';
     default: return 'default';
   }
+}
+
+function formatKey(key: string): string {
+  return key
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }
 
 onMounted(() => {
