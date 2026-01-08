@@ -866,7 +866,7 @@ Please change it after login.`;
 
     // Store outbound message with login hint marker if applicable
     const messageMeta: any = {};
-    if (isServiceIntent && categoryKey && !imageSearchResults.length) {
+    if (isServiceIntent && categoryKey) {
       // Check if we added login credentials
       if (responseText.includes('To start faster, use our website')) {
         messageMeta.loginHintSentAt = new Date().toISOString();
