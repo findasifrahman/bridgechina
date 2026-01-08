@@ -6,6 +6,7 @@
 import twilio from 'twilio';
 import crypto from 'crypto';
 import type { FastifyRequest } from 'fastify';
+import axios from 'axios';
 
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
@@ -95,6 +96,54 @@ export async function sendText(
       console.error('[Twilio Client] For production, use your verified WhatsApp Business number from Twilio.');
     }
     throw error;
+  }
+}
+
+/**
+ * Download media from Twilio MediaUrl
+ * Twilio media URLs require Basic Auth using Account SID and Auth Token
+ */
+export async function downloadTwilioMedia(mediaUrl: string): Promise<{ buffer: Buffer; contentType: string }> {
+  if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
+    throw new Error('Twilio credentials not configured');
+  }
+
+  try {
+    // Handle redirects and use Basic Auth
+    const response = await axios.get(mediaUrl, {
+      responseType: 'arraybuffer',
+      auth: {
+        username: TWILIO_ACCOUNT_SID,
+        password: TWILIO_AUTH_TOKEN,
+      },
+      maxContentLength: 8 * 1024 * 1024, // 8MB limit
+      maxRedirects: 5,
+      timeout: 30000,
+      validateStatus: (status) => status >= 200 && status < 400, // Accept redirects
+    });
+
+    const buffer = Buffer.from(response.data);
+    const contentType = response.headers['content-type'] || 'application/octet-stream';
+
+    // Validate file size
+    if (buffer.length > 8 * 1024 * 1024) {
+      throw new Error('Media file exceeds 8MB limit');
+    }
+
+    console.log('[Twilio Client] Downloaded media:', {
+      size: buffer.length,
+      contentType,
+      urlPreview: mediaUrl.substring(0, 50) + '...',
+    });
+
+    return { buffer, contentType };
+  } catch (error: any) {
+    console.error('[Twilio Client] Download media error:', {
+      message: error.message,
+      status: error.response?.status,
+      urlPreview: mediaUrl.substring(0, 50) + '...',
+    });
+    throw new Error(`Failed to download Twilio media: ${error.message}`);
   }
 }
 

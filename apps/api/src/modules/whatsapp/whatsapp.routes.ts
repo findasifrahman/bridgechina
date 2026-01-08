@@ -175,17 +175,26 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
         }
       }
 
-      // Collect media URLs
+      // Collect media URLs and types (cap to 3 media)
       const mediaUrls: string[] = [];
-      if (NumMedia && parseInt(NumMedia) > 0) {
-        for (let i = 0; i < parseInt(NumMedia); i++) {
+      const mediaTypes: string[] = [];
+      const maxMedia = Math.min(NumMedia ? parseInt(NumMedia) : 0, 3);
+
+      if (maxMedia > 0) {
+        for (let i = 0; i < maxMedia; i++) {
           const mediaUrl = (payload as any)[`MediaUrl${i}`];
           const mediaType = (payload as any)[`MediaContentType${i}`];
           if (mediaUrl) {
             mediaUrls.push(mediaUrl);
+            mediaTypes.push(mediaType || 'application/octet-stream');
           }
         }
       }
+
+      // Detect media types (audio/image) so we can avoid confusing AI replies
+      const hasMedia = mediaUrls.length > 0;
+      const hasAudio = hasMedia && mediaTypes.some((t) => t.startsWith('audio/'));
+      const hasImage = hasMedia && mediaTypes.some((t) => t.startsWith('image/'));
 
       // Store inbound message
       await prisma.message.create({
@@ -200,22 +209,11 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
           meta_json: {
             profileName: ProfileName,
             mediaUrls: mediaUrls,
-            numMedia: NumMedia ? parseInt(NumMedia) : 0,
+            mediaTypes: mediaTypes,
+            numMedia: mediaUrls.length,
           },
         },
       });
-
-      // new by me
-      // Detect media types (audio/image) so we can avoid confusing AI replies
-      const mediaTypes: string[] = [];
-      for (let i = 0; i < 3; i++) {
-        const t = (payload as any)[`MediaContentType${i}`];
-        if (t) mediaTypes.push(String(t));
-      }
-
-      const hasMedia = (NumMedia ? parseInt(NumMedia) : 0) > 0;
-      const hasAudio = hasMedia && mediaTypes.some((t) => t.startsWith('audio/'));
-      const hasImage = hasMedia && mediaTypes.some((t) => t.startsWith('image/'));
 
       if (hasAudio && (!Body || !Body.trim())) {
         // Save message (so ops can see it) but don't trigger AI confusion

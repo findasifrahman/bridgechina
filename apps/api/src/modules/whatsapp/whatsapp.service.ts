@@ -6,7 +6,7 @@
 import { prisma } from '../../lib/prisma.js';
 import crypto from 'crypto';
 import { processChatMessage, detectIntent } from '../chat/chat.agent.js';
-import { sendText, sendMedia } from './twilio.client.js';
+import { sendText, sendMedia, downloadTwilioMedia } from './twilio.client.js';
 import { sendWecomText } from '../../utils/wecom.js';
 import { searchByKeyword } from '../shopping/shopping.service.js';
 import tmapiClient from '../shopping/tmapi.client.js';
@@ -176,10 +176,12 @@ function hasExplicitOrderingIntent(body: string): boolean {
 function isShoppingImageIntent(userMessage: string, intentResult: any): boolean {
   const lower = userMessage.toLowerCase();
   const shoppingKeywords = [
-    'find this', 'search this product', 'find me this product',
-    'do you have this product', 'price of this product', 'what is the price',
-    'what\'s the price', 'availability', 'where can i buy this',
-    'find similar', 'search similar', 'product like this'
+    'find', 'search', 'what is this', 'find this product', 'search by image',
+    'find me this product', 'do you have this product', 'price of this product',
+    'what is the price', 'what\'s the price', 'availability', 'where can i buy this',
+    'find similar', 'search similar', 'product like this',
+    // Bengali equivalents
+    'খুঁজুন', 'সন্ধান', 'এটা কি', 'এই পণ্য খুঁজুন'
   ];
   
   // Check if intent is shopping or user explicitly asks about product
@@ -191,43 +193,125 @@ function isShoppingImageIntent(userMessage: string, intentResult: any): boolean 
 }
 
 /**
- * Download image from Twilio media URL and upload to R2
+ * Check if user wants image search (has image + image search keywords)
+ */
+function wantsImageSearch(userMessage: string, hasImage: boolean, firstMediaType?: string): boolean {
+  if (!hasImage) return false;
+  
+  // Check if first media is an image
+  const isImage = firstMediaType?.startsWith('image/') || false;
+  if (!isImage) return false;
+  
+  // Check for image search keywords
+  const lower = userMessage.toLowerCase();
+  const imageSearchKeywords = [
+    'find', 'search', 'what is this', 'find this product', 'search by image',
+    'find me this product', 'do you have this product', 'price of this product',
+    'what is the price', 'what\'s the price', 'availability', 'where can i buy this',
+    'find similar', 'search similar', 'product like this',
+    // Bengali equivalents
+    'খুঁজুন', 'সন্ধান', 'এটা কি', 'এই পণ্য খুঁজুন'
+  ];
+  
+  // If message is empty or very short, assume they want image search
+  if (!userMessage.trim() || userMessage.trim().length <= 10) {
+    return true;
+  }
+  
+  return imageSearchKeywords.some(keyword => lower.includes(keyword));
+}
+
+/**
+ * Upload image buffer to R2 and return public URL
+ */
+async function uploadImageToR2Public(buffer: Buffer, contentType: string): Promise<string> {
+  // Generate R2 key with hash for uniqueness
+  const timestamp = Date.now();
+  const hash = crypto.createHash('md5').update(buffer).digest('hex').slice(0, 12);
+  const extension = contentType.includes('png') ? 'png' : 
+                   contentType.includes('gif') ? 'gif' : 
+                   contentType.includes('webp') ? 'webp' : 'jpg';
+  const r2Key = `whatsapp-image-search/${timestamp}-${hash}.${extension}`;
+
+  // Upload to R2 with public cache control
+  const { PutObjectCommand } = await import('@aws-sdk/client-s3');
+  const { getS3Client } = await import('../../utils/r2.js');
+  const client = getS3Client();
+  const bucket = process.env.R2_BUCKET;
+
+  if (!bucket) {
+    throw new Error('R2_BUCKET not configured');
+  }
+
+  const command = new PutObjectCommand({
+    Bucket: bucket,
+    Key: r2Key,
+    Body: buffer,
+    ContentType: contentType,
+    CacheControl: 'public, max-age=31536000',
+  });
+
+  await client.send(command);
+
+  // Get public URL
+  const publicUrl = getPublicUrl(r2Key);
+  
+  console.log('[WhatsApp Service] Image uploaded to R2:', {
+    r2Key,
+    publicUrl: publicUrl.substring(0, 100),
+    size: buffer.length,
+  });
+
+  return publicUrl;
+}
+
+/**
+ * Download image from Twilio media URL and upload to R2 (with caching)
  */
 async function downloadAndUploadImageToR2(twilioMediaUrl: string): Promise<string> {
   try {
-    // Download from Twilio with Basic Auth
-    const response = await axios.get(twilioMediaUrl, {
-      responseType: 'arraybuffer',
-      auth: {
-        username: TWILIO_ACCOUNT_SID || '',
-        password: TWILIO_AUTH_TOKEN || '',
-      },
-      maxContentLength: 8 * 1024 * 1024, // 8MB limit
-      timeout: 30000,
-    });
-
-    const buffer = Buffer.from(response.data);
-    const contentType = response.headers['content-type'] || 'image/jpeg';
+    // Check cache first (idempotency for webhook retries)
+    const cacheKey = `twilio_media:${twilioMediaUrl}`;
+    const oneDayFromNow = new Date(Date.now() + 24 * 60 * 60 * 1000);
     
-    // Generate R2 key
-    const timestamp = Date.now();
-    const randomId = crypto.randomBytes(8).toString('hex');
-    const extension = contentType.includes('png') ? 'png' : 
-                     contentType.includes('gif') ? 'gif' : 
-                     contentType.includes('webp') ? 'webp' : 'jpg';
-    const r2Key = `tmp/user_search_image/${timestamp}-${randomId}.${extension}`;
+    const cached = await prisma.externalSearchCache.findUnique({
+      where: { cache_key: cacheKey },
+    });
+    
+    if (cached && new Date(cached.expires_at) > new Date()) {
+      const cachedData = cached.results_json as any;
+      if (cachedData.r2Url) {
+        console.log('[WhatsApp Service] Using cached R2 URL for media');
+        return cachedData.r2Url as string;
+      }
+    }
 
+    // Download from Twilio
+    const { buffer, contentType } = await downloadTwilioMedia(twilioMediaUrl);
+    
     // Upload to R2
-    await uploadToR2(r2Key, buffer, contentType);
-
-    // Get public URL
-    const publicUrl = getPublicUrl(r2Key);
+    const publicUrl = await uploadImageToR2Public(buffer, contentType);
     
-    console.log('[WhatsApp Service] Image uploaded to R2:', {
-      r2Key,
-      publicUrl: publicUrl.substring(0, 100),
-      size: buffer.length,
-    });
+    // Cache the result
+    try {
+      await prisma.externalSearchCache.upsert({
+        where: { cache_key: cacheKey },
+        create: {
+          source: 'twilio_media',
+          cache_key: cacheKey,
+          query_json: { mediaUrl: twilioMediaUrl.substring(0, 100) + '...' },
+          results_json: { mediaUrl: twilioMediaUrl.substring(0, 100) + '...', r2Url: publicUrl, contentType },
+          expires_at: oneDayFromNow,
+        },
+        update: {
+          results_json: { mediaUrl: twilioMediaUrl.substring(0, 100) + '...', r2Url: publicUrl, contentType },
+          expires_at: oneDayFromNow,
+        },
+      });
+    } catch (cacheError) {
+      // Log but don't fail if caching fails
+      console.warn('[WhatsApp Service] Failed to cache R2 URL:', cacheError);
+    }
 
     return publicUrl;
   } catch (error: any) {
@@ -407,6 +491,173 @@ export async function handleAIReply(conversationId: string): Promise<void> {
       }
       
       return; // Exit early, no further processing
+    }
+
+    // IMAGE SEARCH HARD INTERRUPT: Check for image + image search intent
+    // This overrides everything - if user sends image with search intent, run image search pipeline
+    const meta = lastInbound.meta_json as any;
+    const hasImage = meta?.mediaUrls && Array.isArray(meta.mediaUrls) && meta.mediaUrls.length > 0;
+    const firstMediaType = meta?.mediaTypes && Array.isArray(meta.mediaTypes) ? meta.mediaTypes[0] : undefined;
+    
+    if (hasImage && wantsImageSearch(userMessage, true, firstMediaType)) {
+      try {
+        const firstImageUrl = meta.mediaUrls[0];
+        
+        // Download and upload to R2 (with caching)
+        let publicImageUrl: string;
+        try {
+          publicImageUrl = await downloadAndUploadImageToR2(firstImageUrl);
+        } catch (error: any) {
+          console.error('[WhatsApp Service] Failed to download/upload image:', error);
+          const errorResponse = 'I received the image but couldn\'t download it. Please resend or try website image search: https://bridgechina-web.vercel.app/';
+          const providerSid = await sendText(conversation.external_from!, errorResponse);
+          await prisma.message.create({
+            data: {
+              conversation_id: conversationId,
+              role: 'assistant',
+              direction: 'OUTBOUND',
+              provider: 'twilio',
+              provider_sid: providerSid,
+              content: errorResponse,
+              status: 'sent',
+            },
+          });
+          await prisma.conversation.update({
+            where: { id: conversationId },
+            data: { last_outbound_at: new Date() },
+          });
+          return; // Exit early
+        }
+        
+        // Search products by image using TMAPI
+        let imageSearchResults: any[] = [];
+        try {
+          imageSearchResults = await searchProductsByImage(publicImageUrl);
+        } catch (error: any) {
+          console.error('[WhatsApp Service] TMAPI image search error:', error);
+          const errorResponse = 'Image search service is temporarily unavailable. Please try again later or use website: https://bridgechina-web.vercel.app/';
+          const providerSid = await sendText(conversation.external_from!, errorResponse);
+          await prisma.message.create({
+            data: {
+              conversation_id: conversationId,
+              role: 'assistant',
+              direction: 'OUTBOUND',
+              provider: 'twilio',
+              provider_sid: providerSid,
+              content: errorResponse,
+              status: 'sent',
+            },
+          });
+          await prisma.conversation.update({
+            where: { id: conversationId },
+            data: { last_outbound_at: new Date() },
+          });
+          return; // Exit early
+        }
+        
+        // Format and send results
+        if (imageSearchResults.length === 0) {
+          const noResultsResponse = 'I couldn\'t find close matches. Try sending a clearer photo or a keyword. Or search on website: https://bridgechina-web.vercel.app/';
+          const providerSid = await sendText(conversation.external_from!, noResultsResponse);
+          await prisma.message.create({
+            data: {
+              conversation_id: conversationId,
+              role: 'assistant',
+              direction: 'OUTBOUND',
+              provider: 'twilio',
+              provider_sid: providerSid,
+              content: noResultsResponse,
+              status: 'sent',
+            },
+          });
+          await prisma.conversation.update({
+            where: { id: conversationId },
+            data: { last_outbound_at: new Date() },
+          });
+          return; // Exit early
+        }
+        
+        // Format top 3 results
+        const topResults = imageSearchResults.slice(0, 3);
+        const resultLines: string[] = ['Found similar items by image (top 3):'];
+        
+        for (let i = 0; i < topResults.length; i++) {
+          const item = topResults[i];
+          const title = item.title_en || item.title || 'Product';
+          const price = item.price_min || item.price_max || item.price;
+          const priceStr = price ? `¥${price}` : 'Price on request';
+          const itemId = item.item_id || item.id;
+          const link = `https://bridgechina-web.vercel.app/shopping/tmapi/${itemId}?language=en`;
+          
+          resultLines.push(`${i + 1}) ${title} — ${priceStr} — ${link}`);
+        }
+        
+        const responseText = resultLines.join('\n');
+        
+        // Send first result as media if image available (optional)
+        const firstItem = topResults[0];
+        const firstItemImage = firstItem.main_image || firstItem.img || firstItem.image_url || 
+                              (Array.isArray(firstItem.main_imgs) && firstItem.main_imgs[0]) || '';
+        
+        if (firstItemImage) {
+          try {
+            const firstItemTitle = firstItem.title_en || firstItem.title || 'Product';
+            const firstItemPrice = firstItem.price_min || firstItem.price_max || firstItem.price;
+            const firstItemPriceStr = firstItemPrice ? `¥${firstItemPrice}` : 'Price on request';
+            const firstItemId = firstItem.item_id || firstItem.id;
+            const firstItemLink = `https://bridgechina-web.vercel.app/shopping/tmapi/${firstItemId}?language=en`;
+            
+            const caption = `${firstItemTitle}\n${firstItemPriceStr}\n${firstItemLink}`;
+            const providerSid = await sendMedia(conversation.external_from!, firstItemImage, caption);
+            
+            await prisma.message.create({
+              data: {
+                conversation_id: conversationId,
+                role: 'assistant',
+                direction: 'OUTBOUND',
+                provider: 'twilio',
+                provider_sid: providerSid,
+                content: caption,
+                status: 'sent',
+                meta_json: {
+                  type: 'media',
+                  mediaUrl: firstItemImage,
+                },
+              },
+            });
+          } catch (error) {
+            console.error('[WhatsApp Service] Failed to send media:', error);
+            // Continue with text response
+          }
+        }
+        
+        // Send text response with all results
+        const providerSid = await sendText(conversation.external_from!, responseText);
+        await prisma.message.create({
+          data: {
+            conversation_id: conversationId,
+            role: 'assistant',
+            direction: 'OUTBOUND',
+            provider: 'twilio',
+            provider_sid: providerSid,
+            content: responseText,
+            status: 'sent',
+          },
+        });
+        
+        await prisma.conversation.update({
+          where: { id: conversationId },
+          data: {
+            last_outbound_at: new Date(),
+            last_message_preview: responseText.substring(0, 100),
+          },
+        });
+        
+        return; // Exit early, image search complete
+      } catch (error: any) {
+        console.error('[WhatsApp Service] Image search pipeline error:', error);
+        // Fall through to normal processing if image search fails completely
+      }
     }
 
     // Build conversation history for AI (last 10 messages, alternating user/assistant)
