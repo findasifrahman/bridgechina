@@ -673,29 +673,6 @@ export async function handleAIReply(conversationId: string): Promise<void> {
     const intentResult = await detectIntent(userMessage);
     console.log('[WhatsApp Service] Intent detected:', intentResult);
 
-    // Check for image in last inbound message
-    const hasImage = lastInbound.meta_json && 
-                     (lastInbound.meta_json as any).mediaUrls && 
-                     Array.isArray((lastInbound.meta_json as any).mediaUrls) &&
-                     (lastInbound.meta_json as any).mediaUrls.length > 0;
-    
-    let imageSearchResults: any[] = [];
-    if (hasImage && isShoppingImageIntent(userMessage, intentResult)) {
-      try {
-        const mediaUrls = (lastInbound.meta_json as any).mediaUrls as string[];
-        const firstImageUrl = mediaUrls[0];
-        
-        // Download and upload to R2
-        const publicImageUrl = await downloadAndUploadImageToR2(firstImageUrl);
-        
-        // Search products by image
-        imageSearchResults = await searchProductsByImage(publicImageUrl);
-        console.log('[WhatsApp Service] Image search results:', imageSearchResults.length);
-      } catch (error) {
-        console.error('[WhatsApp Service] Image search error:', error);
-      }
-    }
-
     // Trigger assignment (async, non-blocking)
     assignConversationToProvider(conversationId, intentResult).catch((error) => {
       console.error('[WhatsApp Service] Assignment error:', error);
@@ -740,75 +717,15 @@ export async function handleAIReply(conversationId: string): Promise<void> {
     // Initialize responseText variable
     let responseText = '';
     
-    // Handle image search results if available
-    if (imageSearchResults.length > 0) {
-      const items = imageSearchResults.slice(0, 3).map((item: any) => {
-        const title = item.title_en || item.title || 'Product';
-        const price = item.price_min || item.price_max || item.price;
-        const priceStr = price ? `¥${price}` : 'Price on request';
-        const supplier = item.seller_name || item.company_name || 'N/A';
-        const imageUrl = item.main_image || item.img || item.image_url || 
-                        (Array.isArray(item.main_imgs) && item.main_imgs[0]) || '';
-        const externalId = item.item_id || item.id;
-        
-        return {
-          title,
-          imageUrl,
-          price: priceStr,
-          supplier,
-          externalId,
-        };
-      });
+    // Call existing chat agent (reuse existing logic)
+    // Generate session ID from conversation ID and phone number for better isolation
+    const phoneNumber = conversation.external_from?.replace(/^whatsapp:/, '') || '';
+    const phoneDigits = phoneNumber.replace(/\D/g, '').substring(0, 10); // Last 10 digits for privacy
+    const sessionId = `whatsapp_${conversationId}${phoneDigits ? `_${phoneDigits}` : ''}`;
+    console.log('[WhatsApp Service] Processing AI reply for conversation:', conversationId, 'userMessage:', userMessage);
+    const result = await processChatMessage(userMessage, sessionId);
 
-      // Format response with image search results
-      const itemLines = items.map((item: any, idx: number) => {
-        return `${idx + 1}. ${item.title}\n   - ${item.price} - ${item.supplier}`;
-      });
-
-      responseText = 'I found these products:\n\n' + itemLines.join('\n\n');
-      responseText += '\n\nView details: https://bridgechina-web.vercel.app/shopping/tmapi/' + items[0].externalId;
-      
-      // Send first item as media if image available
-      if (items[0].imageUrl) {
-        try {
-          const caption = `${items[0].title}\n${items[0].price} - ${items[0].supplier}\n\nView: https://bridgechina-web.vercel.app/shopping/tmapi/${items[0].externalId}`;
-          const providerSid = await sendMedia(conversation.external_from!, items[0].imageUrl, caption);
-          
-          await prisma.message.create({
-            data: {
-              conversation_id: conversationId,
-              role: 'assistant',
-              direction: 'OUTBOUND',
-              provider: 'twilio',
-              provider_sid: providerSid,
-              content: caption,
-              status: 'sent',
-              meta_json: {
-                type: 'media',
-                mediaUrl: items[0].imageUrl,
-              },
-            },
-          });
-
-          await prisma.conversation.update({
-            where: { id: conversationId },
-            data: { last_outbound_at: new Date() },
-          });
-        } catch (error) {
-          console.error('[WhatsApp Service] Failed to send media:', error);
-        }
-      }
-    } else {
-      // Call existing chat agent (reuse existing logic)
-      // Generate session ID from conversation ID and phone number for better isolation
-      const phoneNumber = conversation.external_from?.replace(/^whatsapp:/, '') || '';
-      const phoneDigits = phoneNumber.replace(/\D/g, '').substring(0, 10); // Last 10 digits for privacy
-      const sessionId = `whatsapp_${conversationId}${phoneDigits ? `_${phoneDigits}` : ''}`;
-      console.log('[WhatsApp Service] Processing AI reply for conversation:', conversationId, 'userMessage:', userMessage);
-      const result = await processChatMessage(userMessage, sessionId);
-
-      responseText = result.message;
-    }
+    responseText = result.message;
     
     // Append confirmation message for service intents (only if request was created)
     if (requestCreated && isServiceIntent && categoryKey) {
@@ -821,7 +738,7 @@ export async function handleAIReply(conversationId: string): Promise<void> {
     }
     
     // Inject login credentials for service-related intents (once per 24h)
-    if (isServiceIntent && categoryKey && !imageSearchResults.length) {
+    if (isServiceIntent && categoryKey) {
       try {
         // Check if login hint was sent in last 24h
         const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
