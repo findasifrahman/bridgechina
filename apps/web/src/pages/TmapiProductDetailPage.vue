@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-slate-50">
+  <div class="min-h-screen bg-slate-50 overflow-x-hidden">
     <div v-if="loading" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div class="animate-pulse">
         <div class="h-96 bg-slate-200 rounded-lg mb-6" />
@@ -26,7 +26,7 @@
                 <button
                   v-if="product.videoUrl"
                   type="button"
-                  class="aspect-square rounded-lg border cursor-pointer transition-all bg-slate-50 flex items-center justify-center"
+                  class="aspect-square rounded-lg border overflow-hidden cursor-pointer transition-all bg-slate-50"
                   :class="selectedImage === product.videoUrl ? 'border-teal-500 ring-2 ring-teal-200' : 'border-slate-200 hover:border-teal-300'"
                   @click="selectVideo()"
                 >
@@ -45,8 +45,12 @@
               </div>
 
               <!-- Main media -->
+              <!-- Main media -->
               <div class="flex-1 min-w-0">
-                <div class="aspect-square bg-slate-100 rounded-xl overflow-hidden border border-slate-200 relative group cursor-pointer" @click="openFullscreen(activeMediaUrl)">
+                <div
+                  class="group relative w-full overflow-hidden rounded-lg bg-slate-100 aspect-square"
+                  @click="openFullscreen(activeMediaUrl)"
+                >
                   <video
                     v-if="showVideo"
                     ref="videoRef"
@@ -56,46 +60,27 @@
                     playsinline
                     loop
                     controls
-                    class="w-full h-full object-contain"
+                    class="block w-full h-full max-w-full object-contain"
                     @click.stop
                   />
                   <img
                     v-else-if="activeMediaUrl"
                     :src="activeMediaUrl"
                     :alt="product.title"
-                    class="w-full h-full object-cover"
+                    class="block w-full h-full max-w-full object-cover"
                   />
                   <div v-else class="w-full h-full flex items-center justify-center text-slate-400">
                     <Package class="h-32 w-32" />
                   </div>
-                  <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded p-2">
-                    <Maximize2 class="h-5 w-5 text-white" />
+
+                  <!-- optional overlay buttons (if you have them) -->
+                  <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <!-- buttons -->
                   </div>
                 </div>
-
-                <!-- Mobile thumbnails -->
-                <div v-if="(product.images && product.images.length > 1) || product.videoUrl" class="grid grid-cols-5 gap-2 mt-4 lg:hidden">
-                  <button
-                    v-if="product.videoUrl"
-                    type="button"
-                    @click="selectVideo()"
-                    class="aspect-square rounded-lg border cursor-pointer transition-all bg-slate-50 flex items-center justify-center"
-                    :class="selectedImage === product.videoUrl ? 'border-teal-500 ring-2 ring-teal-200' : 'border-slate-200 hover:border-teal-300'"
-                  >
-                    <Play class="h-7 w-7 text-slate-600" />
-                  </button>
-                  <button
-                    v-for="(img, idx) in (product.images || []).slice(0, product.videoUrl ? 9 : 10)"
-                    :key="idx"
-                    type="button"
-                    class="aspect-square rounded-lg border overflow-hidden cursor-pointer transition-all bg-slate-50"
-                    :class="selectedImage === img ? 'border-teal-500 ring-2 ring-teal-200' : 'border-slate-200 hover:border-teal-300'"
-                    @click="selectImage(img)"
-                  >
-                    <img :src="img" :alt="`${product.title} ${String(Number(idx) + 1)}`" class="w-full h-full object-cover" />
-                  </button>
-                </div>
               </div>
+
+
             </div>
           </div>
 
@@ -118,7 +103,7 @@
         <!-- Purchase Panel (right) -->
         <div class="lg:col-span-5 space-y-6">
           <div class="bg-white rounded-lg shadow-sm overflow-hidden p-6">
-            <h1 class="text-2xl lg:text-3xl font-bold text-teal-700 mb-3">{{ product.title }}</h1>
+            <h1 class="text-2xl lg:text-3xl font-bold text-teal-700 mb-3 break-words leading-tight">{{ product.title }}</h1>
 
             <!-- Rating and Sales -->
             <div class="flex items-center gap-4 mb-4">

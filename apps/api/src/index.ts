@@ -19,7 +19,8 @@ import opsRoutes from './routes/ops.js';
 import providerRoutes from './routes/provider.js';
 import whatsappRoutes from './modules/whatsapp/whatsapp.routes.js';
 import webchatRoutes from './routes/webchat.js';
-
+import dotenv from "dotenv";
+dotenv.config();
 const fastify = Fastify({
   logger: true,
 });

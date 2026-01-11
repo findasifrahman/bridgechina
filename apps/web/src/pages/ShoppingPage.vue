@@ -5,7 +5,7 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div class="flex items-center justify-between">
           <div>
-            <h1 class="text-2xl font-bold text-slate-900">Shopping</h1>
+            <h1 class="text-2xl font-bold text-slate-900 ">Shopping</h1>
             <p class="text-sm text-slate-600 mt-1">Discover quality products from trusted sellers in China</p>
           </div>
           <Button
@@ -25,18 +25,18 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <!-- Unified Search Section -->
       <div class="bg-gradient-to-r from-teal-50 to-amber-50 rounded-xl shadow-md border border-teal-100 p-6 mb-6">
-        <div class="flex items-center justify-between mb-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div class="flex items-center gap-2">
             <Search class="h-5 w-5 text-teal-600" />
             <h2 class="text-lg font-semibold text-slate-900">Search Products</h2>
           </div>
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2 sm:justify-end">
           <!-- Language Tabs -->
           <div class="flex gap-2 border border-teal-200 rounded-lg p-1 bg-white">
             <button
               @click="selectedLanguage = 'zh'"
               :class="[
-                'px-4 py-1.5 rounded text-sm font-medium transition-colors',
+                'px-3 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-medium transition-colors',
                 selectedLanguage === 'zh'
                   ? 'bg-teal-600 text-white'
                   : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50'
@@ -47,7 +47,7 @@
             <button
               @click="selectedLanguage = 'en'"
               :class="[
-                'px-4 py-1.5 rounded text-sm font-medium transition-colors',
+                'px-3 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-medium transition-colors',
                 selectedLanguage === 'en'
                   ? 'bg-teal-600 text-white'
                   : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50'
@@ -57,13 +57,13 @@
             </button>
             </div>
             <!-- Currency Selector -->
-            <div class="flex gap-2 border border-teal-200 rounded-lg p-1 bg-white">
+            <div class="flex gap-1 sm:gap-2 border border-teal-200 rounded-lg p-1 bg-white">
               <button
                 v-for="curr in ['CNY', 'BDT', 'USD'] as const"
                 :key="curr"
                 @click="selectedCurrency = curr"
                 :class="[
-                  'px-3 py-1.5 rounded text-sm font-medium transition-colors',
+                  'px-2 sm:px-3 py-1.5 rounded text-xs sm:text-sm font-medium transition-colors',
                   selectedCurrency === curr
                     ? 'bg-teal-600 text-white'
                     : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50'
@@ -337,7 +337,7 @@ const currentPage = ref(1);
 const pageSize = ref(20);
 const totalPages = ref(1);
 const totalCount = ref<number | null>(null);
-const selectedLanguage = ref<'en' | 'zh'>('en');
+const selectedLanguage = ref<'en' | 'zh'>('zh');
 const selectedCurrency = ref<'CNY' | 'BDT' | 'USD'>('CNY');
 const recentSearches = ref<string[]>([]);
 const conversionRates = ref<{ CNY_TO_BDT?: number; CNY_TO_USD?: number }>({});
