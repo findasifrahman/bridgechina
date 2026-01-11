@@ -176,8 +176,7 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
       }
 
       // Collect media URLs and types (cap to 3 media)
-      const mediaUrls: string[] = [];
-      const mediaTypes: string[] = [];
+      const mediaArray: Array<{ url: string; contentType: string; idx: number }> = [];
       const maxMedia = Math.min(NumMedia ? parseInt(NumMedia) : 0, 3);
 
       if (maxMedia > 0) {
@@ -185,18 +184,21 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
           const mediaUrl = (payload as any)[`MediaUrl${i}`];
           const mediaType = (payload as any)[`MediaContentType${i}`];
           if (mediaUrl) {
-            mediaUrls.push(mediaUrl);
-            mediaTypes.push(mediaType || 'application/octet-stream');
+            mediaArray.push({
+              url: mediaUrl,
+              contentType: mediaType || 'application/octet-stream',
+              idx: i,
+            });
           }
         }
       }
 
       // Detect media types (audio/image) so we can avoid confusing AI replies
-      const hasMedia = mediaUrls.length > 0;
-      const hasAudio = hasMedia && mediaTypes.some((t) => t.startsWith('audio/'));
-      const hasImage = hasMedia && mediaTypes.some((t) => t.startsWith('image/'));
+      const hasMedia = mediaArray.length > 0;
+      const hasAudio = hasMedia && mediaArray.some((m) => m.contentType.startsWith('audio/'));
+      const hasImage = hasMedia && mediaArray.some((m) => m.contentType.startsWith('image/'));
 
-      // Store inbound message
+      // Store inbound message with structured media in meta_json
       await prisma.message.create({
         data: {
           conversation_id: conversation.id,
@@ -204,49 +206,31 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
           direction: 'INBOUND',
           provider: 'twilio',
           provider_sid: MessageSid,
-          content: Body || '(media only)',
+          content: Body || (hasAudio ? '(voice note)' : '(media only)'),
           status: 'received',
           meta_json: {
             profileName: ProfileName,
-            mediaUrls: mediaUrls,
-            mediaTypes: mediaTypes,
-            numMedia: mediaUrls.length,
+            twilio: {
+              numMedia: mediaArray.length,
+              media: mediaArray,
+            },
           },
         },
       });
 
       if (hasAudio && (!Body || !Body.trim())) {
-        // Save message (so ops can see it) but don't trigger AI confusion
-        await prisma.message.create({
-          data: {
-            conversation_id: conversation.id,
-            role: 'user',
-            direction: 'INBOUND',
-            provider: 'twilio',
-            provider_sid: MessageSid,
-            content: '(voice note)',
-            status: 'received',
-            meta_json: {
-              profileName: ProfileName,
-              mediaUrls,
-              mediaTypes,
-              numMedia: NumMedia ? parseInt(NumMedia) : 0,
-            },
-          },
-        });
-      
         // Reply with a single cheap message (no extra AI calls)
-        await sendText(  From,
+        await sendText(
+          From,
           "I received a voice note 🎤.\n" +
-          "Voice transcription isn’t enabled yet.\n" +
+          "Voice transcription isn't enabled yet.\n" +
           "Please send your question as text, or upload an image to search products.\n\n" +
-          "Website: https://bridgechina-web.vercel.app/");
+          "Website: https://bridgechina-web.vercel.app/"
+        );
       
         reply.type('text/xml').code(200).send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
         return;
       }
-      
-      /// end by me
 
 
       // Check for human takeover request
@@ -293,10 +277,10 @@ export default async function whatsappRoutes(fastify: FastifyInstance) {
       // AI-first: Return 200 OK immediately, process async
       reply.type('text/xml').code(200).send('<?xml version="1.0" encoding="UTF-8"?><Response></Response>');
 
-      // Process AI reply asynchronously
-      fastify.log.info({ conversationId: conversation.id }, '[WhatsApp Routes] Triggering async AI reply');
+      // Process AI reply asynchronously (pass MessageSid for deterministic inbound fetch)
+      fastify.log.info({ conversationId: conversation.id, messageSid: MessageSid }, '[WhatsApp Routes] Triggering async AI reply');
       setImmediate(() => {
-        handleAIReply(conversation.id).catch((error) => {
+        handleAIReply(conversation.id, MessageSid).catch((error) => {
           fastify.log.error({ error }, '[WhatsApp Routes] Error in async AI processing');
         });
       });

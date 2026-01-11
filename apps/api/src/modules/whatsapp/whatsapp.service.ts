@@ -412,17 +412,17 @@ async function translateTitleToEnglish(title: string): Promise<string> {
 
 /**
  * Handle AI reply for WhatsApp conversation
+ * @param conversationId - Conversation ID
+ * @param inboundMessageSid - Twilio MessageSid of the inbound message to process
  */
-export async function handleAIReply(conversationId: string): Promise<void> {
+export async function handleAIReply(conversationId: string, inboundMessageSid: string): Promise<void> {
   try {
+    console.log('[WhatsApp Service] handleAIReply called:', { conversationId, inboundMessageSid });
+
     // Fetch conversation
     const conversation = await prisma.conversation.findUnique({
       where: { id: conversationId },
       include: {
-        messages: {
-          orderBy: { created_at: 'asc' },
-          take: 20, // Last 20 messages for context
-        },
         lead: {
           select: {
             id: true,
@@ -445,71 +445,163 @@ export async function handleAIReply(conversationId: string): Promise<void> {
       return;
     }
 
-    // Get last inbound message
-    const lastInbound = conversation.messages
-      .filter(m => m.direction === 'INBOUND')
-      .slice(-1)[0];
+    // Deterministic inbound message fetch using MessageSid
+    let inbound = await prisma.message.findFirst({
+      where: {
+        conversation_id: conversationId,
+        provider: 'twilio',
+        provider_sid: inboundMessageSid,
+        direction: 'INBOUND',
+      },
+      orderBy: { created_at: 'desc' },
+    });
 
-    if (!lastInbound) {
+    // Fallback: if not found by MessageSid, get latest inbound (shouldn't happen in normal flow)
+    if (!inbound) {
+      console.warn('[WhatsApp Service] Inbound message not found by MessageSid, using latest inbound as fallback');
+      inbound = await prisma.message.findFirst({
+        where: {
+          conversation_id: conversationId,
+          direction: 'INBOUND',
+        },
+        orderBy: { created_at: 'desc' },
+      });
+    }
+
+    if (!inbound) {
       console.log('[WhatsApp Service] No inbound message found');
       return;
     }
 
-    const userMessage = lastInbound.content;
-
-    // GREETING HARD INTERRUPT: Check for pure greetings BEFORE any search/intent detection
-    // Import isPureGreeting from chat.agent
-    const { isPureGreeting } = await import('../chat/chat.agent.js');
-    if (isPureGreeting(userMessage)) {
-      // Send greeting menu without triggering any search or intent detection
-      const greetingResponse = 'Hi 👋 Welcome to BridgeChina.\nWhat do you need today?\n1) Hotel 2) Shopping 3) Tours 4) Transport 5) Medical 6) eSIM 7) Sourcing\n\nYou can also use the website: https://bridgechina-web.vercel.app/';
-      
-      try {
-        const providerSid = await sendText(conversation.external_from!, greetingResponse);
-        
-        await prisma.message.create({
-          data: {
-            conversation_id: conversationId,
-            role: 'assistant',
-            direction: 'OUTBOUND',
-            provider: 'twilio',
-            provider_sid: providerSid,
-            content: greetingResponse,
-            status: 'sent',
-          },
-        });
-
-        await prisma.conversation.update({
-          where: { id: conversationId },
-          data: {
-            last_outbound_at: new Date(),
-            last_message_preview: greetingResponse.substring(0, 100),
-          },
-        });
-      } catch (error: any) {
-        console.error('[WhatsApp Service] Failed to send greeting:', error);
-      }
-      
-      return; // Exit early, no further processing
+    // Idempotency check: if message already processed, skip
+    const meta = (inbound.meta_json as any) || {};
+    if (inbound.status === 'processed' || meta.processedByAI === true) {
+      console.log('[WhatsApp Service] Message already processed, skipping:', inbound.id);
+      return;
     }
 
-    // IMAGE SEARCH HARD INTERRUPT: Check for image + image search intent
-    // This overrides everything - if user sends image with search intent, run image search pipeline
-    const meta = lastInbound.meta_json as any;
-    const hasImage = meta?.mediaUrls && Array.isArray(meta.mediaUrls) && meta.mediaUrls.length > 0;
-    const firstMediaType = meta?.mediaTypes && Array.isArray(meta.mediaTypes) ? meta.mediaTypes[0] : undefined;
-    
-    if (hasImage && wantsImageSearch(userMessage, true, firstMediaType)) {
-      try {
-        const firstImageUrl = meta.mediaUrls[0];
+    const userMessage = inbound.content || '';
+
+    // Extract media info from meta_json.twilio.media
+    const twilioMedia = meta?.twilio?.media || [];
+    const hasImage = twilioMedia.some((m: any) => m.contentType?.startsWith('image/'));
+    const imageMedia = twilioMedia.filter((m: any) => m.contentType?.startsWith('image/'));
+
+    // GREETING HARD INTERRUPT: Check for pure greetings BEFORE any search/intent detection
+    // Only apply greeting guard if NO image is present (images should trigger search)
+    if (!hasImage) {
+      const { isPureGreeting } = await import('../chat/chat.agent.js');
+      if (isPureGreeting(userMessage)) {
+        // Send greeting menu without triggering any search or intent detection
+        const greetingResponse = 'Hi 👋 Welcome to BridgeChina.\nWhat do you need today?\n1) Hotel 2) Shopping 3) Tours 4) Transport 5) Medical 6) eSIM 7) Sourcing\n\nYou can also use the website: https://bridgechina-web.vercel.app/';
         
-        // Download and upload to R2 (with caching)
-        let publicImageUrl: string;
+        // Mark message as processed before sending response
+        await prisma.message.update({
+          where: { id: inbound.id },
+          data: {
+            status: 'processed',
+            meta_json: {
+              ...meta,
+              processedByAI: true,
+              processedAt: new Date().toISOString(),
+            },
+          },
+        });
+
         try {
-          publicImageUrl = await downloadAndUploadImageToR2(firstImageUrl);
+          const providerSid = await sendText(conversation.external_from!, greetingResponse);
+          
+          await prisma.message.create({
+            data: {
+              conversation_id: conversationId,
+              role: 'assistant',
+              direction: 'OUTBOUND',
+              provider: 'twilio',
+              provider_sid: providerSid,
+              content: greetingResponse,
+              status: 'sent',
+            },
+          });
+
+          await prisma.conversation.update({
+            where: { id: conversationId },
+            data: {
+              last_outbound_at: new Date(),
+              last_message_preview: greetingResponse.substring(0, 100),
+            },
+          });
+        } catch (error: any) {
+          console.error('[WhatsApp Service] Failed to send greeting:', error);
+        }
+        
+        return; // Exit early, no further processing
+      }
+    }
+
+    // IMAGE SEARCH PATH: If image exists, force image search
+    // Download media, upload to R2, then run image search
+    if (hasImage && imageMedia.length > 0) {
+      try {
+        const firstImage = imageMedia[0];
+        const twilioMediaUrl = firstImage.url;
+        const contentType = firstImage.contentType || 'image/jpeg';
+
+        console.log('[WhatsApp Service] Processing image search:', { twilioMediaUrl: twilioMediaUrl.substring(0, 100), contentType });
+
+        // Download from Twilio and upload to R2
+        let r2PublicUrl: string;
+        try {
+          // Download from Twilio (uses auth from downloadTwilioMedia)
+          const { buffer } = await downloadTwilioMedia(twilioMediaUrl);
+          
+          // Generate R2 key
+          const timestamp = Date.now();
+          const hash = crypto.createHash('md5').update(buffer).digest('hex').slice(0, 12);
+          const extension = contentType.includes('png') ? 'png' : 
+                           contentType.includes('gif') ? 'gif' : 
+                           contentType.includes('webp') ? 'webp' : 'jpg';
+          const r2Key = `whatsapp-image-search/${timestamp}-${hash}.${extension}`;
+
+          // Upload to R2
+          await uploadToR2(r2Key, buffer, contentType);
+          r2PublicUrl = getPublicUrl(r2Key);
+
+          console.log('[WhatsApp Service] Image uploaded to R2:', { r2Key, r2PublicUrl: r2PublicUrl.substring(0, 100) });
+
+          // Save R2 URL back to message meta_json
+          const mediaUploads = meta.mediaUploads || [];
+          mediaUploads.push({
+            idx: firstImage.idx,
+            r2Url: r2PublicUrl,
+            contentType: contentType,
+          });
+
+          await prisma.message.update({
+            where: { id: inbound.id },
+            data: {
+              meta_json: {
+                ...meta,
+                mediaUploads: mediaUploads,
+              },
+            },
+          });
         } catch (error: any) {
           console.error('[WhatsApp Service] Failed to download/upload image:', error);
-          const errorResponse = 'I received the image but couldn\'t download it. Please resend or try website image search: https://bridgechina-web.vercel.app/';
+          const errorResponse = 'I received the image but couldn\'t process it. Please resend or try website image search: https://bridgechina-web.vercel.app/';
+          
+          // Mark as processed even on error to prevent retries
+          await prisma.message.update({
+            where: { id: inbound.id },
+            data: {
+              status: 'processed',
+              meta_json: {
+                ...meta,
+                processedByAI: true,
+                processedAt: new Date().toISOString(),
+              },
+            },
+          });
+
           const providerSid = await sendText(conversation.external_from!, errorResponse);
           await prisma.message.create({
             data: {
@@ -529,13 +621,33 @@ export async function handleAIReply(conversationId: string): Promise<void> {
           return; // Exit early
         }
         
-        // Search products by image using TMAPI
-        let imageSearchResults: any[] = [];
+        // Search products by image using TMAPI (use zh language for WhatsApp)
+        const { searchByImage } = await import('../shopping/shopping.service.js');
+        let searchResults;
         try {
-          imageSearchResults = await searchProductsByImage(publicImageUrl);
+          searchResults = await searchByImage(r2PublicUrl, {
+            language: 'zh', // Use Chinese for WhatsApp image search
+            page: 1,
+            pageSize: 3,
+            sort: 'sales',
+          });
         } catch (error: any) {
           console.error('[WhatsApp Service] TMAPI image search error:', error);
           const errorResponse = 'Image search service is temporarily unavailable. Please try again later or use website: https://bridgechina-web.vercel.app/';
+          
+          // Mark as processed
+          await prisma.message.update({
+            where: { id: inbound.id },
+            data: {
+              status: 'processed',
+              meta_json: {
+                ...meta,
+                processedByAI: true,
+                processedAt: new Date().toISOString(),
+              },
+            },
+          });
+
           const providerSid = await sendText(conversation.external_from!, errorResponse);
           await prisma.message.create({
             data: {
@@ -556,8 +668,22 @@ export async function handleAIReply(conversationId: string): Promise<void> {
         }
         
         // Format and send results
-        if (imageSearchResults.length === 0) {
+        if (!searchResults.items || searchResults.items.length === 0) {
           const noResultsResponse = 'I couldn\'t find close matches. Try sending a clearer photo or a keyword. Or search on website: https://bridgechina-web.vercel.app/';
+          
+          // Mark as processed
+          await prisma.message.update({
+            where: { id: inbound.id },
+            data: {
+              status: 'processed',
+              meta_json: {
+                ...meta,
+                processedByAI: true,
+                processedAt: new Date().toISOString(),
+              },
+            },
+          });
+
           const providerSid = await sendText(conversation.external_from!, noResultsResponse);
           await prisma.message.create({
             data: {
@@ -578,56 +704,55 @@ export async function handleAIReply(conversationId: string): Promise<void> {
         }
         
         // Format top 3 results
-        const topResults = imageSearchResults.slice(0, 3);
+        const topResults = searchResults.items.slice(0, 3);
         const resultLines: string[] = ['Found similar items by image (top 3):'];
         
         for (let i = 0; i < topResults.length; i++) {
           const item = topResults[i];
-          const title = item.title_en || item.title || 'Product';
-          const price = item.price_min || item.price_max || item.price;
+          const title = item.title || 'Product';
+          const price = item.priceMin || item.priceMax;
           const priceStr = price ? `¥${price}` : 'Price on request';
-          const itemId = item.item_id || item.id;
-          const link = `https://bridgechina-web.vercel.app/shopping/tmapi/${itemId}?language=en`;
+          const link = `https://bridgechina-web.vercel.app/shopping/tmapi/${item.externalId}?language=en`;
           
           resultLines.push(`${i + 1}) ${title} — ${priceStr} — ${link}`);
         }
         
         const responseText = resultLines.join('\n');
         
-        // Send first result as media if image available (optional)
-        const firstItem = topResults[0];
-        const firstItemImage = firstItem.main_image || firstItem.img || firstItem.image_url || 
-                              (Array.isArray(firstItem.main_imgs) && firstItem.main_imgs[0]) || '';
-        
-        if (firstItemImage) {
-          try {
-            const firstItemTitle = firstItem.title_en || firstItem.title || 'Product';
-            const firstItemPrice = firstItem.price_min || firstItem.price_max || firstItem.price;
-            const firstItemPriceStr = firstItemPrice ? `¥${firstItemPrice}` : 'Price on request';
-            const firstItemId = firstItem.item_id || firstItem.id;
-            const firstItemLink = `https://bridgechina-web.vercel.app/shopping/tmapi/${firstItemId}?language=en`;
-            
-            const caption = `${firstItemTitle}\n${firstItemPriceStr}\n${firstItemLink}`;
-            const providerSid = await sendMedia(conversation.external_from!, firstItemImage, caption);
-            
-            await prisma.message.create({
-              data: {
-                conversation_id: conversationId,
-                role: 'assistant',
-                direction: 'OUTBOUND',
-                provider: 'twilio',
-                provider_sid: providerSid,
-                content: caption,
-                status: 'sent',
-                meta_json: {
-                  type: 'media',
-                  mediaUrl: firstItemImage,
+        // Send product images (up to 3, one per product)
+        for (let i = 0; i < Math.min(topResults.length, 3); i++) {
+          const item = topResults[i];
+          const itemImage = item.imageUrl || (item.images && item.images[0]);
+          const itemTitle = item.title || 'Product';
+          const itemPrice = item.priceMin || item.priceMax;
+          const itemPriceStr = itemPrice ? `¥${itemPrice}` : 'Price on request';
+          const itemLink = `https://bridgechina-web.vercel.app/shopping/tmapi/${item.externalId}?language=en`;
+          
+          if (itemImage) {
+            try {
+              const caption = `${itemTitle}\n${itemPriceStr}\n${itemLink}`;
+              const providerSid = await sendMedia(conversation.external_from!, itemImage, caption);
+              
+              await prisma.message.create({
+                data: {
+                  conversation_id: conversationId,
+                  role: 'assistant',
+                  direction: 'OUTBOUND',
+                  provider: 'twilio',
+                  provider_sid: providerSid,
+                  content: caption,
+                  status: 'sent',
+                  meta_json: {
+                    type: 'media',
+                    mediaUrl: itemImage,
+                    productIndex: i + 1,
+                  },
                 },
-              },
-            });
-          } catch (error) {
-            console.error('[WhatsApp Service] Failed to send media:', error);
-            // Continue with text response
+              });
+            } catch (error) {
+              console.error('[WhatsApp Service] Failed to send product image:', error);
+              // Continue with other images
+            }
           }
         }
         
@@ -642,6 +767,19 @@ export async function handleAIReply(conversationId: string): Promise<void> {
             provider_sid: providerSid,
             content: responseText,
             status: 'sent',
+          },
+        });
+        
+        // Mark inbound as processed
+        await prisma.message.update({
+          where: { id: inbound.id },
+          data: {
+            status: 'processed',
+            meta_json: {
+              ...meta,
+              processedByAI: true,
+              processedAt: new Date().toISOString(),
+            },
           },
         });
         
@@ -661,7 +799,14 @@ export async function handleAIReply(conversationId: string): Promise<void> {
     }
 
     // Build conversation history for AI (last 10 messages, alternating user/assistant)
-    const historyMessages = conversation.messages
+    // Fetch messages separately since we're not including them in the conversation query
+    const conversationMessages = await prisma.message.findMany({
+      where: { conversation_id: conversationId },
+      orderBy: { created_at: 'asc' },
+      take: 20,
+    });
+    
+    const historyMessages = conversationMessages
       .filter(m => m.role === 'user' || m.role === 'assistant')
       .slice(-10)
       .map(m => ({
@@ -883,6 +1028,19 @@ Please change it after login.`;
         content: responseText,
         status: 'sent',
         meta_json: Object.keys(messageMeta).length > 0 ? messageMeta : undefined,
+      },
+    });
+
+    // Mark inbound message as processed
+    await prisma.message.update({
+      where: { id: inbound.id },
+      data: {
+        status: 'processed',
+        meta_json: {
+          ...meta,
+          processedByAI: true,
+          processedAt: new Date().toISOString(),
+        },
       },
     });
 
