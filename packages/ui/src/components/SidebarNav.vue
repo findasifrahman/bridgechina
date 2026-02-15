@@ -61,7 +61,7 @@ const services: Array<{
   { key: 'transport', name: 'Transport Service', path: '/services/transport', icon: Car },
   { key: 'restaurants', name: 'Restaurants', path: '/services/restaurants', icon: UtensilsCrossed },
   { key: 'halal-food', name: 'Halal Food', path: '/services/halal-food', icon: UtensilsCrossed },
-  { key: 'medical', name: 'Medical Help', path: '/services/medical', icon: HeartPulse },
+  //{ key: 'medical', name: 'Medical Help', path: '/services/medical', icon: HeartPulse },
   { key: 'guide', name: 'Guide', path: '/services/guide', icon: Languages },
   { key: 'shopping', name: 'Shopping', path: '/shopping', icon: ShoppingBag },
   { key: 'tours', name: 'Tours', path: '/services/tours', icon: MapPin },

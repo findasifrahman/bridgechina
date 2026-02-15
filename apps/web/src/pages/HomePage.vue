@@ -20,7 +20,7 @@
         <!-- Title and Subtitle -->
         <div class="mb-4">
           <h1 class="text-xl font-bold bg-gradient-to-r from-teal-600 to-amber-500 bg-clip-text text-transparent mb-1">Find everything you need in China</h1>
-          <p class="text-sm text-slate-600">Hotels, transport, food, medical help, eSIM, and more</p>
+          <p class="text-sm text-slate-600">Hotels, transport, food, shopping, eSIM, and more</p>
         </div>
 
         <!-- Universal Search Bar -->
@@ -152,6 +152,7 @@
           </template>
 
           <!-- Medical Tab -->
+           <!--
           <template v-if="activeTab === 'medical'">
             <CompactCard
               v-for="center in medicalCenters.slice(0, 4)"
@@ -178,6 +179,7 @@
               </CardBody>
             </Card>
           </template>
+          End Medical Tab -->
 
           <!-- Guide Tab -->
           <template v-if="activeTab === 'guide'">
@@ -652,7 +654,7 @@ const tabOptions = [
   { value: 'transport', label: 'Transport' },
   { value: 'restaurants', label: 'Restaurants' },
   { value: 'halal-food', label: 'Halal Food' },
-  { value: 'medical', label: 'Medical' },
+  //{ value: 'medical', label: 'Medical' },
   { value: 'guide', label: 'Guide' },
   { value: 'esim', label: 'eSIM' },
   { value: 'places', label: 'Places' },

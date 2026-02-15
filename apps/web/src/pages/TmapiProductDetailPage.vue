@@ -361,7 +361,7 @@
           <h2 class="text-xl font-bold text-slate-900 mb-4">Product Description</h2>
           <div 
             class="prose prose-sm max-w-none text-slate-700"
-            v-html="product.description"
+            v-html="organizedDescription"
           />
         </div>
 
@@ -438,7 +438,7 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
-import { Package, Star, Plus, Minus, MessageCircle, Play, ShoppingCart, X, Maximize2 } from 'lucide-vue-next';
+import { Package, Star, Plus, Minus, MessageCircle, Play, ShoppingCart, X } from 'lucide-vue-next';
 import {
   Button,
   Badge,
@@ -543,6 +543,51 @@ function formatTotalAmount(): string {
 const activeMediaUrl = computed(() => {
   if (selectedImage.value) return selectedImage.value;
   return product.value?.imageUrl || null;
+});
+
+const organizedDescription = computed(() => {
+  const desc = String(product.value?.description || '').trim();
+  if (!desc) return '';
+
+  const looksLikeHtml = /<\w[\s\S]*>/.test(desc);
+  if (looksLikeHtml) return desc;
+
+  const escapeHtml = (s: string) =>
+    s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+
+  const lines = desc
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const bulletLines = lines.filter((l) => /^[-*•]\s+/.test(l));
+  const nonBulletLines = lines.filter((l) => !/^[-*•]\s+/.test(l));
+
+  const parts: string[] = [];
+
+  if (nonBulletLines.length > 0) {
+    parts.push(
+      nonBulletLines
+        .map((l) => `<p>${escapeHtml(l)}</p>`)
+        .join('')
+    );
+  }
+
+  if (bulletLines.length > 0) {
+    parts.push(
+      `<ul>${bulletLines
+        .map((l) => l.replace(/^[-*•]\s+/, ''))
+        .map((l) => `<li>${escapeHtml(l)}</li>`)
+        .join('')}</ul>`
+    );
+  }
+
+  return parts.join('');
 });
 
 const showVideo = computed(() => {

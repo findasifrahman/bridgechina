@@ -13,13 +13,20 @@ function detectCity(request: FastifyRequest): string {
 
 export default async function publicRoutes(fastify: FastifyInstance) {
   // Shopping - Import shopping service modules at the top (needed for multiple endpoints)
+  const { getShoppingProviderKey } = await import('../modules/shopping/shopping.provider.js');
+  const shoppingProvider = getShoppingProviderKey();
+  const shoppingModulePath =
+    shoppingProvider === 'shopping_otapi'
+      ? '../modules/shopping_otapi/shopping_otapi.service.js'
+      : '../modules/shopping/shopping.service.js';
+
   const {
     getCategories: getShoppingCategories,
     searchByKeyword,
     searchByImage,
     getItemDetail,
     getHotItems,
-  } = await import('../modules/shopping/shopping.service.js');
+  } = await import(shoppingModulePath);
   const {
     searchByKeywordSchema,
     searchByImageSchema,
@@ -338,9 +345,9 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
         },
         orderBy: { rating: 'desc' },
         take: 4,
-      }).then(async (hotels) => {
+      }).then(async (hotels: any[]) => {
         return await Promise.all(
-          hotels.map(async (hotel) => {
+          hotels.map(async (hotel: any) => {
             const galleryIds = (hotel.gallery_asset_ids as string[]) || [];
             const galleryAssets = await getGalleryAssets(galleryIds);
             return {
@@ -363,9 +370,9 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
         },
         orderBy: { star_rating: 'desc' },
         take: 4,
-      }).then(async (places) => {
+      }).then(async (places: any[]) => {
         return await Promise.all(
-          places.map(async (place) => {
+          places.map(async (place: any) => {
             const galleryIds = (place.gallery_asset_ids as string[]) || [];
             const galleryAssets = await getGalleryAssets(galleryIds);
             return {
@@ -395,9 +402,9 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
         },
         orderBy: { created_at: 'desc' },
         take: 4,
-      }).then(async (products) => {
+      }).then(async (products: any[]) => {
         return await Promise.all(
-          products.map(async (product) => {
+          products.map(async (product: any) => {
             const galleryIds = (product.gallery_asset_ids as string[]) || [];
             const galleryAssets = await getGalleryAssets(galleryIds);
             return {
@@ -420,9 +427,9 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
         },
         orderBy: { rating: 'desc' },
         take: 4,
-      }).then(async (restaurants) => {
+      }).then(async (restaurants: any[]) => {
         return await Promise.all(
-          restaurants.map(async (restaurant) => {
+          restaurants.map(async (restaurant: any) => {
             const galleryIds = (restaurant.gallery_asset_ids as string[]) || [];
             const galleryAssets = await getGalleryAssets(galleryIds);
             return {
@@ -673,7 +680,7 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
 
     // Load gallery assets for each place
     const placesWithGallery = await Promise.all(
-      places.map(async (place) => {
+      places.map(async (place: any) => {
         const galleryIds = (place.gallery_asset_ids as string[]) || [];
         const galleryAssets = galleryIds.length > 0
           ? await prisma.mediaAsset.findMany({
@@ -744,7 +751,7 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
     
     // Load gallery assets
     const hotelsWithGallery = await Promise.all(
-      hotels.map(async (hotel) => {
+      hotels.map(async (hotel: any) => {
         const galleryIds = (hotel.gallery_asset_ids as string[]) || [];
         const galleryAssets = galleryIds.length > 0
           ? await prisma.mediaAsset.findMany({
@@ -2120,7 +2127,7 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
     
     // Load gallery assets
     const restaurantsWithGallery = await Promise.all(
-      restaurants.map(async (restaurant) => {
+      restaurants.map(async (restaurant: any) => {
         const galleryIds = (restaurant.gallery_asset_ids as string[]) || [];
         const galleryAssets = galleryIds.length > 0
           ? await prisma.mediaAsset.findMany({
@@ -2222,7 +2229,7 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
     
     // Load gallery assets
     const toursWithGallery = await Promise.all(
-      tours.map(async (tour) => {
+      tours.map(async (tour: any) => {
         const galleryIds = (tour.gallery_asset_ids as string[]) || [];
         const galleryAssets = galleryIds.length > 0
           ? await prisma.mediaAsset.findMany({
@@ -2356,7 +2363,7 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
 
     // Load gallery assets for each item
     const itemsWithGallery = await Promise.all(
-      items.map(async (item) => {
+      items.map(async (item: any) => {
         const galleryIds = (item.gallery_asset_ids as string[]) || [];
         const galleryAssets = galleryIds.length > 0
           ? await prisma.mediaAsset.findMany({
@@ -3021,7 +3028,7 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
 
     // Calculate average rating
     const avgRating = reviews.length > 0
-      ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+      ? reviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviews.length
       : null;
 
     return {
@@ -3227,7 +3234,7 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
 
       // Load gallery assets
       const offersWithGallery = await Promise.all(
-        offers.map(async (offer) => {
+        offers.map(async (offer: any) => {
           try {
             const galleryIds = (offer.gallery_asset_ids as string[]) || [];
             const galleryAssets = galleryIds.length > 0
