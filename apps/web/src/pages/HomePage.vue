@@ -1,6 +1,7 @@
 <template>
   <div class="bg-slate-50 min-h-screen">
     <!-- Launch Offer Modal -->
+     <!--
     <LaunchOfferModal
       v-model="launchModal.isOpen.value"
       mode="video"
@@ -10,10 +11,10 @@
       @secondary="handleLaunchSecondary"
       @tertiary="handleLaunchTertiary"
     />
-
+    -->
     <!-- Offer Strip -->
     <OfferStrip :offer="spotlightOffer" @click="handleOfferClick" />
-
+    -->
     <!-- Top Area: Search + Tabs + Results -->
     <section class="bg-white border-b border-slate-200 py-6">
       <div class="px-4 sm:px-6 lg:px-8">

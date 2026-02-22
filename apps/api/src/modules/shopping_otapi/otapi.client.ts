@@ -113,8 +113,21 @@ class OTAPIClient {
       });
     }
 
-    const response = await this.client.get('/BatchSearchItemsFrame', { params: qp });
-    return response.data;
+    try {
+      const response = await this.client.get('/BatchSearchItemsFrame', { params: qp });
+      return response.data;
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const data = err?.response?.data;
+      if (status === 401 || status === 403) {
+        const details = data ? JSON.stringify(data).slice(0, 500) : undefined;
+        throw new Error(
+          `OTAPI RapidAPI auth/plan error (${status}). Check OTAPI_RAPID_TOKEN is set correctly on the server and that the RapidAPI subscription/quota for otapi-1688 is active.` +
+            (details ? ` Response: ${details}` : '')
+        );
+      }
+      throw err;
+    }
   }
 
   async batchGetItemFullInfo(params: { itemId: string; language?: string }): Promise<any> {
