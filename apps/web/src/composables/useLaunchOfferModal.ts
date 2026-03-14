@@ -47,10 +47,6 @@ export function useLaunchOfferModal() {
   function openIfDue(): void {
     if (getShouldShow()) {
       isOpen.value = true;
-      // Lock body scroll
-      if (typeof document !== 'undefined') {
-        document.body.style.overflow = 'hidden';
-      }
     }
   }
 
@@ -59,10 +55,6 @@ export function useLaunchOfferModal() {
    */
   function close(setCooldownDays?: number | null | undefined): void {
     isOpen.value = false;
-    // Unlock body scroll
-    if (typeof document !== 'undefined') {
-      document.body.style.overflow = '';
-    }
 
     // Set cooldown if specified
     if (setCooldownDays !== undefined && setCooldownDays !== null) {
@@ -77,9 +69,6 @@ export function useLaunchOfferModal() {
    */
   function open(): void {
     isOpen.value = true;
-    if (typeof document !== 'undefined') {
-      document.body.style.overflow = 'hidden';
-    }
   }
 
   /**

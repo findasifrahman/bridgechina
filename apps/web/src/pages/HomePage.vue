@@ -667,52 +667,33 @@ const holidayBanners = ref<any[]>([]);
 const serviceOffers = ref<any[]>([]);
 const selectedOffer = ref<any>(null);
 const showOfferModal = ref(false);
+const transportLoaded = ref(false);
+const guidesLoaded = ref(false);
+const offersLoaded = ref(false);
 
-async function loadBanners() {
-  try {
-    const response = await axios.get('/api/public/banners');
-    if (response.data && response.data.length > 0) {
-      holidayBanners.value = response.data;
-    } else {
-      // Fallback to default banners if none in database
-      holidayBanners.value = [
-        {
-          id: 'new-year',
-          title: 'Happy New Year!',
-          subtitle: 'Special discounts on all services',
-          link: '/services',
-          cta_text: 'Explore Offers',
-        },
-        {
-          id: 'eid',
-          title: 'Eid Mubarak!',
-          subtitle: 'Halal food delivery specials',
-          link: '/services/halal-food',
-          cta_text: 'Order Now',
-        },
-        {
-          id: 'canton-fair',
-          title: 'Canton Fair 2024',
-          subtitle: 'Exclusive transport and accommodation packages',
-          link: '/services',
-          cta_text: 'Learn More',
-        },
-      ];
-    }
-  } catch (error) {
-    console.error('Failed to load banners:', error);
-    // Fallback to default banners on error
-    holidayBanners.value = [
-      {
-        id: 'new-year',
-        title: 'Happy New Year!',
-        subtitle: 'Special discounts on all services',
-        link: '/services',
-        cta_text: 'Explore Offers',
-      },
-    ];
-  }
-}
+const defaultHolidayBanners = [
+  {
+    id: 'new-year',
+    title: 'Happy New Year!',
+    subtitle: 'Special discounts on all services',
+    link: '/services',
+    cta_text: 'Explore Offers',
+  },
+  {
+    id: 'eid',
+    title: 'Eid Mubarak!',
+    subtitle: 'Halal food delivery specials',
+    link: '/services/halal-food',
+    cta_text: 'Order Now',
+  },
+  {
+    id: 'canton-fair',
+    title: 'Canton Fair 2024',
+    subtitle: 'Exclusive transport and accommodation packages',
+    link: '/services',
+    cta_text: 'Learn More',
+  },
+];
 
 function getPlaceTags(place: any): string[] {
   const tags: string[] = [];
@@ -725,19 +706,16 @@ async function loadHomepageData() {
   loading.value = true;
   try {
     const citySlug = currentCity.value?.slug || 'guangzhou';
-    const [homeResponse, offersResponse, transportResponse, medicalResponse, guidesResponse] = await Promise.all([
-      axios.get(`/api/public/home?city_slug=${citySlug}`),
-      axios.get('/api/public/offers').catch(() => ({ data: [] })), // Don't fail if offers endpoint fails
-      axios.get('/api/public/catalog/transport').catch(() => ({ data: [] })), // Load transport services
-      axios.get('/api/public/catalog/medical').catch(() => ({ data: [] })), // Load medical centers
-      axios.get('/api/public/catalog/guides').catch(() => ({ data: [] })), // Load guides
-    ]);
+    const homeResponse = await axios.get(`/api/public/home?city_slug=${citySlug}`);
     
     topHotels.value = homeResponse.data.top_hotels || [];
     topCityPlaces.value = homeResponse.data.top_city_places || [];
     topEsimPlans.value = homeResponse.data.top_esim_plans || [];
     topProducts.value = homeResponse.data.top_products || [];
     topRestaurants.value = homeResponse.data.top_restaurants || [];
+    holidayBanners.value = homeResponse.data.holiday_banners?.length
+      ? homeResponse.data.holiday_banners
+      : defaultHolidayBanners;
     featuredCards.value = homeResponse.data.featured_cards || [];
     featuredItems.value = homeResponse.data.featured_items || [];
     featuredItemsByType.value = homeResponse.data.featured_items_by_type || {
@@ -751,25 +729,49 @@ async function loadHomepageData() {
       transport: [],
     };
     currentCity.value = homeResponse.data.city;
-    
-    // Load transport services for transport tab (show first 4)
-    transportServices.value = transportResponse.data || [];
-    
-    // Load medical centers for medical tab (show first 4)
-    medicalCenters.value = medicalResponse.data || [];
-    
-    // Load guides for guide tab (show first 4)
-    guides.value = guidesResponse.data || [];
-    
-    // Set spotlight offer (first active offer)
-    const offers = offersResponse.data || [];
-    spotlightOffer.value = offers.length > 0 ? offers[0] : null;
-    // Set service offers for carousel (exclude the spotlight offer)
-    serviceOffers.value = offers.length > 1 ? offers.slice(1) : offers;
   } catch (error) {
     console.error('Failed to load homepage data', error);
   } finally {
     loading.value = false;
+  }
+}
+
+async function loadServiceOffers() {
+  if (offersLoaded.value) return;
+  try {
+    const response = await axios.get('/api/public/offers');
+    const offers = response.data || [];
+    spotlightOffer.value = offers.length > 0 ? offers[0] : null;
+    serviceOffers.value = offers.length > 1 ? offers.slice(1) : offers;
+    offersLoaded.value = true;
+  } catch (error) {
+    console.error('Failed to load offers', error);
+    spotlightOffer.value = null;
+    serviceOffers.value = [];
+  }
+}
+
+async function loadTransportServices() {
+  if (transportLoaded.value) return;
+  try {
+    const response = await axios.get('/api/public/catalog/transport');
+    transportServices.value = response.data || [];
+    transportLoaded.value = true;
+  } catch (error) {
+    console.error('Failed to load transport services', error);
+    transportServices.value = [];
+  }
+}
+
+async function loadGuides() {
+  if (guidesLoaded.value) return;
+  try {
+    const response = await axios.get('/api/public/catalog/guides');
+    guides.value = response.data || [];
+    guidesLoaded.value = true;
+  } catch (error) {
+    console.error('Failed to load guides', error);
+    guides.value = [];
   }
 }
 
@@ -969,6 +971,12 @@ watch(activeTab, (newTab) => {
   if (newTab === 'shopping' && hotProducts.value.length === 0) {
     loadHotProducts();
   }
+  if (newTab === 'transport') {
+    loadTransportServices();
+  }
+  if (newTab === 'guide') {
+    loadGuides();
+  }
 });
 
 // Register modal handler with layout
@@ -999,7 +1007,14 @@ function handleLaunchTertiary() {
 
 onMounted(() => {
   loadHomepageData();
-  loadBanners();
+  if (typeof window !== 'undefined') {
+    const scheduleOffersLoad = (window as any).requestIdleCallback || ((cb: () => void) => window.setTimeout(cb, 300));
+    scheduleOffersLoad(() => {
+      loadServiceOffers();
+    });
+  } else {
+    loadServiceOffers();
+  }
   // Load hot products if shopping tab is initially selected
   if (activeTab.value === 'shopping') {
     loadHotProducts();
