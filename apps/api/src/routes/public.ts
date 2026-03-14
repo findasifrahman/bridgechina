@@ -289,8 +289,21 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
       where: {
         is_active: true,
       },
-      include: {
-        coverAsset: true,
+      select: {
+        id: true,
+        title: true,
+        subtitle: true,
+        link: true,
+        cta_text: true,
+        coverAsset: {
+          select: {
+            id: true,
+            public_url: true,
+            thumbnail_url: true,
+            width: true,
+            height: true,
+          },
+        },
       },
       orderBy: {
         sort_order: 'asc',
@@ -299,14 +312,504 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
 
     return banners;
   } catch (error: any) {
+    if (error?.code === 'P1001' || error?.message?.includes('Can\'t reach database server')) {
+      fastify.log.warn('[Banners] Database connection unavailable - returning empty array');
+      return [];
+    }
     fastify.log.error({ error, stack: error.stack }, '[Banners] Database error');
-    // Return empty array if database is unavailable
     return [];
   }
 });
   // Homepage data endpoint
   fastify.get('/home', async (request: FastifyRequest) => {
     const { city_slug } = request.query as { city_slug?: string };
+    return await (async () => {
+      const emptyHomepage = {
+        city: null,
+        top_hotels: [],
+        top_city_places: [],
+        top_esim_plans: [],
+        top_products: [],
+        top_restaurants: [],
+        holiday_banners: [],
+        featured_cards: [],
+        featured_items: [],
+        featured_items_by_type: {
+          hotels: [],
+          restaurants: [],
+          food_items: [],
+          esim_plans: [],
+          cityplaces: [],
+          tours: [],
+          products: [],
+          transport: [],
+        },
+      };
+
+      const citySummarySelect = { id: true, slug: true, name: true } as const;
+      const mediaSummarySelect = {
+        id: true,
+        public_url: true,
+        thumbnail_url: true,
+        width: true,
+        height: true,
+      } as const;
+      const categorySummarySelect = { id: true, name: true, slug: true } as const;
+
+      const toIdArray = (value: unknown): string[] => {
+        if (!Array.isArray(value)) return [];
+        return value.filter((item): item is string => typeof item === 'string' && item.length > 0);
+      };
+
+      const buildAssetMap = async (galleryIds: string[]) => {
+        if (galleryIds.length === 0) return new Map<string, any>();
+
+        const assets = await prisma.mediaAsset.findMany({
+          where: { id: { in: galleryIds } },
+          select: mediaSummarySelect,
+        });
+
+        return new Map(assets.map((asset) => [asset.id, asset]));
+      };
+
+      const attachGalleryAssets = <T extends { gallery_asset_ids?: unknown }>(items: T[], assetMap: Map<string, any>) =>
+        items.map((item) => ({
+          ...item,
+          galleryAssets: toIdArray(item.gallery_asset_ids)
+            .map((id) => assetMap.get(id))
+            .filter(Boolean),
+        }));
+
+      try {
+        let city = null;
+        if (city_slug) {
+          city = await prisma.city.findFirst({
+            where: { slug: city_slug, is_active: true },
+            select: citySummarySelect,
+          });
+        }
+
+        if (!city) {
+          city =
+            (await prisma.city.findFirst({
+              where: { slug: 'guangzhou', is_active: true },
+              select: citySummarySelect,
+            })) ||
+            (await prisma.city.findFirst({
+              where: { is_active: true },
+              select: citySummarySelect,
+            }));
+        }
+
+        const cityId = city?.id;
+        const typeLimits: Record<string, number> = {
+          hotel: 8,
+          restaurant: 4,
+          food_item: 8,
+          esim_plan: 4,
+          cityplace: 8,
+          tour: 4,
+          product: 8,
+          transport: 4,
+        };
+
+        const [hotelsBase, cityPlacesBase, esimPlansBase, productsBase, restaurantsBase, featuredItemsRaw, holidayBanners] = await Promise.all([
+          prisma.hotel.findMany({
+            where: {
+              ...(cityId ? { city_id: cityId } : {}),
+              verified: true,
+            },
+            select: {
+              id: true,
+              name: true,
+              price_from: true,
+              rating: true,
+              city_id: true,
+              gallery_asset_ids: true,
+              city: { select: citySummarySelect },
+              coverAsset: { select: mediaSummarySelect },
+            },
+            orderBy: { rating: 'desc' },
+            take: 4,
+          }),
+          prisma.cityPlace.findMany({
+            where: {
+              ...(cityId ? { city_id: cityId } : {}),
+              is_active: true,
+            },
+            select: {
+              id: true,
+              name: true,
+              short_description: true,
+              star_rating: true,
+              is_family_friendly: true,
+              is_pet_friendly: true,
+              city_id: true,
+              gallery_asset_ids: true,
+              city: { select: citySummarySelect },
+              coverAsset: { select: mediaSummarySelect },
+            },
+            orderBy: { star_rating: 'desc' },
+            take: 4,
+          }),
+          prisma.esimPlan.findMany({
+            where: { is_active: true },
+            select: {
+              id: true,
+              name: true,
+              region_text: true,
+              data_text: true,
+              validity_days: true,
+              price: true,
+              number_available: true,
+              gallery_asset_ids: true,
+              coverAsset: { select: mediaSummarySelect },
+            },
+            orderBy: { price: 'asc' },
+            take: 4,
+          }),
+          prisma.product.findMany({
+            where: { status: 'active' },
+            select: {
+              id: true,
+              title: true,
+              price: true,
+              rating: true,
+              category_id: true,
+              gallery_asset_ids: true,
+              category: { select: categorySummarySelect },
+              coverAsset: { select: mediaSummarySelect },
+            },
+            orderBy: { created_at: 'desc' },
+            take: 4,
+          }),
+          prisma.restaurant.findMany({
+            where: {
+              ...(cityId ? { city_id: cityId } : {}),
+              halal_verified: true,
+            },
+            select: {
+              id: true,
+              name: true,
+              rating: true,
+              halal_verified: true,
+              city_id: true,
+              gallery_asset_ids: true,
+              city: { select: citySummarySelect },
+              coverAsset: { select: mediaSummarySelect },
+            },
+            orderBy: { rating: 'desc' },
+            take: 4,
+          }),
+          prisma.featuredItem.findMany({
+            where: {
+              is_active: true,
+              entity_type: { in: Object.keys(typeLimits) },
+            },
+            orderBy: [{ entity_type: 'asc' }, { sort_order: 'asc' }],
+          }),
+          prisma.homepageBanner.findMany({
+            where: { is_active: true },
+            select: {
+              id: true,
+              title: true,
+              subtitle: true,
+              link: true,
+              cta_text: true,
+              coverAsset: { select: mediaSummarySelect },
+            },
+            orderBy: { sort_order: 'asc' },
+          }).catch(() => []),
+        ]);
+
+        const featuredBuckets = Object.fromEntries(
+          Object.keys(typeLimits).map((type) => [type, [] as any[]]),
+        ) as Record<string, any[]>;
+
+        for (const item of featuredItemsRaw) {
+          const bucket = featuredBuckets[item.entity_type];
+          if (!bucket) continue;
+          if (bucket.length < typeLimits[item.entity_type]) {
+            bucket.push(item);
+          }
+        }
+
+        const allFeaturedItems = Object.values(featuredBuckets).flat();
+        const idsByType = Object.fromEntries(
+          Object.keys(typeLimits).map((type) => [
+            type,
+            allFeaturedItems
+              .filter((item) => item.entity_type === type)
+              .map((item) => item.entity_id),
+          ]),
+        ) as Record<string, string[]>;
+
+        const [
+          featuredHotelsBase,
+          featuredRestaurantsBase,
+          featuredFoodItemsBase,
+          featuredCityPlacesBase,
+          featuredToursBase,
+          featuredEsimPlansBase,
+          featuredProductsBase,
+          featuredTransportBase,
+        ] = await Promise.all([
+          idsByType.hotel.length
+            ? prisma.hotel.findMany({
+                where: { id: { in: idsByType.hotel } },
+                select: {
+                  id: true,
+                  name: true,
+                  price_from: true,
+                  rating: true,
+                  city_id: true,
+                  gallery_asset_ids: true,
+                  city: { select: citySummarySelect },
+                  coverAsset: { select: mediaSummarySelect },
+                },
+              })
+            : Promise.resolve([]),
+          idsByType.restaurant.length
+            ? prisma.restaurant.findMany({
+                where: { id: { in: idsByType.restaurant } },
+                select: {
+                  id: true,
+                  name: true,
+                  rating: true,
+                  halal_verified: true,
+                  city_id: true,
+                  gallery_asset_ids: true,
+                  city: { select: citySummarySelect },
+                  coverAsset: { select: mediaSummarySelect },
+                },
+              })
+            : Promise.resolve([]),
+          idsByType.food_item.length
+            ? prisma.foodItem.findMany({
+                where: { id: { in: idsByType.food_item } },
+                select: {
+                  id: true,
+                  name: true,
+                  price: true,
+                  is_halal: true,
+                  gallery_asset_ids: true,
+                  restaurant: {
+                    select: {
+                      id: true,
+                      name: true,
+                      city: { select: citySummarySelect },
+                    },
+                  },
+                  category: { select: { id: true, name: true } },
+                  coverAsset: { select: mediaSummarySelect },
+                },
+              })
+            : Promise.resolve([]),
+          idsByType.cityplace.length
+            ? prisma.cityPlace.findMany({
+                where: { id: { in: idsByType.cityplace } },
+                select: {
+                  id: true,
+                  name: true,
+                  short_description: true,
+                  star_rating: true,
+                  is_family_friendly: true,
+                  is_pet_friendly: true,
+                  city_id: true,
+                  gallery_asset_ids: true,
+                  city: { select: citySummarySelect },
+                  coverAsset: { select: mediaSummarySelect },
+                },
+              })
+            : Promise.resolve([]),
+          idsByType.tour.length
+            ? prisma.tour.findMany({
+                where: { id: { in: idsByType.tour } },
+                select: {
+                  id: true,
+                  name: true,
+                  price_from: true,
+                  rating: true,
+                  city_id: true,
+                  gallery_asset_ids: true,
+                  city: { select: citySummarySelect },
+                  coverAsset: { select: mediaSummarySelect },
+                },
+              })
+            : Promise.resolve([]),
+          idsByType.esim_plan.length
+            ? prisma.esimPlan.findMany({
+                where: { id: { in: idsByType.esim_plan } },
+                select: {
+                  id: true,
+                  name: true,
+                  region_text: true,
+                  data_text: true,
+                  validity_days: true,
+                  price: true,
+                  number_available: true,
+                  gallery_asset_ids: true,
+                  coverAsset: { select: mediaSummarySelect },
+                },
+              })
+            : Promise.resolve([]),
+          idsByType.product.length
+            ? prisma.product.findMany({
+                where: { id: { in: idsByType.product } },
+                select: {
+                  id: true,
+                  title: true,
+                  price: true,
+                  rating: true,
+                  category_id: true,
+                  gallery_asset_ids: true,
+                  category: { select: categorySummarySelect },
+                  coverAsset: { select: mediaSummarySelect },
+                },
+              })
+            : Promise.resolve([]),
+          idsByType.transport.length
+            ? prisma.transportProduct.findMany({
+                where: { id: { in: idsByType.transport } },
+                select: {
+                  id: true,
+                  name: true,
+                  type: true,
+                  base_price: true,
+                  price_per_km: true,
+                  rating: true,
+                  city_id: true,
+                  gallery_asset_ids: true,
+                  city: { select: citySummarySelect },
+                  coverAsset: { select: mediaSummarySelect },
+                },
+              })
+            : Promise.resolve([]),
+        ]);
+
+        const allGalleryIds = [
+          ...hotelsBase,
+          ...cityPlacesBase,
+          ...esimPlansBase,
+          ...productsBase,
+          ...restaurantsBase,
+          ...featuredHotelsBase,
+          ...featuredRestaurantsBase,
+          ...featuredFoodItemsBase,
+          ...featuredCityPlacesBase,
+          ...featuredToursBase,
+          ...featuredEsimPlansBase,
+          ...featuredProductsBase,
+          ...featuredTransportBase,
+        ].flatMap((item: any) => toIdArray(item.gallery_asset_ids));
+
+        const galleryAssetMap = await buildAssetMap([...new Set(allGalleryIds)]);
+
+        const hotels = attachGalleryAssets(hotelsBase, galleryAssetMap);
+        const cityPlaces = attachGalleryAssets(cityPlacesBase, galleryAssetMap);
+        const esimPlans = attachGalleryAssets(esimPlansBase, galleryAssetMap);
+        const products = attachGalleryAssets(productsBase, galleryAssetMap);
+        const restaurants = attachGalleryAssets(restaurantsBase, galleryAssetMap);
+
+        const featuredEntityMaps = {
+          hotel: new Map(attachGalleryAssets(featuredHotelsBase, galleryAssetMap).map((item) => [item.id, item])),
+          restaurant: new Map(attachGalleryAssets(featuredRestaurantsBase, galleryAssetMap).map((item) => [item.id, item])),
+          food_item: new Map(attachGalleryAssets(featuredFoodItemsBase, galleryAssetMap).map((item) => [item.id, item])),
+          cityplace: new Map(attachGalleryAssets(featuredCityPlacesBase, galleryAssetMap).map((item) => [item.id, item])),
+          tour: new Map(attachGalleryAssets(featuredToursBase, galleryAssetMap).map((item) => [item.id, item])),
+          esim_plan: new Map(attachGalleryAssets(featuredEsimPlansBase, galleryAssetMap).map((item) => [item.id, item])),
+          product: new Map(attachGalleryAssets(featuredProductsBase, galleryAssetMap).map((item) => [item.id, item])),
+          transport: new Map(attachGalleryAssets(featuredTransportBase, galleryAssetMap).map((item) => [item.id, item])),
+        } as const;
+
+        const featuredItemsWithData = allFeaturedItems
+          .map((item) => ({
+            ...item,
+            entity: featuredEntityMaps[item.entity_type as keyof typeof featuredEntityMaps]?.get(item.entity_id) || null,
+          }))
+          .filter((item) => item.entity !== null);
+
+        const groupedFeaturedItems: Record<string, any[]> = {
+          hotels: [],
+          restaurants: [],
+          food_items: [],
+          esim_plans: [],
+          cityplaces: [],
+          tours: [],
+          products: [],
+          transport: [],
+        };
+
+        featuredItemsWithData.forEach((item) => {
+          switch (item.entity_type) {
+            case 'hotel':
+              groupedFeaturedItems.hotels.push(item);
+              break;
+            case 'restaurant':
+              groupedFeaturedItems.restaurants.push(item);
+              break;
+            case 'food_item':
+              groupedFeaturedItems.food_items.push(item);
+              break;
+            case 'cityplace':
+              groupedFeaturedItems.cityplaces.push(item);
+              break;
+            case 'tour':
+              groupedFeaturedItems.tours.push(item);
+              break;
+            case 'esim_plan':
+              groupedFeaturedItems.esim_plans.push(item);
+              break;
+            case 'product':
+              groupedFeaturedItems.products.push(item);
+              break;
+            case 'transport':
+              groupedFeaturedItems.transport.push(item);
+              break;
+          }
+        });
+
+        const featuredCards = [];
+        if (hotels.length > 0) {
+          featuredCards.push({
+            id: 'featured-hotel',
+            type: 'hotel',
+            title: hotels[0].name,
+            subtitle: `Starting from Â¥${hotels[0].price_from || 'N/A'}`,
+            image: hotels[0].coverAsset?.public_url || null,
+            link: '/services/hotel',
+            badge: 'Featured',
+          });
+        }
+        if (restaurants.length > 0) {
+          featuredCards.push({
+            id: 'featured-restaurant',
+            type: 'restaurant',
+            title: 'Halal Food Delivery',
+            subtitle: 'Order authentic halal meals',
+            image: restaurants[0].coverAsset?.public_url || null,
+            link: '/services/halal-food',
+            badge: 'Popular',
+          });
+        }
+
+        return {
+          city,
+          top_hotels: hotels,
+          top_city_places: cityPlaces,
+          top_esim_plans: esimPlans,
+          top_products: products,
+          top_restaurants: restaurants,
+          holiday_banners: holidayBanners,
+          featured_cards: featuredCards.slice(0, 2),
+          featured_items: featuredItemsWithData,
+          featured_items_by_type: groupedFeaturedItems,
+        };
+      } catch (error: any) {
+        fastify.log.error({ error, stack: error.stack }, '[Home] Failed to load homepage data');
+        return emptyHomepage;
+      }
+    })();
     
     // Get city by slug or default to Guangzhou
     let city = null;
@@ -3211,6 +3714,17 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
   // Get active service offers
   fastify.get('/offers', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      const mediaSummarySelect = {
+        id: true,
+        public_url: true,
+        thumbnail_url: true,
+        width: true,
+        height: true,
+      } as const;
+      const toIdArray = (value: unknown): string[] => {
+        if (!Array.isArray(value)) return [];
+        return value.filter((item): item is string => typeof item === 'string' && item.length > 0);
+      };
       const now = new Date();
       const offers = await prisma.serviceBasedOffer.findMany({
         where: {
@@ -3222,8 +3736,21 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
             { valid_from: null, valid_until: { gte: now } },
           ],
         },
-        include: {
-          coverAsset: true,
+        select: {
+          id: true,
+          service_type: true,
+          offer_type: true,
+          value: true,
+          currency: true,
+          title: true,
+          description: true,
+          terms_and_conditions: true,
+          gallery_asset_ids: true,
+          valid_from: true,
+          valid_until: true,
+          coverAsset: {
+            select: mediaSummarySelect,
+          },
         },
         orderBy: [
           { valid_from: 'asc' },
@@ -3232,29 +3759,21 @@ fastify.get('/banners', async (request: FastifyRequest, reply: FastifyReply) => 
         take: 10, // Return more than 4 so frontend can choose
       });
 
-      // Load gallery assets
-      const offersWithGallery = await Promise.all(
-        offers.map(async (offer: any) => {
-          try {
-            const galleryIds = (offer.gallery_asset_ids as string[]) || [];
-            const galleryAssets = galleryIds.length > 0
-              ? await prisma.mediaAsset.findMany({
-                  where: { id: { in: galleryIds } },
-                })
-              : [];
-            return {
-              ...offer,
-              galleryAssets,
-            };
-          } catch (error) {
-            // If gallery loading fails, return offer without gallery
-            return {
-              ...offer,
-              galleryAssets: [],
-            };
-          }
-        })
-      );
+      const uniqueGalleryIds = [...new Set(offers.flatMap((offer: any) => toIdArray(offer.gallery_asset_ids)))];
+      const galleryAssets = uniqueGalleryIds.length > 0
+        ? await prisma.mediaAsset.findMany({
+            where: { id: { in: uniqueGalleryIds } },
+            select: mediaSummarySelect,
+          })
+        : [];
+      const galleryAssetMap = new Map(galleryAssets.map((asset) => [asset.id, asset]));
+
+      const offersWithGallery = offers.map((offer: any) => ({
+        ...offer,
+        galleryAssets: toIdArray(offer.gallery_asset_ids)
+          .map((id) => galleryAssetMap.get(id))
+          .filter(Boolean),
+      }));
 
       return offersWithGallery;
     } catch (error: any) {
