@@ -40,8 +40,8 @@
       <div class="w-full px-3 py-4 sm:px-4 lg:px-5">
         <div class="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
           <span class="rounded-full bg-white px-3 py-1.5 shadow-sm">Shipping time: 12-14 days</span>
-          <span class="rounded-full bg-white px-3 py-1.5 shadow-sm">BDT default</span>
-          <span class="rounded-full bg-white px-3 py-1.5 shadow-sm">Premium products shown first</span>
+          <span class="rounded-full bg-white px-3 py-1.5 shadow-sm">Order Now pay shipment fee after delivery</span>
+          <span class="rounded-full bg-white px-3 py-1.5 shadow-sm">Premium products</span>
         </div>
 
         <section v-if="localItems.length > 0" class="mb-6 rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)]">

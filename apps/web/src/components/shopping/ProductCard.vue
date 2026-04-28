@@ -19,7 +19,7 @@
           <Button
             variant="primary"
             size="sm"
-            class="rounded-full bg-white/95 px-3 text-[12px] text-black shadow-lg hover:bg-white"
+            class="rounded-full bg-slate-900/90 px-3 text-[12px] text-black shadow-lg hover:bg-slate-400"
             @click.stop="$emit('click', product)"
           >
             View

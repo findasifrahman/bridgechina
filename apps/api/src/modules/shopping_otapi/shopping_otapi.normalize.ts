@@ -76,10 +76,32 @@ function looksLikeImageUrl(value: string): boolean {
   const text = String(value || '').trim();
   if (!text) return false;
   if (!/^https?:\/\//i.test(text)) return false;
+  let parsed: URL | null = null;
+  try {
+    parsed = new URL(text);
+  } catch {
+    parsed = null;
+  }
+
+  const host = parsed?.hostname.toLowerCase() || '';
+  const pathname = parsed?.pathname.toLowerCase() || '';
+  if (host.includes('detail.1688.com') && pathname.includes('/offer/')) return false;
+  if (pathname.endsWith('.html')) return false;
   return (
     /\.(png|jpe?g|webp|gif|bmp|avif)(\?|#|$)/i.test(text) ||
-    text.includes('alicdn.com') ||
-    text.includes('1688.com')
+    (
+      [
+        'alicdn.com',
+        'cdn.otcommerce.com',
+        'r2.dev',
+      ].some((domain) => host === domain || host.endsWith(`.${domain}`) || host.includes(domain))
+      && (
+        /\/img(?:\/|$)/i.test(pathname) ||
+        /\/image(?:\/|$)/i.test(pathname) ||
+        /\/images(?:\/|$)/i.test(pathname) ||
+        /\/ibank\//i.test(pathname)
+      )
+    )
   );
 }
 
