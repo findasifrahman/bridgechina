@@ -8,7 +8,7 @@
             <h1 class="mt-1 text-[18px] font-black tracking-tight text-slate-950">
               {{ heading }}
             </h1>
-            <p class="mt-1 text-[11px] text-slate-500">Search by text or image, premium products first, then OTAPI products below.</p>
+            <p class="mt-1 text-[11px] text-slate-500">Search by text or image, premium products first, then marketplace products below.</p>
           </div>
 
           <form class="flex w-full items-center gap-2 lg:w-auto lg:min-w-[620px]" @submit.prevent="runSearch">

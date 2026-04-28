@@ -86,7 +86,7 @@
         </div>
 
         <div class="grid gap-4 sm:grid-cols-2">
-          <Input v-model="productForm.source_url" label="Source URL" placeholder="OTAPI / supplier link" />
+          <Input v-model="productForm.source_url" label="Source URL" placeholder="API / supplier link" />
           <Input v-model="productForm.external_id" label="External ID" placeholder="Supplier item id" />
         </div>
 

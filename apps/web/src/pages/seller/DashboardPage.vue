@@ -40,7 +40,7 @@
         </div>
       </div>
       <div class="rounded-2xl border border-slate-200 bg-white p-4">
-        <p class="text-[11px] uppercase tracking-[0.2em] text-slate-500">OTAPI markup</p>
+        <p class="text-[11px] uppercase tracking-[0.2em] text-slate-500">API markup</p>
         <p class="mt-2 text-3xl font-semibold text-slate-900">{{ settings.markup }}%</p>
         <p class="mt-1 text-[11px] text-slate-500">Read only in seller panel.</p>
       </div>

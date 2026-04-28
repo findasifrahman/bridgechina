@@ -186,7 +186,7 @@
 
         <div class="grid gap-4 xl:grid-cols-3">
           <Input v-model="productForm.sku" label="Master SKU" placeholder="Optional top-level SKU" />
-          <Input v-model="productForm.source_url" label="Source URL" placeholder="OTAPI or supplier link" />
+          <Input v-model="productForm.source_url" label="Source URL" placeholder="Marketplace or supplier link" />
           <Input v-model="productForm.external_id" label="External ID" placeholder="Supplier product ID" />
         </div>
 
@@ -213,8 +213,8 @@
         <div class="space-y-3 rounded-2xl border border-slate-200 p-4">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h4 class="text-base font-semibold text-slate-900">Cover image and gallery</h4>
-              <p class="text-xs text-slate-500">Pick from recently uploaded media assets.</p>
+              <h4 class="text-base font-semibold text-slate-900">Media library</h4>
+              <p class="text-xs text-slate-500">Choose one cover image and any number of gallery images from the same grid.</p>
             </div>
             <div class="flex flex-wrap gap-2">
               <Button variant="ghost" size="sm" type="button" @click="router.push('/admin/media')">Media page</Button>
@@ -243,52 +243,38 @@
               </span>
             </div>
           </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            <span>Cover: <span class="font-semibold text-slate-900">{{ productForm.cover_asset_id ? getMediaLabel(mediaAssets.find((asset) => asset.id === productForm.cover_asset_id)) : 'Not selected' }}</span></span>
+            <span>Gallery selected: <span class="font-semibold text-slate-900">{{ productForm.gallery_asset_ids.length }}</span></span>
+          </div>
+
           <div v-if="mediaAssets.length === 0" class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
             No media assets loaded. Upload images in Media first.
           </div>
-          <div v-else class="max-h-72 overflow-auto pr-1">
-            <div class="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
-              <button
+          <div v-else class="max-h-80 overflow-auto pr-1">
+            <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+              <div
                 v-for="asset in mediaAssets"
                 :key="asset.id"
-                type="button"
-                class="group overflow-hidden rounded-xl border bg-white text-left transition"
-                :class="productForm.cover_asset_id === asset.id ? 'border-teal-500 ring-2 ring-teal-200' : 'border-slate-200 hover:border-teal-300'"
-                @click="setCoverAsset(asset.id)"
+                class="overflow-hidden rounded-xl border bg-white transition"
+                :class="productForm.cover_asset_id === asset.id ? 'border-teal-500 ring-2 ring-teal-200' : productForm.gallery_asset_ids.includes(asset.id) ? 'border-rose-500 ring-2 ring-rose-200' : 'border-slate-200 hover:border-teal-300'"
               >
-                <img :src="asset.thumbnail_url || asset.public_url" class="h-20 w-full object-cover" :alt="asset.r2_key" />
-                <div class="space-y-1 px-2 py-2">
-                  <div class="truncate text-[11px] font-medium text-slate-900">{{ getMediaLabel(asset) }}</div>
-                  <div class="flex items-center justify-between gap-2">
-                    <span class="text-[10px] text-slate-500">Cover</span>
-                    <span v-if="productForm.cover_asset_id === asset.id" class="rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-semibold text-teal-700">Selected</span>
-                  </div>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          <div class="mt-3">
-            <div class="mb-2 text-sm font-medium text-slate-700">Gallery images</div>
-            <div v-if="mediaAssets.length === 0" class="text-xs text-slate-500">Upload media to attach multiple gallery images.</div>
-            <div v-else class="max-h-72 overflow-auto pr-1">
-              <div class="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-6">
-                <button
-                  v-for="asset in mediaAssets"
-                  :key="`gallery-${asset.id}`"
-                  type="button"
-                  class="group overflow-hidden rounded-xl border bg-white text-left transition"
-                  :class="productForm.gallery_asset_ids.includes(asset.id) ? 'border-rose-500 ring-2 ring-rose-200' : 'border-slate-200 hover:border-rose-300'"
-                  @click="toggleGalleryAsset(asset.id)"
-                >
-                  <img :src="asset.thumbnail_url || asset.public_url" class="h-20 w-full object-cover" :alt="asset.r2_key" />
-                  <div class="px-2 py-2">
+                <button type="button" class="block w-full text-left" @click="toggleGalleryAsset(asset.id)">
+                  <img :src="asset.thumbnail_url || asset.public_url" class="aspect-square w-full object-cover" :alt="asset.r2_key" />
+                  <div class="space-y-1 px-2 py-2">
                     <div class="truncate text-[11px] font-medium text-slate-900">{{ getMediaLabel(asset) }}</div>
-                    <div class="mt-1 text-[10px] text-slate-500">
-                      {{ productForm.gallery_asset_ids.includes(asset.id) ? 'Included' : 'Click to add' }}
+                    <div class="text-[10px] text-slate-500">
+                      {{ productForm.gallery_asset_ids.includes(asset.id) ? 'Included in gallery' : 'Click to add to gallery' }}
                     </div>
                   </div>
                 </button>
+                <div class="flex items-center gap-2 border-t border-slate-100 px-2 py-2 text-[10px]">
+                  <button type="button" class="rounded-full bg-teal-50 px-2 py-1 font-semibold text-teal-700 hover:bg-teal-100" @click="setCoverAsset(asset.id)">
+                    Use as cover
+                  </button>
+                  <span v-if="productForm.cover_asset_id === asset.id" class="rounded-full bg-teal-100 px-2 py-1 font-semibold text-teal-700">Cover</span>
+                </div>
               </div>
             </div>
           </div>
@@ -543,6 +529,7 @@ function galleryCount(product: any) {
 }
 
 function getMediaLabel(item: any): string {
+  if (!item) return 'Media';
   const titleTag = Array.isArray(item.tags)
     ? item.tags.find((tag: string) => typeof tag === 'string' && tag.startsWith('title:'))
     : null;
@@ -619,7 +606,7 @@ async function loadMediaAssets() {
     const response = await axios.get('/api/admin/media', {
       params: {
         page: 1,
-        limit: 500,
+        limit: 240,
       },
     });
     mediaAssets.value = response.data?.media || [];

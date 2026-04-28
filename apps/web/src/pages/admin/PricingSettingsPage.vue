@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-6">
     <div class="flex items-center justify-between gap-4">
-      <PageHeader title="Pricing Settings" subtitle="Control shipping ranges, OTAPI markup, and MOQ guardrails" />
+      <PageHeader title="Pricing Settings" subtitle="Control shipping ranges, Marketplace markup, and MOQ guardrails" />
       <Button variant="ghost" size="sm" @click="loadSettings" :loading="loading">
         <RefreshCw class="mr-2 h-4 w-4" :class="{ 'animate-spin': loading }" />
         Refresh
@@ -49,15 +49,15 @@
       <Card>
         <CardBody class="space-y-4">
           <div>
-            <h3 class="text-lg font-semibold text-slate-900">OTAPI markup</h3>
-            <p class="text-sm text-slate-500">Applied to OTAPI product prices before display.</p>
+            <h3 class="text-lg font-semibold text-slate-900">Marketplace markup</h3>
+            <p class="text-sm text-slate-500">Applied to  product prices before display.</p>
           </div>
           <Input v-model.number="markupPercent" type="number" min="0" step="0.1" label="Markup percent" />
           <Button variant="primary" :loading="savingMarkup" @click="saveMarkup">Save markup</Button>
 
           <div class="pt-4">
             <h3 class="text-lg font-semibold text-slate-900">MOQ rule</h3>
-            <p class="text-sm text-slate-500">Applies to OTAPI checkout and admin-added products.</p>
+            <p class="text-sm text-slate-500">Applies to Marketplace checkout and admin-added products.</p>
           </div>
           <div class="grid gap-3 sm:grid-cols-2">
             <Input v-model.number="moqRule.minimum_product" type="number" min="1" label="Minimum product qty" />

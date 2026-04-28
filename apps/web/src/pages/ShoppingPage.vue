@@ -127,21 +127,34 @@
             <div class="relative hidden overflow-hidden border-l border-slate-100 px-5 py-3 lg:block">
               <div class="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(13,148,136,0.12),transparent_32%),radial-gradient(circle_at_85%_18%,rgba(15,23,42,0.08),transparent_28%),radial-gradient(circle_at_80%_80%,rgba(34,197,94,0.08),transparent_26%)]" />
               <div class="relative flex flex-col gap-4">
-                <div class="rounded-[30px] border border-white/80 bg-white/78 p-4 shadow-[0_16px_36px_rgba(15,23,42,0.08)] backdrop-blur">
-                  <img :src="currentHeroSlide.image" alt="Shopping preview" class="h-28 w-full rounded-[24px] object-cover opacity-75" />
+                <div
+                  class="rounded-[30px] border border-white/80 bg-white/78 p-4 shadow-[0_16px_36px_rgba(15,23,42,0.08)] backdrop-blur"
+                  role="button"
+                  tabindex="0"
+                  @click="openBannerModal(currentHeroSlide)"
+                  @keyup.enter="openBannerModal(currentHeroSlide)"
+                >
+                  <img :src="currentHeroSlide.image" :alt="currentHeroSlide.title" class="h-32 w-full rounded-[24px] object-cover opacity-90" />
                   <div class="mt-3 flex items-center justify-between">
                     <div>
-                      <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Carousel preview</p>
                       <p class="mt-1 text-[14px] font-black tracking-tight text-slate-900">{{ currentHeroSlide.title }}</p>
+                      <p v-if="currentHeroSlide.subtitle" class="mt-1 line-clamp-2 text-[11px] text-slate-500">{{ currentHeroSlide.subtitle }}</p>
                     </div>
-                    <div class="flex gap-2">
+                    <div class="flex flex-col items-end gap-2">
                       <button
-                        v-for="(slide, index) in heroSlides"
+                        type="button"
+                        class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold text-slate-600 hover:border-teal-200 hover:text-teal-700"
+                        @click.stop="openBannerModal(currentHeroSlide)"
+                      >
+                        View details
+                      </button>
+                      <button
+                        v-for="(slide, index) in carouselItems"
                         :key="slide.key"
                         type="button"
                         class="h-2.5 rounded-full transition-all"
                         :class="currentHeroSlideIndex === index ? 'w-8 bg-teal-600' : 'w-2.5 bg-slate-300'"
-                        @click="currentHeroSlideIndex = index"
+                        @click.stop="currentHeroSlideIndex = index"
                         :aria-label="`Show hero slide ${index + 1}`"
                       />
                     </div>
@@ -286,7 +299,6 @@
               <div>
                 <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-400">Curated categories</p>
                 <h2 class="mt-1 text-[17px] font-black tracking-tight text-slate-950">iPhone, bags, jewelry, and kitchenware</h2>
-                <p class="mt-1 text-[11px] text-slate-500">Two saved products per category, refreshed from category searches and OTAPI cache.</p>
               </div>
               <button
                 type="button"
@@ -307,9 +319,9 @@
                 <div class="flex items-center justify-between gap-3">
                   <div>
                     <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">{{ section.label }}</p>
-                    <p class="mt-1 text-[12px] font-semibold text-slate-700">{{ section.items.length }} saved picks</p>
+                    <p class="mt-1 text-[12px] font-semibold text-slate-700">Premium Items</p>
                   </div>
-                  <span class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">DB backed</span>
+                  <span class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">Platform backed</span>
                 </div>
 
                 <div class="mt-3 grid grid-cols-2 gap-2">
@@ -348,7 +360,7 @@
             </div>
 
             <div v-if="curatedSections.length === 0" class="mt-4 rounded-[22px] border border-slate-200 bg-slate-50 p-4 text-slate-500">
-              We will show saved category picks once OTAPI search results are stored in the database.
+              We will show saved category picks once  search results are stored in the database.
             </div>
           </div>
         </section>
@@ -423,9 +435,7 @@
                 </div>
                 <div class="p-4">
                   <div class="flex items-center gap-2">
-                    <span class="rounded-full bg-teal-600 px-2.5 py-1 text-[10px] font-bold text-white">
-                      {{ offer.offer_type === 'percentage' ? `${offer.value}% off` : `CNY ${offer.value} off` }}
-                    </span>
+
                     <p class="truncate text-[12px] font-semibold text-slate-900">{{ offer.title || 'Special offer' }}</p>
                   </div>
                   <p class="mt-2 line-clamp-2 text-[11px] leading-5 text-slate-500">
@@ -468,6 +478,32 @@
       </aside>
     </div>
 
+    <Modal v-model="showBannerModal" :title="selectedBanner?.title || 'Banner details'" size="lg">
+      <div v-if="selectedBanner" class="space-y-4">
+        <div class="overflow-hidden rounded-[24px] border border-slate-200 bg-slate-100">
+          <img
+            :src="selectedBanner.coverAsset?.public_url || selectedBanner.coverAsset?.thumbnail_url || selectedBanner.imageUrl || selectedBanner.image"
+            :alt="selectedBanner.title"
+            class="h-56 w-full object-cover"
+          />
+        </div>
+        <div class="space-y-2">
+          <p class="text-[10px] font-bold uppercase tracking-[0.28em] text-slate-400">Homepage banner</p>
+          <h3 class="text-[18px] font-black tracking-tight text-slate-950">{{ selectedBanner.title }}</h3>
+          <p v-if="selectedBanner.subtitle" class="text-[12px] leading-6 text-slate-600">{{ selectedBanner.subtitle }}</p>
+          <div v-if="selectedBanner.link" class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+            Link: {{ selectedBanner.link }}
+          </div>
+        </div>
+        <div class="flex justify-end gap-2">
+          <Button v-if="selectedBanner.link" variant="primary" @click="handleOfferClick(selectedBanner)">
+            Open link
+          </Button>
+          <Button variant="ghost" @click="showBannerModal = false">Close</Button>
+        </div>
+      </div>
+    </Modal>
+
     <div class="px-3 pb-5 lg:hidden">
       <div class="mt-3 flex gap-2 overflow-x-auto pb-1">
         <button
@@ -503,6 +539,7 @@ import { useRouter } from 'vue-router';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
 import { useShoppingCart } from '@/composables/useShoppingCart';
+import { Modal } from '@bridgechina/ui';
 import {
   ArrowRight,
   Camera,
@@ -531,6 +568,16 @@ type HeroSlide = {
   key: string;
   title: string;
   image: string;
+};
+
+type CarouselItem = {
+  key: string;
+  title: string;
+  subtitle?: string;
+  image: string;
+  link?: string | null;
+  ctaText?: string | null;
+  banner?: any;
 };
 
 function heroSvg(title: string, subtitle: string, accent: string, accent2: string): string {
@@ -593,6 +640,7 @@ const categories = ref<any[]>([]);
 const hotItems = ref<any[]>([]);
 const searchResults = ref<any[]>([]);
 const offers = ref<any[]>([]);
+const homepageBanners = ref<any[]>([]);
 const loading = ref(false);
 const searchQuery = ref('');
 const selectedCategory = ref('');
@@ -610,6 +658,8 @@ const selectedCurrency = ref<'BDT' | 'CNY' | 'USD'>('BDT');
 const recentSearches = ref<string[]>([]);
 const premiumProducts = ref<any[]>([]);
 const curatedSections = ref<Array<{ slug: string; label: string; items: any[] }>>([]);
+const showBannerModal = ref(false);
+const selectedBanner = ref<any>(null);
 const shoppingSettings = ref<any>({});
 const conversionRates = ref<{ CNY_TO_BDT?: number; CNY_TO_USD?: number }>({
   CNY_TO_BDT: 15,
@@ -622,7 +672,43 @@ let heroTimer: number | undefined;
 
 const layoutClass = computed(() => 'xl:grid-cols-[minmax(0,1fr)_300px]');
 
-const currentHeroSlide = computed(() => heroSlides[heroSlideIndex.value % heroSlides.length]);
+const carouselItems = computed<CarouselItem[]>(() => {
+  if (homepageBanners.value.length > 0) {
+    return homepageBanners.value.map((banner: any) => ({
+      key: banner.id,
+      title: banner.title || 'Homepage banner',
+      subtitle: banner.subtitle || '',
+      image: banner.coverAsset?.public_url || banner.coverAsset?.thumbnail_url || heroSlides[0].image,
+      link: banner.link || null,
+      ctaText: banner.cta_text || 'Learn more',
+      banner,
+    }));
+  }
+
+  return heroSlides.map((slide) => ({
+    key: slide.key,
+    title: slide.title,
+    subtitle: '',
+    image: slide.image,
+    link: null,
+    ctaText: 'Learn more',
+    banner: null,
+  }));
+});
+
+const currentHeroSlide = computed<CarouselItem>(() => {
+  const items = carouselItems.value;
+  if (items.length === 0) {
+    return {
+      key: 'fallback',
+      title: 'Shopping preview',
+      image: heroSlides[0].image,
+      subtitle: '',
+      banner: null,
+    };
+  }
+  return items[heroSlideIndex.value % items.length];
+});
 const hasSearchResults = computed(() => searchTriggered.value);
 const visibleProducts = computed(() => (hasSearchResults.value ? searchResults.value : hotItems.value));
 const displayProducts = computed(() => visibleProducts.value);
@@ -838,7 +924,25 @@ function handleAddToCart(product: any) {
 }
 
 function handleOfferClick(offer: any) {
-  if (offer?.link) router.push(offer.link);
+  const link = String(offer?.link || '').trim();
+  if (!link) return;
+  if (/^https?:\/\//i.test(link)) {
+    window.open(link, '_blank', 'noopener,noreferrer');
+    return;
+  }
+  router.push(link);
+}
+
+function openBannerModal(banner: CarouselItem | null | undefined) {
+  if (!banner) return;
+  selectedBanner.value = banner.banner || {
+    title: banner.title,
+    subtitle: banner.subtitle,
+    link: banner.link,
+    cta_text: banner.ctaText,
+    coverAsset: banner.image ? { public_url: banner.image, thumbnail_url: banner.image } : null,
+  };
+  showBannerModal.value = true;
 }
 
 async function loadCategories() {
@@ -890,6 +994,16 @@ async function loadOffers() {
   }
 }
 
+async function loadHomepageBanners() {
+  try {
+    const response = await axios.get('/api/public/homepage-banners');
+    homepageBanners.value = Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    console.error('Failed to load homepage banners:', error);
+    homepageBanners.value = [];
+  }
+}
+
 async function loadPremiumProducts() {
   try {
     const response = await axios.get('/api/public/shopping/premium-products', {
@@ -930,12 +1044,14 @@ async function loadConversionRates() {
 
 onMounted(() => {
   heroTimer = window.setInterval(() => {
-    heroSlideIndex.value = (heroSlideIndex.value + 1) % heroSlides.length;
+    const count = carouselItems.value.length || heroSlides.length || 1;
+    heroSlideIndex.value = (heroSlideIndex.value + 1) % count;
   }, 4200);
 
   loadCategories();
   loadHotItems();
   loadOffers();
+  loadHomepageBanners();
   loadPremiumProducts();
   loadCuratedSections();
   loadShopSettings();

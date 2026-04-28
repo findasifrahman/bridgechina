@@ -1135,6 +1135,86 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     });
   });
 
+  fastify.post('/homepage/offers', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const body = z.object({
+      title: z.string().min(1),
+      subtitle: z.string().optional(),
+      description: z.string().optional(),
+      offer_type: z.string().optional(),
+      value: z.number().optional(),
+      currency: z.string().optional(),
+      link: z.string().optional(),
+      cover_asset_id: z.string().optional(),
+      is_active: z.boolean().optional(),
+      sort_order: z.number().int().optional(),
+      valid_from: z.string().optional(),
+      valid_until: z.string().optional(),
+    }).parse(request.body);
+
+    const offer = await prisma.homepageOffer.create({
+      data: {
+        title: body.title,
+        subtitle: body.subtitle || null,
+        description: body.description || null,
+        offer_type: body.offer_type || 'promotion',
+        value: body.value ?? null,
+        currency: body.currency || 'BDT',
+        link: body.link || null,
+        cover_asset_id: body.cover_asset_id || null,
+        is_active: body.is_active ?? true,
+        sort_order: body.sort_order ?? 0,
+        valid_from: body.valid_from ? new Date(body.valid_from) : null,
+        valid_until: body.valid_until ? new Date(body.valid_until) : null,
+      },
+      include: {
+        coverAsset: true,
+      },
+    });
+
+    return reply.status(201).send(offer);
+  });
+
+  fastify.put('/homepage/offers/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const existing = await prisma.homepageOffer.findUnique({ where: { id } });
+    if (!existing) {
+      return reply.status(404).send({ error: 'Homepage offer not found' });
+    }
+
+    const body = request.body as any;
+    return prisma.homepageOffer.update({
+      where: { id },
+      data: {
+        title: body.title ?? undefined,
+        subtitle: body.subtitle ?? undefined,
+        description: body.description ?? undefined,
+        offer_type: body.offer_type ?? undefined,
+        value: body.value !== undefined ? Number(body.value) : undefined,
+        currency: body.currency ?? undefined,
+        link: body.link ?? undefined,
+        cover_asset_id: body.cover_asset_id ?? undefined,
+        is_active: body.is_active ?? undefined,
+        sort_order: body.sort_order !== undefined ? Number(body.sort_order) : undefined,
+        valid_from: body.valid_from !== undefined ? (body.valid_from ? new Date(body.valid_from) : null) : undefined,
+        valid_until: body.valid_until !== undefined ? (body.valid_until ? new Date(body.valid_until) : null) : undefined,
+      },
+      include: {
+        coverAsset: true,
+      },
+    });
+  });
+
+  fastify.delete('/homepage/offers/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const existing = await prisma.homepageOffer.findUnique({ where: { id } });
+    if (!existing) {
+      return reply.status(404).send({ error: 'Homepage offer not found' });
+    }
+
+    await prisma.homepageOffer.delete({ where: { id } });
+    return { message: 'Homepage offer deleted' };
+  });
+
   fastify.get('/roles', { preHandler: auth }, async () => {
     return prisma.role.findMany({
       orderBy: { name: 'asc' },

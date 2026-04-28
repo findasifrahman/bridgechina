@@ -171,6 +171,11 @@ const router = createRouter({
           component: () => import('@/pages/admin/HomepageBannersPage.vue'),
         },
         {
+          path: 'homepage-offers',
+          name: 'admin-homepage-offers',
+          component: () => import('@/pages/admin/HomepageOffersPage.vue'),
+        },
+        {
           path: 'blog',
           name: 'admin-blog',
           component: () => import('@/pages/admin/BlogPage.vue'),
@@ -192,7 +197,8 @@ const router = createRouter({
         { path: 'payments', redirect: '/admin/payment-proofs' },
         { path: 'catalog', redirect: '/admin/shopping' },
         { path: 'featured-items', redirect: '/admin/shopping' },
-        { path: 'service-offers', redirect: '/admin/shopping' },
+        { path: 'service-offers', redirect: '/admin/homepage-offers' },
+        { path: 'homepage-offers', redirect: '/admin/homepage-offers' },
         { path: 'homepage-banners', redirect: '/admin/homepage' },
         { path: 'service-providers', redirect: '/admin/sellers' },
         { path: 'shipping-rates', redirect: '/admin/pricing' },

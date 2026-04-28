@@ -5,10 +5,18 @@
         <h1 class="text-2xl font-bold text-slate-900">Homepage Banners</h1>
         <p class="text-sm text-slate-600 mt-1">Manage carousel banners displayed on the homepage</p>
       </div>
-      <Button variant="primary" @click="openAddModal">
-        <Plus class="h-4 w-4 mr-2" />
-        Add Banner
-      </Button>
+      <div class="flex gap-2">
+        <router-link
+          to="/admin/homepage-offers"
+          class="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+        >
+          Featured Deals
+        </router-link>
+        <Button variant="primary" @click="openAddModal">
+          <Plus class="h-4 w-4 mr-2" />
+          Add Banner
+        </Button>
+      </div>
     </div>
 
     <!-- Banners List -->
@@ -195,7 +203,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { Plus, Edit, Trash2 } from 'lucide-vue-next';
+import { Edit, ImageIcon, Plus, Trash2, X } from 'lucide-vue-next';
 import {
   Card,
   CardBody,

@@ -652,4 +652,48 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
       return [];
     }
   });
+
+  fastify.get('/homepage-banners', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      if (!shoppingDbAvailable) {
+        return [];
+      }
+      const banners = await prisma.homepageBanner.findMany({
+        where: {
+          is_active: true,
+        },
+        select: {
+          id: true,
+          title: true,
+          subtitle: true,
+          link: true,
+          cta_text: true,
+          sort_order: true,
+          coverAsset: {
+            select: {
+              id: true,
+              public_url: true,
+              thumbnail_url: true,
+              width: true,
+              height: true,
+            },
+          },
+        },
+        orderBy: [
+          { sort_order: 'asc' },
+          { created_at: 'desc' },
+        ],
+        take: 12,
+      });
+      return banners;
+    } catch (error: any) {
+      if (isDatabaseUnavailable(error)) {
+        shoppingDbAvailable = false;
+        fastify.log.warn('[Homepage Banners] Database connection unavailable - returning empty array');
+        return [];
+      }
+      fastify.log.error({ error, stack: error.stack }, '[Homepage Banners] Database error');
+      return [];
+    }
+  });
 }

@@ -27,7 +27,7 @@ const posts = [
   {
     tag: 'Shopping',
     title: 'How premium factory products appear first',
-    summary: 'Manual products added by admin show before OTAPI results so customers see curated items first.',
+    summary: 'Manual products added by admin show before Marketplace results so customers see curated items first.',
   },
   {
     tag: 'Shipping',
