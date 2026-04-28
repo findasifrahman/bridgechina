@@ -212,7 +212,7 @@
           <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)] sm:p-5">
             <div class="flex items-start justify-between gap-4">
               <div>
-                <h2 class="mt-1 text-[17px] font-black tracking-tight text-red-400">Premium factory products</h2>
+                <h2 class="mt-1 text-[17px] font-black tracking-tight text-red-400">Premium factory products (ChinaBuyBD Commitment)</h2>
               </div>
               <span class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">Top 4 highlighted</span>
             </div>
