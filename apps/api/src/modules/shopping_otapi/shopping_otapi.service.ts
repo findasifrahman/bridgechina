@@ -271,6 +271,44 @@ function isUsableDetail(detail: ProductDetailOTAPI | null | undefined): detail i
   return !!detail && !!detail.externalId && detail.externalId.trim().length > 0 && detail.title !== 'Untitled Product';
 }
 
+function mergeProductDetail(primary: ProductDetailOTAPI, fallback: ProductDetailOTAPI): ProductDetailOTAPI {
+  const mergedImages = Array.from(new Set([
+    ...(Array.isArray(primary.images) ? primary.images : []),
+    ...(Array.isArray(fallback.images) ? fallback.images : []),
+    primary.imageUrl,
+    fallback.imageUrl,
+  ].filter((img): img is string => typeof img === 'string' && img.trim().length > 0)));
+
+  const mergedSkus = Array.isArray(primary.skus) && primary.skus.length > 0
+    ? primary.skus
+    : fallback.skus;
+
+  const mergedProps = Array.isArray(primary.productProps) && primary.productProps.length > 0
+    ? primary.productProps
+    : fallback.productProps;
+
+  return {
+    ...fallback,
+    ...primary,
+    title: primary.title && primary.title !== 'Untitled Product' ? primary.title : fallback.title,
+    description: primary.description && primary.description.trim().length > 0 ? primary.description : fallback.description,
+    imageUrl: primary.imageUrl || fallback.imageUrl || mergedImages[0],
+    images: mergedImages.length > 0 ? mergedImages : undefined,
+    skus: mergedSkus,
+    productProps: mergedProps,
+    priceMin: primary.priceMin ?? fallback.priceMin,
+    priceMax: primary.priceMax ?? fallback.priceMax,
+    totalSold: primary.totalSold ?? fallback.totalSold,
+    rating: primary.rating ?? fallback.rating,
+    ratingCount: primary.ratingCount ?? fallback.ratingCount,
+    availableQuantity: primary.availableQuantity ?? fallback.availableQuantity,
+    stock: primary.stock ?? fallback.stock,
+    estimatedWeightKg: primary.estimatedWeightKg ?? fallback.estimatedWeightKg,
+    weight_kg: primary.weight_kg ?? fallback.weight_kg,
+    detailUrl: primary.detailUrl || fallback.detailUrl,
+  };
+}
+
 async function fallbackDetailFromSearchCache(externalId: string): Promise<ProductDetailOTAPI | null> {
   const cachedSearches = await prisma.externalSearchCache.findMany({
     where: {
@@ -291,6 +329,24 @@ async function fallbackDetailFromSearchCache(externalId: string): Promise<Produc
     if (matched) {
       const detail = await applyMarkupToDetail(normalizeOTAPIProductDetail(matched));
       if (isUsableDetail(detail)) return detail;
+
+      const card = await applyMarkupToCards([normalizeOTAPIProductCard(matched)]).then((cards) => cards[0]);
+      if (card && card.externalId) {
+        const fallbackDetail: ProductDetailOTAPI = {
+          ...card,
+          description: '',
+          skus: null,
+          productProps: undefined,
+          raw: matched,
+          detailUrl: card.detailUrl || card.sourceUrl,
+          estimatedWeightKg: card.estimatedWeightKg,
+          weight_kg: card.weight_kg,
+        } as ProductDetailOTAPI;
+
+        if (isUsableDetail(fallbackDetail)) {
+          return fallbackDetail;
+        }
+      }
     }
   }
 
@@ -527,6 +583,8 @@ export async function getItemDetail(externalId: string, language: string = 'en')
     console.log('[OTAPI Service] getItemDetail request:', { externalId, itemId, language: lang });
   }
 
+  let fallback: ProductDetailOTAPI | null = null;
+  let desc: any = null;
   let fullInfo: any;
   try {
     fullInfo = await otapiClient.getItemFullInfo({
@@ -541,23 +599,35 @@ export async function getItemDetail(externalId: string, language: string = 'en')
       language: lang,
       message: String((error as any)?.message || error),
     });
-    const fallback = await fallbackDetailFromSearchCache(externalId);
-    return fallback;
   }
 
-  let desc: any = null;
   try {
     desc = await otapiClient.getItemDescription({ itemId, language: lang });
   } catch {
     // ignore
   }
 
+  if (!fullInfo) {
+    fallback = await fallbackDetailFromSearchCache(externalId);
+    if (desc) {
+      const descDetail = await applyMarkupToDetail(normalizeOTAPIProductDetail(desc, desc));
+      if (fallback) {
+        const merged = mergeProductDetail(fallback, descDetail);
+        if (isUsableDetail(merged)) return merged;
+      } else if (isUsableDetail(descDetail)) {
+        return descDetail;
+      }
+    }
+    return fallback;
+  }
+
   const itemData = unwrapOtapiPayload(fullInfo);
   const descriptionData = unwrapOtapiPayload(desc);
   const normalized = await applyMarkupToDetail(normalizeOTAPIProductDetail(itemData, descriptionData));
+  fallback = await fallbackDetailFromSearchCache(externalId);
+  const merged = fallback ? mergeProductDetail(normalized, fallback) : normalized;
 
-  if (!isUsableDetail(normalized)) {
-    const fallback = await fallbackDetailFromSearchCache(externalId);
+  if (!isUsableDetail(merged)) {
     if (fallback) {
       return fallback;
     }
@@ -566,26 +636,26 @@ export async function getItemDetail(externalId: string, language: string = 'en')
   if (DEBUG_OTAPI) {
     console.log('[OTAPI Service] getItemDetail response summary:', {
       externalId,
-      title: normalized.title?.substring(0, 80),
-      hasImages: !!(normalized.images && normalized.images.length > 0),
-      priceMin: normalized.priceMin,
-      priceMax: normalized.priceMax,
+      title: merged.title?.substring(0, 80),
+      hasImages: !!(merged.images && merged.images.length > 0),
+      priceMin: merged.priceMin,
+      priceMax: merged.priceMax,
     });
   }
 
-  if (isUsableDetail(normalized)) {
+  if (isUsableDetail(merged)) {
     await cacheCatalogItem({
       externalId,
-      title: normalized.title,
-      priceMin: normalized.priceMin,
-      priceMax: normalized.priceMax,
-      images: normalized.images,
-      sourceUrl: normalized.sourceUrl,
+      title: merged.title,
+      priceMin: merged.priceMin,
+      priceMax: merged.priceMax,
+      images: merged.images,
+      sourceUrl: merged.sourceUrl,
       rawJson: itemData as any,
     });
   }
 
-  return normalized;
+  return merged;
 }
 
 export async function getVendorInfo(vendorId: string, language: string = 'en'): Promise<any> {
@@ -618,6 +688,9 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
     where.category_slug = categorySlug;
   }
 
+  const safePage = Math.max(1, Number(page) || 1);
+  const safePageSize = Math.max(1, Number(pageSize) || 20);
+  const targetCount = safePage * safePageSize;
   const items: ProductCardOTAPI[] = [];
   const existingIds = new Set<string>();
 
@@ -626,9 +699,9 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
     where: {
       ...where,
       pinned_rank: { gt: 0 },
-    },
-    orderBy: { pinned_rank: 'asc' },
-    take: 100,
+      },
+      orderBy: { pinned_rank: 'asc' },
+      take: 100,
   });
 
   if (pinned.length > 0) {
@@ -659,12 +732,12 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
           // ignore
         }
       }
-      if (items.length >= pageSize) break;
+      if (items.length >= targetCount) break;
     }
   }
 
-  if (items.length < pageSize) {
-    const needed = pageSize - items.length;
+  if (items.length < targetCount) {
+    const needed = targetCount - items.length;
     const recentItems = await prisma.externalCatalogItem.findMany({
       where: {
         source: SOURCE,
@@ -681,10 +754,34 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
         items.push(normalized);
         existingIds.add(normalized.externalId);
       }
-      if (items.length >= pageSize) break;
+      if (items.length >= targetCount) break;
     }
   }
 
-  const start = (page - 1) * pageSize;
-  return items.slice(start, start + pageSize);
+  if (items.length < targetCount) {
+    const cachedSearches = await prisma.externalSearchCache.findMany({
+      where: {
+        source: SOURCE,
+        expires_at: { gt: new Date() },
+      },
+      orderBy: { created_at: 'desc' },
+      take: 20,
+    });
+
+    for (const entry of cachedSearches) {
+      const cachedItems = extractSearchItems(entry.results_json);
+      if (!Array.isArray(cachedItems) || cachedItems.length === 0) continue;
+      const normalized = await applyMarkupToCards(normalizeOTAPIProductCards(cachedItems));
+      for (const card of normalized) {
+        if (existingIds.has(card.externalId)) continue;
+        items.push(card);
+        existingIds.add(card.externalId);
+        if (items.length >= targetCount) break;
+      }
+      if (items.length >= targetCount) break;
+    }
+  }
+
+  const start = (safePage - 1) * safePageSize;
+  return items.slice(start, start + safePageSize);
 }

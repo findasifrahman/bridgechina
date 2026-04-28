@@ -48,7 +48,6 @@
           <div class="flex items-center justify-between gap-3">
             <div>
               <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Premium factory products</p>
-              <h2 class="text-[16px] font-black tracking-tight text-slate-950">Manual products from admin</h2>
             </div>
             <span class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">MOQ required</span>
           </div>

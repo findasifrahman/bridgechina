@@ -213,7 +213,7 @@
                 @click="handleProductClick(product)"
               >
                 <div class="aspect-[4/3] bg-slate-100">
-                  <img v-if="product.imageUrl" :src="product.imageUrl" :alt="product.title" class="h-full w-full object-cover" />
+                  <img v-if="product.imageUrl" :src="proxyImageUrl(product.imageUrl)" :alt="product.title" class="h-full w-full object-cover" />
                   <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
                     <Package class="h-8 w-8" />
                   </div>
@@ -303,12 +303,12 @@
               >
                 <div class="flex items-start gap-3">
                   <div class="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-slate-100">
-                    <img
-                      v-if="card.product?.imageUrl"
-                      :src="card.product.imageUrl"
-                      :alt="card.title"
-                      class="h-full w-full object-cover"
-                    />
+                      <img
+                        v-if="card.product?.imageUrl"
+                        :src="proxyImageUrl(card.product.imageUrl)"
+                        :alt="card.title"
+                        class="h-full w-full object-cover"
+                      />
                     <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
                       <Package class="h-8 w-8" />
                     </div>
@@ -662,12 +662,24 @@ function categoryIcon(icon?: string) {
 }
 
 const suggestionCards = computed(() => {
-  const pool = (visibleProducts.value || []).filter((product: any) => product && (product.priceMin != null || product.totalSold != null));
+  const basePool = [
+    ...(Array.isArray(visibleProducts.value) ? visibleProducts.value : []),
+    ...(Array.isArray(premiumProducts.value) ? premiumProducts.value : []),
+    ...(Array.isArray(hotItems.value) ? hotItems.value : []),
+  ];
+  const pool = basePool.filter((product: any) => product && (
+    product.priceMin != null ||
+    product.priceMax != null ||
+    product.price != null ||
+    product.salePrice != null ||
+    product.totalSold != null
+  ));
   if (pool.length === 0) return [];
 
   const byPrice = [...pool]
-    .filter((product: any) => typeof product.priceMin === 'number' && !Number.isNaN(product.priceMin))
-    .sort((a: any, b: any) => (a.priceMin ?? Number.POSITIVE_INFINITY) - (b.priceMin ?? Number.POSITIVE_INFINITY))[0];
+    .map((product: any) => ({ ...product, _price: Number(product.priceMin ?? product.priceMax ?? product.price ?? product.salePrice ?? Number.POSITIVE_INFINITY) }))
+    .filter((product: any) => Number.isFinite(product._price))
+    .sort((a: any, b: any) => a._price - b._price)[0];
   const bySales = [...pool].sort((a: any, b: any) => (b.totalSold || 0) - (a.totalSold || 0))[0];
   const byValue = [...pool].sort((a: any, b: any) => scoreProduct(b) - scoreProduct(a))[0];
 
@@ -679,7 +691,7 @@ const suggestionCards = computed(() => {
 });
 
 function scoreProduct(product: any): number {
-  const price = Number(product?.priceMin || product?.priceMax || 0);
+  const price = Number(product?.priceMin ?? product?.priceMax ?? product?.price ?? product?.salePrice ?? 0);
   const sold = Number(product?.totalSold || 0);
   if (price <= 0) return sold * 1000;
   return (sold * 1000) / price;
@@ -690,13 +702,14 @@ function buildSuggestionCard(key: string, label: string, product: any, badgeClas
     return { key, label, product: null, badgeClass, title: '', priceText: '', soldText: '' };
   }
 
+  const price = Number(product.priceMin ?? product.priceMax ?? product.price ?? product.salePrice ?? 0);
   return {
     key,
     label,
     product,
     badgeClass,
     title: product.title || 'Untitled product',
-    priceText: formatPrice(product.priceMin ?? product.priceMax ?? 0),
+    priceText: formatPrice(price),
     soldText: product.totalSold ? `${formatSales(product.totalSold)} sold` : 'Trending now',
   };
 }
@@ -718,6 +731,22 @@ function formatSales(count: number): string {
   if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
   if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
   return String(count);
+}
+
+function proxyImageUrl(url: string | null | undefined): string {
+  const text = String(url || '').trim();
+  if (!text) return '';
+  if (text.startsWith('/api/public/image-proxy')) return text;
+  if (text.startsWith('data:image/')) return text;
+  try {
+    const parsed = new URL(text);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return `/api/public/image-proxy?url=${encodeURIComponent(text)}`;
+    }
+  } catch {
+    return text;
+  }
+  return text;
 }
 
 function handleFileSelect(event: Event) {

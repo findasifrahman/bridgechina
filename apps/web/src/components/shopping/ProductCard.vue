@@ -5,10 +5,11 @@
   >
     <div class="relative aspect-square overflow-hidden bg-slate-100">
       <img
-        v-if="imageSrc"
+        v-if="imageSrc && !imageFailed"
         :src="imageSrc"
         :alt="product.title"
         class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+        @error="imageFailed = true"
       />
       <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
         <Package class="h-14 w-14" />
@@ -58,7 +59,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Package, ShoppingCart } from 'lucide-vue-next';
 import { Card, CardBody, Button } from '@bridgechina/ui';
 
@@ -87,7 +88,53 @@ defineEmits<{
   'add-to-cart': [product: any];
 }>();
 
-const imageSrc = computed(() => props.product.imageUrl || props.product.images?.[0] || '');
+function isRenderableImageUrl(url: string): boolean {
+  const text = String(url || '').trim();
+  if (!text) return false;
+  if (text.startsWith('/api/public/image-proxy')) return true;
+  if (text.startsWith('data:image/')) return true;
+  try {
+    const parsed = new URL(text);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function proxyImageUrl(url: string): string {
+  const text = String(url || '').trim();
+  if (!text) return '';
+  if (text.startsWith('/api/public/image-proxy')) return text;
+  if (text.startsWith('data:image/')) return text;
+  try {
+    const parsed = new URL(text);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return `/api/public/image-proxy?url=${encodeURIComponent(text)}`;
+    }
+  } catch {
+    return text;
+  }
+  return text;
+}
+
+function pickBestImage(product: any): string {
+  const sources = [
+    product?.imageUrl,
+    ...(Array.isArray(product?.images) ? product.images : []),
+  ]
+    .map((img) => String(img || '').trim())
+    .filter(Boolean);
+
+  const renderable = sources.find(isRenderableImageUrl);
+  return proxyImageUrl(renderable || sources[0] || '');
+}
+
+const imageSrc = computed(() => pickBestImage(props.product));
+const imageFailed = ref(false);
+
+watch(imageSrc, () => {
+  imageFailed.value = false;
+});
 
 function formatPrice(price: number): string {
   const currency = props.selectedCurrency || 'CNY';

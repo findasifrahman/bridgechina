@@ -40,7 +40,7 @@
                     :class="selectedImage === img ? 'border-teal-500 ring-2 ring-teal-100' : 'border-slate-200 hover:border-teal-300'"
                     @click="selectImage(img)"
                   >
-                    <img :src="img" :alt="`${product.title} ${idx + 1}`" class="h-full w-full object-cover" />
+                    <img :src="img" :alt="`${product.title} ${idx + 1}`" class="h-full w-full object-cover" @error="markBrokenImage(img)" />
                   </button>
                 </div>
 
@@ -63,6 +63,7 @@
                       :src="activeMediaUrl"
                       :alt="product.title"
                       class="h-full w-full object-contain"
+                      @error="markBrokenImage(activeMediaUrl)"
                     />
                     <div v-else class="flex h-full items-center justify-center text-slate-400">
                       <Package class="h-24 w-24" />
@@ -82,7 +83,7 @@
                     class="h-14 w-14 shrink-0 overflow-hidden rounded-[14px] border border-slate-200 bg-slate-50"
                     @click="selectImage(img)"
                   >
-                    <img :src="img" :alt="product.title" class="h-full w-full object-cover" />
+                    <img :src="img" :alt="product.title" class="h-full w-full object-cover" @error="markBrokenImage(img)" />
                   </button>
                 </div>
                 <div class="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden lg:hidden">
@@ -93,7 +94,7 @@
                     class="h-12 w-12 shrink-0 overflow-hidden rounded-[14px] border border-slate-200 bg-slate-50"
                     @click="selectImage(img)"
                   >
-                    <img :src="img" :alt="product.title" class="h-full w-full object-cover" />
+                    <img :src="img" :alt="product.title" class="h-full w-full object-cover" @error="markBrokenImage(img)" />
                   </button>
                 </div>
               </div>
@@ -208,7 +209,12 @@
                         class="h-11 w-11 overflow-hidden rounded-lg border border-slate-200 bg-slate-50"
                         @click="selectImage(sku.imageUrl)"
                       >
-                        <img :src="sku.imageUrl" :alt="sku.props_names || sku.specid || `SKU ${idx + 1}`" class="h-full w-full object-cover" />
+                        <img
+                          :src="proxyImageUrl(sku.imageUrl)"
+                          :alt="sku.props_names || sku.specid || `SKU ${idx + 1}`"
+                          class="h-full w-full object-cover"
+                          @error="markBrokenImage(sku.imageUrl)"
+                        />
                       </button>
                       <div class="min-w-0 flex-1">
                         <div class="truncate text-[11px] font-semibold text-slate-900">{{ sku.props_names || sku.specid || `SKU ${idx + 1}` }}</div>
@@ -463,7 +469,13 @@
                 @click="handleProductClick(item)"
               >
                 <div class="h-14 w-14 shrink-0 overflow-hidden rounded-[14px] bg-white">
-                  <img v-if="item.imageUrl" :src="item.imageUrl" :alt="item.title" class="h-full w-full object-cover" />
+                  <img
+                    v-if="item.imageUrl"
+                    :src="proxyImageUrl(item.imageUrl)"
+                    :alt="item.title"
+                    class="h-full w-full object-cover"
+                    @error="markBrokenImage(item.imageUrl)"
+                  />
                   <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
                     <Package class="h-6 w-6" />
                   </div>
@@ -530,6 +542,7 @@ const product = ref<any>(null);
 const loading = ref(true);
 const quantity = ref(1);
 const selectedImage = ref<string | null>(null);
+const brokenGalleryImages = ref<string[]>([]);
 const videoRef = ref<HTMLVideoElement | null>(null);
 const videoMode = ref<'none' | 'auto' | 'user'>('none');
 const selectedSkus = ref<Record<string, number>>({});
@@ -595,26 +608,69 @@ const shippingRateSummary = computed(() => {
   return parts.join(' · ');
 });
 
+function isRenderableImageUrl(url: string): boolean {
+  const text = String(url || '').trim();
+  if (!text) return false;
+  if (text.startsWith('/api/public/image-proxy')) return true;
+  if (text.startsWith('data:image/')) return true;
+  try {
+    const parsed = new URL(text);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function proxyImageUrl(url: string | null | undefined): string {
+  const text = String(url || '').trim();
+  if (!text) return '';
+  if (text.startsWith('/api/public/image-proxy')) return text;
+  if (text.startsWith('data:image/')) return text;
+  try {
+    const parsed = new URL(text);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return `/api/public/image-proxy?url=${encodeURIComponent(text)}`;
+    }
+  } catch {
+    return text;
+  }
+  return text;
+}
+
+function dedupeRenderableImages(urls: string[]): string[] {
+  return Array.from(new Set(
+    urls
+      .map((img) => proxyImageUrl(img))
+      .filter((img) => img && isRenderableImageUrl(img) && !brokenGalleryImages.value.includes(img))
+  ));
+}
+
 const galleryImages = computed(() => {
   const sources: string[] = [];
-  if (product.value?.imageUrl) sources.push(String(product.value.imageUrl).trim());
+  if (product.value?.imageUrl) sources.push(proxyImageUrl(product.value.imageUrl));
   if (Array.isArray(product.value?.images)) {
-    sources.push(...product.value.images.map((img) => String(img || '').trim()).filter(Boolean));
+    sources.push(...product.value.images.map((img) => proxyImageUrl(img)).filter(Boolean));
   }
   if (Array.isArray(product.value?.skus)) {
     for (const sku of product.value.skus) {
-      if (sku?.imageUrl) sources.push(String(sku.imageUrl).trim());
+      if (sku?.imageUrl) sources.push(proxyImageUrl(sku.imageUrl));
       if (Array.isArray(sku?.images)) {
-        sources.push(...sku.images.map((img: string) => String(img || '').trim()).filter(Boolean));
+        sources.push(...sku.images.map((img: string) => proxyImageUrl(img)).filter(Boolean));
       }
     }
   }
-  return Array.from(new Set(sources.filter(Boolean)));
+  return dedupeRenderableImages(sources);
 });
 
 const showGalleryThumbs = computed(() => galleryImages.value.length > 1 || !!product.value?.videoUrl);
 
-const activeMediaUrl = computed(() => selectedImage.value || product.value?.imageUrl || galleryImages.value[0] || null);
+const activeMediaUrl = computed(() => {
+  const selected = selectedImage.value && !brokenGalleryImages.value.includes(selectedImage.value) ? selectedImage.value : null;
+  const primary = product.value?.imageUrl && !brokenGalleryImages.value.includes(proxyImageUrl(product.value.imageUrl))
+    ? proxyImageUrl(product.value.imageUrl)
+    : null;
+  return selected || primary || galleryImages.value[0] || null;
+});
 
 const showVideo = computed(() => !!(product.value?.videoUrl && selectedImage.value === product.value.videoUrl && videoMode.value !== 'none'));
 
@@ -755,7 +811,7 @@ function formatTotalAmount(): string {
 }
 
 function selectImage(img: string) {
-  selectedImage.value = img;
+  selectedImage.value = proxyImageUrl(img);
   videoMode.value = 'none';
 }
 
@@ -778,6 +834,23 @@ async function tryAutoplayVideo() {
 
 function openFullscreen(imageUrl: string | null) {
   if (imageUrl) fullscreenImage.value = imageUrl;
+}
+
+function markBrokenImage(img: string | null | undefined) {
+  const normalized = proxyImageUrl(img);
+  if (!normalized) return;
+  if (!brokenGalleryImages.value.includes(normalized)) {
+    brokenGalleryImages.value.push(normalized);
+  }
+
+  const current = selectedImage.value ? proxyImageUrl(selectedImage.value) : null;
+  if (current && current === normalized) {
+    const replacement = galleryImages.value.find((candidate) => !brokenGalleryImages.value.includes(candidate) && candidate !== normalized)
+      || (product.value?.videoUrl ? proxyImageUrl(product.value.imageUrl) : null)
+      || proxyImageUrl(product.value?.imageUrl)
+      || null;
+    selectedImage.value = replacement;
+  }
 }
 
 function handleProductClick(item: any) {
@@ -818,18 +891,25 @@ async function loadProduct() {
     const query = route.query as { language?: string };
     const language = query.language === 'en' ? 'en' : 'zh';
     selectedLanguage.value = language;
+    quantity.value = 1;
+    selectedSkus.value = {};
+    videoMode.value = 'none';
+    selectedImage.value = null;
     const response = await axios.get(`/api/public/shopping/item/${externalId}`, { params: { language } });
     product.value = response.data;
+    brokenGalleryImages.value = [];
+    await nextTick();
 
     if (product.value?.videoUrl) {
       videoMode.value = 'auto';
       selectedImage.value = product.value.videoUrl;
       await nextTick();
       await tryAutoplayVideo();
-    } else if (galleryImages.value.length > 0) {
-      selectedImage.value = galleryImages.value[0];
-    } else if (product.value?.imageUrl) {
-      selectedImage.value = product.value.imageUrl;
+    } else {
+      const initialImage = galleryImages.value.find((img) => !brokenGalleryImages.value.includes(img))
+        || proxyImageUrl(product.value?.imageUrl)
+        || null;
+      selectedImage.value = initialImage;
     }
 
     await loadSimilarProducts();
@@ -905,6 +985,13 @@ watch(selectedImage, async () => {
     await tryAutoplayVideo();
   }
 });
+
+watch(
+  () => route.params.externalId,
+  async () => {
+    await loadProduct();
+  }
+);
 
 onMounted(() => {
   Promise.all([loadProduct(), loadShopSettings()]);

@@ -480,6 +480,17 @@ export function normalizeOTAPIProductDetail(itemFullInfo: any, descriptionData?:
   const base = normalizeOTAPIProductCard(itemRoot);
 
   const description = pickDescription(descriptionRoot, itemRoot);
+  const descriptionImages = collectImages(descriptionRoot) || [];
+  const primaryDescriptionImage =
+    normalizeString(descriptionRoot?.CurrentImageUrl) ||
+    normalizeString(descriptionRoot?.CurrentImageURL) ||
+    normalizeString(descriptionRoot?.ImageUrl) ||
+    normalizeString(descriptionRoot?.MainImageUrl);
+  const mergedImages = Array.from(new Set([
+    ...(Array.isArray(base.images) ? base.images : []),
+    ...descriptionImages,
+    primaryDescriptionImage ? getProxiedImageUrl(primaryDescriptionImage) : '',
+  ].filter((img): img is string => typeof img === 'string' && img.trim().length > 0)));
 
   const weightFromFields =
     findWeightFromObject(itemRoot) ??
@@ -489,6 +500,8 @@ export function normalizeOTAPIProductDetail(itemFullInfo: any, descriptionData?:
 
   const detail: ProductDetailOTAPI = {
     ...base,
+    imageUrl: base.imageUrl || mergedImages[0],
+    images: mergedImages.length > 0 ? mergedImages : base.images,
     description,
     skus: skus || null,
     productProps: skus
