@@ -213,7 +213,12 @@
                 @click="handleProductClick(product)"
               >
                 <div class="aspect-[4/3] bg-slate-100">
-                  <img v-if="product.imageUrl" :src="proxyImageUrl(product.imageUrl)" :alt="product.title" class="h-full w-full object-cover" />
+                  <img
+                    v-if="collectImageCandidates(product.imageUrl).length > 0 || collectImageCandidates(product.images).length > 0"
+                    :src="proxyImageUrl(collectImageCandidates(product.imageUrl)[0] || collectImageCandidates(product.images)[0])"
+                    :alt="product.title"
+                    class="h-full w-full object-cover"
+                  />
                   <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
                     <Package class="h-8 w-8" />
                   </div>
@@ -304,8 +309,8 @@
                 <div class="flex items-start gap-3">
                   <div class="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-slate-100">
                       <img
-                        v-if="card.product?.imageUrl"
-                        :src="proxyImageUrl(card.product.imageUrl)"
+                        v-if="collectImageCandidates(card.product?.imageUrl).length > 0 || collectImageCandidates(card.product?.images).length > 0"
+                        :src="proxyImageUrl(collectImageCandidates(card.product?.imageUrl)[0] || collectImageCandidates(card.product?.images)[0])"
                         :alt="card.title"
                         class="h-full w-full object-cover"
                       />
@@ -738,15 +743,35 @@ function proxyImageUrl(url: string | null | undefined): string {
   if (!text) return '';
   if (text.startsWith('/api/public/image-proxy')) return text;
   if (text.startsWith('data:image/')) return text;
+  if (text.startsWith('/')) return text;
   try {
     const parsed = new URL(text);
-    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+    const host = parsed.hostname.toLowerCase();
+    const shouldProxy = ['alicdn.com', '1688.com', 'detail.1688.com'].some((domain) => {
+      const normalized = domain.toLowerCase();
+      return host === normalized || host.endsWith(`.${normalized}`) || host.includes(normalized);
+    });
+    if (shouldProxy && (parsed.protocol === 'http:' || parsed.protocol === 'https:')) {
       return `/api/public/image-proxy?url=${encodeURIComponent(text)}`;
     }
   } catch {
     return text;
   }
   return text;
+}
+
+function collectImageCandidates(input: any): string[] {
+  if (!input) return [];
+  if (typeof input === 'string') return [input];
+  if (Array.isArray(input)) return input.flatMap((item) => collectImageCandidates(item));
+  if (typeof input !== 'object') return [];
+
+  const keys = ['imageUrl', 'image_url', 'publicUrl', 'public_url', 'thumbnail_url', 'thumbnailUrl', 'url', 'src', 'mainImage', 'mainImageUrl'];
+  const values: string[] = [];
+  for (const key of keys) {
+    if (key in input) values.push(...collectImageCandidates(input[key]));
+  }
+  return values;
 }
 
 function handleFileSelect(event: Event) {

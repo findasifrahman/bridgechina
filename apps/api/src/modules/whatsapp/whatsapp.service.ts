@@ -493,7 +493,7 @@ export async function handleAIReply(conversationId: string, inboundMessageSid: s
       const { isPureGreeting } = await import('../chat/chat.agent.js');
       if (isPureGreeting(userMessage)) {
         // Send greeting menu without triggering any search or intent detection
-        const greetingResponse = 'Hi 👋 Welcome to Chinabuybd.\nWhat do you need today?\n Shopping,Sourcing\n\nYou can also use the website: https://bridgechina-web.vercel.app/';
+        const greetingResponse = 'Hi 👋 Welcome to Chinabuybd.\nWhat do you need today?\n Shopping,Sourcing\n\nYou can also use the website: https://www.chinabuybd.com';
         
         // Mark message as processed before sending response
         await prisma.message.update({

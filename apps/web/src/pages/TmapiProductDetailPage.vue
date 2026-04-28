@@ -626,15 +626,35 @@ function proxyImageUrl(url: string | null | undefined): string {
   if (!text) return '';
   if (text.startsWith('/api/public/image-proxy')) return text;
   if (text.startsWith('data:image/')) return text;
+  if (text.startsWith('/')) return text;
   try {
     const parsed = new URL(text);
-    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+    const host = parsed.hostname.toLowerCase();
+    const shouldProxy = ['alicdn.com', '1688.com', 'detail.1688.com'].some((domain) => {
+      const normalized = domain.toLowerCase();
+      return host === normalized || host.endsWith(`.${normalized}`) || host.includes(normalized);
+    });
+    if (shouldProxy && (parsed.protocol === 'http:' || parsed.protocol === 'https:')) {
       return `/api/public/image-proxy?url=${encodeURIComponent(text)}`;
     }
   } catch {
     return text;
   }
   return text;
+}
+
+function collectImageCandidates(input: any): string[] {
+  if (!input) return [];
+  if (typeof input === 'string') return [input];
+  if (Array.isArray(input)) return input.flatMap((item) => collectImageCandidates(item));
+  if (typeof input !== 'object') return [];
+
+  const keys = ['imageUrl', 'image_url', 'publicUrl', 'public_url', 'thumbnail_url', 'thumbnailUrl', 'url', 'src', 'mainImage', 'mainImageUrl'];
+  const values: string[] = [];
+  for (const key of keys) {
+    if (key in input) values.push(...collectImageCandidates(input[key]));
+  }
+  return values;
 }
 
 function dedupeRenderableImages(urls: string[]): string[] {
@@ -647,15 +667,15 @@ function dedupeRenderableImages(urls: string[]): string[] {
 
 const galleryImages = computed(() => {
   const sources: string[] = [];
-  if (product.value?.imageUrl) sources.push(proxyImageUrl(product.value.imageUrl));
+  sources.push(...collectImageCandidates(product.value?.imageUrl).map((img) => proxyImageUrl(img)));
   if (Array.isArray(product.value?.images)) {
-    sources.push(...product.value.images.map((img) => proxyImageUrl(img)).filter(Boolean));
+    sources.push(...collectImageCandidates(product.value.images).map((img) => proxyImageUrl(img)).filter(Boolean));
   }
   if (Array.isArray(product.value?.skus)) {
     for (const sku of product.value.skus) {
-      if (sku?.imageUrl) sources.push(proxyImageUrl(sku.imageUrl));
+      sources.push(...collectImageCandidates(sku?.imageUrl).map((img) => proxyImageUrl(img)).filter(Boolean));
       if (Array.isArray(sku?.images)) {
-        sources.push(...sku.images.map((img: string) => proxyImageUrl(img)).filter(Boolean));
+        sources.push(...collectImageCandidates(sku.images).map((img) => proxyImageUrl(img)).filter(Boolean));
       }
     }
   }
@@ -666,8 +686,9 @@ const showGalleryThumbs = computed(() => galleryImages.value.length > 1 || !!pro
 
 const activeMediaUrl = computed(() => {
   const selected = selectedImage.value && !brokenGalleryImages.value.includes(selectedImage.value) ? selectedImage.value : null;
-  const primary = product.value?.imageUrl && !brokenGalleryImages.value.includes(proxyImageUrl(product.value.imageUrl))
-    ? proxyImageUrl(product.value.imageUrl)
+  const primaryCandidate = collectImageCandidates(product.value?.imageUrl).map((img) => proxyImageUrl(img)).find((img) => !brokenGalleryImages.value.includes(img)) || '';
+  const primary = primaryCandidate && !brokenGalleryImages.value.includes(primaryCandidate)
+    ? primaryCandidate
     : null;
   return selected || primary || galleryImages.value[0] || null;
 });

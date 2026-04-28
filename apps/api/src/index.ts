@@ -30,6 +30,7 @@ await fastify.register(cors, {
       'http://localhost:5173',
       'http://127.0.0.1:5173',
       'https://bridgechina-web.vercel.app',
+      'https://www.chinabuybd.com',
       ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),
     ];
 

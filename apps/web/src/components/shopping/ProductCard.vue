@@ -101,11 +101,44 @@ function isRenderableImageUrl(url: string): boolean {
   }
 }
 
+function shouldProxyImageUrl(url: string): boolean {
+  const text = String(url || '').trim();
+  if (!text) return false;
+  if (text.startsWith('/api/public/image-proxy')) return false;
+  if (text.startsWith('/')) return false;
+  if (text.startsWith('data:image/') || text.startsWith('blob:')) return false;
+  try {
+    const parsed = new URL(text);
+    const host = parsed.hostname.toLowerCase();
+    return ['alicdn.com', '1688.com', 'detail.1688.com'].some((domain) => {
+      const normalized = domain.toLowerCase();
+      return host === normalized || host.endsWith(`.${normalized}`) || host.includes(normalized);
+    });
+  } catch {
+    return false;
+  }
+}
+
+function collectImageCandidates(input: any): string[] {
+  if (!input) return [];
+  if (typeof input === 'string') return [input];
+  if (Array.isArray(input)) return input.flatMap((item) => collectImageCandidates(item));
+  if (typeof input !== 'object') return [];
+
+  const keys = ['imageUrl', 'image_url', 'publicUrl', 'public_url', 'thumbnail_url', 'thumbnailUrl', 'url', 'src', 'mainImage', 'mainImageUrl'];
+  const values: string[] = [];
+  for (const key of keys) {
+    if (key in input) values.push(...collectImageCandidates(input[key]));
+  }
+  return values;
+}
+
 function proxyImageUrl(url: string): string {
   const text = String(url || '').trim();
   if (!text) return '';
   if (text.startsWith('/api/public/image-proxy')) return text;
   if (text.startsWith('data:image/')) return text;
+  if (!shouldProxyImageUrl(text)) return text;
   try {
     const parsed = new URL(text);
     if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
@@ -119,8 +152,8 @@ function proxyImageUrl(url: string): string {
 
 function pickBestImage(product: any): string {
   const sources = [
-    product?.imageUrl,
-    ...(Array.isArray(product?.images) ? product.images : []),
+    ...collectImageCandidates(product?.imageUrl),
+    ...collectImageCandidates(product?.images),
   ]
     .map((img) => String(img || '').trim())
     .filter(Boolean);
