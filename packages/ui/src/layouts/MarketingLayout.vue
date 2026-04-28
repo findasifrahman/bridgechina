@@ -215,10 +215,11 @@
       <aside class="hidden overflow-hidden border-r border-white/70 bg-white/95 lg:flex lg:flex-col">
         <div class="sticky top-0 flex max-h-[calc(100vh-4rem)] flex-col overflow-hidden">
           <div class="border-b border-slate-100 px-4 py-3">
-            <h2 class="mt-1 text-[14px] font-black tracking-tight text-slate-950">Shop by category</h2>
+            <h2 class="mt-1 text-[14px] font-black tracking-tight text-green-600">Shop by category</h2>
           </div>
 
           <div class="flex-1 overflow-y-auto px-2 py-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <!--
             <button
               type="button"
               @click="openShopping"
@@ -233,6 +234,7 @@
                 </span>
               </span>
             </button>
+          -->
 
             <div v-for="cat in categories" :key="cat.slug" class="mb-1.5 rounded-2xl border border-slate-200 bg-white">
               <button
@@ -245,8 +247,10 @@
                     <component :is="categoryIcon(cat.icon)" class="h-4 w-4" />
                   </span>
                   <span class="min-w-0">
-                    <span class="block truncate text-[11px] font-semibold leading-5 text-red-500">{{ cat.name }}</span>
+                    <span class="block truncate text-[12px] font-semibold leading-5 text-red-500">{{ cat.name }}</span>
+                    <!--
                     <span class="block text-[9px] text-slate-500">{{ cat.children?.length || 0 }} subcategories</span>
+                  -->
                   </span>
                 </span>
                 <ChevronRight class="h-3.5 w-3.5 flex-shrink-0 text-slate-300 transition-transform" :class="{ 'rotate-90': expandedCategorySlug === cat.slug }" />

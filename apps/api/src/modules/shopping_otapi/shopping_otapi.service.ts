@@ -15,6 +15,12 @@ import {
 import { prisma } from '../../lib/prisma.js';
 
 const SOURCE = 'shopping_otapi';
+const CURATED_CATEGORY_DEFS = [
+  { slug: 'iphone', label: 'iPhone', keywords: ['iphone', 'phone', 'mobile', 'smartphone'] },
+  { slug: 'bags', label: 'Bags', keywords: ['bag', 'bags', 'handbag', 'backpack', 'tote', 'wallet', 'suitcase'] },
+  { slug: 'jewelry', label: 'Jewelry', keywords: ['jewelry', 'jewellery', 'jwellary', 'necklace', 'ring', 'bracelet', 'earring'] },
+  { slug: 'kitchenware', label: 'Kitchenware', keywords: ['kitchenware', 'kitchen', 'cookware', 'tableware', 'utensil', 'pan', 'pot'] },
+] as const;
 
 const DEBUG_OTAPI = process.env.DEBUG_OTAPI === '1' || process.env.DEBUG_OTAPI === 'true';
 let catalogCacheAvailable = true;
@@ -32,6 +38,77 @@ function hasDisplayablePrice(card: Pick<ProductCardOTAPI, 'priceMin' | 'priceMax
 
 function filterPricedCards(cards: ProductCardOTAPI[]): ProductCardOTAPI[] {
   return cards.filter((card) => hasDisplayablePrice(card));
+}
+
+function buildFallbackCardFromCatalogItem(c: any): ProductCardOTAPI | null {
+  if (!c?.external_id) return null;
+  const mainImages = Array.isArray(c.main_images) ? c.main_images.filter((img): img is string => typeof img === 'string' && img.trim().length > 0) : [];
+  return {
+    source: SOURCE,
+    externalId: c.external_id,
+    title: c.title || c.title_en || c.external_id,
+    priceMin: c.price_min ?? undefined,
+    priceMax: c.price_max ?? undefined,
+    currency: (c.currency || 'CNY') as 'CNY',
+    imageUrl: mainImages[0],
+    images: mainImages.length > 0 ? mainImages : undefined,
+    sourceUrl: c.source_url || undefined,
+    raw: {
+      title: c.title || c.title_en || c.external_id,
+      externalId: c.external_id,
+      priceMin: c.price_min,
+      priceMax: c.price_max,
+      imageUrl: mainImages[0],
+      images: mainImages,
+    },
+  };
+}
+
+function resolveCuratedCategorySlug(keyword?: string, category?: string): string | undefined {
+  const text = normalizeSearchText([keyword, category].filter(Boolean).join(' '));
+  if (!text) return undefined;
+
+  for (const def of CURATED_CATEGORY_DEFS) {
+    if (text.includes(def.slug)) return def.slug;
+    if (def.keywords.some((needle) => text.includes(needle))) return def.slug;
+  }
+
+  return undefined;
+}
+
+async function persistCuratedHotItems(categorySlug: string, cards: ProductCardOTAPI[]): Promise<void> {
+  const normalized = cards.filter((card) => card?.externalId).slice(0, 2);
+  if (normalized.length === 0) return;
+
+  const ids = normalized.map((card) => card.externalId);
+  await prisma.externalHotItem.deleteMany({
+    where: {
+      source: SOURCE,
+      category_slug: categorySlug,
+      external_id: { notIn: ids },
+    },
+  });
+
+  for (const [idx, card] of normalized.entries()) {
+    await prisma.externalHotItem.upsert({
+      where: {
+        source_external_id: {
+          source: SOURCE,
+          external_id: card.externalId,
+        },
+      },
+      create: {
+        source: SOURCE,
+        external_id: card.externalId,
+        category_slug: categorySlug,
+        pinned_rank: idx + 1,
+      },
+      update: {
+        category_slug: categorySlug,
+        pinned_rank: idx + 1,
+      },
+    });
+  }
 }
 
 function hasChineseCharacters(value: string): boolean {
@@ -588,6 +665,10 @@ export async function searchByKeyword(
     const totalCount = ranked.length;
     const totalPages = Math.ceil(totalCount / pageSize);
     const hasNextPage = page < totalPages;
+    const curatedCategorySlug = resolveCuratedCategorySlug(searchKeyword, opts?.category);
+    if (curatedCategorySlug) {
+      await persistCuratedHotItems(curatedCategorySlug, paged);
+    }
     return { items: paged, totalCount, page, pageSize, totalPages, hasNextPage };
   }
 
@@ -637,6 +718,7 @@ export async function searchByKeyword(
   const totalPages = Math.ceil(totalCount / pageSize);
   const hasNextPage = page < totalPages;
   const paged = ranked.slice(framePosition, framePosition + pageSize);
+  const curatedCategorySlug = resolveCuratedCategorySlug(searchKeyword, opts?.category);
 
   await setCachedSearch(SOURCE, cacheKey, { keyword: searchKeyword, ...opts }, buildCachedSearchResponse(ranked));
 
@@ -663,6 +745,10 @@ export async function searchByKeyword(
       rawJson: card.raw,
     });
     if (!ok) break;
+  }
+
+  if (curatedCategorySlug) {
+    await persistCuratedHotItems(curatedCategorySlug, paged);
   }
 
   return { items: paged, totalCount, page, pageSize, totalPages, hasNextPage };
@@ -934,14 +1020,13 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
         items.push(normalized);
         existingIds.add(normalized.externalId);
       } else {
-        try {
-          const detail = await getItemDetail(p.external_id);
-          if (detail) {
-            items.push(detail);
-            existingIds.add(detail.externalId);
+        const fallbackCard = buildFallbackCardFromCatalogItem(c);
+        if (fallbackCard) {
+          const normalized = await applyMarkupToCards([fallbackCard]).then((cards) => cards[0]);
+          if (normalized) {
+            items.push(normalized);
+            existingIds.add(normalized.externalId);
           }
-        } catch {
-          // ignore
         }
       }
       if (items.length >= targetCount) break;
@@ -966,30 +1051,13 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
         items.push(normalized);
         existingIds.add(normalized.externalId);
       } else {
-        const mainImages = Array.isArray(c.main_images) ? c.main_images.filter((img): img is string => typeof img === 'string' && img.trim().length > 0) : [];
-        const fallbackCard: ProductCardOTAPI = {
-          source: SOURCE,
-          externalId: c.external_id,
-          title: c.title,
-          priceMin: c.price_min ?? undefined,
-          priceMax: c.price_max ?? undefined,
-          currency: (c.currency || 'CNY') as 'CNY',
-          imageUrl: mainImages[0],
-          images: mainImages.length > 0 ? mainImages : undefined,
-          sourceUrl: c.source_url || undefined,
-          raw: {
-            title: c.title,
-            externalId: c.external_id,
-            priceMin: c.price_min,
-            priceMax: c.price_max,
-            imageUrl: mainImages[0],
-            images: mainImages,
-          },
-        };
-        const normalized = await applyMarkupToCards([fallbackCard]).then((cards) => cards[0]);
-        if (normalized) {
-          items.push(normalized);
-          existingIds.add(normalized.externalId);
+        const fallbackCard = buildFallbackCardFromCatalogItem(c);
+        if (fallbackCard) {
+          const normalized = await applyMarkupToCards([fallbackCard]).then((cards) => cards[0]);
+          if (normalized) {
+            items.push(normalized);
+            existingIds.add(normalized.externalId);
+          }
         }
       }
       if (items.length >= targetCount) break;
@@ -1022,4 +1090,71 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
 
   const start = (safePage - 1) * safePageSize;
   return filterPricedCards(items as ProductCardOTAPI[]).slice(start, start + safePageSize);
+}
+
+export async function getCuratedHomeSections(): Promise<Array<{ slug: string; label: string; items: ProductCardOTAPI[] }>> {
+  const sections = await Promise.all(CURATED_CATEGORY_DEFS.map(async (def) => {
+    const pinned = await prisma.externalHotItem.findMany({
+      where: {
+        source: SOURCE,
+        category_slug: def.slug,
+      },
+      orderBy: [{ pinned_rank: 'asc' }, { created_at: 'desc' }],
+      take: 2,
+    });
+
+    const ids = pinned.map((item) => item.external_id);
+    const catalogItems = ids.length > 0
+      ? await prisma.externalCatalogItem.findMany({
+          where: {
+            source: SOURCE,
+            external_id: { in: ids },
+            expires_at: { gt: new Date() },
+          },
+        })
+      : [];
+    const catalogById = new Map(catalogItems.map((item) => [item.external_id, item]));
+
+    const cards: ProductCardOTAPI[] = [];
+    for (const item of pinned) {
+      const catalog = catalogById.get(item.external_id);
+      if (catalog?.raw_json) {
+        const normalized = await applyMarkupToDetail(normalizeOTAPIProductDetail(catalog.raw_json as any));
+        cards.push(normalized);
+      } else {
+        const fallbackCard = buildFallbackCardFromCatalogItem(catalog);
+        if (fallbackCard) {
+          const normalized = await applyMarkupToCards([fallbackCard]).then((result) => result[0]);
+          if (normalized) cards.push(normalized);
+        }
+      }
+      if (cards.length >= 2) break;
+    }
+
+    if (cards.length < 2) {
+      try {
+        const searchResult = await searchByKeyword(def.label, {
+          page: 1,
+          pageSize: 2,
+          sort: 'sales',
+          language: 'en',
+        });
+        for (const card of searchResult.items || []) {
+          if (cards.some((existing) => existing.externalId === card.externalId)) continue;
+          cards.push(card);
+          if (cards.length >= 2) break;
+        }
+      } catch {
+        // ignore fallback search failures
+      }
+    }
+
+    return {
+      slug: def.slug,
+      label: def.label,
+      items: filterPricedCards(cards).slice(0, 2),
+    };
+  }));
+
+  return sections;
 }

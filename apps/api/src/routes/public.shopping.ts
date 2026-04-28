@@ -153,13 +153,15 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
       ? '../modules/shopping_otapi/shopping_otapi.service.js'
       : '../modules/shopping/shopping.service.js';
 
+  const shoppingModule = await import(shoppingModulePath);
   const {
     getCategories: getShoppingCategories,
     searchByKeyword,
     searchByImage,
     getItemDetail,
     getHotItems,
-  } = await import(shoppingModulePath);
+    getCuratedHomeSections,
+  } = shoppingModule as any;
 
   const {
     searchByKeywordSchema,
@@ -293,6 +295,18 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
       return getHotItems(query.category, page, pageSize);
     } catch (error: any) {
       fastify.log.error({ error, stack: error.stack, query: request.query }, '[Public Shopping Route] /shopping/hot error');
+      reply.status(400).send({ error: error.message || 'Invalid query parameters' });
+    }
+  });
+
+  fastify.get('/shopping/home-curated', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      if (typeof getCuratedHomeSections !== 'function') {
+        return [];
+      }
+      return await getCuratedHomeSections();
+    } catch (error: any) {
+      fastify.log.error({ error, stack: error.stack, query: request.query }, '[Public Shopping Route] /shopping/home-curated error');
       reply.status(400).send({ error: error.message || 'Invalid query parameters' });
     }
   });

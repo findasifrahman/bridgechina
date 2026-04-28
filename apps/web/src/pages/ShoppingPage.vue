@@ -284,58 +284,71 @@
           <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)] sm:p-5">
             <div class="flex items-start justify-between gap-4">
               <div>
-                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-400">AI Suggest</p>
-                <h2 class="mt-1 text-[17px] font-black tracking-tight text-slate-950">Best selling, lowest price, and best value</h2>
-                <p class="mt-1 text-[11px] text-slate-500">Live picks based on the current product pool.</p>
+                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-400">Curated categories</p>
+                <h2 class="mt-1 text-[17px] font-black tracking-tight text-slate-950">iPhone, bags, jewelry, and kitchenware</h2>
+                <p class="mt-1 text-[11px] text-slate-500">Two saved products per category, refreshed from category searches and OTAPI cache.</p>
               </div>
               <button
                 type="button"
                 class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-semibold text-slate-700 transition-colors hover:border-teal-200 hover:text-teal-700"
-                @click="loadHotItems"
+                @click="loadCuratedSections"
               >
                 <RefreshCw class="h-4 w-4" />
                 Refresh
               </button>
             </div>
 
-            <div class="mt-4 grid gap-3 lg:grid-cols-3">
-              <button
-                v-for="card in suggestionCards"
-                :key="card.key"
-                type="button"
-                class="group rounded-[22px] border border-dashed border-teal-200 bg-gradient-to-br from-teal-50/90 via-white to-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-[0_12px_28px_rgba(13,148,136,0.08)]"
-                @click="card.product && handleProductClick(card.product)"
+            <div class="mt-4 grid gap-3 md:grid-cols-2">
+              <div
+                v-for="section in curatedSections"
+                :key="section.slug"
+                class="rounded-[22px] border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-white p-3"
               >
-                <div class="flex items-start gap-3">
-                  <div class="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-slate-100">
+                <div class="flex items-center justify-between gap-3">
+                  <div>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">{{ section.label }}</p>
+                    <p class="mt-1 text-[12px] font-semibold text-slate-700">{{ section.items.length }} saved picks</p>
+                  </div>
+                  <span class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">DB backed</span>
+                </div>
+
+                <div class="mt-3 grid grid-cols-2 gap-2">
+                  <button
+                    v-for="item in section.items.slice(0, 2)"
+                    :key="item.externalId"
+                    type="button"
+                    class="overflow-hidden rounded-[18px] border border-slate-200 bg-white text-left shadow-[0_8px_22px_rgba(15,23,42,0.04)] transition-transform hover:-translate-y-0.5"
+                    @click="handleProductClick(item)"
+                  >
+                    <div class="aspect-[4/3] bg-slate-100">
                       <img
-                        v-if="collectImageCandidates(card.product?.imageUrl).length > 0 || collectImageCandidates(card.product?.images).length > 0"
-                        :src="proxyImageUrl(collectImageCandidates(card.product?.imageUrl)[0] || collectImageCandidates(card.product?.images)[0])"
-                        :alt="card.title"
+                        v-if="collectImageCandidates(item.imageUrl).length > 0 || collectImageCandidates(item.images).length > 0"
+                        :src="proxyImageUrl(collectImageCandidates(item.imageUrl)[0] || collectImageCandidates(item.images)[0])"
+                        :alt="item.title"
                         class="h-full w-full object-cover"
                       />
-                    <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
-                      <Package class="h-8 w-8" />
+                      <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
+                        <Package class="h-6 w-6" />
+                      </div>
                     </div>
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <span :class="card.badgeClass" class="inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold">
-                      {{ card.label }}
-                    </span>
-                    <p class="mt-2 line-clamp-2 text-[12px] font-semibold leading-5 text-slate-900">
-                      {{ card.title }}
-                    </p>
-                    <div class="mt-2 flex flex-wrap items-center gap-2">
-                      <span class="text-[14px] font-black text-rose-500">{{ card.priceText }}</span>
-                      <span class="text-[11px] text-slate-500">{{ card.soldText }}</span>
+                    <div class="p-2.5">
+                      <p class="line-clamp-2 text-[11px] font-semibold leading-4 text-slate-900">{{ item.title }}</p>
+                      <div class="mt-1 flex items-center justify-between gap-2">
+                        <span class="text-[11px] font-black text-rose-500">{{ formatPrice(item.priceMin ?? item.priceMax ?? 0) }}</span>
+                        <span class="rounded-full bg-teal-50 px-2 py-0.5 text-[9px] font-semibold text-teal-700">ID</span>
+                      </div>
                     </div>
+                  </button>
+
+                  <div v-if="section.items.length === 0" class="col-span-2 rounded-[18px] border border-dashed border-slate-200 bg-slate-50 p-4 text-[11px] text-slate-500">
+                    Search one of these categories to populate the saved picks: {{ section.label }}.
                   </div>
                 </div>
-              </button>
-
-              <div v-if="suggestionCards.length === 0" class="rounded-[22px] border border-slate-200 bg-slate-50 p-4 text-slate-500">
-                We will show top suggestions once products load.
               </div>
+            </div>
+
+            <div v-if="curatedSections.length === 0" class="mt-4 rounded-[22px] border border-slate-200 bg-slate-50 p-4 text-slate-500">
+              We will show saved category picks once OTAPI search results are stored in the database.
             </div>
           </div>
         </section>
@@ -596,6 +609,7 @@ const selectedLanguage = ref<'en' | 'zh'>('en');
 const selectedCurrency = ref<'BDT' | 'CNY' | 'USD'>('BDT');
 const recentSearches = ref<string[]>([]);
 const premiumProducts = ref<any[]>([]);
+const curatedSections = ref<Array<{ slug: string; label: string; items: any[] }>>([]);
 const shoppingSettings = ref<any>({});
 const conversionRates = ref<{ CNY_TO_BDT?: number; CNY_TO_USD?: number }>({
   CNY_TO_BDT: 15,
@@ -664,59 +678,6 @@ const iconMap: Record<string, any> = {
 
 function categoryIcon(icon?: string) {
   return iconMap[String(icon || '').toLowerCase()] || Package;
-}
-
-const suggestionCards = computed(() => {
-  const basePool = [
-    ...(Array.isArray(visibleProducts.value) ? visibleProducts.value : []),
-    ...(Array.isArray(premiumProducts.value) ? premiumProducts.value : []),
-    ...(Array.isArray(hotItems.value) ? hotItems.value : []),
-  ];
-  const pool = basePool.filter((product: any) => product && (
-    product.priceMin != null ||
-    product.priceMax != null ||
-    product.price != null ||
-    product.salePrice != null ||
-    product.totalSold != null
-  ));
-  if (pool.length === 0) return [];
-
-  const byPrice = [...pool]
-    .map((product: any) => ({ ...product, _price: Number(product.priceMin ?? product.priceMax ?? product.price ?? product.salePrice ?? Number.POSITIVE_INFINITY) }))
-    .filter((product: any) => Number.isFinite(product._price))
-    .sort((a: any, b: any) => a._price - b._price)[0];
-  const bySales = [...pool].sort((a: any, b: any) => (b.totalSold || 0) - (a.totalSold || 0))[0];
-  const byValue = [...pool].sort((a: any, b: any) => scoreProduct(b) - scoreProduct(a))[0];
-
-  return [
-    buildSuggestionCard('best-selling', 'Best Selling', bySales, 'bg-emerald-100 text-emerald-700'),
-    buildSuggestionCard('lowest-price', 'Lowest Price', byPrice, 'bg-amber-100 text-amber-700'),
-    buildSuggestionCard('best-value', 'Best Value', byValue, 'bg-sky-100 text-sky-700'),
-  ].filter((card) => card.product);
-});
-
-function scoreProduct(product: any): number {
-  const price = Number(product?.priceMin ?? product?.priceMax ?? product?.price ?? product?.salePrice ?? 0);
-  const sold = Number(product?.totalSold || 0);
-  if (price <= 0) return sold * 1000;
-  return (sold * 1000) / price;
-}
-
-function buildSuggestionCard(key: string, label: string, product: any, badgeClass: string) {
-  if (!product) {
-    return { key, label, product: null, badgeClass, title: '', priceText: '', soldText: '' };
-  }
-
-  const price = Number(product.priceMin ?? product.priceMax ?? product.price ?? product.salePrice ?? 0);
-  return {
-    key,
-    label,
-    product,
-    badgeClass,
-    title: product.title || 'Untitled product',
-    priceText: formatPrice(price),
-    soldText: product.totalSold ? `${formatSales(product.totalSold)} sold` : 'Trending now',
-  };
 }
 
 function formatPrice(price: number): string {
@@ -863,8 +824,10 @@ function clearSearch() {
 }
 
 function handleProductClick(product: any) {
+  const externalId = product.externalId || product.external_id || product.id;
+  if (!externalId) return;
   router.push({
-    path: `/shopping/item/${product.externalId}`,
+    path: `/shopping/item/${externalId}`,
     query: { language: selectedLanguage.value },
   });
 }
@@ -904,6 +867,16 @@ async function loadHotItems() {
     hotItems.value = [];
   } finally {
     loading.value = false;
+  }
+}
+
+async function loadCuratedSections() {
+  try {
+    const response = await axios.get('/api/public/shopping/home-curated');
+    curatedSections.value = Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    console.error('[ShoppingPage] Failed to load curated sections:', error);
+    curatedSections.value = [];
   }
 }
 
@@ -964,6 +937,7 @@ onMounted(() => {
   loadHotItems();
   loadOffers();
   loadPremiumProducts();
+  loadCuratedSections();
   loadShopSettings();
   loadRecentSearches();
   loadConversionRates();
