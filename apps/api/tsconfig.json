@@ -7,9 +7,18 @@
     "target": "ES2022",
     "moduleResolution": "bundler",
     "esModuleInterop": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "noImplicitAny": false
   },
-  "include": ["src/**/*", "prisma/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src/index.ts",
+    "src/lib/**/*.ts",
+    "src/routes/public.shopping.ts",
+    "src/modules/shopping/**/*.ts",
+    "src/utils/r2.ts",
+    "src/types/**/*.d.ts",
+    "prisma/**/*"
+  ],
+  "exclude": ["node_modules", "dist", "src/routes/public.ts", "src/modules/shopping_otapi/**", "src/modules/whatsapp/**", "src/modules/providers/**", "src/routes/admin*.ts", "src/routes/auth.ts", "src/routes/guide.ts", "src/routes/ops.ts", "src/routes/provider.ts", "src/routes/seller.ts", "src/routes/user.ts", "src/routes/webchat.ts"]
 }
 

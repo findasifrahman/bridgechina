@@ -5,27 +5,24 @@ import formbody from '@fastify/formbody';
 import jwt from '@fastify/jwt';
 import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
-import { authenticate } from './middleware/auth.js';
-import { prisma } from './lib/prisma.js';
+import dotenv from 'dotenv';
 
+import { prisma } from './lib/prisma.js';
+import { authenticate } from './middleware/auth.js';
+import publicRoutes from './routes/public.shopping.js';
 import authRoutes from './routes/auth.js';
-import publicRoutes from './routes/public.js';
-import adminRoutes from './routes/admin.js';
-import adminKpiRoutes from './routes/admin-kpi.js';
-import sellerRoutes from './routes/seller.js';
 import userRoutes from './routes/user.js';
-import guideRoutes from './routes/guide.js';
-import opsRoutes from './routes/ops.js';
-import providerRoutes from './routes/provider.js';
-import whatsappRoutes from './modules/whatsapp/whatsapp.routes.js';
-import webchatRoutes from './routes/webchat.js';
-import dotenv from "dotenv";
+import sellerRoutes from './routes/seller.js';
+import adminRoutes from './routes/admin.js';
+
 dotenv.config();
+
 const fastify = Fastify({
   logger: true,
 });
 
-// Register plugins
+fastify.decorate('authenticate', authenticate);
+
 await fastify.register(cors, {
   origin: (origin, cb) => {
     const allowedOrigins = [
@@ -35,10 +32,9 @@ await fastify.register(cors, {
       'https://bridgechina-web.vercel.app',
       ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : []),
     ];
-    
-    // Allow all Vercel preview deployments (bridgechina-web-*.vercel.app)
+
     const isVercelPreview = origin && /^https:\/\/bridgechina-web-.*\.vercel\.app$/.test(origin);
-    
+
     if (!origin || allowedOrigins.includes(origin) || isVercelPreview) {
       cb(null, true);
     } else {
@@ -56,7 +52,7 @@ await fastify.register(formbody);
 
 await fastify.register(multipart, {
   limits: {
-    fileSize: 1024 * 1024, // 1MB max
+    fileSize: 1024 * 1024,
   },
 });
 
@@ -69,66 +65,24 @@ await fastify.register(rateLimit, {
   timeWindow: '1 minute',
 });
 
-// Register authenticate middleware
-fastify.decorate('authenticate', authenticate);
+fastify.get('/', async () => ({
+  message: 'BridgeChina API',
+  version: '2.0.0',
+  status: 'ok',
+  timestamp: new Date().toISOString(),
+}));
 
-// Root route
-fastify.get('/', async () => {
-  return {
-    message: 'BridgeChina API',
-    version: '1.0.0',
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    endpoints: {
-      health: '/health',
-      auth: '/api/auth',
-      public: '/api/public',
-      user: '/api/user',
-      admin: '/api/admin',
-      seller: '/api/seller',
-      guide: '/api/guide',
-    },
-  };
-});
+fastify.get('/health', async () => ({
+  status: 'ok',
+  timestamp: new Date().toISOString(),
+}));
 
-// API info route
-fastify.get('/api', async () => {
-  return {
-    message: 'BridgeChina API',
-    version: '1.0.0',
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    endpoints: {
-      health: '/health',
-      auth: '/api/auth',
-      public: '/api/public',
-      user: '/api/user',
-      admin: '/api/admin',
-      seller: '/api/seller',
-      guide: '/api/guide',
-    },
-  };
-});
-
-// Health check
-fastify.get('/health', async () => {
-  return { status: 'ok', timestamp: new Date().toISOString() };
-});
-
-// Register routes
-await fastify.register(authRoutes, { prefix: '/api/auth' });
 await fastify.register(publicRoutes, { prefix: '/api/public' });
+await fastify.register(authRoutes, { prefix: '/api/auth' });
 await fastify.register(userRoutes, { prefix: '/api/user' });
-await fastify.register(guideRoutes, { prefix: '/api/guide' });
-await fastify.register(adminRoutes, { prefix: '/api/admin' });
-await fastify.register(adminKpiRoutes, { prefix: '/api/admin' });
 await fastify.register(sellerRoutes, { prefix: '/api/seller' });
-await fastify.register(opsRoutes, { prefix: '/api/ops' });
-await fastify.register(providerRoutes, { prefix: '/api/provider' });
-await fastify.register(whatsappRoutes, { prefix: '/api/webhooks/twilio/whatsapp' });
-await fastify.register(webchatRoutes, { prefix: '/api/webchat' });
+await fastify.register(adminRoutes, { prefix: '/api/admin' });
 
-// Error handler
 fastify.setErrorHandler((error, request, reply) => {
   fastify.log.error(error);
   reply.status(error.statusCode || 500).send({
@@ -149,7 +103,6 @@ const start = async () => {
 
 start();
 
-// Graceful shutdown
 const shutdown = async (signal: string) => {
   fastify.log.info(`Received ${signal}, shutting down gracefully...`);
   try {
@@ -163,20 +116,16 @@ const shutdown = async (signal: string) => {
   }
 };
 
-// Handle different shutdown signals
 process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT')); // Ctrl+C on Windows
+process.on('SIGINT', () => shutdown('SIGINT'));
 
-// Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
   fastify.log.error({ err: error }, 'Uncaught Exception');
   shutdown('uncaughtException');
 });
 
-// Handle unhandled promise rejections
 process.on('unhandledRejection', (reason, promise) => {
   const err = reason instanceof Error ? reason : new Error(String(reason));
   fastify.log.error({ err, promise: String(promise) }, 'Unhandled Rejection');
   shutdown('unhandledRejection');
 });
-

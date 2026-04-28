@@ -26,19 +26,11 @@
           <span>Dashboard</span>
         </router-link>
         <router-link
-          to="/user/requests"
-          class="flex items-center space-x-3 px-3 py-2 rounded-lg text-teal-100 hover:bg-teal-700/60 hover:text-white transition-colors"
-          active-class="bg-teal-700 text-white font-semibold border-l-4 border-teal-300 shadow-sm"
-        >
-          <ClipboardList class="h-5 w-5" />
-          <span>My Requests</span>
-        </router-link>
-        <router-link
           to="/user/orders"
           class="flex items-center space-x-3 px-3 py-2 rounded-lg text-teal-100 hover:bg-teal-700/60 hover:text-white transition-colors"
           active-class="bg-teal-700 text-white font-semibold border-l-4 border-teal-300 shadow-sm"
         >
-          <ShoppingBag class="h-5 w-5" />
+          <ClipboardList class="h-5 w-5" />
           <span>Orders</span>
         </router-link>
         <router-link
@@ -95,12 +87,8 @@
           <LayoutDashboard class="h-5 w-5" />
           <span>Dashboard</span>
         </router-link>
-        <router-link @click="mobileMenuOpen = false" to="/user/requests" class="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-slate-100">
-          <ClipboardList class="h-5 w-5" />
-          <span>My Requests</span>
-        </router-link>
         <router-link @click="mobileMenuOpen = false" to="/user/orders" class="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-slate-100">
-          <ShoppingBag class="h-5 w-5" />
+          <ClipboardList class="h-5 w-5" />
           <span>Orders</span>
         </router-link>
         <router-link @click="mobileMenuOpen = false" to="/user/profile" class="flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium text-slate-700 hover:bg-slate-100">
@@ -119,7 +107,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Home, LayoutDashboard, ClipboardList, ShoppingBag, User, Menu, LogOut } from 'lucide-vue-next';
+import { Home, LayoutDashboard, ClipboardList, User, Menu, LogOut } from 'lucide-vue-next';
 import Drawer from '../components/Drawer.vue';
 
 const router = useRouter();

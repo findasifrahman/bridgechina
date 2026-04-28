@@ -25,6 +25,7 @@ export function getS3Client(): S3Client {
     s3Client = new S3Client({
       region: 'auto', // R2 uses 'auto' as the region
       endpoint,
+      maxAttempts: 2,
       credentials: {
         accessKeyId,
         secretAccessKey,
@@ -178,7 +179,13 @@ export async function uploadToR2(key: string, buffer: Buffer, contentType: strin
     ContentType: contentType,
   });
 
-  await client.send(command);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  try {
+    await client.send(command, { abortSignal: controller.signal as any });
+  } finally {
+    clearTimeout(timeout);
+  }
   console.log(`[R2] Uploaded object: ${key}`);
 }
 

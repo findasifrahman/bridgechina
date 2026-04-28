@@ -12,43 +12,8 @@ const router = createRouter({
         {
           path: '',
           name: 'home',
-          component: () => import('@/pages/HomePage.vue'),
+          component: () => import('@/pages/ShoppingPage.vue'),
           meta: { requiresAuth: false },
-        },
-        {
-          path: 'services',
-          name: 'services',
-          component: () => import('@/pages/ServicesPage.vue'),
-        },
-        {
-          path: 'services/:slug',
-          name: 'service-detail',
-          component: () => import('@/pages/ServiceDetailPage.vue'),
-        },
-        {
-          path: 'cities',
-          name: 'cities',
-          component: () => import('@/pages/CitiesPage.vue'),
-        },
-        {
-          path: 'cities/:slug',
-          name: 'city-detail',
-          component: () => import('@/pages/CityDetailPage.vue'),
-        },
-        {
-          path: 'blog',
-          name: 'blog',
-          component: () => import('@/pages/BlogPage.vue'),
-        },
-        {
-          path: 'blog/:slug',
-          name: 'blog-post',
-          component: () => import('@/pages/BlogPostPage.vue'),
-        },
-        {
-          path: 'help',
-          name: 'help',
-          component: () => import('@/pages/HelpPage.vue'),
         },
         {
           path: 'shopping',
@@ -56,18 +21,24 @@ const router = createRouter({
           component: () => import('@/pages/ShoppingPage.vue'),
         },
         {
-          path: 'shopping/:id',
-          name: 'product-detail',
-          component: () => import('@/pages/ProductDetailPage.vue'),
+          path: 'shopping/browse',
+          name: 'shopping-browse',
+          component: () => import('@/pages/ShoppingBrowsePage.vue'),
         },
         {
-          path: 'shopping/tmapi/:externalId',
-          name: 'tmapi-product-detail',
+          path: 'shopping/item/:externalId',
+          name: 'product-detail',
+          alias: '/shopping/tmapi/:externalId',
           component: () => import('@/pages/TmapiProductDetailPage.vue'),
         },
         {
           path: 'shopping/cart',
           name: 'shopping-cart',
+          component: () => import('@/pages/ShoppingCartPage.vue'),
+        },
+        {
+          path: 'shopping/checkout',
+          name: 'shopping-checkout',
           component: () => import('@/pages/ShoppingCartPage.vue'),
         },
         {
@@ -86,84 +57,19 @@ const router = createRouter({
           component: () => import('@/pages/ForgotPasswordPage.vue'),
         },
         {
-          path: 'request',
-          name: 'request',
-          component: () => import('@/pages/RequestServicePage.vue'),
-        },
-        {
           path: 'contact',
           name: 'contact',
           component: () => import('@/pages/ContactPage.vue'),
         },
         {
-          path: 'gallery',
-          name: 'gallery',
-          component: () => import('@/pages/GalleryPage.vue'),
+          path: 'blog',
+          name: 'blog',
+          component: () => import('@/pages/BlogPage.vue'),
         },
         {
-          path: 'places',
-          name: 'cityplaces',
-          component: () => import('@/pages/CityPlacesPage.vue'),
-        },
-        {
-          path: 'places/:id',
-          name: 'cityplace-detail',
-          component: () => import('@/pages/CityPlaceDetailPage.vue'),
-        },
-        {
-          path: 'services/guide/:id',
-          name: 'guide-detail',
-          component: () => import('@/pages/GuideDetailPage.vue'),
-        },
-        {
-          path: 'services/hotel/:id',
-          name: 'hotel-detail',
-          component: () => import('@/pages/HotelDetailPage.vue'),
-        },
-        {
-          path: 'services/tours/:id',
-          name: 'tour-detail',
-          component: () => import('@/pages/TourDetailPage.vue'),
-        },
-        {
-          path: 'services/halal-food/restaurant/:id',
-          name: 'restaurant-detail',
-          component: () => import('@/pages/RestaurantDetailPage.vue'),
-        },
-        {
-          path: 'services/halal-food/item/:id',
-          name: 'food-item-detail',
-          component: () => import('@/pages/FoodItemDetailPage.vue'),
-        },
-        {
-          path: 'services/esim/:id',
-          name: 'esim-detail',
-          component: () => import('@/pages/EsimDetailPage.vue'),
-        },
-        {
-          path: 'services/restaurants',
-          name: 'restaurants-list',
-          component: () => import('@/pages/RestaurantsListPage.vue'),
-        },
-        {
-          path: 'services/transport',
-          name: 'transport-list',
-          component: () => import('@/pages/TransportListPage.vue'),
-        },
-        {
-          path: 'services/transport/:id',
-          name: 'transport-detail',
-          component: () => import('@/pages/TransportDetailPage.vue'),
-        },
-        {
-          path: 'services/medical',
-          name: 'medical-list',
-          component: () => import('@/pages/MedicalListPage.vue'),
-        },
-        {
-          path: 'services/medical/:id',
-          name: 'medical-detail',
-          component: () => import('@/pages/MedicalDetailPage.vue'),
+          path: 'terms',
+          name: 'terms',
+          component: () => import('@/pages/TermsPage.vue'),
         },
       ],
     },
@@ -185,12 +91,12 @@ const router = createRouter({
         {
           path: 'requests',
           name: 'user-requests',
-          component: () => import('@/pages/app/RequestsPage.vue'),
+          redirect: '/user/orders',
         },
         {
           path: 'requests/:id',
           name: 'user-request-detail',
-          component: () => import('@/pages/app/RequestDetailPage.vue'),
+          redirect: '/user/orders',
         },
         {
           path: 'orders',
@@ -211,7 +117,7 @@ const router = createRouter({
     {
       path: '/admin',
       component: () => import('@/layouts/AdminLayout.vue'),
-      meta: { requiresAuth: true, requiresRole: ['ADMIN', 'OPS', 'EDITOR'] },
+      meta: { requiresAuth: true, requiresRole: ['ADMIN'] },
       children: [
         {
           path: '',
@@ -219,39 +125,40 @@ const router = createRouter({
           component: () => import('@/pages/admin/DashboardPage.vue'),
         },
         {
-          path: 'leads',
-          name: 'admin-leads',
-          component: () => import('@/pages/admin/LeadsPage.vue'),
-        },
-        {
-          path: 'leads/:id',
-          name: 'admin-lead-detail',
-          component: () => import('@/pages/admin/LeadDetailPage.vue'),
-        },
-        {
-          path: 'requests',
-          name: 'admin-requests',
-          component: () => import('@/pages/admin/RequestsPage.vue'),
-        },
-        {
-          path: 'requests/:id',
-          name: 'admin-request-detail',
-          component: () => import('@/pages/admin/RequestDetailPage.vue'),
-        },
-        {
-          path: 'payments',
-          name: 'admin-payments',
-          component: () => import('@/pages/admin/PaymentsPage.vue'),
-        },
-        {
-          path: 'catalog',
-          name: 'admin-catalog',
-          component: () => import('@/pages/admin/CatalogPage.vue'),
-        },
-        {
           path: 'shopping',
           name: 'admin-shopping',
           component: () => import('@/pages/admin/ShoppingPage.vue'),
+        },
+        {
+          path: 'pricing',
+          name: 'admin-pricing',
+          component: () => import('@/pages/admin/PricingSettingsPage.vue'),
+        },
+        {
+          path: 'shopping/products',
+          redirect: '/admin/shopping',
+        },
+        {
+          path: 'shopping/categories',
+          redirect: '/admin/shopping',
+        },
+        {
+          path: 'orders',
+          name: 'admin-orders',
+          component: () => import('@/pages/admin/OrdersPage.vue'),
+        },
+        {
+          path: 'payment-proofs',
+          name: 'admin-payment-proofs',
+          component: () => import('@/pages/admin/PaymentsPage.vue'),
+        },
+        {
+          path: 'products',
+          redirect: '/admin/shopping',
+        },
+        {
+          path: 'categories',
+          redirect: '/admin/shopping',
         },
         {
           path: 'media',
@@ -261,21 +168,6 @@ const router = createRouter({
         {
           path: 'homepage',
           name: 'admin-homepage',
-          component: () => import('@/pages/admin/HomepagePage.vue'),
-        },
-        {
-          path: 'featured-items',
-          name: 'admin-featured-items',
-          component: () => import('@/pages/admin/FeaturedItemsPage.vue'),
-        },
-        {
-          path: 'service-offers',
-          name: 'admin-service-offers',
-          component: () => import('@/pages/admin/ServiceOffersPage.vue'),
-        },
-        {
-          path: 'homepage-banners',
-          name: 'admin-homepage-banners',
           component: () => import('@/pages/admin/HomepageBannersPage.vue'),
         },
         {
@@ -289,15 +181,23 @@ const router = createRouter({
           component: () => import('@/pages/admin/UsersPage.vue'),
         },
         {
-          path: 'service-providers',
-          name: 'admin-service-providers',
-          component: () => import('@/pages/admin/ServiceProvidersPage.vue'),
+          path: 'sellers',
+          name: 'admin-sellers',
+          component: () => import('@/pages/admin/SellersPage.vue'),
         },
-        {
-          path: 'audit',
-          name: 'admin-audit',
-          component: () => import('@/pages/admin/AuditPage.vue'),
-        },
+        { path: 'leads', redirect: '/admin/orders' },
+        { path: 'leads/:id', redirect: '/admin/orders' },
+        { path: 'requests', redirect: '/admin/orders' },
+        { path: 'requests/:id', redirect: '/admin/orders' },
+        { path: 'payments', redirect: '/admin/payment-proofs' },
+        { path: 'catalog', redirect: '/admin/shopping' },
+        { path: 'featured-items', redirect: '/admin/shopping' },
+        { path: 'service-offers', redirect: '/admin/shopping' },
+        { path: 'homepage-banners', redirect: '/admin/homepage' },
+        { path: 'service-providers', redirect: '/admin/sellers' },
+        { path: 'shipping-rates', redirect: '/admin/pricing' },
+        { path: 'markup', redirect: '/admin/pricing' },
+        { path: 'audit', redirect: '/admin/orders' },
       ],
     },
     {
@@ -324,77 +224,19 @@ const router = createRouter({
     },
     {
       path: '/ops',
-      component: () => import('@/layouts/OpsLayout.vue'),
-      meta: { requiresAuth: true, requiresRole: ['ADMIN', 'OPS', 'SELLER', 'PARTNER'] },
-      children: [
-        {
-          path: 'inbox',
-          name: 'ops-inbox',
-          component: () => import('@/pages/ops/InboxPage.vue'),
-        },
-        {
-          path: 'inbox/:id',
-          name: 'ops-inbox-detail',
-          component: () => import('@/pages/ops/InboxPage.vue'),
-        },
-        {
-          path: 'offers',
-          name: 'ops-offers',
-          component: () => import('@/pages/ops/OffersPage.vue'),
-        },
-        {
-          path: 'requests',
-          name: 'ops-requests',
-          component: () => import('@/pages/ops/RequestsPage.vue'),
-        },
-        {
-          path: 'requests/:id',
-          name: 'ops-request-detail',
-          component: () => import('@/pages/ops/RequestDetailPage.vue'),
-        },
-      ],
+      redirect: '/admin',
+    },
+    {
+      path: '/ops/:pathMatch(.*)*',
+      redirect: '/admin',
     },
     {
       path: '/provider',
-      component: () => import('@/layouts/ProviderLayout.vue'),
-      meta: { requiresAuth: true, requiresRole: ['SERVICE_PROVIDER', 'ADMIN', 'OPS'] },
-      children: [
-        {
-          path: '',
-          name: 'provider-dashboard',
-          component: () => import('@/pages/provider/DashboardPage.vue'),
-        },
-        {
-          path: 'inbox',
-          name: 'provider-inbox',
-          component: () => import('@/pages/provider/InboxPage.vue'),
-        },
-        {
-          path: 'inbox/:id',
-          name: 'provider-inbox-detail',
-          component: () => import('@/pages/provider/InboxPage.vue'),
-        },
-        {
-          path: 'requests',
-          name: 'provider-requests',
-          component: () => import('@/pages/provider/RequestsPage.vue'),
-        },
-        {
-          path: 'requests/:id',
-          name: 'provider-request-detail',
-          component: () => import('@/pages/provider/RequestDetailPage.vue'),
-        },
-        {
-          path: 'profile',
-          name: 'provider-profile',
-          component: () => import('@/pages/provider/ProfilePage.vue'),
-        },
-        {
-          path: 'profile/service/:categoryKey?',
-          name: 'provider-service-profile',
-          component: () => import('@/pages/provider/ServiceProfilePage.vue'),
-        },
-      ],
+      redirect: '/',
+    },
+    {
+      path: '/provider/:pathMatch(.*)*',
+      redirect: '/',
     },
     {
       path: '/:pathMatch(.*)*',
@@ -416,8 +258,7 @@ router.beforeEach(async (to, from, next) => {
     to.matched.some(record => record.meta.requiresAuth === false) ||
     to.name === 'home' ||
     to.path === '/' ||
-    ['login', 'register', 'forgot-password', 'services', 'service-detail', 'cities', 'city-detail', 
-     'blog', 'blog-post', 'help', 'shopping', 'product-detail', 'request', 'contact', 'gallery', 'cityplaces'].includes(to.name as string);
+    ['login', 'register', 'forgot-password', 'contact', 'blog', 'terms', 'shopping', 'shopping-browse', 'product-detail', 'shopping-cart', 'shopping-checkout'].includes(to.name as string);
   
   if (isPublicRoute) {
     console.log('[Router] Public route, allowing navigation');

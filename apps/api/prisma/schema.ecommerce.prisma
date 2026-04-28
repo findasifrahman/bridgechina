@@ -1,0 +1,658 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                     String             @id @default(uuid())
+  email                  String?            @unique
+  phone                  String?            @unique
+  password_hash          String
+  status                 String             @default("active")
+  created_at             DateTime           @default(now())
+  updated_at             DateTime           @updatedAt
+  addresses              Address[]
+  assignedConversations  Conversation[]     @relation("AssignedConversations")
+  blogPosts              BlogPost[]
+  cart                   Cart?
+  conversations          Conversation[]     @relation("ConversationUser")
+  customerProfile        CustomerProfile?
+  mediaAssets            MediaAsset[]
+  oauthAccounts          OAuthAccount[]
+  orders                 Order[]
+  products               Product[]          @relation("SellerProducts")
+  refreshTokens          RefreshToken[]
+  roles                  UserRole[]
+  reviews                Review[]
+  reviewedPaymentProofs  PaymentProof[]     @relation("PaymentProofReviewer")
+  submittedPaymentProofs PaymentProof[]     @relation("PaymentProofSubmitter")
+  sellerProfile          SellerProfile?
+  sellerOrderItems       OrderItem[]        @relation("SellerOrderItems")
+  createdOrderEvents     OrderStatusEvent[] @relation("OrderStatusEventCreator")
+  cartItemsAsSeller      CartItem[]         @relation("CartItemSeller")
+  customerProfileNotes    CustomerProfile[]   @relation("CustomerProfileInternalNoteAuthor")
+
+  @@index([email])
+  @@index([phone])
+  @@map("users")
+}
+
+model Role {
+  id        String     @id @default(uuid())
+  name      String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  users     UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  user_id String
+  role_id String
+  role    Role   @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, role_id])
+  @@map("user_roles")
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  user_id    String
+  token_hash String
+  expires_at DateTime
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([expires_at])
+  @@map("refresh_tokens")
+}
+
+model OAuthAccount {
+  id                  String   @id @default(uuid())
+  user_id             String
+  provider            String
+  provider_account_id String
+  created_at          DateTime @default(now())
+  user                User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([provider, provider_account_id])
+  @@index([user_id])
+  @@map("oauth_accounts")
+}
+
+model CustomerProfile {
+  user_id                   String      @id
+  full_name                 String?
+  nationality               String?
+  passport_name             String?
+  preferred_language        String?
+  preferred_currency        String?     @default("BDT")
+  preferred_contact_channel String?
+  wechat_id                 String?
+  marketing_consent         Boolean     @default(false)
+  avatar_asset_id           String?
+  internal_rating           Int?
+  internal_note             String?
+  internal_note_updated_by  String?
+  internal_note_updated_at  DateTime?
+  created_at                DateTime    @default(now())
+  updated_at                DateTime    @updatedAt
+  user                      User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  avatarAsset               MediaAsset? @relation("CustomerProfileAvatar", fields: [avatar_asset_id], references: [id], onDelete: SetNull)
+  internalNoteUpdatedBy     User?       @relation("CustomerProfileInternalNoteAuthor", fields: [internal_note_updated_by], references: [id], onDelete: SetNull)
+
+  @@map("customer_profiles")
+}
+
+model SellerProfile {
+  id              String      @id @default(uuid())
+  user_id         String      @unique
+  shop_name       String
+  display_name    String?
+  contact_name    String?
+  whatsapp        String?
+  wechat          String?
+  email           String?
+  website         String?
+  description     String?
+  address_text    String?
+  service_area    String?
+  verified        Boolean     @default(false)
+  is_active       Boolean     @default(true)
+  rating          Float?
+  review_count    Int         @default(0)
+  logo_asset_id   String?
+  banner_asset_id String?
+  created_at      DateTime    @default(now())
+  updated_at      DateTime    @updatedAt
+  user            User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  logoAsset       MediaAsset? @relation("SellerLogo", fields: [logo_asset_id], references: [id], onDelete: SetNull)
+  bannerAsset     MediaAsset? @relation("SellerBanner", fields: [banner_asset_id], references: [id], onDelete: SetNull)
+
+  @@index([verified])
+  @@index([is_active])
+  @@map("seller_profiles")
+}
+
+model Address {
+  id           String   @id @default(uuid())
+  user_id      String
+  name         String
+  phone        String
+  country      String   @default("Bangladesh")
+  city         String
+  address_line String
+  postal_code  String?
+  geo_lat      Float?
+  geo_lng      Float?
+  notes        String?
+  is_default   Boolean  @default(false)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  orders       Order[]
+
+  @@index([user_id])
+  @@map("addresses")
+}
+
+model MediaAsset {
+  id                     String            @id @default(uuid())
+  r2_key                 String            @unique
+  public_url             String
+  mime_type              String
+  size                   Int
+  uploaded_by            String
+  created_at             DateTime          @default(now())
+  category               String?
+  height                 Int?
+  tags                   String[]          @default([])
+  thumbnail_key          String?
+  thumbnail_url          String?
+  width                  Int?
+  uploader               User              @relation(fields: [uploaded_by], references: [id])
+  customerProfileAvatars CustomerProfile[] @relation("CustomerProfileAvatar")
+  sellerLogoAssets       SellerProfile[]   @relation("SellerLogo")
+  sellerBannerAssets     SellerProfile[]   @relation("SellerBanner")
+  productCovers          Product[]         @relation("ProductCover")
+  blogCovers             BlogPost[]        @relation("BlogCover")
+  homepageBannerCovers   HomepageBanner[]  @relation("HomepageBannerCover")
+  homepageOfferCovers    HomepageOffer[]   @relation("HomepageOfferCover")
+  paymentProofs          PaymentProof[]
+
+  @@index([uploaded_by])
+  @@index([category])
+  @@index([tags])
+  @@map("media_assets")
+}
+
+model BlogPost {
+  id             String      @id @default(uuid())
+  slug           String      @unique
+  title          String
+  excerpt        String?
+  content_md     String
+  cover_asset_id String?
+  status         String      @default("draft")
+  published_at   DateTime?
+  created_by     String
+  created_at     DateTime    @default(now())
+  updated_at     DateTime    @updatedAt
+  author         User        @relation(fields: [created_by], references: [id], onDelete: Cascade)
+  coverAsset     MediaAsset? @relation("BlogCover", fields: [cover_asset_id], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([published_at])
+  @@map("blog_posts")
+}
+
+model HomepageBanner {
+  id             String      @id @default(uuid())
+  title          String
+  subtitle       String?
+  link           String?
+  cta_text       String?     @default("Learn More")
+  cover_asset_id String?
+  is_active      Boolean     @default(true)
+  sort_order     Int         @default(0)
+  created_at     DateTime    @default(now())
+  updated_at     DateTime    @updatedAt
+  coverAsset     MediaAsset? @relation("HomepageBannerCover", fields: [cover_asset_id], references: [id], onDelete: SetNull)
+
+  @@index([is_active, sort_order])
+  @@map("homepage_banners")
+}
+
+model HomepageOffer {
+  id                String      @id @default(uuid())
+  title             String
+  subtitle          String?
+  description       String?
+  offer_type        String      @default("promotion")
+  value             Float?
+  currency          String      @default("BDT")
+  link              String?
+  cover_asset_id    String?
+  gallery_asset_ids Json?
+  is_active         Boolean     @default(true)
+  sort_order        Int         @default(0)
+  valid_from        DateTime?
+  valid_until       DateTime?
+  created_at        DateTime    @default(now())
+  updated_at        DateTime    @updatedAt
+  coverAsset        MediaAsset? @relation("HomepageOfferCover", fields: [cover_asset_id], references: [id], onDelete: SetNull)
+
+  @@index([is_active, sort_order])
+  @@index([valid_from])
+  @@index([valid_until])
+  @@map("homepage_offers")
+}
+
+model ProductCategory {
+  id          String            @id @default(uuid())
+  parent_id   String?
+  name        String
+  slug        String            @unique
+  description String?
+  icon        String?
+  sort_order  Int               @default(0)
+  is_active   Boolean           @default(true)
+  created_at  DateTime          @default(now())
+  updated_at  DateTime          @updatedAt
+  parent      ProductCategory?  @relation("CategoryHierarchy", fields: [parent_id], references: [id])
+  children    ProductCategory[] @relation("CategoryHierarchy")
+  products    Product[]
+
+  @@index([parent_id])
+  @@index([slug])
+  @@map("product_categories")
+}
+
+model Product {
+  id                String          @id @default(uuid())
+  seller_id         String
+  category_id       String
+  title             String
+  description       String?
+  price             Float
+  currency          String          @default("BDT")
+  original_price    Float?
+  stock_qty         Int             @default(0)
+  minimum_order_qty Int             @default(1)
+  status            String          @default("draft")
+  source_kind       String          @default("manual")
+  source_url        String?
+  external_id       String?
+  cover_asset_id    String?
+  brand             String?
+  dimensions        Json?
+  rating            Float?
+  review_count      Int             @default(0)
+  sku               String?         @unique
+  specifications    Json?
+  tags              Json?
+  weight_kg         Float?
+  gallery_asset_ids Json?
+  is_featured       Boolean         @default(false)
+  created_at        DateTime        @default(now())
+  updated_at        DateTime        @updatedAt
+  cartItems         CartItem[]
+  orderItems        OrderItem[]
+  category          ProductCategory @relation(fields: [category_id], references: [id], onDelete: Restrict)
+  coverAsset        MediaAsset?     @relation("ProductCover", fields: [cover_asset_id], references: [id], onDelete: SetNull)
+  seller            User            @relation("SellerProducts", fields: [seller_id], references: [id], onDelete: Restrict)
+
+  @@index([seller_id])
+  @@index([category_id])
+  @@index([status])
+  @@index([rating])
+  @@index([sku])
+  @@index([source_kind])
+  @@map("products")
+}
+
+model Cart {
+  id         String     @id @default(uuid())
+  user_id    String     @unique
+  created_at DateTime   @default(now())
+  updated_at DateTime   @updatedAt
+  items      CartItem[]
+  user       User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("carts")
+}
+
+model CartItem {
+  id                String   @id @default(uuid())
+  cart_id           String
+  product_id        String
+  seller_id         String
+  qty               Int
+  price_snapshot    Float
+  currency_snapshot String   @default("BDT")
+  title_snapshot    String?
+  created_at        DateTime @default(now())
+  cart              Cart     @relation(fields: [cart_id], references: [id], onDelete: Cascade)
+  product           Product  @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  seller            User     @relation("CartItemSeller", fields: [seller_id], references: [id], onDelete: Restrict)
+
+  @@index([cart_id])
+  @@index([seller_id])
+  @@map("cart_items")
+}
+
+model Order {
+  id                  String             @id @default(uuid())
+  order_number        String             @unique
+  user_id             String
+  status              String             @default("pending_payment")
+  payment_status      String             @default("unsubmitted")
+  currency            String             @default("BDT")
+  subtotal            Float
+  shipping_fee        Float              @default(0)
+  total               Float
+  shipping_method     String             @default("air")
+  shipping_address_id String
+  notes               String?
+  admin_notes         String?
+  seller_notes        String?
+  seller_archived_at  DateTime?
+  admin_archived_at   DateTime?
+  created_at          DateTime           @default(now())
+  updated_at          DateTime           @updatedAt
+  items               OrderItem[]
+  shippingAddress     Address            @relation(fields: [shipping_address_id], references: [id], onDelete: Restrict)
+  user                User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  shippingUpdates     ShippingUpdate[]
+  statusEvents        OrderStatusEvent[]
+  paymentProofs       PaymentProof[]
+
+  @@index([user_id])
+  @@index([status])
+  @@index([payment_status])
+  @@index([created_at])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                String    @id @default(uuid())
+  order_id          String
+  product_id        String
+  seller_id         String
+  qty               Int
+  price_snapshot    Float
+  currency_snapshot String    @default("BDT")
+  title_snapshot    String?
+  seller_status     String    @default("pending_review")
+  seller_note       String?
+  reviewed_at       DateTime?
+  created_at        DateTime  @default(now())
+  order             Order     @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  product           Product   @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  seller            User      @relation("SellerOrderItems", fields: [seller_id], references: [id], onDelete: Restrict)
+
+  @@index([order_id])
+  @@index([seller_id])
+  @@index([seller_status])
+  @@index([created_at])
+  @@map("order_items")
+}
+
+model ShippingUpdate {
+  id          String   @id @default(uuid())
+  order_id    String
+  status_text String
+  note        String?
+  created_at  DateTime @default(now())
+  order       Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@index([order_id])
+  @@map("shipping_updates")
+}
+
+model OrderStatusEvent {
+  id          String   @id @default(uuid())
+  order_id    String
+  status_from String?
+  status_to   String
+  note        String?
+  created_by  String?
+  created_at  DateTime @default(now())
+  order       Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  creator     User?    @relation("OrderStatusEventCreator", fields: [created_by], references: [id], onDelete: SetNull)
+
+  @@index([order_id])
+  @@index([status_to])
+  @@index([created_at])
+  @@map("order_status_events")
+}
+
+model PaymentProof {
+  id           String     @id @default(uuid())
+  order_id     String
+  asset_id     String
+  submitted_by String?
+  amount       Float?
+  status       String     @default("submitted")
+  notes        String?
+  reviewed_by  String?
+  reviewed_at  DateTime?
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
+  order        Order      @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  asset        MediaAsset @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+  reviewer     User?      @relation("PaymentProofReviewer", fields: [reviewed_by], references: [id], onDelete: SetNull)
+  submitter    User?      @relation("PaymentProofSubmitter", fields: [submitted_by], references: [id], onDelete: SetNull)
+
+  @@index([order_id])
+  @@index([status])
+  @@map("payment_proofs")
+}
+
+model Review {
+  id            String   @id @default(uuid())
+  user_id       String
+  entity_type   String
+  entity_id     String
+  rating        Int
+  title         String?
+  comment       String?
+  is_verified   Boolean  @default(false)
+  helpful_count Int      @default(0)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  user          User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([entity_type, entity_id])
+  @@index([user_id])
+  @@index([rating])
+  @@index([created_at])
+  @@map("reviews")
+}
+
+model ExternalSearchCache {
+  id           String   @id @default(uuid())
+  source       String
+  cache_key    String   @unique
+  query_json   Json
+  results_json Json
+  created_at   DateTime @default(now())
+  expires_at   DateTime
+
+  @@index([source, cache_key])
+  @@index([expires_at])
+  @@map("external_search_cache")
+}
+
+model ExternalCatalogItem {
+  id             String   @id @default(uuid())
+  source         String
+  external_id    String
+  title          String?
+  price_min      Float?
+  price_max      Float?
+  currency       String   @default("CNY")
+  main_images    Json?
+  skus_json      Json?
+  seller_json    Json?
+  source_url     String?
+  raw_json       Json?
+  last_synced_at DateTime @default(now())
+  expires_at     DateTime
+  title_en       String?
+
+  @@unique([source, external_id])
+  @@index([source])
+  @@index([expires_at])
+  @@map("external_catalog_items")
+}
+
+model ExternalHotItem {
+  id            String   @id @default(uuid())
+  source        String
+  external_id   String
+  category_slug String
+  pinned_rank   Int      @default(0)
+  created_at    DateTime @default(now())
+
+  @@unique([source, external_id])
+  @@index([pinned_rank])
+  @@map("external_hot_items")
+}
+
+model Conversation {
+  id                   String    @id @default(uuid())
+  channel              String
+  user_id              String?
+  external_channel     String?
+  external_from        String?
+  external_to          String?
+  external_thread_key  String?   @unique
+  mode                 String    @default("AI")
+  assigned_user_id     String?
+  assigned_at          DateTime?
+  last_inbound_at      DateTime?
+  last_outbound_at     DateTime?
+  last_message_preview String?
+  created_at           DateTime  @default(now())
+  user                 User?     @relation("ConversationUser", fields: [user_id], references: [id], onDelete: SetNull)
+  assignedUser         User?     @relation("AssignedConversations", fields: [assigned_user_id], references: [id], onDelete: SetNull)
+  messages             Message[]
+
+  @@index([user_id])
+  @@index([external_from])
+  @@index([mode])
+  @@index([assigned_user_id])
+  @@map("conversations")
+}
+
+model Message {
+  id              String       @id @default(uuid())
+  conversation_id String
+  role            String
+  content         String
+  direction       String?
+  provider        String?
+  provider_sid    String?
+  status          String?
+  meta_json       Json?
+  created_at      DateTime     @default(now())
+  conversation    Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+
+  @@index([conversation_id])
+  @@index([provider_sid])
+  @@map("messages")
+}
+
+model TwilioWebhookEvent {
+  id           String   @id @default(uuid())
+  event_type   String
+  provider_sid String?
+  payload      Json
+  created_at   DateTime @default(now())
+
+  @@unique([event_type, provider_sid])
+  @@map("twilio_webhook_events")
+}
+
+model TwilioMessageStatus {
+  id            String   @id @default(uuid())
+  provider_sid  String
+  status        String
+  error_code    String?
+  error_message String?
+  raw           Json?
+  created_at    DateTime @default(now())
+
+  @@index([provider_sid])
+  @@map("twilio_message_statuses")
+}
+
+model ProductTitleTranslation {
+  id              String   @id @default(uuid())
+  source_text     String
+  translated_text String
+  provider        String   @default("openai")
+  created_at      DateTime @default(now())
+
+  @@unique([source_text])
+  @@map("product_title_translations")
+}
+
+model SiteSetting {
+  id         String   @id @default(uuid())
+  key        String   @unique
+  value_json Json
+  updated_at DateTime @updatedAt
+  created_at DateTime @default(now())
+
+  @@map("site_settings")
+}
+
+model ShippingRateSetting {
+  id              String   @id @default(uuid())
+  method          String
+  currency        String   @default("BDT")
+  min_rate_per_kg Float
+  max_rate_per_kg Float
+  is_active       Boolean  @default(true)
+  updated_by      String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@unique([method, currency])
+  @@index([method])
+  @@map("shipping_rate_settings")
+}
+
+model SourceMarkupSetting {
+  id           String   @id @default(uuid())
+  source_kind  String   @unique
+  percent_rate Float    @default(0)
+  updated_by   String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@index([source_kind])
+  @@map("source_markup_settings")
+}
+
+model MoqShoppingOtapiRule {
+  id                    String   @id @default(uuid())
+  scope                 String   @unique @default("global")
+  minimum_product       Int      @default(1)
+  minimum_price_threshold Float   @default(0)
+  currency              String   @default("BDT")
+  updated_by            String?
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  @@map("moq_shopping_otapi_rule")
+}

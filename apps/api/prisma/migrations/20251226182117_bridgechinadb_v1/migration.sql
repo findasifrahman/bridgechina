@@ -221,7 +221,7 @@ CREATE TABLE "service_categories" (
 );
 
 -- CreateTable
-CREATE TABLE "service_requests" (
+CREATE TABLE IF NOT EXISTS "service_requests" (
     "id" TEXT NOT NULL,
     "category_id" TEXT NOT NULL,
     "city_id" TEXT NOT NULL,

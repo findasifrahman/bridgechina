@@ -1,14 +1,39 @@
 -- AlterTable
-ALTER TABLE "service_provider_profiles" ADD COLUMN     "is_default" BOOLEAN NOT NULL DEFAULT false;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'service_provider_profiles' AND column_name = 'is_default'
+    ) THEN
+        ALTER TABLE "service_provider_profiles" ADD COLUMN "is_default" BOOLEAN NOT NULL DEFAULT false;
+    END IF;
+END $$;
 
 -- AlterTable
-ALTER TABLE "service_requests" ADD COLUMN     "bundle_key" TEXT,
-ADD COLUMN     "created_from_conversation_id" TEXT,
-ADD COLUMN     "dispatched_at" TIMESTAMP(3),
-ADD COLUMN     "first_ops_approval_at" TIMESTAMP(3),
-ADD COLUMN     "first_provider_response_at" TIMESTAMP(3),
-ADD COLUMN     "ops_last_action_at" TIMESTAMP(3),
-ADD COLUMN     "sla_due_at" TIMESTAMP(3);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'service_requests' AND column_name = 'bundle_key') THEN
+        ALTER TABLE "service_requests" ADD COLUMN "bundle_key" TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'service_requests' AND column_name = 'created_from_conversation_id') THEN
+        ALTER TABLE "service_requests" ADD COLUMN "created_from_conversation_id" TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'service_requests' AND column_name = 'dispatched_at') THEN
+        ALTER TABLE "service_requests" ADD COLUMN "dispatched_at" TIMESTAMP(3);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'service_requests' AND column_name = 'first_ops_approval_at') THEN
+        ALTER TABLE "service_requests" ADD COLUMN "first_ops_approval_at" TIMESTAMP(3);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'service_requests' AND column_name = 'first_provider_response_at') THEN
+        ALTER TABLE "service_requests" ADD COLUMN "first_provider_response_at" TIMESTAMP(3);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'service_requests' AND column_name = 'ops_last_action_at') THEN
+        ALTER TABLE "service_requests" ADD COLUMN "ops_last_action_at" TIMESTAMP(3);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'service_requests' AND column_name = 'sla_due_at') THEN
+        ALTER TABLE "service_requests" ADD COLUMN "sla_due_at" TIMESTAMP(3);
+    END IF;
+END $$;
 
 -- CreateTable
 CREATE TABLE "provider_dispatches" (

@@ -1,8 +1,16 @@
 import axios, { AxiosInstance } from 'axios';
 
-const OTAPI_RAPID_HOST = 'otapi-1688.p.rapidapi.com';
-const OTAPI_BASE_URL = `https://${OTAPI_RAPID_HOST}`;
-const OTAPI_RAPID_TOKEN = process.env.OTAPI_RAPID_TOKEN;
+function normalizeBaseUrl(raw: string | undefined): string {
+  const value = String(raw || '').trim();
+  if (!value) return 'https://otapi-1688.p.rapidapi.com';
+  if (/^https?:\/\//i.test(value)) return value.replace(/\/+$/, '');
+  return `https://${value.replace(/^\/+/, '').replace(/\/+$/, '')}`;
+}
+
+const OTAPI_BASE_URL = normalizeBaseUrl(process.env.OTAPI_BASE_URL || process.env.OTAPI_RAPID_BASE_URL || 'otapi-1688.p.rapidapi.com');
+const OTAPI_RAPID_HOST = process.env.OTAPI_RAPID_HOST || new URL(OTAPI_BASE_URL).host;
+const OTAPI_RAPID_TOKEN = process.env.OTAPI_RAPID_TOKEN || process.env.RAPIDAPI_KEY || process.env.OTAPI_API_KEY;
+const OTAPI_TIMEOUT_MS = Number(process.env.OTAPI_TIMEOUT_MS || 60000);
 
 const DEBUG_OTAPI = process.env.DEBUG_OTAPI === '1' || process.env.DEBUG_OTAPI === 'true';
 
@@ -30,7 +38,7 @@ class OTAPIClient {
 
     this.client = axios.create({
       baseURL: config?.baseURL || OTAPI_BASE_URL,
-      timeout: 30000,
+      timeout: OTAPI_TIMEOUT_MS,
       headers: {
         'x-rapidapi-host': OTAPI_RAPID_HOST,
         'x-rapidapi-key': rapidToken,
@@ -89,22 +97,41 @@ class OTAPIClient {
       language: params.language || 'en',
       framePosition: params.framePosition ?? 0,
       frameSize: params.frameSize ?? 50,
+      Provider: 'Alibaba1688',
+      SearchMethod: 'Default',
     };
 
     if (params.CategoryId) qp.CategoryId = params.CategoryId;
     if (params.ItemTitle) qp.ItemTitle = params.ItemTitle;
     if (params.OrderBy) qp.OrderBy = params.OrderBy;
-    if (params.MinPrice !== undefined) qp.MinPrice = String(params.MinPrice);
-    if (params.MaxPrice !== undefined) qp.MaxPrice = String(params.MaxPrice);
-    if (params.MinVolume !== undefined) qp.MinVolume = String(params.MinVolume);
+    if (params.MinPrice !== undefined) qp.MinPrice = params.MinPrice;
+    if (params.MaxPrice !== undefined) qp.MaxPrice = params.MaxPrice;
+    if (params.MinVolume !== undefined) qp.MinVolume = params.MinVolume;
     if (params.ImageUrl) qp.ImageUrl = params.ImageUrl;
     if (params.VendorId) qp.VendorId = params.VendorId;
+
+    const xmlParts: string[] = ['<SearchItemsParameters>'];
+    xmlParts.push('<Provider>Alibaba1688</Provider>');
+    xmlParts.push('<SearchMethod>Default</SearchMethod>');
+    xmlParts.push('<EnableDirectSearch xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true" />');
+    if (params.CategoryId) xmlParts.push(`<CategoryId>${escapeXml(params.CategoryId)}</CategoryId>`);
+    if (params.ItemTitle) xmlParts.push(`<ItemTitle>${escapeXml(params.ItemTitle)}</ItemTitle>`);
+    if (params.OrderBy) xmlParts.push(`<OrderBy>${escapeXml(params.OrderBy)}</OrderBy>`);
+    if (params.MinPrice !== undefined) xmlParts.push(`<MinPrice>${escapeXml(String(params.MinPrice))}</MinPrice>`);
+    if (params.MaxPrice !== undefined) xmlParts.push(`<MaxPrice>${escapeXml(String(params.MaxPrice))}</MaxPrice>`);
+    if (params.MinVolume !== undefined) xmlParts.push(`<MinVolume>${escapeXml(String(params.MinVolume))}</MinVolume>`);
+    if (params.ImageUrl) xmlParts.push(`<ImageUrl>${escapeXml(params.ImageUrl)}</ImageUrl>`);
+    if (params.VendorId) xmlParts.push(`<VendorId>${escapeXml(params.VendorId)}</VendorId>`);
+    xmlParts.push('</SearchItemsParameters>');
+
+    qp.xmlParameters = xmlParts.join('');
 
     if (DEBUG_OTAPI) {
       console.log('[OTAPI Client] Request: BatchSearchItemsFrame', {
         language: qp.language,
         framePosition: qp.framePosition,
         frameSize: qp.frameSize,
+        xmlParameters: qp.xmlParameters,
         hasItemTitle: !!qp.ItemTitle,
         hasImageUrl: !!qp.ImageUrl,
         imageUrlPrefix: qp.ImageUrl ? String(qp.ImageUrl).substring(0, 120) : undefined,
@@ -130,14 +157,24 @@ class OTAPIClient {
     }
   }
 
-  async batchGetItemFullInfo(params: { itemId: string; language?: string }): Promise<any> {
+  async getItemFullInfo(params: { itemId: string; language?: string; blockList?: string[] }): Promise<any> {
     const qp: any = {
       itemId: params.itemId,
       language: params.language || 'en',
+      sessionId: 'godMode',
     };
 
-    const response = await this.client.get('/BatchGetItemFullInfo', { params: qp });
+    if (params.blockList && params.blockList.length > 0) {
+      qp.blockList = params.blockList.join(',');
+    }
+    qp.itemParameters = '';
+
+    const response = await this.client.get('/GetItemFullInfo', { params: qp });
     return response.data;
+  }
+
+  async batchGetItemFullInfo(params: { itemId: string; language?: string; blockList?: string[] }): Promise<any> {
+    return this.getItemFullInfo(params);
   }
 
   async getItemDescription(params: { itemId: string; language?: string }): Promise<any> {
@@ -185,3 +222,12 @@ class OTAPIClient {
 
 export const otapiClient = new OTAPIClient();
 export default otapiClient;
+
+function escapeXml(value: string): string {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}

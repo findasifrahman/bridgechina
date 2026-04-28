@@ -51,7 +51,7 @@
               class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 focus:border-teal-500 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors bg-white"
             >
               <option value="">All Categories</option>
-              <option v-for="cat in serviceCategories" :key="cat.id" :value="cat.key">
+              <option v-for="cat in categories" :key="cat.id" :value="cat.slug">
                 {{ cat.name }}
               </option>
               <option value="city">Cities</option>
@@ -152,10 +152,11 @@
           <label class="block text-sm font-medium text-slate-700 mb-2">
             Select Image (Max 1MB)
           </label>
-          <Input
+          <input
             ref="fileInput"
             type="file"
             accept="image/*"
+            class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 file:mr-4 file:rounded-md file:border-0 file:bg-teal-600 file:px-4 file:py-2 file:text-white hover:file:bg-teal-700"
             @change="handleFileSelect"
           />
           <p v-if="fileError" class="text-red-600 text-sm mt-1">{{ fileError }}</p>
@@ -182,20 +183,20 @@
             class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 focus:border-teal-500 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors bg-white"
           >
             <option value="">None</option>
-            <option v-for="cat in serviceCategories" :key="cat.id" :value="cat.key">
-              {{ cat.name }}
-            </option>
+              <option v-for="cat in categories" :key="cat.id" :value="cat.slug">
+                {{ cat.name }}
+              </option>
             <option value="city">Cities</option>
             <option value="product">Products</option>
             <option value="cityplace">City Places</option>
             <option value="general">General</option>
           </select>
           <p v-if="loadingCategories" class="text-xs text-slate-500 mt-1">Loading categories...</p>
-          <p v-else-if="serviceCategories.length === 0" class="text-xs text-amber-600 mt-1">
-            No categories found. Make sure database is seeded.
+          <p v-else-if="categories.length === 0" class="text-xs text-amber-600 mt-1">
+            No categories found. Make sure the shopping categories are seeded.
           </p>
           <p v-else class="text-xs text-slate-500 mt-1">
-            {{ serviceCategories.length }} categories loaded
+            {{ categories.length }} categories loaded
           </p>
         </div>
 
@@ -264,7 +265,7 @@
             class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 focus:border-teal-500 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed transition-colors bg-white"
           >
             <option value="">None</option>
-            <option v-for="cat in serviceCategories" :key="cat.id" :value="cat.key">
+            <option v-for="cat in categories" :key="cat.id" :value="cat.slug">
               {{ cat.name }}
             </option>
             <option value="city">Cities</option>
@@ -373,7 +374,7 @@ const uploadCategory = ref('');
 const uploadTags = ref('');
 const selectedMedia = ref<string[]>([]);
 const showBulkDeleteConfirm = ref(false);
-const serviceCategories = ref<any[]>([]);
+const categories = ref<any[]>([]);
 const showEditModal = ref(false);
 const editingMedia = ref<any>(null);
 const savingMetadata = ref(false);
@@ -511,10 +512,6 @@ async function handleUpload() {
 
     console.log('[MediaPage] Sending upload request...');
     const response = await axios.post('/api/admin/media/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      timeout: 60000, // 60 second timeout
       onUploadProgress: (progressEvent) => {
         if (progressEvent.total) {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -652,22 +649,33 @@ async function saveMetadata() {
   }
 }
 
+function flattenCategories(items: any[], depth = 0): any[] {
+  const rows: any[] = [];
+  for (const item of items || []) {
+    rows.push({ ...item, depth });
+    if (Array.isArray(item.children) && item.children.length > 0) {
+      rows.push(...flattenCategories(item.children, depth + 1));
+    }
+  }
+  return rows;
+}
+
 async function loadServiceCategories() {
   loadingCategories.value = true;
   try {
-    console.log('[MediaPage] Loading service categories...');
-    const response = await axios.get('/api/admin/service-categories');
-    console.log('[MediaPage] Service categories response:', response.data);
-    serviceCategories.value = response.data || [];
-    if (serviceCategories.value.length === 0) {
-      console.warn('[MediaPage] No service categories found in database');
+    console.log('[MediaPage] Loading shopping categories...');
+    const response = await axios.get('/api/admin/categories/tree');
+    console.log('[MediaPage] Categories response:', response.data);
+    categories.value = flattenCategories(Array.isArray(response.data) ? response.data : []);
+    if (categories.value.length === 0) {
+      console.warn('[MediaPage] No categories found in database');
     }
   } catch (error: any) {
-    console.error('[MediaPage] Failed to load service categories', error);
+    console.error('[MediaPage] Failed to load categories', error);
     console.error('[MediaPage] Error details:', error.response?.data || error.message);
-    toast.error('Failed to load service categories: ' + (error.response?.data?.error || error.message));
+    toast.error('Failed to load categories: ' + (error.response?.data?.error || error.message));
     // Fallback to empty array
-    serviceCategories.value = [];
+    categories.value = [];
   } finally {
     loadingCategories.value = false;
   }

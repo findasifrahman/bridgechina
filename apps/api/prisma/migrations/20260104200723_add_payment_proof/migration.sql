@@ -1,5 +1,5 @@
 -- CreateTable
-CREATE TABLE "payment_proofs" (
+CREATE TABLE IF NOT EXISTS "payment_proofs" (
     "id" TEXT NOT NULL,
     "request_id" TEXT NOT NULL,
     "asset_id" TEXT NOT NULL,

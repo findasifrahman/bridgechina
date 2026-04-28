@@ -3,332 +3,411 @@ import argon2 from 'argon2';
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log('Seeding database...');
-
-  // Create roles
-  const roles = ['ADMIN', 'OPS', 'EDITOR', 'SELLER', 'PARTNER', 'USER', 'SERVICE_PROVIDER'];
-  for (const roleName of roles) {
+async function ensureRoles() {
+  const roles = ['CUSTOMER', 'SELLER', 'ADMIN'];
+  for (const name of roles) {
     await prisma.role.upsert({
-      where: { name: roleName },
+      where: { name },
       update: {},
-      create: { name: roleName },
+      create: { name },
     });
   }
+}
+
+async function ensureUser(email: string, password: string, roleName: string, phone?: string | null) {
+  const password_hash = await argon2.hash(password);
+  const role = await prisma.role.findUnique({ where: { name: roleName } });
+  if (!role) {
+    throw new Error(`Role not found: ${roleName}`);
+  }
+
+  return prisma.user.upsert({
+    where: { email },
+    update: {
+      phone: phone ?? undefined,
+    },
+    create: {
+      email,
+      phone: phone ?? null,
+      password_hash,
+      status: 'active',
+      roles: {
+        create: {
+          role: {
+            connect: { name: roleName },
+          },
+        },
+      },
+    },
+  });
+}
+
+async function main() {
+  console.log('Seeding ChinabuyBD ecommerce database...');
+
+  await ensureRoles();
   console.log('✓ Roles created');
 
-  // Create service categories (9 core services)
+  const admin = await ensureUser('admin@chinabuybd.com', 'admin123', 'ADMIN', '+8613888888888');
+  const seller = await ensureUser('seller@chinabuybd.com', 'seller123', 'SELLER', '+8613999999999');
+  const customer = await ensureUser('customer@chinabuybd.com', 'customer123', 'CUSTOMER', '+8801700000000');
+
+  await prisma.sellerProfile.upsert({
+    where: { user_id: seller.id },
+    update: {},
+    create: {
+      user_id: seller.id,
+      shop_name: 'ChinaBuybd Store',
+      display_name: 'ChinaBuybd Store',
+      contact_name: 'ChinaBuybd Team',
+      whatsapp: '+8613999999999',
+      email: 'seller@chinabuybd.com',
+      description: 'Premium China shopping concierge with seller approval workflow.',
+      address_text: 'Room 13D, No. 29, Jianshe Sixth Road, Yuexiu District, Rongjin building, Taojin Guangzhou',
+      service_area: 'Guangzhou, China',
+      verified: true,
+      is_active: true,
+    },
+  });
+  console.log('✓ Default seller profile created');
+
   const categories = [
-    { key: 'guide', name: 'Guide Service' },
-    { key: 'hotel', name: 'Hotel Booking' },
-    { key: 'transport', name: 'Transport' },
-    { key: 'halal_food', name: 'Halal Food' },
-    { key: 'medical', name: 'Medical Assistance' },
-    { key: 'translation_help', name: 'Translation & Help' },
-    { key: 'shopping', name: 'Shopping Service' }, // Standardized from 'shopping_service'
-    { key: 'tours', name: 'Tours' },
-    { key: 'esim', name: 'eSIM Plans' },
-  ];
-
-  for (const cat of categories) {
-    await prisma.serviceCategory.upsert({
-      where: { key: cat.key },
-      update: {},
-      create: cat,
-    });
-  }
-  console.log('✓ Service categories created');
-
-  // Create Guangzhou city
-  const guangzhou = await prisma.city.upsert({
-    where: { slug: 'guangzhou' },
-    update: {},
-    create: {
-      slug: 'guangzhou',
-      name: 'Guangzhou',
-      country: 'China',
-      is_active: true,
-    },
-  });
-  console.log('✓ Guangzhou city created');
-
-  // Create Hainan city (coming soon)
-  await prisma.city.upsert({
-    where: { slug: 'hainan' },
-    update: {},
-    create: {
-      slug: 'hainan',
-      name: 'Hainan',
-      country: 'China',
-      is_active: false,
-    },
-  });
-  console.log('✓ Hainan city created');
-
-  // Create admin user
-  const adminPassword = await argon2.hash('admin123');
-  const admin = await prisma.user.upsert({
-    where: { email: 'admin@bridgechina.com' },
-    update: {},
-    create: {
-      email: 'admin@bridgechina.com',
-      password_hash: adminPassword,
-      status: 'active',
-      roles: {
-        create: {
-          role: {
-            connect: { name: 'ADMIN' },
-          },
-        },
-      },
-    },
-  });
-  console.log('✓ Admin user created (admin@bridgechina.com / admin123)');
-
-  // Create seller user
-  const sellerPassword = await argon2.hash('seller123');
-  const seller = await prisma.user.upsert({
-    where: { email: 'seller@bridgechina.com' },
-    update: {},
-    create: {
-      email: 'seller@bridgechina.com',
-      password_hash: sellerPassword,
-      status: 'active',
-      roles: {
-        create: {
-          role: {
-            connect: { name: 'SELLER' },
-          },
-        },
-      },
-    },
-  });
-  console.log('✓ Seller user created (seller@bridgechina.com / seller123)');
-
-  // Create sample hotels
-  const hotels = [
     {
-      city_id: guangzhou.id,
-      name: 'Guangzhou Marriott Hotel',
-      address: '28 Tianhe Road, Tianhe District',
-      geo_lat: 23.1358,
-      geo_lng: 113.3242,
-      price_from: 500,
-      currency: 'CNY',
-      verified: true,
-      description: 'Luxury hotel in the heart of Guangzhou',
-      contact_phone: '+86 20 8888 8888',
-      gallery_asset_ids: ['https://example.com/hotel1.jpg'],
-    },
-    {
-      city_id: guangzhou.id,
-      name: 'Holiday Inn Guangzhou',
-      address: '15 Linhe Road, Tianhe District',
-      geo_lat: 23.1420,
-      geo_lng: 113.3300,
-      price_from: 350,
-      currency: 'CNY',
-      verified: true,
-      description: 'Comfortable stay with great amenities',
-      contact_phone: '+86 20 8888 8889',
-      gallery_asset_ids: ['https://example.com/hotel2.jpg'],
-    },
-  ];
-
-  for (const hotel of hotels) {
-    await prisma.hotel.create({
-      data: hotel,
-    });
-  }
-  console.log('✓ Sample hotels created');
-
-  // Create sample restaurants
-  const restaurants = [
-    {
-      city_id: guangzhou.id,
-      name: 'Halal Restaurant Guangzhou',
-      address: '123 Beijing Road',
-      geo_lat: 23.1200,
-      geo_lng: 113.2800,
-      halal_verified: true,
-      delivery_supported: true,
-      description: 'Authentic halal cuisine',
-      contact_phone: '+86 20 8888 7777',
-      gallery_asset_ids: ['https://example.com/restaurant1.jpg'],
-    },
-  ];
-
-  for (const restaurant of restaurants) {
-    await prisma.restaurant.create({
-      data: restaurant,
-    });
-  }
-  console.log('✓ Sample restaurants created');
-
-  // Create sample medical centers
-  const medicalCenters = [
-    {
-      city_id: guangzhou.id,
-      name: 'Guangzhou First People\'s Hospital',
-      type: 'hospital',
-      languages: ['English', 'Chinese'],
-      verified: true,
-      address: '1 Panfu Road, Yuexiu District',
-      geo_lat: 23.1300,
-      geo_lng: 113.2700,
-      contact_phone: '+86 20 8888 6666',
-      description: 'Major hospital with English-speaking staff',
-      gallery_asset_ids: ['https://example.com/hospital1.jpg'],
-    },
-  ];
-
-  for (const medical of medicalCenters) {
-    await prisma.medicalCenter.create({
-      data: medical,
-    });
-  }
-  console.log('✓ Sample medical centers created');
-
-  // Create sample tours
-  const tours = [
-    {
-      city_id: guangzhou.id,
-      name: 'Guangzhou City Tour',
-      duration_text: 'Half Day',
-      price_from: 200,
-      currency: 'CNY',
-      description: 'Explore the best of Guangzhou',
-      meeting_point: 'Canton Tower',
-      gallery_asset_ids: ['https://example.com/tour1.jpg'],
-    },
-  ];
-
-  for (const tour of tours) {
-    await prisma.tour.create({
-      data: tour,
-    });
-  }
-  console.log('✓ Sample tours created');
-
-  // Create sample transport products
-  const transportProducts = [
-    {
-      city_id: guangzhou.id,
-      type: 'pickup',
-      base_price: 150,
-      currency: 'CNY',
-      rules: {
-        max_passengers: 4,
-        max_luggage: 2,
-      },
-    },
-    {
-      city_id: guangzhou.id,
-      type: 'point_to_point',
-      base_price: 100,
-      currency: 'CNY',
-      rules: {
-        max_passengers: 4,
-      },
-    },
-  ];
-
-  for (const transport of transportProducts) {
-    await prisma.transportProduct.create({
-      data: transport,
-    });
-  }
-  console.log('✓ Sample transport products created');
-
-  // Create sample eSIM plans
-  const esimPlans = [
-    {
-      name: 'China 5GB - 7 Days',
-      provider: 'Airalo',
-      region_text: 'China Mainland',
-      data_text: '5GB high-speed data',
-      validity_days: 7,
-      price: 89,
-      currency: 'CNY',
-      is_active: true,
-    },
-    {
-      name: 'China 10GB - 15 Days',
-      provider: 'Airalo',
-      region_text: 'China Mainland',
-      data_text: '10GB high-speed data',
-      validity_days: 15,
-      price: 149,
-      currency: 'CNY',
-      is_active: true,
-    },
-    {
-      name: 'Asia Regional 20GB - 30 Days',
-      provider: 'Airalo',
-      region_text: 'Asia (China, Japan, Korea, etc.)',
-      data_text: '20GB high-speed data',
-      validity_days: 30,
-      price: 299,
-      currency: 'CNY',
-      is_active: true,
-    },
-  ];
-
-  for (const plan of esimPlans) {
-    await prisma.esimPlan.create({
-      data: plan,
-    });
-  }
-  console.log('✓ Sample eSIM plans created');
-
-  // Create sample homepage blocks
-  const homepageBlocks = [
-    {
-      type: 'offer_strip',
-      title: 'New: Guangzhou launch promo — airport pickup discount',
-      subtitle: null,
-      payload: { link: '/services/transport' },
-      is_active: true,
+      name: 'Bags',
+      slug: 'bags',
+      icon: 'shopping-bag',
       sort_order: 1,
+      children: [
+        { name: 'Hand Bags', slug: 'bags-hand-bags', icon: 'bag', sort_order: 1 },
+        { name: 'Backpacks', slug: 'bags-backpacks', icon: 'backpack', sort_order: 2 },
+        { name: 'Wallet', slug: 'bags-wallet', icon: 'wallet', sort_order: 3 },
+        { name: 'Suitcase', slug: 'bags-suitcase', icon: 'luggage', sort_order: 4 },
+      ],
     },
     {
-      type: 'promo_card',
-      title: 'Featured Hotel',
-      subtitle: 'Guangzhou Marriott Hotel',
-      payload: {
-        image: null,
-        price: 'From ¥500/night',
-        badge: 'Popular',
-        actionText: 'Book Now',
-        action: '/services/hotel',
-      },
-      is_active: true,
-      sort_order: 1,
-    },
-    {
-      type: 'promo_card',
-      title: 'Emergency Medical Help',
-      subtitle: '24/7 English-speaking support',
-      payload: {
-        image: null,
-        price: null,
-        badge: '24/7',
-        actionText: 'Get Help',
-        action: '/services/medical',
-      },
-      is_active: true,
+      name: 'Jewelry',
+      slug: 'jewelry',
+      icon: 'sparkles',
       sort_order: 2,
+      children: [
+        { name: 'Necklace', slug: 'jewelry-necklace', icon: 'sparkles', sort_order: 1 },
+        { name: 'Rings', slug: 'jewelry-rings', icon: 'sparkles', sort_order: 2 },
+        { name: 'Earrings', slug: 'jewelry-earrings', icon: 'sparkles', sort_order: 3 },
+        { name: 'Bracelets', slug: 'jewelry-bracelets', icon: 'sparkles', sort_order: 4 },
+      ],
+    },
+    {
+      name: 'Shoes',
+      slug: 'shoes',
+      icon: 'footprints',
+      sort_order: 3,
+      children: [
+        { name: 'Sneakers', slug: 'shoes-sneakers', icon: 'footprints', sort_order: 1 },
+        { name: 'Ladies Shoes', slug: 'shoes-ladies', icon: 'footprints', sort_order: 2 },
+        { name: 'Formal Shoes', slug: 'shoes-formal', icon: 'footprints', sort_order: 3 },
+        { name: 'High Heels', slug: 'shoes-heels', icon: 'footprints', sort_order: 4 },
+      ],
+    },
+    {
+      name: 'Beauty',
+      slug: 'beauty',
+      icon: 'sparkles',
+      sort_order: 4,
+      children: [
+        { name: 'Skincare', slug: 'beauty-skincare', icon: 'sparkles', sort_order: 1 },
+        { name: 'Makeup', slug: 'beauty-makeup', icon: 'sparkles', sort_order: 2 },
+        { name: 'Hair Care', slug: 'beauty-hair-care', icon: 'sparkles', sort_order: 3 },
+      ],
+    },
+    {
+      name: 'Mens Wear',
+      slug: 'mens-wear',
+      icon: 'shirt',
+      sort_order: 5,
+      children: [
+        { name: 'T-Shirts', slug: 'mens-tshirts', icon: 'shirt', sort_order: 1 },
+        { name: 'Pants', slug: 'mens-pants', icon: 'shirt', sort_order: 2 },
+        { name: 'Jackets', slug: 'mens-jackets', icon: 'shirt', sort_order: 3 },
+      ],
+    },
+    {
+      name: 'Women Wear',
+      slug: 'women-wear',
+      icon: 'dress',
+      sort_order: 6,
+      children: [
+        { name: 'Dresses', slug: 'women-dresses', icon: 'dress', sort_order: 1 },
+        { name: 'Tops', slug: 'women-tops', icon: 'dress', sort_order: 2 },
+        { name: 'Skirts', slug: 'women-skirts', icon: 'dress', sort_order: 3 },
+      ],
+    },
+    {
+      name: 'Eyewear',
+      slug: 'eyewear',
+      icon: 'glasses',
+      sort_order: 7,
+      children: [
+        { name: 'Sunglasses', slug: 'eyewear-sunglasses', icon: 'glasses', sort_order: 1 },
+        { name: 'Frames', slug: 'eyewear-frames', icon: 'glasses', sort_order: 2 },
+      ],
+    },
+    {
+      name: 'Baby Items',
+      slug: 'baby-items',
+      icon: 'baby',
+      sort_order: 8,
+      children: [
+        { name: 'Baby Clothing', slug: 'baby-clothing', icon: 'baby', sort_order: 1 },
+        { name: 'Baby Toys', slug: 'baby-toys', icon: 'baby', sort_order: 2 },
+      ],
+    },
+    {
+      name: 'Watches',
+      slug: 'watches',
+      icon: 'watch',
+      sort_order: 9,
+      children: [
+        { name: 'Mens Watch', slug: 'watches-men', icon: 'watch', sort_order: 1 },
+        { name: 'Women Watch', slug: 'watches-women', icon: 'watch', sort_order: 2 },
+      ],
+    },
+    {
+      name: 'Gadgets',
+      slug: 'gadgets',
+      icon: 'smartphone',
+      sort_order: 10,
+      children: [
+        { name: 'Phones', slug: 'gadgets-phones', icon: 'smartphone', sort_order: 1 },
+        { name: 'Accessories', slug: 'gadgets-accessories', icon: 'smartphone', sort_order: 2 },
+      ],
+    },
+    {
+      name: 'Home & Garden',
+      slug: 'home-garden',
+      icon: 'home',
+      sort_order: 11,
+      children: [
+        { name: 'Kitchen', slug: 'home-kitchen', icon: 'home', sort_order: 1 },
+        { name: 'Furniture', slug: 'home-furniture', icon: 'home', sort_order: 2 },
+      ],
+    },
+    {
+      name: 'Sports & Outdoors',
+      slug: 'sports-outdoors',
+      icon: 'volleyball',
+      sort_order: 12,
+      children: [
+        { name: 'Fitness', slug: 'sports-fitness', icon: 'volleyball', sort_order: 1 },
+        { name: 'Camping', slug: 'sports-camping', icon: 'volleyball', sort_order: 2 },
+      ],
     },
   ];
 
-  for (const block of homepageBlocks) {
-    await prisma.homepageBlock.create({
-      data: block,
+  const categoryMap = new Map<string, string>();
+  for (const category of categories) {
+    const parent = await prisma.productCategory.upsert({
+      where: { slug: category.slug },
+      update: {
+        name: category.name,
+        icon: category.icon,
+        sort_order: category.sort_order,
+        is_active: true,
+        parent_id: null,
+      },
+      create: {
+        name: category.name,
+        slug: category.slug,
+        icon: category.icon,
+        sort_order: category.sort_order,
+      },
+    });
+    categoryMap.set(parent.slug, parent.id);
+
+    for (const child of category.children || []) {
+      const childRecord = await prisma.productCategory.upsert({
+        where: { slug: child.slug },
+        update: {
+          name: child.name,
+          icon: child.icon,
+          sort_order: child.sort_order,
+          is_active: true,
+          parent_id: parent.id,
+        },
+        create: {
+          name: child.name,
+          slug: child.slug,
+          icon: child.icon,
+          sort_order: child.sort_order,
+          parent_id: parent.id,
+        },
+      });
+      categoryMap.set(childRecord.slug, childRecord.id);
+    }
+  }
+  console.log('✓ Product categories created');
+
+  const products = [
+    {
+      slug: 'leather-travel-bag',
+      category: 'bags',
+      title: 'Leather Travel Bag',
+      price: 2380,
+      original_price: 2890,
+      stock_qty: 120,
+      brand: 'ChinaBuyBD',
+      description: 'Premium travel bag for cross-border sourcing and fast shipping.',
+      tags: ['featured', 'new'],
+      weight_kg: 0.85,
+    },
+    {
+      slug: 'classic-stainless-watch',
+      category: 'watches',
+      title: 'Classic Stainless Watch',
+      price: 1680,
+      original_price: 1990,
+      stock_qty: 80,
+      brand: 'ChinaBuyBD',
+      description: 'Minimal stainless watch with premium finish.',
+      tags: ['bestseller'],
+      weight_kg: 0.18,
+    },
+    {
+      slug: 'comfort-running-shoes',
+      category: 'shoes',
+      title: 'Comfort Running Shoes',
+      price: 3200,
+      original_price: 3590,
+      stock_qty: 60,
+      brand: 'ChinaBuyBD',
+      description: 'Lightweight shoes built for daily wear and sourcing demos.',
+      tags: ['best-value'],
+      weight_kg: 0.65,
+    },
+  ];
+
+  for (const product of products) {
+    const categoryId = categoryMap.get(product.category);
+    if (!categoryId) continue;
+
+    await prisma.product.upsert({
+      where: {
+        sku: product.slug,
+      },
+      update: {
+        title: product.title,
+        price: product.price,
+        original_price: product.original_price,
+        stock_qty: product.stock_qty,
+        brand: product.brand,
+        description: product.description,
+        tags: product.tags as any,
+        weight_kg: product.weight_kg,
+        status: 'published',
+        source_kind: 'manual',
+      },
+      create: {
+        seller_id: seller.id,
+        category_id: categoryId,
+        title: product.title,
+        description: product.description,
+        price: product.price,
+        original_price: product.original_price,
+        stock_qty: product.stock_qty,
+        brand: product.brand,
+        tags: product.tags as any,
+        weight_kg: product.weight_kg,
+        sku: product.slug,
+        status: 'published',
+        source_kind: 'manual',
+      },
     });
   }
-  console.log('✓ Homepage blocks created');
+  console.log('✓ Sample products created');
+
+  await prisma.homepageBanner.upsert({
+    where: { id: 'bridgechina-home-banner' },
+    update: {
+      title: 'Get factory price with fastest delivery',
+      subtitle: 'Premium shopping concierge for China sourcing',
+      link: '/shopping',
+      cta_text: 'Shop now',
+      is_active: true,
+      sort_order: 1,
+    },
+    create: {
+      id: 'bridgechina-home-banner',
+      title: 'Get factory price with fastest delivery',
+      subtitle: 'Premium shopping concierge for China sourcing',
+      link: '/shopping',
+      cta_text: 'Shop now',
+      is_active: true,
+      sort_order: 1,
+    },
+  });
+
+  await prisma.homepageOffer.upsert({
+    where: { id: 'bridgechina-hero-offer' },
+    update: {
+      title: 'Cash on order, proof later',
+      subtitle: 'Upload payment slip from your profile',
+      description: 'Seller approval, admin purchase, then shipment updates.',
+      offer_type: 'trust',
+      currency: 'BDT',
+      value: 0,
+      is_active: true,
+      sort_order: 1,
+    },
+    create: {
+      id: 'bridgechina-hero-offer',
+      title: 'Cash on order, proof later',
+      subtitle: 'Upload payment slip from your profile',
+      description: 'Seller approval, admin purchase, then shipment updates.',
+      offer_type: 'trust',
+      currency: 'BDT',
+      value: 0,
+      is_active: true,
+      sort_order: 1,
+    },
+  });
+  console.log('✓ Homepage content created');
+
+  await prisma.moqShoppingOtapiRule.upsert({
+    where: { scope: 'global' },
+    update: {
+      minimum_product: 3,
+      minimum_price_threshold: 500,
+      currency: 'BDT',
+      updated_by: admin.id,
+    },
+    create: {
+      scope: 'global',
+      minimum_product: 3,
+      minimum_price_threshold: 500,
+      currency: 'BDT',
+      updated_by: admin.id,
+    },
+  });
+  console.log('âœ“ MOQ rule created');
+
+  await prisma.blogPost.upsert({
+    where: { slug: 'welcome-to-chinabuybd' },
+    update: {},
+    create: {
+      slug: 'welcome-to-chinabuybd',
+      title: 'Welcome to ChinaBuyBD',
+      excerpt: 'How the new shopping-first workflow works.',
+      content_md: '# ChinaBuyBD\n\nA shopping-first China sourcing experience.',
+      status: 'published',
+      published_at: new Date(),
+      created_by: admin.id,
+    },
+  });
+  console.log('✓ Blog post created');
 
   console.log('\n✅ Seeding completed!');
+  console.log('Admin: admin@chinabuybd.com / admin123');
+  console.log('Seller: seller@chinabuybd.com / seller123');
+  console.log('Customer: customer@chinabuybd.com / customer123');
 }
 
 main()
@@ -339,4 +418,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-

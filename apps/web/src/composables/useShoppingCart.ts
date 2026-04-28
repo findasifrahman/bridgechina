@@ -13,6 +13,7 @@ export interface CartItem {
   imageUrl?: string;
   sourceUrl?: string;
   quantity: number;
+  minimumOrderQty?: number;
   skuDetails?: Array<{
     specId: string;
     qty: number;
@@ -75,6 +76,7 @@ export function useShoppingCart() {
         imageUrl: product.imageUrl,
         sourceUrl: product.sourceUrl,
         quantity,
+        minimumOrderQty: product.minimumOrderQty,
         skuDetails,
       });
     }

@@ -1,5 +1,17 @@
 -- AlterTable: Add new fields to service_provider_profiles (all nullable, safe)
 -- Using DO block to safely add columns only if they don't exist
+CREATE TABLE IF NOT EXISTS "service_provider_profiles" (
+    "id" TEXT NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "categories" JSONB,
+    "city_id" TEXT,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "service_provider_profiles_pkey" PRIMARY KEY ("id")
+);
+
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'service_provider_profiles' AND column_name = 'provider_type') THEN
@@ -60,6 +72,33 @@ END $$;
 
 -- CreateIndex: Add index on verified field
 CREATE INDEX IF NOT EXISTS "service_provider_profiles_verified_idx" ON "service_provider_profiles"("verified");
+
+-- CreateTable: Seed guide_profiles so later column additions can replay safely
+CREATE TABLE IF NOT EXISTS "guide_profiles" (
+    "id" TEXT NOT NULL,
+    "user_id" TEXT,
+    "city_id" TEXT NOT NULL,
+    "display_name" TEXT NOT NULL,
+    "bio" TEXT,
+    "languages" JSONB NOT NULL,
+    "hourly_rate" DOUBLE PRECISION,
+    "daily_rate" DOUBLE PRECISION,
+    "verified" BOOLEAN NOT NULL DEFAULT false,
+    "rating" DOUBLE PRECISION,
+    "review_count" INTEGER NOT NULL DEFAULT 0,
+    "cover_asset_id" TEXT,
+    "wechat" TEXT,
+    "whatsapp" TEXT,
+    "is_living_inside_china" BOOLEAN,
+    "current_occupation" TEXT,
+    "years_of_experience" INTEGER,
+    "identity_verified" BOOLEAN NOT NULL DEFAULT false,
+    "additional_photos_asset_ids" JSONB,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "guide_profiles_pkey" PRIMARY KEY ("id")
+);
 
 -- AlterTable: Add new fields to guide_profiles (all nullable, safe)
 DO $$

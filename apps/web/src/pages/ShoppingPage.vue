@@ -1,643 +1,850 @@
 <template>
-  <div class="min-h-screen bg-white">
-    <!-- Minimal Header (no banner) -->
-    <div class="border-b border-slate-200 bg-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-2xl font-bold text-slate-900 ">Shopping</h1>
-            <p class="text-sm text-slate-600 mt-1">Discover quality products from trusted sellers in China</p>
-          </div>
-          <Button
-            variant="ghost"
-            @click="router.push('/shopping/cart')"
-            class="relative"
-          >
-            <ShoppingCart class="h-5 w-5" />
-            <span v-if="totalItems > 0" class="absolute -top-1 -right-1 bg-teal-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-              {{ totalItems > 9 ? '9+' : totalItems }}
-            </span>
-          </Button>
-        </div>
-      </div>
-    </div>
+  <div class="min-h-screen bg-[#eef3f9] text-[12px] text-slate-700">
+    <div :class="layoutClass" class="grid min-h-screen">
+      <main class="min-w-0">
+        <section class="relative overflow-hidden border-b border-slate-200 bg-white">
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <!-- Unified Search Section -->
-      <div class="bg-gradient-to-r from-teal-50 to-amber-50 rounded-xl shadow-md border border-teal-100 p-6 mb-6">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <div class="flex items-center gap-2">
-            <Search class="h-5 w-5 text-teal-600" />
-            <h2 class="text-lg font-semibold text-slate-900">Search Products</h2>
-          </div>
-          <div class="flex flex-wrap gap-2 sm:justify-end">
-          <!-- Language Tabs -->
-          <div class="flex gap-2 border border-teal-200 rounded-lg p-1 bg-white">
-            <button
-              @click="selectedLanguage = 'zh'"
-              :class="[
-                'px-3 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-medium transition-colors',
-                selectedLanguage === 'zh'
-                  ? 'bg-teal-600 text-white'
-                  : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50'
-              ]"
-            >
-              中文
-            </button>
-            <button
-              @click="selectedLanguage = 'en'"
-              :class="[
-                'px-3 sm:px-4 py-1.5 rounded text-xs sm:text-sm font-medium transition-colors',
-                selectedLanguage === 'en'
-                  ? 'bg-teal-600 text-white'
-                  : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50'
-              ]"
-            >
-              English
-            </button>
+          <div class="relative grid items-start lg:grid-cols-[minmax(0,1.22fr)_minmax(0,0.88fr)]">
+            <div class="px-4 py-3 sm:px-5 lg:px-6 lg:py-3">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">Premium shopping</span>
+                <span class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold text-slate-600">Factory direct</span>
+                <span class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold text-slate-600">Bangladesh support</span>
+              </div>
+
+              <div class="mt-3 max-w-3xl">
+                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-teal-700">ChinaBuyBD Marketplace</p>
+                <p class="mt-2 max-w-5xl text-[12px] leading-5 text-slate-600 sm:text-[13px]">
+                  Search by product name or image, compare price, add cart and shipping address , upload payment document, Recieve product and pay shipment fee once reached to your destination.
+                </p>
+              </div>
+
+              <div class="mt-4">
+                <div class="flex flex-col gap-3 xl:flex-row xl:items-center">
+                  <div class="flex-1">
+                    <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="handleFileSelect" />
+
+                    <div class="flex h-12 items-center rounded-full border border-slate-200 bg-white/96 shadow-[0_10px_24px_rgba(15,23,42,0.06)] transition-shadow focus-within:border-teal-300 focus-within:shadow-[0_12px_30px_rgba(13,148,136,0.14)]">
+                      <span class="pl-4 text-slate-400">
+                        <Search class="h-4 w-4" />
+                      </span>
+                      <input
+                        v-model="searchQuery"
+                        :placeholder="selectedImage ? 'Image selected - press Search' : 'Search products, factories, or keywords...'"
+                        class="w-full bg-transparent px-3 text-[12px] font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none"
+                        :disabled="!!selectedImage"
+                        @keyup.enter="handleUnifiedSearch"
+                      />
+                      <button
+                        type="button"
+                        @click.stop="fileInput?.click()"
+                        class="mr-1 inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-teal-50 hover:text-teal-700"
+                        :title="selectedImage ? 'Change image' : 'Search by image'"
+                      >
+                        <Camera class="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    <div v-if="selectedImage" class="mt-3 flex items-center gap-3 rounded-2xl border border-teal-100 bg-teal-50/70 px-3 py-2">
+                      <img :src="imagePreview" alt="Preview" class="h-11 w-11 rounded-xl object-cover" />
+                      <div class="min-w-0 flex-1">
+                        <p class="truncate text-[12px] font-semibold text-slate-900">{{ selectedImage.name }}</p>
+                        <p class="text-[10px] text-slate-500">Image search ready</p>
+                      </div>
+                      <button type="button" class="rounded-full p-2 text-slate-500 hover:bg-white hover:text-rose-600" @click="clearImage">
+                        <X class="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center gap-2">
+                    <button
+                      type="button"
+                      class="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-teal-600 px-5 text-[12px] font-semibold text-white shadow-[0_12px_30px_rgba(13,148,136,0.2)] transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                      @click="handleUnifiedSearch"
+                      :disabled="!searchQuery.trim() && !selectedImage"
+                    >
+                      <Search class="h-4 w-4" />
+                      Search
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex h-12 items-center justify-center rounded-full border border-slate-200 bg-white px-5 text-[12px] font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
+                      @click="clearSearch"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-4 flex flex-wrap items-center gap-2">
+                <button
+                  v-for="curr in ['BDT', 'CNY', 'USD'] as const"
+                  :key="curr"
+                  type="button"
+                  @click="selectedCurrency = curr"
+                  :class="[
+                    'rounded-full border px-4 py-2 text-[11px] font-semibold transition-all',
+                    selectedCurrency === curr
+                      ? 'border-teal-600 bg-teal-600 text-white shadow-[0_8px_22px_rgba(13,148,136,0.18)]'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-teal-200 hover:text-teal-700'
+                  ]"
+                >
+                  {{ curr }}
+                </button>
+                <button
+                  type="button"
+                  @click="selectedLanguage = 'zh'"
+                  :class="[
+                    'rounded-full border px-4 py-2 text-[11px] font-semibold transition-all',
+                    selectedLanguage === 'zh'
+                      ? 'border-slate-900 bg-slate-900 text-white'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                  ]"
+                >
+                  中文
+                </button>
+                <button
+                  type="button"
+                  @click="selectedLanguage = 'en'"
+                  :class="[
+                    'rounded-full border px-4 py-2 text-[11px] font-semibold transition-all',
+                    selectedLanguage === 'en'
+                      ? 'border-slate-900 bg-slate-900 text-white'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                  ]"
+                >
+                  English
+                </button>
+                <span class="ml-1 rounded-full bg-slate-50 px-3 py-2 text-[11px] text-slate-500">Fast quoting</span>
+                <span class="rounded-full bg-slate-50 px-3 py-2 text-[11px] text-slate-500">Safe sourcing</span>
+                <span class="rounded-full bg-slate-50 px-3 py-2 text-[11px] text-slate-500">Agent assisted</span>
+              </div>
+
             </div>
-            <!-- Currency Selector -->
-            <div class="flex gap-1 sm:gap-2 border border-teal-200 rounded-lg p-1 bg-white">
+
+            <div class="relative hidden overflow-hidden border-l border-slate-100 px-5 py-3 lg:block">
+              <div class="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(13,148,136,0.12),transparent_32%),radial-gradient(circle_at_85%_18%,rgba(15,23,42,0.08),transparent_28%),radial-gradient(circle_at_80%_80%,rgba(34,197,94,0.08),transparent_26%)]" />
+              <div class="relative flex flex-col gap-4">
+                <div class="rounded-[30px] border border-white/80 bg-white/78 p-4 shadow-[0_16px_36px_rgba(15,23,42,0.08)] backdrop-blur">
+                  <img :src="currentHeroSlide.image" alt="Shopping preview" class="h-28 w-full rounded-[24px] object-cover opacity-75" />
+                  <div class="mt-3 flex items-center justify-between">
+                    <div>
+                      <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Carousel preview</p>
+                      <p class="mt-1 text-[14px] font-black tracking-tight text-slate-900">{{ currentHeroSlide.title }}</p>
+                    </div>
+                    <div class="flex gap-2">
+                      <button
+                        v-for="(slide, index) in heroSlides"
+                        :key="slide.key"
+                        type="button"
+                        class="h-2.5 rounded-full transition-all"
+                        :class="currentHeroSlideIndex === index ? 'w-8 bg-teal-600' : 'w-2.5 bg-slate-300'"
+                        @click="currentHeroSlideIndex = index"
+                        :aria-label="`Show hero slide ${index + 1}`"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+ 
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="px-2 pt-4 sm:px-3 lg:px-0 lg:py-0">
+              <div v-if="displayProducts.length > 0" class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)] mt-6 sm:p-5">
+                <div class="flex items-center justify-between gap-3">
+                  <div>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-400">Product grid</p>
+                    <h3 class="mt-1 text-[15px] font-black tracking-tight text-slate-950">Hot products</h3>
+                  </div>
+                  <span class="rounded-full bg-slate-50 px-3 py-1 text-[10px] font-semibold text-slate-600">
+                    {{ hasSearchResults ? `${displayProducts.length} matched` : 'Live feed' }}
+                  </span>
+                </div>
+                <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+                  <button
+                    v-for="item in displayProducts.slice(0, 6)"
+                    :key="`hero-${item.externalId}`"
+                    type="button"
+                    class="overflow-hidden rounded-[18px] border border-slate-200 bg-white text-left shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-transform hover:-translate-y-0.5"
+                    @click="handleProductClick(item)"
+                  >
+                    <div class="aspect-[4/3] bg-slate-100">
+                      <img
+                        v-if="item.imageUrl"
+                        :src="item.imageUrl"
+                        :alt="item.title"
+                        class="h-full w-full object-cover"
+                      />
+                      <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
+                        <Package class="h-6 w-6" />
+                      </div>
+                    </div>
+                    <div class="p-2.5">
+                      <p class="line-clamp-2 text-[11px] font-semibold leading-4 text-slate-900">{{ item.title }}</p>
+                      <div class="mt-1 flex items-center justify-between gap-2">
+                        <span class="text-[11px] font-black text-rose-500">{{ formatPrice(item.priceMin ?? item.priceMax ?? 0) }}</span>
+                        <span class="rounded-full bg-teal-50 px-2 py-0.5 text-[9px] font-semibold text-teal-700">MOQ {{ item.minimumOrderQty || shoppingSettings.moqRule?.minimum_product || 3 }}</span>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+          </section>
+        <section v-if="premiumProducts.length > 0" class="px-2 pt-4 sm:px-3 lg:px-0">
+          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)] sm:p-5">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h2 class="mt-1 text-[17px] font-black tracking-tight text-red-400">Premium factory products</h2>
+              </div>
+              <span class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">Top 4 highlighted</span>
+            </div>
+
+            <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <button
-                v-for="curr in ['CNY', 'BDT', 'USD'] as const"
-                :key="curr"
-                @click="selectedCurrency = curr"
-                :class="[
-                  'px-2 sm:px-3 py-1.5 rounded text-xs sm:text-sm font-medium transition-colors',
-                  selectedCurrency === curr
-                    ? 'bg-teal-600 text-white'
-                    : 'text-slate-600 hover:text-teal-600 hover:bg-teal-50'
-                ]"
+                v-for="product in premiumProducts"
+                :key="product.id"
+                type="button"
+                class="overflow-hidden rounded-[22px] border border-slate-200 bg-slate-50 text-left transition-all hover:-translate-y-0.5 hover:border-teal-200 hover:bg-white hover:shadow-[0_14px_32px_rgba(15,23,42,0.08)]"
+                @click="handleProductClick(product)"
               >
-                {{ curr }}
+                <div class="aspect-[4/3] bg-slate-100">
+                  <img v-if="product.imageUrl" :src="product.imageUrl" :alt="product.title" class="h-full w-full object-cover" />
+                  <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
+                    <Package class="h-8 w-8" />
+                  </div>
+                </div>
+                <div class="p-3">
+                  <p class="line-clamp-2 text-[12px] font-semibold leading-5 text-slate-900">{{ product.title }}</p>
+                  <div class="mt-2 flex items-center justify-between gap-2">
+                    <span class="text-[13px] font-black text-rose-500">{{ formatPrice(product.priceMin ?? product.priceMax ?? 0) }}</span>
+                    <span class="rounded-full bg-teal-50 px-2.5 py-1 text-[10px] font-semibold text-teal-700">
+                      MOQ {{ product.minimumOrderQty || shoppingSettings.moqRule?.minimum_product || 3 }}
+                    </span>
+                  </div>
+                </div>
               </button>
             </div>
           </div>
-        </div>
-        
-        <!-- Single Unified Search Bar -->
-        <div class="flex flex-col md:flex-row gap-3">
-          <!-- Search Input with Camera Icon Inside -->
-          <div class="flex-1 relative">
-            <input
-              ref="fileInput"
-              type="file"
-              accept="image/*"
-              class="hidden"
-              @change="handleFileSelect"
-            />
-            <Input
-              v-model="searchQuery"
-              :placeholder="selectedImage ? 'Image selected - click Search' : 'Search 100+ millions of products'"
-              class="w-full"
-              :disabled="!!selectedImage"
-              @keyup.enter="handleUnifiedSearch"
-            >
-              <template #prefix>
-                <Search class="h-4 w-4 text-slate-400" />
-              </template>
-              <template #suffix>
-                <!-- Camera Icon Inside Search Bar - Red Color -->
-                <button
-                  type="button"
-                  @click.stop="fileInput?.click()"
-                  class="p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors flex items-center justify-center"
-                  :title="selectedImage ? 'Change image' : 'Search by image'"
-                >
-                  <Camera class="h-5 w-5" />
-                </button>
-              </template>
-            </Input>
-            <!-- Image Preview Badge -->
-            <div v-if="selectedImage" class="mt-2 flex items-center gap-2 p-2 bg-white rounded-lg border border-teal-200">
-              <div class="relative w-12 h-12 rounded overflow-hidden border border-teal-300 flex-shrink-0">
-                <img :src="imagePreview" alt="Preview" class="w-full h-full object-cover" />
+        </section>
+
+        <section class="px-2 pt-4 sm:px-3 lg:px-0">
+          <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)] sm:p-5">
+            <div class="flex items-center justify-between gap-4">
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-400">How it works</p>
+                <h2 class="mt-1 text-[17px] font-black tracking-tight text-slate-950">Four steps from search to shipment</h2>
               </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-xs font-medium text-slate-900 truncate">{{ selectedImage.name }}</p>
-                <p class="text-xs text-slate-600">Image ready to search</p>
+              <span class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">B2B service from China</span>
+            </div>
+
+            <div class="mt-4 grid gap-3 lg:grid-cols-4">
+              <div class="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+                <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-600 text-white">
+                  <Package class="h-5 w-5" />
+                </div>
+                <h3 class="mt-3 text-[13px] font-black text-red-500">Choose product</h3>
+                <p class="mt-1 text-[11px] leading-5 text-slate-500">Browse categories and discover factory listings that fit your business needs.</p>
+              </div>
+              <div class="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+                <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-600 text-white">
+                  <Search class="h-5 w-5" />
+                </div>
+                <h3 class="mt-3 text-[13px] font-black text-green-500">Search by text or image</h3>
+                <p class="mt-1 text-[11px] leading-5 text-slate-500">Type a keyword or upload a photo to find the closest match fast.</p>
+              </div>
+              <div class="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+                <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500 text-white">
+                  <ShoppingCart class="h-5 w-5" />
+                </div>
+                <h3 class="mt-3 text-[13px] font-black text-red-500">Click product and checkout</h3>
+                <p class="mt-1 text-[11px] leading-5 text-slate-500">Review the detail page, confirm quantity, and add items to checkout.</p>
+              </div>
+              <div class="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+                <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-600 text-white">
+                  <Truck class="h-5 w-5" />
+                </div>
+                <h3 class="mt-3 text-[13px] font-black text-blue-500">Payment and shipment</h3>
+                  <p class="mt-1 text-[11px] leading-5 text-slate-500">Confirm payment, then get shipment in 12-14 days. Contact us in China for B2B help.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="px-2 pt-4 sm:px-3 lg:px-0">
+          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)] sm:p-5">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-400">AI Suggest</p>
+                <h2 class="mt-1 text-[17px] font-black tracking-tight text-slate-950">Best selling, lowest price, and best value</h2>
+                <p class="mt-1 text-[11px] text-slate-500">Live picks based on the current product pool.</p>
               </div>
               <button
                 type="button"
-                @click="clearImage"
-                class="p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                title="Remove image"
+                class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-semibold text-slate-700 transition-colors hover:border-teal-200 hover:text-teal-700"
+                @click="loadHotItems"
               >
-                <X class="h-4 w-4" />
+                <RefreshCw class="h-4 w-4" />
+                Refresh
+              </button>
+            </div>
+
+            <div class="mt-4 grid gap-3 lg:grid-cols-3">
+              <button
+                v-for="card in suggestionCards"
+                :key="card.key"
+                type="button"
+                class="group rounded-[22px] border border-dashed border-teal-200 bg-gradient-to-br from-teal-50/90 via-white to-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-[0_12px_28px_rgba(13,148,136,0.08)]"
+                @click="card.product && handleProductClick(card.product)"
+              >
+                <div class="flex items-start gap-3">
+                  <div class="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-slate-100">
+                    <img
+                      v-if="card.product?.imageUrl"
+                      :src="card.product.imageUrl"
+                      :alt="card.title"
+                      class="h-full w-full object-cover"
+                    />
+                    <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
+                      <Package class="h-8 w-8" />
+                    </div>
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <span :class="card.badgeClass" class="inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold">
+                      {{ card.label }}
+                    </span>
+                    <p class="mt-2 line-clamp-2 text-[12px] font-semibold leading-5 text-slate-900">
+                      {{ card.title }}
+                    </p>
+                    <div class="mt-2 flex flex-wrap items-center gap-2">
+                      <span class="text-[14px] font-black text-rose-500">{{ card.priceText }}</span>
+                      <span class="text-[11px] text-slate-500">{{ card.soldText }}</span>
+                    </div>
+                  </div>
+                </div>
+              </button>
+
+              <div v-if="suggestionCards.length === 0" class="rounded-[22px] border border-slate-200 bg-slate-50 p-4 text-slate-500">
+                We will show top suggestions once products load.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section v-if="recentSearches.length > 0" class="px-2 pt-4 sm:px-3 lg:px-0">
+          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)] sm:p-5">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-400">Recent searches</p>
+                <h2 class="mt-1 text-[16px] font-black tracking-tight text-slate-950">Pick up where you left off</h2>
+              </div>
+              <button
+                type="button"
+                class="text-[11px] font-semibold text-teal-700 hover:text-teal-800"
+                @click="loadRecentSearches"
+              >
+                Refresh
+              </button>
+            </div>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <button
+                v-for="keyword in recentSearches"
+                :key="keyword"
+                type="button"
+                @click="handleRecentSearchClick(keyword)"
+                class="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-medium text-slate-700 transition-colors hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+              >
+                {{ keyword }}
               </button>
             </div>
           </div>
-          
-          <!-- Category Dropdown -->
-          <div class="w-full md:w-48">
-            <Select
-              v-model="selectedCategory"
-              :options="categoryOptions"
-              placeholder="All Categories"
-              class="w-full"
-            />
+        </section>
+      </main>
+
+      <aside class="hidden border-l border-white/70 bg-[#eef3f9] xl:flex xl:flex-col">
+        <div class="sticky top-0 flex h-screen flex-col gap-4 p-4">
+          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)]">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-400">Offers</p>
+                <h3 class="mt-1 text-[16px] font-black text-slate-950">Featured deals</h3>
+              </div>
+              <span class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">
+                {{ offers.length > 0 ? `${offers.length} live` : 'No live offers' }}
+              </span>
+            </div>
+
+            <div v-if="displayOffers.length === 0" class="mt-4 rounded-[22px] border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-[11px] text-slate-500">
+              No live offers yet.
+            </div>
+
+            <div class="mt-4 space-y-3">
+              <button
+                v-for="offer in displayOffers"
+                :key="offer.id"
+                type="button"
+                @click="handleOfferClick(offer)"
+                class="group w-full overflow-hidden rounded-[22px] border border-slate-200 bg-slate-50 text-left transition-all hover:-translate-y-0.5 hover:border-teal-200 hover:bg-white hover:shadow-[0_14px_32px_rgba(15,23,42,0.08)]"
+              >
+                <div v-if="offer.coverAsset?.public_url || offer.coverAsset?.thumbnail_url" class="aspect-[16/10] bg-slate-100">
+                  <img
+                    :src="offer.coverAsset?.public_url || offer.coverAsset?.thumbnail_url"
+                    :alt="offer.title"
+                    class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                </div>
+                <div v-else class="flex h-24 items-center justify-center bg-gradient-to-br from-teal-100 to-cyan-100">
+                  <div class="flex flex-col items-center gap-1 text-teal-600">
+                    <Sparkles class="h-7 w-7" />
+                    <span class="text-[10px] font-semibold uppercase tracking-[0.22em]">Featured deal</span>
+                  </div>
+                </div>
+                <div class="p-4">
+                  <div class="flex items-center gap-2">
+                    <span class="rounded-full bg-teal-600 px-2.5 py-1 text-[10px] font-bold text-white">
+                      {{ offer.offer_type === 'percentage' ? `${offer.value}% off` : `CNY ${offer.value} off` }}
+                    </span>
+                    <p class="truncate text-[12px] font-semibold text-slate-900">{{ offer.title || 'Special offer' }}</p>
+                  </div>
+                  <p class="mt-2 line-clamp-2 text-[11px] leading-5 text-slate-500">
+                    {{ offer.description || 'Tap to view the promotion details.' }}
+                  </p>
+                </div>
+              </button>
+            </div>
           </div>
-          
-          <!-- Search Button -->
-          <Button 
-            variant="primary" 
-            @click="handleUnifiedSearch"
-            :disabled="!searchQuery.trim() && !selectedImage"
-            :loading="uploadingImage"
-            class="w-full md:w-auto bg-teal-600 hover:bg-teal-700 text-white shadow-md px-6 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Search class="h-4 w-4 mr-2" />
-            Search
-          </Button>
-        </div>
-      </div>
 
-      <!-- Recent Searches -->
-      <div v-if="recentSearches.length > 0" class="mb-6">
-        <h3 class="text-sm font-semibold text-slate-700 mb-3">Recent Searches</h3>
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-for="(keyword, idx) in recentSearches"
-            :key="idx"
-            @click="handleRecentSearchClick(keyword)"
-            class="px-3 py-1.5 rounded-lg text-sm font-medium bg-white text-slate-700 border border-slate-200 hover:border-teal-300 hover:bg-teal-50 hover:text-teal-700 transition-all"
-          >
-            {{ keyword }}
-          </button>
-        </div>
-      </div>
-
-      <!-- Categories (compact chips) + Subcategories -->
-      <div class="mb-6">
-        <h3 class="text-sm font-semibold text-slate-700 mb-3">Browse by Category</h3>
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-for="cat in categories"
-            :key="cat.slug"
-            type="button"
-            @click="handleCategoryChipClick(cat.slug)"
-            :class="[
-              'px-3 py-1.5 rounded-lg text-sm font-medium border transition-all flex items-center gap-2',
-              selectedCategory === cat.slug
-                ? 'bg-teal-600 text-white border-teal-600'
-                : 'bg-white text-slate-700 border-slate-200 hover:border-teal-300 hover:bg-teal-50'
-            ]"
-          >
-            <span class="text-base">{{ cat.icon || '📦' }}</span>
-            <span>{{ cat.name }}</span>
-          </button>
-        </div>
-        <div v-if="selectedCategory && currentSubcategories.length > 0" class="mt-3">
-          <div class="text-xs font-semibold text-slate-600 mb-2">Subcategories</div>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="sub in currentSubcategories"
-              :key="sub"
-              type="button"
-              @click="handleSubcategoryChipClick(sub)"
-              class="px-3 py-1.5 rounded-lg text-sm font-medium bg-white text-slate-700 border border-slate-200 hover:border-amber-300 hover:bg-amber-50 transition-all"
-            >
-              {{ sub }}
-            </button>
+          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)]">
+            <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-400">Shipping rates</p>
+            <div class="mt-4 space-y-3">
+              <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-[12px] font-semibold text-green-500">Air shipping</span>
+                  <span class="text-[11px] text-slate-500">12-14 days</span>
+                </div>
+                <p class="mt-1 text-[11px] text-slate-600">{{ shippingRateItems.air }}</p>
+              </div>
+              <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-[12px] font-semibold text-red-500">Sea shipping</span>
+                  <span class="text-[11px] text-slate-500">12-14 days</span>
+                </div>
+                <p class="mt-1 text-[11px] text-slate-600">{{ shippingRateItems.sea }}</p>
+              </div>
+              <div class="rounded-2xl border border-dashed border-amber-200 bg-amber-50/70 p-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-[12px] font-semibold text-slate-900">MOQ rule</span>
+                  <span class="text-[11px] text-slate-500">{{ shoppingSettings.moqRule?.minimum_product || 1 }} pcs</span>
+                </div>
+                <p class="mt-1 text-[11px] text-slate-600">
+                  Minimum order value {{ shoppingSettings.moqRule?.currency || 'BDT' }} {{ Number(shoppingSettings.moqRule?.minimum_price_threshold || 0).toLocaleString() }}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </aside>
+    </div>
 
-      <!-- Hot Products Section (shown when no search) -->
-      <div v-if="!hasSearchResults && !loading" class="mb-8">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-bold text-slate-900">Hot Products</h2>
-          <Button variant="ghost" size="sm" @click="loadHotItems()">
-            <RefreshCw class="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-        </div>
-        <div v-if="hotItems.length === 0" class="text-center py-12 text-slate-500">
-          <Package class="h-16 w-16 mx-auto mb-4 text-slate-300" />
-          <p>No hot products available. Try searching for products above.</p>
-        </div>
-        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <ProductCard
-            v-for="item in hotItems"
-            :key="item.externalId"
-            :product="item"
-            :selected-currency="selectedCurrency"
-            :conversion-rates="conversionRates"
-            @click="handleProductClick(item)"
-            @request-buy="handleRequestBuy(item)"
-            @add-to-cart="handleAddToCart"
-          />
-        </div>
-      </div>
-
-      <!-- Search Results -->
-      <div v-if="hasSearchResults" class="mb-8">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xl font-bold text-slate-900">
-            {{ totalCount || searchResults.length }} Results
-            <span v-if="totalCount && totalCount !== searchResults.length" class="text-sm font-normal text-slate-600">
-              (showing {{ searchResults.length }})
-            </span>
-          </h2>
-          <Button variant="ghost" size="sm" @click="clearSearch">
-            Clear Search
-          </Button>
-        </div>
-        <div v-if="searchResults.length === 0 && !loading" class="text-center py-12">
-          <EmptyState
-            title="No products found"
-            description="Try adjusting your search or filters"
-          />
-        </div>
-        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-          <ProductCard
-            v-for="item in searchResults"
-            :key="item.externalId"
-            :product="item"
-            :selected-currency="selectedCurrency"
-            :conversion-rates="conversionRates"
-            @click="handleProductClick(item)"
-            @request-buy="handleRequestBuy(item)"
-            @add-to-cart="handleAddToCart"
-          />
-        </div>
-        
-        <!-- Pagination -->
-        <div v-if="hasSearchResults && searchResults.length > 0" class="flex items-center justify-center gap-2 mt-6">
-          <Button
-            variant="ghost"
-            size="sm"
-            :disabled="currentPage === 1"
-            @click="goToPage(currentPage - 1)"
-          >
-            <ChevronLeft class="h-4 w-4" />
-            Previous
-          </Button>
-          <span class="text-sm text-slate-600">
-            Page {{ currentPage }} of {{ totalPages }}
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            :disabled="currentPage >= totalPages"
-            @click="goToPage(currentPage + 1)"
-          >
-            Next
-            <ChevronRight class="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      <!-- Loading State -->
-      <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card v-for="i in 8" :key="i" class="animate-pulse">
-          <div class="h-48 bg-slate-200 rounded-t-lg" />
-          <CardBody>
-            <div class="h-4 bg-slate-200 rounded mb-2" />
-            <div class="h-4 bg-slate-200 rounded w-2/3" />
-          </CardBody>
-        </Card>
+    <div class="px-3 pb-5 lg:hidden">
+      <div class="mt-3 flex gap-2 overflow-x-auto pb-1">
+        <button
+          type="button"
+          @click="selectAllCategories"
+          :class="[
+            'shrink-0 rounded-full border px-4 py-2 text-[11px] font-semibold transition-all',
+            !selectedCategory ? 'border-teal-600 bg-teal-600 text-white' : 'border-slate-200 bg-white text-slate-700'
+          ]"
+        >
+          All products
+        </button>
+        <button
+          v-for="cat in categories"
+          :key="`mobile-${cat.slug}`"
+          type="button"
+          @click="handleCategorySelect(cat.slug)"
+          :class="[
+            'shrink-0 rounded-full border px-4 py-2 text-[11px] font-semibold transition-all',
+            selectedCategory === cat.slug ? 'border-teal-600 bg-teal-600 text-white' : 'border-slate-200 bg-white text-slate-700'
+          ]"
+        >
+          {{ cat.name }}
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
 import { useShoppingCart } from '@/composables/useShoppingCart';
-import { Search, X, Package, RefreshCw, ChevronLeft, ChevronRight, Camera, ShoppingCart } from 'lucide-vue-next';
 import {
-  Card,
-  CardBody,
-  Input,
-  Select,
-  Button,
-  EmptyState,
-} from '@bridgechina/ui';
+  ArrowRight,
+  Camera,
+  ChevronLeft,
+  ChevronRight,
+  Cpu,
+  Gem,
+  Home,
+  Shirt,
+  Sparkles,
+  Shield,
+  ShoppingBag,
+  ShoppingCart,
+  Stars,
+  Truck,
+  Watch,
+  Package,
+  RefreshCw,
+  Search,
+  X,
+} from 'lucide-vue-next';
+import { EmptyState } from '@bridgechina/ui';
 import ProductCard from '@/components/shopping/ProductCard.vue';
+
+type HeroSlide = {
+  key: string;
+  title: string;
+  image: string;
+};
+
+function heroSvg(title: string, subtitle: string, accent: string, accent2: string): string {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
+      <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="${accent}" />
+          <stop offset="100%" stop-color="${accent2}" />
+        </linearGradient>
+        <filter id="blur"><feGaussianBlur stdDeviation="18" /></filter>
+      </defs>
+      <rect width="1600" height="900" fill="url(#bg)"/>
+      <circle cx="240" cy="180" r="150" fill="rgba(255,255,255,0.18)" filter="url(#blur)"/>
+      <circle cx="1260" cy="140" r="200" fill="rgba(255,255,255,0.16)" filter="url(#blur)"/>
+      <rect x="980" y="520" width="430" height="220" rx="42" fill="rgba(255,255,255,0.16)"/>
+      <rect x="1080" y="565" width="180" height="120" rx="30" fill="rgba(255,255,255,0.24)"/>
+      <rect x="1280" y="565" width="90" height="90" rx="24" fill="rgba(255,255,255,0.28)"/>
+      <rect x="1100" y="610" width="140" height="20" rx="10" fill="rgba(255,255,255,0.55)"/>
+      <rect x="1100" y="642" width="110" height="14" rx="7" fill="rgba(255,255,255,0.36)"/>
+      <rect x="102" y="510" width="530" height="230" rx="44" fill="rgba(255,255,255,0.18)"/>
+      <rect x="150" y="550" width="168" height="140" rx="24" fill="rgba(255,255,255,0.24)"/>
+      <rect x="336" y="550" width="168" height="140" rx="24" fill="rgba(255,255,255,0.18)"/>
+      <rect x="522" y="550" width="70" height="140" rx="20" fill="rgba(255,255,255,0.28)"/>
+      <path d="M180 590h108v18H180zM180 622h120v14H180z" fill="rgba(255,255,255,0.66)"/>
+      <path d="M362 590h108v18H362zM362 622h120v14H362z" fill="rgba(255,255,255,0.54)"/>
+      <path d="M540 585h18v100h-18zM560 600h18v70h-18z" fill="rgba(255,255,255,0.56)"/>
+      <rect x="84" y="100" width="640" height="250" rx="40" fill="rgba(255,255,255,0.2)"/>
+      <text x="136" y="185" font-family="Arial, sans-serif" font-size="56" font-weight="700" fill="white">${title}</text>
+      <text x="136" y="245" font-family="Arial, sans-serif" font-size="28" fill="rgba(255,255,255,0.9)">${subtitle}</text>
+      <rect x="136" y="280" width="170" height="16" rx="8" fill="rgba(255,255,255,0.55)"/>
+    </svg>
+  `;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+const heroSlides: HeroSlide[] = [
+  {
+    key: 'factory',
+    title: 'Factory direct sourcing',
+    image: '/home/hero-01.jpg',
+  },
+  {
+    key: 'shipment',
+    title: 'Fast delivery flow',
+    image: '/home/hero-02.jpg',
+  },
+  {
+    key: 'image-search',
+    title: 'Search by image',
+    image: '/home/hero-01.jpg',
+  },
+];
 
 const router = useRouter();
 const toast = useToast();
-const { totalItems, addToCart: addToCartComposable } = useShoppingCart();
+const { addToCart: addToCartComposable } = useShoppingCart();
 
 const categories = ref<any[]>([]);
 const hotItems = ref<any[]>([]);
 const searchResults = ref<any[]>([]);
+const offers = ref<any[]>([]);
 const loading = ref(false);
 const searchQuery = ref('');
 const selectedCategory = ref('');
+const expandedCategorySlug = ref('');
 const selectedImage = ref<File | null>(null);
-const imagePreview = ref<string>('');
-const uploadingImage = ref(false);
+const imagePreview = ref('');
 const fileInput = ref<HTMLInputElement | null>(null);
+const searchTriggered = ref(false);
 const currentPage = ref(1);
-const pageSize = ref(20);
+const pageSize = ref(12);
 const totalPages = ref(1);
 const totalCount = ref<number | null>(null);
-const selectedLanguage = ref<'en' | 'zh'>('zh');
-const selectedCurrency = ref<'CNY' | 'BDT' | 'USD'>('CNY');
+const selectedLanguage = ref<'en' | 'zh'>('en');
+const selectedCurrency = ref<'BDT' | 'CNY' | 'USD'>('BDT');
 const recentSearches = ref<string[]>([]);
-const conversionRates = ref<{ CNY_TO_BDT?: number; CNY_TO_USD?: number }>({});
-const selectedSubcategory = ref<string>('');
-const topSalesProducts = ref<any[]>([]);
-const lowestPriceProducts = ref<any[]>([]);
-
-const categoryOptions = computed(() => {
-  const options = [{ value: '', label: 'All Categories' }];
-  // Add categories with icons (avoid duplicates)
-  const seen = new Set<string>();
-  categories.value.forEach((c) => {
-    if (!seen.has(c.slug)) {
-      seen.add(c.slug);
-      options.push({ 
-        value: c.slug, 
-        label: `${c.icon || '📦'} ${c.name}` 
-      });
-    }
-  });
-  return options;
+const premiumProducts = ref<any[]>([]);
+const shoppingSettings = ref<any>({});
+const conversionRates = ref<{ CNY_TO_BDT?: number; CNY_TO_USD?: number }>({
+  CNY_TO_BDT: 15,
+  CNY_TO_USD: 0.14,
 });
+const heroSlideIndex = ref(0);
+const currentHeroSlideIndex = heroSlideIndex;
 
-const hasSearchResults = computed(() => {
-  // Show search results section if:
-  // 1. We have actual results, OR
-  // 2. We're currently loading a search, OR
-  // 3. We have a search query and have finished loading (even if empty)
-  return searchResults.value.length > 0 || loading.value || (searchQuery.value.trim().length > 0 && !loading.value);
+let heroTimer: number | undefined;
+
+const layoutClass = computed(() => 'xl:grid-cols-[minmax(0,1fr)_300px]');
+
+const currentHeroSlide = computed(() => heroSlides[heroSlideIndex.value % heroSlides.length]);
+const hasSearchResults = computed(() => searchTriggered.value);
+const visibleProducts = computed(() => (hasSearchResults.value ? searchResults.value : hotItems.value));
+const displayProducts = computed(() => visibleProducts.value);
+const displayOffers = computed(() => offers.value.slice(0, 3));
+const hasOfferRail = computed(() => displayOffers.value.length > 0);
+const shippingRateSummary = computed(() => {
+  const rates = shoppingSettings.value.shippingRates || [];
+  const air = rates.find((rate: any) => rate.method === 'air');
+  const sea = rates.find((rate: any) => rate.method === 'sea');
+  const parts: string[] = [];
+  if (air) parts.push(`Air ${air.currency} ${air.min_rate_per_kg}-${air.max_rate_per_kg}/kg`);
+  if (sea) parts.push(`Sea ${sea.currency} ${sea.min_rate_per_kg}-${sea.max_rate_per_kg}/kg`);
+  return parts.join(' • ');
 });
-
-const currentSubcategories = computed<string[]>(() => {
+const shippingRateItems = computed(() => {
+  const rates = Array.isArray(shoppingSettings.value.shippingRates) ? shoppingSettings.value.shippingRates : [];
+  const air = rates.find((rate: any) => rate.method === 'air');
+  const sea = rates.find((rate: any) => rate.method === 'sea');
+  return {
+    air: air ? `${air.currency || 'BDT'} ${Number(air.min_rate_per_kg || 0).toLocaleString()} - ${Number(air.max_rate_per_kg || 0).toLocaleString()} /kg` : 'Not set',
+    sea: sea ? `${sea.currency || 'BDT'} ${Number(sea.min_rate_per_kg || 0).toLocaleString()} - ${Number(sea.max_rate_per_kg || 0).toLocaleString()} /kg` : 'Not set',
+  };
+});
+const currentSubcategories = computed(() => {
   if (!selectedCategory.value) return [];
-  const cat = categories.value.find((c: any) => c.slug === selectedCategory.value);
-  return Array.isArray(cat?.subcategories) ? cat.subcategories.slice(0, 10) : [];
+  const cat = categories.value.find((item: any) => item.slug === selectedCategory.value);
+  return Array.isArray(cat?.children) ? cat.children.slice(0, 10).map((child: any) => child.name) : [];
 });
+
+const iconMap: Record<string, any> = {
+  'shopping-bag': ShoppingBag,
+  gem: Gem,
+  glasses: Package,
+  laptop: Package,
+  monitor: Package,
+  smartphone: Package,
+  watch: Watch,
+  shirt: Shirt,
+  home: Home,
+  truck: Truck,
+  camera: Package,
+  headphones: Package,
+  'gamepad-2': Package,
+  'book-open': Package,
+  sprout: Package,
+  'badge-percent': Package,
+  package: Package,
+  shield: Shield,
+  star: Stars,
+  sparkles: Sparkles,
+  cpu: Cpu,
+};
+
+function categoryIcon(icon?: string) {
+  return iconMap[String(icon || '').toLowerCase()] || Package;
+}
+
+const suggestionCards = computed(() => {
+  const pool = (visibleProducts.value || []).filter((product: any) => product && (product.priceMin != null || product.totalSold != null));
+  if (pool.length === 0) return [];
+
+  const byPrice = [...pool]
+    .filter((product: any) => typeof product.priceMin === 'number' && !Number.isNaN(product.priceMin))
+    .sort((a: any, b: any) => (a.priceMin ?? Number.POSITIVE_INFINITY) - (b.priceMin ?? Number.POSITIVE_INFINITY))[0];
+  const bySales = [...pool].sort((a: any, b: any) => (b.totalSold || 0) - (a.totalSold || 0))[0];
+  const byValue = [...pool].sort((a: any, b: any) => scoreProduct(b) - scoreProduct(a))[0];
+
+  return [
+    buildSuggestionCard('best-selling', 'Best Selling', bySales, 'bg-emerald-100 text-emerald-700'),
+    buildSuggestionCard('lowest-price', 'Lowest Price', byPrice, 'bg-amber-100 text-amber-700'),
+    buildSuggestionCard('best-value', 'Best Value', byValue, 'bg-sky-100 text-sky-700'),
+  ].filter((card) => card.product);
+});
+
+function scoreProduct(product: any): number {
+  const price = Number(product?.priceMin || product?.priceMax || 0);
+  const sold = Number(product?.totalSold || 0);
+  if (price <= 0) return sold * 1000;
+  return (sold * 1000) / price;
+}
+
+function buildSuggestionCard(key: string, label: string, product: any, badgeClass: string) {
+  if (!product) {
+    return { key, label, product: null, badgeClass, title: '', priceText: '', soldText: '' };
+  }
+
+  return {
+    key,
+    label,
+    product,
+    badgeClass,
+    title: product.title || 'Untitled product',
+    priceText: formatPrice(product.priceMin ?? product.priceMax ?? 0),
+    soldText: product.totalSold ? `${formatSales(product.totalSold)} sold` : 'Trending now',
+  };
+}
+
+function formatPrice(price: number): string {
+  const currency = selectedCurrency.value;
+  if (currency === 'CNY') {
+    return `CNY ${price.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+  }
+  if (currency === 'BDT') {
+    const rate = conversionRates.value.CNY_TO_BDT || 15;
+    return `BDT ${(price * rate).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+  }
+  const rate = conversionRates.value.CNY_TO_USD || 0.14;
+  return `USD ${(price * rate).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatSales(count: number): string {
+  if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
+  if (count >= 1000) return `${(count / 1000).toFixed(1)}K`;
+  return String(count);
+}
 
 function handleFileSelect(event: Event) {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
-  if (file) {
-    selectedImage.value = file;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      imagePreview.value = e.target?.result as string;
-    };
-    reader.readAsDataURL(file);
-  }
+  if (!file) return;
+  selectedImage.value = file;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    imagePreview.value = String(e.target?.result || '');
+  };
+  reader.readAsDataURL(file);
 }
 
 function clearImage() {
   selectedImage.value = null;
   imagePreview.value = '';
-  if (fileInput.value) {
-    fileInput.value.value = '';
-  }
+  if (fileInput.value) fileInput.value.value = '';
 }
 
-async function handleUnifiedSearch() {
-  // Reset to page 1 when starting a new search
+function clearSearchResults() {
+  searchResults.value = [];
+  totalCount.value = null;
+  totalPages.value = 1;
   currentPage.value = 1;
-  
-  // If image is selected, do image search
-  if (selectedImage.value) {
-    await handleImageSearch();
-    return;
-  }
-  
-  // Otherwise, do keyword search
-  await handleKeywordSearch();
 }
 
-async function handleImageSearch() {
-  if (!selectedImage.value) return;
-
-  uploadingImage.value = true;
-  loading.value = true;
-  // Don't reset currentPage here - let goToPage handle it
-
-  try {
-    // Step 1: Upload image to backend (server-side upload to R2 - avoids CORS)
-    const formData = new FormData();
-    formData.append('image', selectedImage.value);
-
-    const uploadRes = await axios.post('/api/public/shopping/upload-image', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-
-    // Step 2: Search by image using the public URL
-    const searchRes = await axios.post('/api/public/shopping/search/image', {
-      r2_public_url: uploadRes.data.publicUrl,
-      category: selectedCategory.value || undefined,
-      page: currentPage.value,
-      pageSize: pageSize.value,
-      language: selectedLanguage.value,
-      sort: 'sales', // Default to sales sort
-    });
-
-    console.log('[ShoppingPage] Image search response:', {
-      data: searchRes.data,
-      dataLength: Array.isArray(searchRes.data?.items) ? searchRes.data.items.length : 'not array',
-      dataType: typeof searchRes.data,
-      pagination: searchRes.data?.totalCount ? {
-        totalCount: searchRes.data.totalCount,
-        page: searchRes.data.page,
-        totalPages: searchRes.data.totalPages,
-      } : 'no pagination',
-    });
-    
-    // Handle both old format (array) and new format (object with items)
-    if (Array.isArray(searchRes.data)) {
-      searchResults.value = searchRes.data;
-      totalPages.value = 1; // Old format, no pagination info
-    } else if (searchRes.data?.items) {
-      searchResults.value = searchRes.data.items;
-      totalPages.value = searchRes.data.totalPages || 1;
-    } else {
-      searchResults.value = [];
-      totalPages.value = 1;
-    }
-    
-    toast.success(`Found ${searchRes.data?.totalCount || searchResults.value.length} products`);
-  } catch (error: any) {
-    console.error('Image search failed:', error);
-    toast.error(error.response?.data?.error || 'Failed to search by image');
-    searchResults.value = [];
-  } finally {
-    uploadingImage.value = false;
-    loading.value = false;
-  }
+function selectAllCategories() {
+  selectedCategory.value = '';
+  router.push({ name: 'shopping-browse' });
 }
 
+function handleCategorySelect(slug: string) {
+  router.push({ name: 'shopping-browse', query: { category: slug } });
+}
+
+function toggleSidebarCategory(slug: string) {
+  expandedCategorySlug.value = expandedCategorySlug.value === slug ? '' : slug;
+}
 
 function handleRecentSearchClick(keyword: string) {
   searchQuery.value = keyword;
-  handleKeywordSearch();
-}
-
-function handleCategoryChipClick(slug: string) {
-  selectedCategory.value = slug;
-  selectedSubcategory.value = '';
-  // keep behavior: refresh hot items for selected category
-  loadHotItems();
-}
-
-function handleSubcategoryChipClick(sub: string) {
-  selectedSubcategory.value = sub;
-  searchQuery.value = sub;
   currentPage.value = 1;
   handleKeywordSearch();
 }
 
-async function handleKeywordSearch() {
+async function handleUnifiedSearch() {
+  const query: Record<string, string> = {};
   const keyword = searchQuery.value.trim();
-  if (!keyword && !selectedCategory.value) {
-    toast.error('Please enter a search keyword or select a category');
-    return;
+  if (keyword) query.q = keyword;
+  if (selectedCategory.value) query.category = selectedCategory.value;
+  if (selectedImage.value) {
+    const key = `shopping-image-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const previewUrl = imagePreview.value || '';
+    if (previewUrl) {
+      sessionStorage.setItem(key, previewUrl);
+      query.imageSearchKey = key;
+    }
   }
 
-  loading.value = true;
-  // Don't reset currentPage here - let goToPage handle it
+  await router.push({ name: 'shopping-browse', query });
+}
 
-  try {
-    const params: any = {
-      page: currentPage.value,
-      pageSize: pageSize.value,
-      language: selectedLanguage.value,
-      sort: 'sales', // Default to sales sort
-    };
-    
-    if (keyword) {
-      params.keyword = keyword;
-    }
-    
-    if (selectedCategory.value) {
-      params.category = selectedCategory.value;
-    }
+async function handleImageSearch() {
+  await handleUnifiedSearch();
+}
 
-    const response = await axios.get('/api/public/shopping/search', { params });
-    
-    console.log('[ShoppingPage] Keyword search response:', {
-      data: response.data,
-      dataLength: Array.isArray(response.data?.items) ? response.data.items.length : 'not array',
-      dataType: typeof response.data,
-      pagination: response.data?.totalCount ? {
-        totalCount: response.data.totalCount,
-        page: response.data.page,
-        totalPages: response.data.totalPages,
-      } : 'no pagination',
-    });
-    
-    // Handle both old format (array) and new format (object with items)
-    if (Array.isArray(response.data)) {
-      searchResults.value = response.data;
-      totalPages.value = 1; // Old format, no pagination info
-    } else if (response.data?.items) {
-      searchResults.value = response.data.items;
-      totalPages.value = response.data.totalPages || 1;
-      currentPage.value = response.data.page || currentPage.value;
-      totalCount.value = response.data.totalCount || null;
-      // Update total count display
-      if (response.data.totalCount) {
-        console.log('[ShoppingPage] Total products found:', response.data.totalCount);
-      }
-    } else {
-      searchResults.value = [];
-      totalPages.value = 1;
-    }
-    
-    if (searchResults.value.length === 0) {
-      toast.info('No products found. Try different keywords or category.');
-    } else {
-      toast.success(`Found ${response.data?.totalCount || searchResults.value.length} products`);
-    }
-  } catch (error: any) {
-    console.error('Keyword search failed:', error);
-    toast.error(error.response?.data?.error || error.message || 'Failed to search products');
-    searchResults.value = [];
-  } finally {
-    loading.value = false;
-  }
+async function handleKeywordSearch() {
+  await handleUnifiedSearch();
 }
 
 async function goToPage(page: number) {
   if (page < 1 || page > totalPages.value) return;
-  
   currentPage.value = page;
-  
   if (selectedImage.value) {
     await handleImageSearch();
-  } else {
-    await handleKeywordSearch();
+    return;
   }
+  await handleKeywordSearch();
 }
 
 function clearSearch() {
   searchQuery.value = '';
-  searchResults.value = [];
-  selectedImage.value = null;
-  imagePreview.value = '';
-  currentPage.value = 1;
-  totalCount.value = null;
-  if (fileInput.value) {
-    fileInput.value.value = '';
-  }
-  // Reload hot items
+  selectedCategory.value = '';
+  searchTriggered.value = false;
+  clearSearchResults();
+  clearImage();
   loadHotItems();
 }
 
 function handleProductClick(product: any) {
   router.push({
-    path: `/shopping/tmapi/${product.externalId}`,
+    path: `/shopping/item/${product.externalId}`,
     query: { language: selectedLanguage.value },
   });
 }
 
-function handleRequestBuy(product: any) {
-  // Add to cart instead of direct request
-  addToCartComposable(product, 1);
-  toast.success('Added to cart!');
-}
-
 function handleAddToCart(product: any) {
   addToCartComposable(product, 1);
-  toast.success('Added to cart!');
+  toast.success('Added to cart');
+}
+
+function handleOfferClick(offer: any) {
+  if (offer?.link) router.push(offer.link);
 }
 
 async function loadCategories() {
   try {
     const response = await axios.get('/api/public/shopping/categories');
-    categories.value = response.data || [];
+    categories.value = Array.isArray(response.data) ? response.data : [];
+    if (!expandedCategorySlug.value) {
+      expandedCategorySlug.value = categories.value[0]?.slug || '';
+    }
   } catch (error) {
     console.error('Failed to load categories', error);
+    categories.value = [];
   }
 }
 
 async function loadHotItems() {
+  searchTriggered.value = false;
   loading.value = true;
   try {
-    console.log('[ShoppingPage] Loading hot items from database...');
-    const params: any = {
-      page: 1,
-      pageSize: 12, // Show max 12 items on shopping page
-    };
-    if (selectedCategory.value) {
-      params.category = selectedCategory.value;
-    }
+    const params: Record<string, any> = { page: 1, pageSize: 12 };
+    if (selectedCategory.value) params.category = selectedCategory.value;
     const response = await axios.get('/api/public/shopping/hot', { params });
-    console.log('[ShoppingPage] Hot items response:', {
-      data: response.data,
-      dataLength: Array.isArray(response.data) ? response.data.length : 'not array',
-      dataType: typeof response.data,
-    });
     hotItems.value = Array.isArray(response.data) ? response.data : [];
-    console.log('[ShoppingPage] Loaded', hotItems.value.length, 'hot items');
-    
-    // Load top sales and lowest price
-    await loadTopSalesAndLowestPrice();
   } catch (error) {
     console.error('[ShoppingPage] Failed to load hot items:', error);
     hotItems.value = [];
@@ -646,58 +853,42 @@ async function loadHotItems() {
   }
 }
 
-async function loadTopSalesAndLowestPrice() {
+async function loadOffers() {
   try {
-    // Get top sales - search with sort=sales, limit to 4
-    const topSalesRes = await axios.get('/api/public/shopping/search', {
-      params: {
-        keyword: selectedCategory.value || 'products',
-        page: 1,
-        pageSize: 4,
-        sort: 'sales',
-        language: selectedLanguage.value,
-      },
-    });
-    
-    if (topSalesRes.data?.items) {
-      // Sort by totalSold if available
-      topSalesProducts.value = topSalesRes.data.items
-        .filter((item: any) => item.totalSold)
-        .sort((a: any, b: any) => (b.totalSold || 0) - (a.totalSold || 0))
-        .slice(0, 4);
-    }
-    
-    // Get lowest price - TMAPI sort: price_up
-    const lowestPriceRes = await axios.get('/api/public/shopping/search', {
-      params: {
-        keyword: selectedCategory.value || 'products',
-        page: 1,
-        pageSize: 4,
-        sort: 'price_up',
-        language: selectedLanguage.value,
-      },
-    });
-    
-    if (lowestPriceRes.data?.items) {
-      // Sort by priceMin
-      lowestPriceProducts.value = lowestPriceRes.data.items
-        .filter((item: any) => item.priceMin)
-        .sort((a: any, b: any) => (a.priceMin || Infinity) - (b.priceMin || Infinity))
-        .slice(0, 4);
-    }
+    const response = await axios.get('/api/public/offers');
+    offers.value = Array.isArray(response.data) ? response.data : [];
   } catch (error) {
-    console.error('[ShoppingPage] Failed to load top sales/lowest price:', error);
+    console.error('Failed to load offers', error);
+    offers.value = [];
   }
 }
 
+async function loadPremiumProducts() {
+  try {
+    const response = await axios.get('/api/public/shopping/premium-products', {
+      params: { limit: 4 },
+    });
+    premiumProducts.value = Array.isArray(response.data) ? response.data.slice(0, 4) : [];
+  } catch (error) {
+    console.error('Failed to load premium products:', error);
+    premiumProducts.value = [];
+  }
+}
+
+async function loadShopSettings() {
+  try {
+    const response = await axios.get('/api/public/shopping/settings');
+    shoppingSettings.value = response.data || {};
+  } catch (error) {
+    console.error('Failed to load shopping settings:', error);
+    shoppingSettings.value = {};
+  }
+}
 
 async function loadRecentSearches() {
   try {
     const response = await axios.get('/api/public/shopping/recent-searches', {
-      params: {
-        limit: 8,
-        language: selectedLanguage.value,
-      },
+      params: { limit: 8, language: selectedLanguage.value },
     });
     recentSearches.value = Array.isArray(response.data) ? response.data : [];
   } catch (error) {
@@ -707,31 +898,24 @@ async function loadRecentSearches() {
 }
 
 async function loadConversionRates() {
-  // In a real app, these would come from an API or env
-  // For now, use defaults or fetch from backend
-  conversionRates.value = {
-    CNY_TO_BDT: 15, // Default fallback
-    CNY_TO_USD: 0.14, // Default fallback
-  };
-  
-  // Try to get from backend if available
-  try {
-    // Backend could expose these via env or API
-    // For now, use defaults
-  } catch (error) {
-    console.warn('Failed to load conversion rates, using defaults');
-  }
+  conversionRates.value = { CNY_TO_BDT: 15, CNY_TO_USD: 0.14 };
 }
 
 onMounted(() => {
+  heroTimer = window.setInterval(() => {
+    heroSlideIndex.value = (heroSlideIndex.value + 1) % heroSlides.length;
+  }, 4200);
+
   loadCategories();
-  loadHotItems(); // Load hot products on mount
+  loadHotItems();
+  loadOffers();
+  loadPremiumProducts();
+  loadShopSettings();
   loadRecentSearches();
   loadConversionRates();
 });
+
+onBeforeUnmount(() => {
+  if (heroTimer) window.clearInterval(heroTimer);
+});
 </script>
-
-
-
-
-

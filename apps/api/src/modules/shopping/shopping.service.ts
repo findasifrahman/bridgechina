@@ -23,6 +23,16 @@ import {
 import { translateKeywordToChinese } from './googleTranslate.js';
 const SOURCE = 'tmapi_1688';
 
+function isDatabaseUnavailable(error: any): boolean {
+  const message = String(error?.message || '');
+  return (
+    error?.name === 'PrismaClientInitializationError' ||
+    message.includes("Can't reach database server") ||
+    message.includes('P1001') ||
+    message.includes('P1017')
+  );
+}
+
 // Shopping categories with subcategories
 export const SHOPPING_CATEGORIES = [
   { 
@@ -469,6 +479,60 @@ async function cacheProductItem(item: ProductCard): Promise<void> {
   }
 }
 
+function buildCachedDetailFallback(cached: any): ProductDetail {
+  const cachedRaw = cached?.raw_json && typeof cached.raw_json === 'object' ? cached.raw_json : {};
+  const syntheticItem = {
+    ...cachedRaw,
+    item_id: cached.external_id,
+    id: cached.external_id,
+    title: cached.title_en || cached.title || cachedRaw.title || cachedRaw.subject || cachedRaw.name || 'Untitled Product',
+    subject: cached.title_en || cached.title || cachedRaw.title || cachedRaw.subject || cachedRaw.name || 'Untitled Product',
+    name: cached.title_en || cached.title || cachedRaw.title || cachedRaw.subject || cachedRaw.name || 'Untitled Product',
+    price: cached.price_min ?? cached.price_max ?? cachedRaw.price ?? cachedRaw.price_info?.sale_price,
+    price_min: cached.price_min ?? cachedRaw.price_min,
+    price_max: cached.price_max ?? cachedRaw.price_max,
+    price_info: cachedRaw.price_info || (
+      cached.price_min || cached.price_max
+        ? {
+            sale_price: cached.price_min ?? cached.price_max,
+            origin_price: cached.price_max ?? cached.price_min,
+          }
+        : undefined
+    ),
+    main_imgs: Array.isArray(cached.main_images) ? cached.main_images : cachedRaw.main_imgs || cachedRaw.main_images || [],
+    main_image: Array.isArray(cached.main_images) ? cached.main_images[0] : cachedRaw.main_image || cachedRaw.image_url,
+    image_url: Array.isArray(cached.main_images) ? cached.main_images[0] : cachedRaw.main_image || cachedRaw.image_url,
+    product_url: cached.source_url || cachedRaw.product_url || cachedRaw.detail_url,
+    detail_url: cached.source_url || cachedRaw.detail_url || cachedRaw.product_url,
+    url: cached.source_url || cachedRaw.url || cachedRaw.product_url,
+    link: cached.source_url || cachedRaw.link || cachedRaw.product_url,
+    skus: cached.skus_json || cachedRaw.skus || cachedRaw.sku_list || null,
+    sku_list: cached.skus_json || cachedRaw.sku_list || null,
+    sale_info: cachedRaw.sale_info,
+    shop_info: cachedRaw.shop_info,
+    delivery_info: cachedRaw.delivery_info,
+    description: cachedRaw.description || cachedRaw.desc || cachedRaw.detail || '',
+  };
+
+  const fallback = normalizeProductDetail(syntheticItem, syntheticItem.description);
+
+  if (cached.title_en) {
+    fallback.title = cached.title_en;
+  }
+
+  if (!fallback.images?.length && Array.isArray(cached.main_images)) {
+    const fallbackImages = cached.main_images.filter((img: unknown): img is string => typeof img === 'string' && img.length > 0);
+    fallback.images = fallbackImages;
+    fallback.imageUrl = fallbackImages[0] || fallback.imageUrl;
+  }
+
+  if (!fallback.sourceUrl && cached.source_url) {
+    fallback.sourceUrl = cached.source_url;
+  }
+
+  return fallback;
+}
+
 /**
  * Search by image with caching
  */
@@ -625,11 +689,13 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
     }
   }
 
+  const cachedFallback = cached ? buildCachedDetailFallback(cached) : null;
+
   if (cached && cached.raw_json && cached.expires_at > new Date()) {
     // Try to fetch additional data for cached items
-    let description = null;
-    let ratings = null;
-    let shipping = null;
+    let description: any = null;
+    let ratings: any = null;
+    let shipping: any = null;
     
     try {
       const descResponse = await tmapiClient.getItemDescription(externalId);
@@ -740,19 +806,36 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
     return normalized;
   }
 
-  // Call TMAPI - use multilingual API if language is 'en', otherwise use regular API
-  const response = language === 'en'
-    ? await tmapiClient.getItemDetailMultilingual(externalId, language)
-    : await tmapiClient.getItemDetail(externalId);
-  // TMAPI response structure: { code: 200, msg: "success", data: { ...item data... } }
-  // The client returns response.data (the full TMAPI response), so response is already { code, msg, data }
-  // So we need response.data to get the actual item data object (the inner data field)
-  const itemData = response.data?.data || response.data || response;
+  let itemData: any;
+  try {
+    // Call TMAPI - use multilingual API if language is 'en', otherwise use regular API
+    const response = language === 'en'
+      ? await tmapiClient.getItemDetailMultilingual(externalId, language)
+      : await tmapiClient.getItemDetail(externalId);
+    // TMAPI response structure: { code: 200, msg: "success", data: { ...item data... } }
+    // The client returns response.data (the full TMAPI response), so response is already { code, msg, data }
+    // So we need response.data to get the actual item data object (the inner data field)
+    itemData = response.data?.data || response.data || response;
+  } catch (error: any) {
+    console.warn('[Shopping Service] Live TMAPI item detail request failed, using cached fallback if available:', {
+      externalId,
+      language,
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
+
+    if (cachedFallback) {
+      return cachedFallback;
+    }
+
+    throw error;
+  }
   
   // Fetch additional data: description, ratings, shipping
-  let description = null;
-  let ratings = null;
-  let shipping = null;
+  let description: any = null;
+  let ratings: any = null;
+  let shipping: any = null;
   
   try {
     const descResponse = await tmapiClient.getItemDescription(externalId);
@@ -1005,23 +1088,24 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
  */
 export async function getHotItems(categorySlug?: string, page: number = 1, pageSize: number = 20): Promise<ProductCard[]> {
   console.log('[Shopping Service] getHotItems called:', { categorySlug, page, pageSize });
-  const where: any = { source: SOURCE };
-  if (categorySlug) {
-    where.category_slug = categorySlug;
-  }
+  try {
+    const where: any = { source: SOURCE };
+    if (categorySlug) {
+      where.category_slug = categorySlug;
+    }
 
-  const items: ProductCard[] = [];
-  const existingIds = new Set<string>();
+    const items: ProductCard[] = [];
+    const existingIds = new Set<string>();
 
-  // First, try to get pinned hot items (pinned_rank > 0 means pinned)
-  const hotItems = await prisma.externalHotItem.findMany({
-    where: {
-      ...where,
-      pinned_rank: { gt: 0 }, // Only get pinned items (pinned_rank > 0)
-    },
-    orderBy: { pinned_rank: 'asc' }, // Lower rank = higher priority
-    take: 100, // Get more to filter by valid cache
-  });
+    // First, try to get pinned hot items (pinned_rank > 0 means pinned)
+    const hotItems = await prisma.externalHotItem.findMany({
+      where: {
+        ...where,
+        pinned_rank: { gt: 0 }, // Only get pinned items (pinned_rank > 0)
+      },
+      orderBy: { pinned_rank: 'asc' }, // Lower rank = higher priority
+      take: 100, // Get more to filter by valid cache
+    });
 
   if (hotItems.length > 0) {
     // Load from ExternalCatalogItem cache (DB snapshot) for pinned items
@@ -1034,10 +1118,10 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
       },
     });
 
-    const cachedMap = new Map(cachedItems.map(c => [c.external_id, c]));
+    const cachedMap = new Map<string, any>(cachedItems.map((c) => [c.external_id, c]));
 
     for (const hotItem of hotItems) {
-      const cached = cachedMap.get(hotItem.external_id);
+      const cached: any = cachedMap.get(hotItem.external_id);
       if (cached && cached.raw_json) {
         // Use cached data
         const normalized = normalizeProductDetail(cached.raw_json as any);
@@ -1065,10 +1149,10 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
     }
   }
 
-  // If we don't have enough items, load from recent search cache (ExternalSearchCache)
-  // This shows products from recent searches, which is more relevant for homepage
-  if (items.length < pageSize) {
-    const needed = pageSize - items.length;
+    // If we don't have enough items, load from recent search cache (ExternalSearchCache)
+    // This shows products from recent searches, which is more relevant for homepage
+    if (items.length < pageSize) {
+      const needed = pageSize - items.length;
     
     // Get recent search cache entries (most recent searches first)
     // Try ordering by created_at, fallback to id if created_at doesn't exist
@@ -1169,74 +1253,81 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
     console.log(`[Shopping Service] After processing search cache, items count: ${items.length}`);
   }
 
-  // Final fallback: If still not enough, try ExternalCatalogItem
-  if (items.length < pageSize) {
-    const needed = pageSize - items.length;
-    const recentItems = await prisma.externalCatalogItem.findMany({
-      where: {
-        source: SOURCE,
-        expires_at: { gt: new Date() }, // Only non-expired cache
-      },
-      orderBy: { last_synced_at: 'desc' }, // Most recently synced first
-      take: needed + 20,
-    });
+    // Final fallback: If still not enough, try ExternalCatalogItem
+    if (items.length < pageSize) {
+      const needed = pageSize - items.length;
+      const recentItems = await prisma.externalCatalogItem.findMany({
+        where: {
+          source: SOURCE,
+          expires_at: { gt: new Date() }, // Only non-expired cache
+        },
+        orderBy: { last_synced_at: 'desc' }, // Most recently synced first
+        take: needed + 20,
+      });
 
-    for (const cached of recentItems) {
-      if (existingIds.has(cached.external_id)) {
-        continue; // Skip duplicates
-      }
-      
-      try {
-        let normalized: ProductCard;
-        
-        if (cached.raw_json) {
-          normalized = normalizeProductDetail(cached.raw_json as any);
-          if (cached.title_en) {
-            normalized.title = cached.title_en;
-          }
-        } else {
-          // Fallback: Create basic ProductCard from available fields
-          normalized = {
-            source: 'tmapi_1688',
-            externalId: cached.external_id,
-            title: cached.title_en || cached.title || 'Product',
-            priceMin: cached.price_min || undefined,
-            priceMax: cached.price_max || undefined,
-            currency: (cached.currency as 'CNY') || 'CNY',
-            sourceUrl: cached.source_url || undefined,
-          };
-          
-          if (cached.main_images) {
-            try {
-              const mainImages = typeof cached.main_images === 'string' 
-                ? JSON.parse(cached.main_images) 
-                : cached.main_images;
-              if (Array.isArray(mainImages) && mainImages.length > 0) {
-                normalized.imageUrl = getProxiedImageUrl(mainImages[0]);
-                normalized.images = mainImages.map(getProxiedImageUrl);
-              } else if (typeof mainImages === 'string') {
-                normalized.imageUrl = getProxiedImageUrl(mainImages);
-              }
-            } catch (e) {
-              // Ignore image parsing errors
-            }
-          }
+      for (const cached of recentItems) {
+        if (existingIds.has(cached.external_id)) {
+          continue; // Skip duplicates
         }
         
-        items.push(normalized);
-        existingIds.add(normalized.externalId);
-        
-        if (items.length >= pageSize) break;
-      } catch (error) {
-        console.error(`[Shopping] Failed to process cached item ${cached.external_id}:`, error);
+        try {
+          let normalized: ProductCard;
+          
+          if (cached.raw_json) {
+            normalized = normalizeProductDetail(cached.raw_json as any);
+            if (cached.title_en) {
+              normalized.title = cached.title_en;
+            }
+          } else {
+            // Fallback: Create basic ProductCard from available fields
+            normalized = {
+              source: 'tmapi_1688',
+              externalId: cached.external_id,
+              title: cached.title_en || cached.title || 'Product',
+              priceMin: cached.price_min || undefined,
+              priceMax: cached.price_max || undefined,
+              currency: (cached.currency as 'CNY') || 'CNY',
+              sourceUrl: cached.source_url || undefined,
+            };
+            
+            if (cached.main_images) {
+              try {
+                const mainImages = typeof cached.main_images === 'string' 
+                  ? JSON.parse(cached.main_images) 
+                  : cached.main_images;
+                if (Array.isArray(mainImages) && mainImages.length > 0) {
+                  normalized.imageUrl = getProxiedImageUrl(mainImages[0]);
+                  normalized.images = mainImages.map(getProxiedImageUrl);
+                } else if (typeof mainImages === 'string') {
+                  normalized.imageUrl = getProxiedImageUrl(mainImages);
+                }
+              } catch (e) {
+                // Ignore image parsing errors
+              }
+            }
+          }
+          
+          items.push(normalized);
+          existingIds.add(normalized.externalId);
+          
+          if (items.length >= pageSize) break;
+        } catch (error) {
+          console.error(`[Shopping] Failed to process cached item ${cached.external_id}:`, error);
+        }
       }
     }
+  
+    // Apply pagination
+    const start = (page - 1) * pageSize;
+    const paginated = items.slice(start, start + pageSize);
+    console.log(`[Shopping Service] getHotItems returning ${paginated.length} items (total: ${items.length}, page: ${page}, pageSize: ${pageSize})`);
+    return paginated;
+  } catch (error: any) {
+    if (isDatabaseUnavailable(error)) {
+      console.warn('[Shopping Service] Database unavailable while loading hot items - returning empty list');
+      return [];
+    }
+    throw error;
   }
-
-  // Apply pagination
-  const start = (page - 1) * pageSize;
-  const paginated = items.slice(start, start + pageSize);
-  console.log(`[Shopping Service] getHotItems returning ${paginated.length} items (total: ${items.length}, page: ${page}, pageSize: ${pageSize})`);
-  return paginated;
 }
 

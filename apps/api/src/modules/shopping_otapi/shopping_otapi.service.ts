@@ -1,9 +1,11 @@
 import otapiClient from './otapi.client.js';
 import {
+  normalizeOTAPIProductCard,
   normalizeOTAPIProductCards,
   normalizeOTAPIProductDetail,
   ProductCardOTAPI,
   ProductDetailOTAPI,
+  unwrapOtapiPayload,
 } from './shopping_otapi.normalize.js';
 import {
   generateCacheKey,
@@ -15,6 +17,120 @@ import { prisma } from '../../lib/prisma.js';
 const SOURCE = 'shopping_otapi';
 
 const DEBUG_OTAPI = process.env.DEBUG_OTAPI === '1' || process.env.DEBUG_OTAPI === 'true';
+let catalogCacheAvailable = true;
+let markupCache: { percent: number; fetchedAt: number } = { percent: 0, fetchedAt: 0 };
+
+function applyPercent(price: number | undefined, percent: number): number | undefined {
+  if (price === undefined || price === null) return price;
+  return Math.round(price * (1 + percent / 100));
+}
+
+async function getOtapiMarkupPercent(): Promise<number> {
+  const ttl = 5 * 60 * 1000;
+  const now = Date.now();
+  if (now - markupCache.fetchedAt < ttl) {
+    return markupCache.percent;
+  }
+
+  try {
+    const setting = await prisma.sourceMarkupSetting.findUnique({
+      where: { source_kind: SOURCE },
+    });
+    const percent = setting?.percent_rate ?? 0;
+    markupCache = { percent, fetchedAt: now };
+    return percent;
+  } catch {
+    return markupCache.percent;
+  }
+}
+
+async function applyMarkupToCards(cards: ProductCardOTAPI[]): Promise<ProductCardOTAPI[]> {
+  const percent = await getOtapiMarkupPercent();
+  if (!percent) return cards;
+  return cards.map((card) => ({
+    ...card,
+    priceMin: applyPercent(card.priceMin, percent),
+    priceMax: applyPercent(card.priceMax, percent),
+  }));
+}
+
+async function applyMarkupToDetail(detail: ProductDetailOTAPI): Promise<ProductDetailOTAPI> {
+  const percent = await getOtapiMarkupPercent();
+  if (!percent) return detail;
+  return {
+    ...detail,
+    priceMin: applyPercent(detail.priceMin, percent),
+    priceMax: applyPercent(detail.priceMax, percent),
+    tieredPricing: detail.tieredPricing?.map((tier) => ({
+      ...tier,
+      price: applyPercent(tier.price, percent) ?? tier.price,
+    })),
+  };
+}
+
+function isDatabaseUnavailable(error: any): boolean {
+  const message = String(error?.message || '');
+  return (
+    error?.name === 'PrismaClientInitializationError' ||
+    message.includes("Can't reach database server") ||
+    message.includes('P1001') ||
+    message.includes('P1017')
+  );
+}
+
+async function cacheCatalogItem(payload: {
+  externalId: string;
+  title: string;
+  priceMin?: number | null;
+  priceMax?: number | null;
+  images?: any;
+  sourceUrl?: string | null;
+  rawJson?: any;
+}): Promise<boolean> {
+  if (!catalogCacheAvailable) return false;
+
+  try {
+    await prisma.externalCatalogItem.upsert({
+      where: {
+        source_external_id: {
+          source: SOURCE,
+          external_id: payload.externalId,
+        },
+      },
+      create: {
+        source: SOURCE,
+        external_id: payload.externalId,
+        title: payload.title,
+        price_min: payload.priceMin ?? null,
+        price_max: payload.priceMax ?? null,
+        currency: 'CNY',
+        main_images: payload.images ? JSON.parse(JSON.stringify(payload.images)) : null,
+        source_url: payload.sourceUrl || null,
+        raw_json: payload.rawJson ?? null,
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      },
+      update: {
+        title: payload.title,
+        price_min: payload.priceMin ?? null,
+        price_max: payload.priceMax ?? null,
+        main_images: payload.images ? JSON.parse(JSON.stringify(payload.images)) : null,
+        source_url: payload.sourceUrl || null,
+        raw_json: payload.rawJson ?? null,
+        last_synced_at: new Date(),
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      },
+    });
+    return true;
+  } catch (error) {
+    if (isDatabaseUnavailable(error)) {
+      catalogCacheAvailable = false;
+      if (DEBUG_OTAPI) {
+        console.warn('[OTAPI Service] Database unavailable, disabling catalog cache');
+      }
+    }
+    return false;
+  }
+}
 
 export const SHOPPING_CATEGORIES = [
   {
@@ -151,6 +267,36 @@ function extractTotalCount(response: any): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+function isUsableDetail(detail: ProductDetailOTAPI | null | undefined): detail is ProductDetailOTAPI {
+  return !!detail && !!detail.externalId && detail.externalId.trim().length > 0 && detail.title !== 'Untitled Product';
+}
+
+async function fallbackDetailFromSearchCache(externalId: string): Promise<ProductDetailOTAPI | null> {
+  const cachedSearches = await prisma.externalSearchCache.findMany({
+    where: {
+      source: SOURCE,
+      expires_at: { gt: new Date() },
+    },
+    orderBy: { created_at: 'desc' },
+    take: 20,
+  });
+
+  for (const entry of cachedSearches) {
+    const items = extractSearchItems(entry.results_json);
+    if (!Array.isArray(items) || items.length === 0) continue;
+    const matched = items.find((item) => {
+      const card = normalizeOTAPIProductCard(item);
+      return card.externalId === externalId || ensureAbbPrefix(card.externalId) === ensureAbbPrefix(externalId);
+    });
+    if (matched) {
+      const detail = await applyMarkupToDetail(normalizeOTAPIProductDetail(matched));
+      if (isUsableDetail(detail)) return detail;
+    }
+  }
+
+  return null;
+}
+
 /**
  * Keyword search
  */
@@ -181,7 +327,7 @@ export async function searchByKeyword(
   const cached = await getCachedSearch(SOURCE, cacheKey);
   if (cached) {
     const items = extractSearchItems(cached);
-    const normalized = normalizeOTAPIProductCards(items);
+    const normalized = await applyMarkupToCards(normalizeOTAPIProductCards(items));
     const totalCount = extractTotalCount(cached) ?? normalized.length;
     const totalPages = Math.ceil(totalCount / pageSize);
     const hasNextPage = page < totalPages;
@@ -199,18 +345,31 @@ export async function searchByKeyword(
       orderBy: mapSortToOrderBy(sort),
     });
   }
-  const response = await otapiClient.searchItemsFrame({
-    language,
-    framePosition,
-    frameSize: pageSize,
-    ItemTitle: searchKeyword,
-    OrderBy: mapSortToOrderBy(sort),
-  });
+  let response: any;
+  try {
+    response = await otapiClient.searchItemsFrame({
+      language,
+      framePosition,
+      frameSize: pageSize,
+      ItemTitle: searchKeyword,
+      OrderBy: mapSortToOrderBy(sort),
+    });
+  } catch (error) {
+    console.warn('[OTAPI Service] searchByKeyword failed, returning empty results:', {
+      keyword: searchKeyword,
+      language,
+      page,
+      pageSize,
+      sort,
+      message: String((error as any)?.message || error),
+    });
+    return { items: [], totalCount: 0, page, pageSize, totalPages: 0, hasNextPage: false };
+  }
 
   await setCachedSearch(SOURCE, cacheKey, { keyword: searchKeyword, ...opts }, response);
 
   const items = extractSearchItems(response);
-  const normalized = normalizeOTAPIProductCards(items);
+  const normalized = await applyMarkupToCards(normalizeOTAPIProductCards(items));
   const totalCount = extractTotalCount(response) ?? normalized.length;
   const totalPages = Math.ceil(totalCount / pageSize);
   const hasNextPage = page < totalPages;
@@ -226,40 +385,17 @@ export async function searchByKeyword(
   }
 
   // Best effort cache into ExternalCatalogItem for hot/pinned items + product details fallback
-  normalized.forEach((card) => {
-    prisma.externalCatalogItem
-      .upsert({
-        where: {
-          source_external_id: {
-            source: SOURCE,
-            external_id: card.externalId,
-          },
-        },
-        create: {
-          source: SOURCE,
-          external_id: card.externalId,
-          title: card.title,
-          price_min: card.priceMin,
-          price_max: card.priceMax,
-          currency: 'CNY',
-          main_images: card.images ? JSON.parse(JSON.stringify(card.images)) : null,
-          source_url: card.sourceUrl,
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        },
-        update: {
-          title: card.title,
-          price_min: card.priceMin,
-          price_max: card.priceMax,
-          main_images: card.images ? JSON.parse(JSON.stringify(card.images)) : null,
-          source_url: card.sourceUrl,
-          last_synced_at: new Date(),
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        },
-      })
-      .catch(() => {
-        // Ignore cache errors
-      });
-  });
+  for (const card of normalized) {
+    const ok = await cacheCatalogItem({
+      externalId: card.externalId,
+      title: card.title,
+      priceMin: card.priceMin,
+      priceMax: card.priceMax,
+      images: card.images,
+      sourceUrl: card.sourceUrl,
+    });
+    if (!ok) break;
+  }
 
   return { items: normalized, totalCount, page, pageSize, totalPages, hasNextPage };
 }
@@ -300,7 +436,7 @@ export async function searchByImage(
   const cached = await getCachedSearch(SOURCE, cacheKey);
   if (cached) {
     const items = extractSearchItems(cached);
-    const normalized = normalizeOTAPIProductCards(items);
+    const normalized = await applyMarkupToCards(normalizeOTAPIProductCards(items));
     const totalCount = extractTotalCount(cached) ?? normalized.length;
     const totalPages = Math.ceil(totalCount / pageSize);
     const hasNextPage = page < totalPages;
@@ -320,18 +456,30 @@ export async function searchByImage(
       usedImageProxy: imageUrlForOtapi !== r2PublicUrl,
     });
   }
-  const response = await otapiClient.searchItemsFrame({
-    language,
-    framePosition,
-    frameSize: pageSize,
-    ImageUrl: imageUrlForOtapi,
-    OrderBy: mapSortToOrderBy(sort),
-  });
+  let response: any;
+  try {
+    response = await otapiClient.searchItemsFrame({
+      language,
+      framePosition,
+      frameSize: pageSize,
+      ImageUrl: imageUrlForOtapi,
+      OrderBy: mapSortToOrderBy(sort),
+    });
+  } catch (error) {
+    console.warn('[OTAPI Service] searchByImage failed, returning empty results:', {
+      language,
+      page,
+      pageSize,
+      sort,
+      message: String((error as any)?.message || error),
+    });
+    return { items: [], totalCount: 0, page, pageSize, totalPages: 0, hasNextPage: false };
+  }
 
   await setCachedSearch(SOURCE, cacheKey, { imgUrl: r2PublicUrl, ...opts }, response);
 
   const items = extractSearchItems(response);
-  const normalized = normalizeOTAPIProductCards(items);
+  const normalized = await applyMarkupToCards(normalizeOTAPIProductCards(items));
   const totalCount = extractTotalCount(response) ?? normalized.length;
   const totalPages = Math.ceil(totalCount / pageSize);
   const hasNextPage = page < totalPages;
@@ -369,15 +517,33 @@ export async function getItemDetail(externalId: string, language: string = 'en')
     .catch(() => null);
 
   if (cached?.raw_json) {
-    const normalized = normalizeOTAPIProductDetail(cached.raw_json as any);
-    return normalized;
+    const normalized = await applyMarkupToDetail(normalizeOTAPIProductDetail(cached.raw_json as any));
+    if (isUsableDetail(normalized)) {
+      return normalized;
+    }
   }
 
   if (DEBUG_OTAPI) {
     console.log('[OTAPI Service] getItemDetail request:', { externalId, itemId, language: lang });
   }
 
-  const fullInfo = await otapiClient.batchGetItemFullInfo({ itemId, language: lang });
+  let fullInfo: any;
+  try {
+    fullInfo = await otapiClient.getItemFullInfo({
+      itemId,
+      language: lang,
+      blockList: ['Description', 'OriginalDescription', 'Vendor', 'DeliveryCosts'],
+    });
+  } catch (error) {
+    console.warn('[OTAPI Service] getItemDetail failed, returning cached/null fallback:', {
+      externalId,
+      itemId,
+      language: lang,
+      message: String((error as any)?.message || error),
+    });
+    const fallback = await fallbackDetailFromSearchCache(externalId);
+    return fallback;
+  }
 
   let desc: any = null;
   try {
@@ -386,8 +552,16 @@ export async function getItemDetail(externalId: string, language: string = 'en')
     // ignore
   }
 
-  const itemData = fullInfo?.Result?.Item || fullInfo?.Result || fullInfo;
-  const normalized = normalizeOTAPIProductDetail(itemData, desc);
+  const itemData = unwrapOtapiPayload(fullInfo);
+  const descriptionData = unwrapOtapiPayload(desc);
+  const normalized = await applyMarkupToDetail(normalizeOTAPIProductDetail(itemData, descriptionData));
+
+  if (!isUsableDetail(normalized)) {
+    const fallback = await fallbackDetailFromSearchCache(externalId);
+    if (fallback) {
+      return fallback;
+    }
+  }
 
   if (DEBUG_OTAPI) {
     console.log('[OTAPI Service] getItemDetail response summary:', {
@@ -399,41 +573,17 @@ export async function getItemDetail(externalId: string, language: string = 'en')
     });
   }
 
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  await prisma.externalCatalogItem
-    .upsert({
-      where: {
-        source_external_id: {
-          source: SOURCE,
-          external_id: externalId,
-        },
-      },
-      create: {
-        source: SOURCE,
-        external_id: externalId,
-        title: normalized.title,
-        price_min: normalized.priceMin,
-        price_max: normalized.priceMax,
-        currency: 'CNY',
-        main_images: normalized.images ? JSON.parse(JSON.stringify(normalized.images)) : null,
-        source_url: normalized.sourceUrl,
-        raw_json: itemData as any,
-        expires_at: expiresAt,
-      },
-      update: {
-        title: normalized.title,
-        price_min: normalized.priceMin,
-        price_max: normalized.priceMax,
-        main_images: normalized.images ? JSON.parse(JSON.stringify(normalized.images)) : null,
-        source_url: normalized.sourceUrl,
-        raw_json: itemData as any,
-        last_synced_at: new Date(),
-        expires_at: expiresAt,
-      },
-    })
-    .catch(() => {
-      // ignore
+  if (isUsableDetail(normalized)) {
+    await cacheCatalogItem({
+      externalId,
+      title: normalized.title,
+      priceMin: normalized.priceMin,
+      priceMax: normalized.priceMax,
+      images: normalized.images,
+      sourceUrl: normalized.sourceUrl,
+      rawJson: itemData as any,
     });
+  }
 
   return normalized;
 }
@@ -495,7 +645,7 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
     for (const p of pinned) {
       const c = cachedMap.get(p.external_id);
       if (c?.raw_json) {
-        const normalized = normalizeOTAPIProductDetail(c.raw_json as any);
+        const normalized = await applyMarkupToDetail(normalizeOTAPIProductDetail(c.raw_json as any));
         items.push(normalized);
         existingIds.add(normalized.externalId);
       } else {
@@ -527,7 +677,7 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
     for (const c of recentItems) {
       if (existingIds.has(c.external_id)) continue;
       if (c.raw_json) {
-        const normalized = normalizeOTAPIProductDetail(c.raw_json as any);
+        const normalized = await applyMarkupToDetail(normalizeOTAPIProductDetail(c.raw_json as any));
         items.push(normalized);
         existingIds.add(normalized.externalId);
       }

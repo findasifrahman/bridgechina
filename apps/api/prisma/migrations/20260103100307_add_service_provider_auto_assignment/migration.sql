@@ -7,7 +7,7 @@ ADD COLUMN     "first_human_takeover_at" TIMESTAMP(3),
 ADD COLUMN     "mode_changed_at" TIMESTAMP(3);
 
 -- CreateTable
-CREATE TABLE "service_provider_profiles" (
+CREATE TABLE IF NOT EXISTS "service_provider_profiles" (
     "id" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
     "is_active" BOOLEAN NOT NULL DEFAULT true,

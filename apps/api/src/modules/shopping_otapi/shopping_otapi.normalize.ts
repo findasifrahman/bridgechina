@@ -16,7 +16,8 @@ export interface ProductCardOTAPI {
 
 export interface ProductDetailOTAPI extends ProductCardOTAPI {
   description?: string;
-  skus?: any;
+  skus?: any[];
+  productProps?: Array<Record<string, any>>;
   raw?: any;
   rating?: number;
   ratingCount?: number;
@@ -24,6 +25,8 @@ export interface ProductDetailOTAPI extends ProductCardOTAPI {
   tieredPricing?: Array<{ minQty: number; maxQty?: number; price: number }>;
   stock?: number;
   detailUrl?: string;
+  estimatedWeightKg?: number;
+  weight_kg?: number;
 }
 
 function toNumber(val: any): number | undefined {
@@ -32,56 +35,277 @@ function toNumber(val: any): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-function pickFirstImage(item: any): string | undefined {
-  const candidates = [
-    item?.MainPictureUrl,
-    item?.MainImageUrl,
-    item?.ImageUrl,
-    item?.Pictures?.[0]?.Url,
-    item?.Pictures?.[0],
-    item?.MainPictures?.[0],
-    item?.MainPictures?.[0]?.Url,
-    item?.Images?.[0],
-    item?.Images?.[0]?.Url,
-  ].filter(Boolean);
+function normalizeString(value: any): string | undefined {
+  if (value === null || value === undefined) return undefined;
+  const text = String(value).trim();
+  return text || undefined;
+}
 
-  const url = candidates[0] ? String(candidates[0]) : undefined;
-  return url ? getProxiedImageUrl(url) : undefined;
+export function unwrapOtapiPayload(input: any): any {
+  if (!input || typeof input !== 'object') return input;
+
+  const candidates = [
+    input?.Result?.OtapiItemDescription,
+    input?.Result?.Item,
+    input?.Result?.ItemInfo,
+    input?.Result?.ItemFullInfo,
+    input?.Result?.Items?.Item?.[0],
+    input?.Result?.Items?.Items?.Content?.[0],
+    input?.Result?.Items?.Content?.[0],
+    input?.Result?.Content?.[0],
+    input?.Result?.Data?.Item,
+    input?.Result?.Data?.Content?.[0],
+    input?.Item,
+    input?.ItemInfo,
+    input?.ItemFullInfo,
+    input?.Data?.Item,
+    input?.Data?.Content?.[0],
+    input?.Content?.[0],
+    input?.Items?.Item?.[0],
+    input?.Items?.Content?.[0],
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate && typeof candidate === 'object') return candidate;
+  }
+
+  return input;
+}
+
+function looksLikeImageUrl(value: string): boolean {
+  const text = String(value || '').trim();
+  if (!text) return false;
+  if (!/^https?:\/\//i.test(text)) return false;
+  return (
+    /\.(png|jpe?g|webp|gif|bmp|avif)(\?|#|$)/i.test(text) ||
+    text.includes('alicdn.com') ||
+    text.includes('1688.com')
+  );
+}
+
+function collectDeepStrings(input: any, matcher: (key: string, value: any) => boolean): string[] {
+  const results: string[] = [];
+  const seen = new Set<any>();
+
+  const walk = (node: any, keyHint = '') => {
+    if (node === null || node === undefined) return;
+    if (typeof node === 'string') {
+      if (matcher(keyHint, node)) {
+        results.push(node);
+      }
+      return;
+    }
+    if (typeof node !== 'object') return;
+    if (seen.has(node)) return;
+    seen.add(node);
+
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item, keyHint);
+      return;
+    }
+
+    for (const [key, value] of Object.entries(node)) {
+      if (matcher(key, value)) {
+        if (typeof value === 'string') {
+          results.push(value);
+        } else if (Array.isArray(value)) {
+          for (const item of value) walk(item, key);
+        } else if (value && typeof value === 'object') {
+          walk(value, key);
+        }
+      } else {
+        walk(value, key);
+      }
+    }
+  };
+
+  walk(input);
+  return Array.from(new Set(results.filter(Boolean)));
+}
+
+function extractAllImageUrls(item: any): string[] {
+  const urls = collectDeepStrings(item, (key, value) => {
+    const keyLower = String(key || '').toLowerCase();
+    const val = typeof value === 'string' ? value.trim() : '';
+    return (
+      keyLower.includes('image') ||
+      keyLower.includes('picture') ||
+      keyLower.includes('pic') ||
+      keyLower.includes('photo') ||
+      keyLower.includes('thumb') ||
+      looksLikeImageUrl(val)
+    );
+  }).filter(looksLikeImageUrl);
+
+  return urls.map(getProxiedImageUrl);
+}
+
+function pickFirstImage(item: any): string | undefined {
+  const all = extractAllImageUrls(item);
+  return all[0];
 }
 
 function collectImages(item: any): string[] | undefined {
-  const arr: any[] = [];
-
-  const fromPictures = item?.Pictures;
-  if (Array.isArray(fromPictures)) {
-    for (const p of fromPictures) {
-      if (!p) continue;
-      const url = typeof p === 'string' ? p : p.Url;
-      if (url) arr.push(String(url));
-    }
-  }
-
-  const fromMainPictures = item?.MainPictures;
-  if (Array.isArray(fromMainPictures)) {
-    for (const p of fromMainPictures) {
-      if (!p) continue;
-      const url = typeof p === 'string' ? p : p.Url;
-      if (url) arr.push(String(url));
-    }
-  }
-
-  const fromImages = item?.Images;
-  if (Array.isArray(fromImages)) {
-    for (const p of fromImages) {
-      if (!p) continue;
-      const url = typeof p === 'string' ? p : p.Url;
-      if (url) arr.push(String(url));
-    }
-  }
-
-  const uniq = Array.from(new Set(arr)).filter(Boolean);
+  const uniq = Array.from(new Set(extractAllImageUrls(item))).filter(Boolean);
   if (uniq.length === 0) return undefined;
-  return uniq.map(getProxiedImageUrl);
+  return uniq;
+}
+
+function findWeightFromObject(input: any): number | undefined {
+  const seen = new Set<any>();
+  const directKeys = ['weight', 'grossweight', 'netweight', 'unitweight', 'shippingweight', 'packageweight', 'gross_weight', 'net_weight', 'unit_weight', 'shipping_weight'];
+
+  const walk = (node: any): number | undefined => {
+    if (node === null || node === undefined) return undefined;
+    if (typeof node !== 'object') return undefined;
+    if (seen.has(node)) return undefined;
+    seen.add(node);
+
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        const found = walk(item);
+        if (found !== undefined) return found;
+      }
+      return undefined;
+    }
+
+    for (const [key, value] of Object.entries(node)) {
+      const keyLower = String(key || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (directKeys.some((needle) => keyLower.includes(needle))) {
+        const num = toNumber(value);
+        if (num !== undefined && num > 0) return num > 20 ? num / 1000 : num;
+        if (typeof value === 'string') {
+          const parsed = extractWeightKgFromText(value);
+          if (parsed !== undefined) return parsed;
+        }
+      }
+      const nested = walk(value);
+      if (nested !== undefined) return nested;
+    }
+
+    return undefined;
+  };
+
+  return walk(input);
+}
+
+function pickDescription(descriptionData: any, itemFullInfo: any): string {
+  const descriptionRoot = unwrapOtapiPayload(descriptionData);
+  const itemRoot = unwrapOtapiPayload(itemFullInfo);
+  const sources = [
+    descriptionData?.OtapiItemDescription?.ItemDescription,
+    descriptionData?.Result?.OtapiItemDescription?.ItemDescription,
+    descriptionData?.Result?.ItemDescription,
+    descriptionData?.Result?.Description,
+    descriptionData?.Result?.Content,
+    descriptionData?.Result?.Text,
+    descriptionData?.Result?.desc_html,
+    descriptionData?.Result?.desc_text,
+    descriptionData?.ItemDescription,
+    descriptionData?.Description,
+    descriptionData?.Content,
+    descriptionData?.Text,
+    descriptionData?.desc_html,
+    descriptionData?.desc_text,
+    descriptionRoot?.OtapiItemDescription?.ItemDescription,
+    descriptionRoot?.ItemDescription,
+    descriptionRoot?.Description,
+    descriptionRoot?.Content,
+    descriptionRoot?.Text,
+    descriptionRoot?.desc_html,
+    descriptionRoot?.desc_text,
+    itemRoot?.Description,
+    itemRoot?.Desc,
+    itemRoot?.Detail,
+    itemRoot?.DescriptionHtml,
+    itemRoot?.DetailHtml,
+  ];
+
+  for (const source of sources) {
+    const text = normalizeString(source);
+    if (text) return text;
+  }
+  return '';
+}
+
+function normalizeSkuImage(sku: any): string | undefined {
+  const image = pickFirstImage(sku) || normalizeString(sku?.ImageUrl) || normalizeString(sku?.MainPictureUrl);
+  return image;
+}
+
+function normalizeSkus(itemFullInfo: any): any[] | undefined {
+  const candidates: any[] = [];
+  const seen = new Set<any>();
+
+  const isSkuLike = (obj: any) => {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
+    const keys = Object.keys(obj).map((key) => key.toLowerCase());
+    return keys.some((key) => ['specid', 'skuid', 'sku', 'saleprice', 'price', 'stock', 'quantity', 'props', 'name', 'image'].some((needle) => key.includes(needle)));
+  };
+
+  const walk = (node: any, keyHint = '') => {
+    if (node === null || node === undefined) return;
+    if (typeof node !== 'object') return;
+    if (seen.has(node)) return;
+    seen.add(node);
+
+    if (Array.isArray(node)) {
+      if (node.length > 0 && node.every((item) => isSkuLike(item))) {
+        candidates.push(...node);
+      } else {
+        for (const item of node) walk(item, keyHint);
+      }
+      return;
+    }
+
+    for (const [key, value] of Object.entries(node)) {
+      const keyLower = String(key || '').toLowerCase();
+      if (Array.isArray(value) && (keyLower.includes('sku') || keyLower.includes('config') || keyLower.includes('spec') || keyLower.includes('variant'))) {
+        if (value.every((item) => isSkuLike(item))) {
+          candidates.push(...value);
+          continue;
+        }
+      }
+      walk(value, key);
+    }
+  };
+
+  walk(itemFullInfo);
+
+  const normalized = candidates.map((sku: any, index: number) => {
+    const price =
+      toNumber(sku?.SalePrice) ??
+      toNumber(sku?.Sale_Price) ??
+      toNumber(sku?.sale_price) ??
+      toNumber(sku?.Price) ??
+      toNumber(sku?.price);
+    const stock =
+      toNumber(sku?.Stock) ??
+      toNumber(sku?.stock) ??
+      toNumber(sku?.Quantity) ??
+      toNumber(sku?.quantity);
+    const specid = normalizeString(sku?.specid || sku?.SpecId || sku?.SkuId || sku?.skuId || sku?.id || sku?.Id || `sku-${index}`);
+    const props_names =
+      normalizeString(sku?.props_names || sku?.PropsNames || sku?.props || sku?.Props || sku?.name || sku?.Name || sku?.title || sku?.Title) ||
+      specid;
+
+    return {
+      ...sku,
+      specid,
+      skuid: normalizeString(sku?.skuid || sku?.SkuId || sku?.skuId || sku?.Id || specid),
+      props_names,
+      sale_price: price,
+      price,
+      stock,
+      imageUrl: normalizeSkuImage(sku),
+      images: collectImages(sku),
+    };
+  }).filter((sku, index, arr) => {
+    const key = sku.specid || sku.skuid || sku.props_names || String(index);
+    return arr.findIndex((candidate) => (candidate.specid || candidate.skuid || candidate.props_names || '') === key) === index;
+  });
+
+  return normalized.length > 0 ? normalized : undefined;
 }
 
 function extractTitle(item: any): string {
@@ -90,12 +314,35 @@ function extractTitle(item: any): string {
     item?.ItemTitle ||
     item?.Name ||
     item?.Subject ||
+    item?.Item?.Title ||
+    item?.Item?.ItemTitle ||
+    item?.Item?.Name ||
+    item?.ItemInfo?.Title ||
+    item?.ItemInfo?.ItemTitle ||
+    item?.ItemInfo?.Name ||
+    item?.Result?.Title ||
+    item?.Result?.ItemTitle ||
+    item?.Result?.Name ||
+    item?.Subject ||
     'Untitled Product'
   );
 }
 
 function extractItemId(item: any): string {
-  const id = item?.Id || item?.ItemId || item?.ItemID || item?.item_id;
+  const id =
+    item?.Id ||
+    item?.ItemId ||
+    item?.ItemID ||
+    item?.item_id ||
+    item?.Item?.Id ||
+    item?.Item?.ItemId ||
+    item?.Item?.ItemID ||
+    item?.ItemInfo?.Id ||
+    item?.ItemInfo?.ItemId ||
+    item?.ItemInfo?.ItemID ||
+    item?.Result?.Id ||
+    item?.Result?.ItemId ||
+    item?.Result?.ItemID;
   return String(id || '');
 }
 
@@ -164,10 +411,38 @@ function buildSourceUrl(externalId: string): string | undefined {
   return undefined;
 }
 
+function extractWeightKgFromText(text: string): number | undefined {
+  const normalized = String(text || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!normalized) return undefined;
+
+  const patterns = [
+    /(?:weight|gross weight|net weight|unit weight|product weight|item weight)[^0-9]{0,20}(\d+(?:\.\d+)?)\s*(kg|kgs|kilogram|kilograms|g|gram|grams)/i,
+    /(\d+(?:\.\d+)?)\s*(kg|kgs|kilogram|kilograms|g|gram|grams)\b/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (!match) continue;
+    const value = parseFloat(match[1]);
+    if (!Number.isFinite(value) || value <= 0) continue;
+    const unit = String(match[2] || 'kg').toLowerCase();
+    if (unit.startsWith('g') && !unit.startsWith('kg')) {
+      return value / 1000;
+    }
+    return value;
+  }
+
+  return undefined;
+}
+
 export function normalizeOTAPIProductCard(item: any): ProductCardOTAPI {
-  const externalId = extractItemId(item);
-  const title = extractTitle(item);
-  const { min, max } = extractPriceRange(item);
+  const payload = unwrapOtapiPayload(item);
+  const externalId = extractItemId(payload);
+  const title = extractTitle(payload);
+  const { min, max } = extractPriceRange(payload);
 
   const card: ProductCardOTAPI = {
     source: 'shopping_otapi',
@@ -176,17 +451,17 @@ export function normalizeOTAPIProductCard(item: any): ProductCardOTAPI {
     currency: 'CNY',
     priceMin: min,
     priceMax: max,
-    imageUrl: pickFirstImage(item),
-    images: collectImages(item),
-    sellerName: extractVendorName(item),
+    imageUrl: pickFirstImage(payload),
+    images: collectImages(payload),
+    sellerName: extractVendorName(payload),
     sourceUrl: buildSourceUrl(externalId),
   };
 
   const sold =
-    toNumber(item?.Volume) ??
-    toNumber(item?.SalesCount) ??
-    toNumber(item?.SoldCount) ??
-    toNumber(item?.TradeCount);
+    toNumber(payload?.Volume) ??
+    toNumber(payload?.SalesCount) ??
+    toNumber(payload?.SoldCount) ??
+    toNumber(payload?.TradeCount);
   if (sold !== undefined) {
     card.totalSold = Math.trunc(sold);
   }
@@ -200,46 +475,41 @@ export function normalizeOTAPIProductCards(items: any[]): ProductCardOTAPI[] {
 }
 
 export function normalizeOTAPIProductDetail(itemFullInfo: any, descriptionData?: any): ProductDetailOTAPI {
-  const base = normalizeOTAPIProductCard(itemFullInfo);
+  const itemRoot = unwrapOtapiPayload(itemFullInfo);
+  const descriptionRoot = unwrapOtapiPayload(descriptionData);
+  const base = normalizeOTAPIProductCard(itemRoot);
 
-  let description = '';
-  if (descriptionData) {
-    if (typeof descriptionData === 'string') {
-      description = descriptionData;
-    } else if (descriptionData?.Description) {
-      description = String(descriptionData.Description);
-    } else if (descriptionData?.Content) {
-      description = String(descriptionData.Content);
-    } else if (descriptionData?.Text) {
-      description = String(descriptionData.Text);
-    } else if (descriptionData?.desc_html) {
-      description = String(descriptionData.desc_html);
-    } else if (descriptionData?.desc_text) {
-      description = String(descriptionData.desc_text);
-    }
-  }
+  const description = pickDescription(descriptionRoot, itemRoot);
 
-  if (!description) {
-    description =
-      itemFullInfo?.Description ||
-      itemFullInfo?.Desc ||
-      itemFullInfo?.Detail ||
-      '';
-  }
+  const weightFromFields =
+    findWeightFromObject(itemRoot) ??
+    findWeightFromObject(descriptionRoot);
+  const weightFromDescription = extractWeightKgFromText(description);
+  const skus = normalizeSkus(itemRoot);
 
   const detail: ProductDetailOTAPI = {
     ...base,
     description,
-    skus: itemFullInfo?.Skus || itemFullInfo?.SkuList || itemFullInfo?.Configurations || null,
-    raw: itemFullInfo,
-    rating: toNumber(itemFullInfo?.Rating) ?? toNumber(itemFullInfo?.VendorRating),
-    ratingCount: toNumber(itemFullInfo?.RatingCount) ? Math.trunc(toNumber(itemFullInfo?.RatingCount) as number) : undefined,
+    skus: skus || null,
+    productProps: skus
+      ? skus.map((sku) => ({
+          option: sku.props_names || sku.specid || 'SKU',
+          price: sku.sale_price ?? sku.price ?? undefined,
+          stock: sku.stock ?? undefined,
+          imageUrl: sku.imageUrl ?? undefined,
+        }))
+      : undefined,
+    raw: itemRoot,
+    rating: toNumber(itemRoot?.Rating) ?? toNumber(itemRoot?.VendorRating),
+    ratingCount: toNumber(itemRoot?.RatingCount) ? Math.trunc(toNumber(itemRoot?.RatingCount) as number) : undefined,
     availableQuantity:
-      toNumber(itemFullInfo?.Quantity) ??
-      toNumber(itemFullInfo?.AvailableQuantity) ??
-      toNumber(itemFullInfo?.Stock),
-    stock: toNumber(itemFullInfo?.Stock) ? Math.trunc(toNumber(itemFullInfo?.Stock) as number) : undefined,
+      toNumber(itemRoot?.Quantity) ??
+      toNumber(itemRoot?.AvailableQuantity) ??
+      toNumber(itemRoot?.Stock),
+    stock: toNumber(itemRoot?.Stock) ? Math.trunc(toNumber(itemRoot?.Stock) as number) : undefined,
     detailUrl: base.sourceUrl,
+    estimatedWeightKg: weightFromFields ?? weightFromDescription,
+    weight_kg: weightFromFields ?? weightFromDescription,
   };
 
   const vendorId = extractVendorId(itemFullInfo);

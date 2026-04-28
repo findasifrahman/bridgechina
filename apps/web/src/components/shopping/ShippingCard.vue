@@ -8,7 +8,7 @@
     <div class="p-4 border-b border-slate-200 bg-gradient-to-r from-teal-50 to-amber-50">
       <div class="flex items-center gap-2">
         <Truck class="h-5 w-5 text-teal-600" />
-        <h3 class="font-semibold text-slate-900">BridgeChina Shipping & Delivery</h3>
+        <h3 class="font-semibold text-slate-900">ChinaBuyBD Shipping & Delivery</h3>
       </div>
     </div>
 

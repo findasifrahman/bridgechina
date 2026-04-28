@@ -1,272 +1,288 @@
 <template>
-  <div class="min-h-screen bg-slate-50">
-    <!-- Top Header (Sticky) -->
-    <header class="sticky top-0 z-50 bg-gradient-to-r from-teal-50/80 to-white backdrop-blur-sm border-b border-teal-100 shadow-sm">
-      <div class="w-full">
-        <!-- Mobile: Simple flex layout -->
-        <div class="lg:hidden flex justify-between items-center h-16 px-4 sm:px-6">
-          <router-link to="/" class="flex items-center space-x-2">
-            <span class="text-xl font-bold text-teal-700">BridgeChina</span>
-          </router-link>
-          <button
-            @click="mobileDrawerOpen = true"
-            class="p-2 text-slate-700 hover:text-teal-600 transition-colors"
-            aria-label="Open menu"
-          >
-            <Menu class="h-6 w-6" />
-          </button>
-        </div>
-        
-        <!-- Desktop: Full width flex layout -->
-        <div class="hidden lg:flex items-center justify-between h-16 px-6">
-          <!-- Left: Brand (completely left-aligned) -->
-          <router-link to="/" class="flex items-center space-x-2 flex-shrink-0">
-            <span class="text-xl font-bold text-teal-700">BridgeChina</span>
-          </router-link>
-          
-          <!-- Center: Navigation Links -->
-          <nav class="flex items-center space-x-5 mx-6 flex-1 justify-center">
-            <router-link
-              to="/services"
-              class="text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium whitespace-nowrap"
-            >
-              Services
-            </router-link>
-            <router-link
-              to="/cities"
-              class="text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium whitespace-nowrap"
-            >
-              Cities
-            </router-link>
-            <router-link
-              to="/places"
-              class="text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium whitespace-nowrap"
-            >
-              Places
-            </router-link>
-            <router-link
-              to="/blog"
-              class="text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium whitespace-nowrap"
-            >
-              Blog
-            </router-link>
-            <router-link
-              to="/help"
-              class="text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium whitespace-nowrap"
-            >
-              Help
-            </router-link>
-            <router-link
-              to="/contact"
-              class="text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium whitespace-nowrap"
-            >
-              Contact
-            </router-link>
-          </nav>
-          
-          <!-- Right: Actions -->
-          <div class="flex items-center gap-2 flex-shrink-0">
-            <!-- WhatsApp (Desktop) -->
-            <a
-              href="https://wa.me/1234567890"
-              target="_blank"
-              class="flex items-center gap-1.5 px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm whitespace-nowrap"
-            >
-              <MessageCircle class="h-4 w-4" />
-              <span>WhatsApp</span>
-            </a>
-
-            <!-- Auth Buttons -->
-            <template v-if="!isAuthenticated">
-              <router-link
-                to="/login"
-                class="flex items-center gap-1 text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium whitespace-nowrap"
-              >
-                <LogIn class="h-4 w-4" />
-                <span>Sign In</span>
-              </router-link>
-            </template>
-            <template v-else>
-              <router-link
-                :to="userRoles.includes('ADMIN') || userRoles.includes('EDITOR') ? '/admin' : userRoles.includes('OPS') ? '/ops/inbox' : userRoles.includes('SELLER') ? '/seller' : userRoles.includes('SERVICE_PROVIDER') ? '/provider' : '/user'"
-                class="flex items-center gap-1 text-sm text-slate-700 hover:text-teal-700 transition-colors font-medium whitespace-nowrap"
-              >
-                <User class="h-4 w-4 flex-shrink-0" />
-                <span>Dashboard</span>
-              </router-link>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                @click="$emit('signOut')" 
-                class="flex items-center gap-1 text-slate-700 hover:text-teal-700 whitespace-nowrap px-2"
-              >
-                <LogOut class="h-4 w-4 flex-shrink-0" />
-                <span class="whitespace-nowrap">Sign Out</span>
-              </Button>
-            </template>
-
-            <Button 
-              variant="primary" 
-              size="sm" 
-              @click="router.push('/request')" 
-              class="flex items-center gap-1 bg-teal-600 hover:bg-teal-700 text-white shadow-sm whitespace-nowrap"
-            >
-              <Sparkles class="h-4 w-4" />
-              <span>Request</span>
-            </Button>
+  <div class="min-h-screen overflow-x-hidden bg-[#eef3f9] text-slate-900">
+    <header class="sticky top-0 z-50 border-b border-white/70 bg-white/90 shadow-[0_8px_24px_rgba(15,23,42,0.04)] backdrop-blur-xl">
+      <div class="grid h-16 w-full grid-cols-[1fr_minmax(0,1.4fr)_auto] items-center gap-3 px-2 sm:px-3 lg:px-4">
+        <router-link to="/shopping" class="flex items-center gap-3">
+          <img src="/logo_verticle.png" alt="BridgeChina" class="h-10 w-10 rounded-2xl object-contain" />
+          <div class="leading-tight">
+            <p class="text-[15px] font-extrabold tracking-tight text-slate-900">ChinaBuyBD</p>
+            <p class="text-[11px] font-medium text-slate-500">Premium China shopping concierge</p>
           </div>
+        </router-link>
+
+        <form class="hidden md:flex" @submit.prevent="submitSearch">
+          <div class="flex h-11 w-full items-center overflow-hidden rounded-full border border-slate-200 bg-white shadow-[0_10px_24px_rgba(15,23,42,0.05)] focus-within:border-teal-300">
+            <span class="pl-4 text-slate-400">
+              <Search class="h-4 w-4" />
+            </span>
+            <input
+              v-model="searchQuery"
+              type="search"
+              placeholder="Search products, factories, or keywords..."
+              class="w-full bg-transparent px-3 text-[12px] font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none"
+            />
+            <button
+              type="button"
+              @click="openImagePicker"
+              class="mr-1 inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-teal-50 hover:text-teal-700"
+              title="Search by image"
+            >
+              <Camera class="h-4 w-4" />
+            </button>
+          </div>
+        </form>
+        <input ref="headerImageInput" type="file" accept="image/*" class="hidden" @change="handleHeaderImageSelect" />
+
+        <div class="hidden items-center gap-2 md:flex">
+  <router-link to="/shopping" class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+            Shop
+          </router-link>
+          <router-link to="/blog" class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+            Blog
+          </router-link>
+          <router-link to="/contact" class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+            Contact
+          </router-link>
+          <router-link
+            v-if="isAuthenticated"
+            :to="userRoles.includes('ADMIN') || userRoles.includes('EDITOR') ? '/admin' : userRoles.includes('SELLER') ? '/seller' : '/user'"
+            class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+          >
+            Dashboard
+          </router-link>
+          <router-link
+            v-else
+            to="/login"
+            class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+          >
+            Sign in
+          </router-link>
+          <Button
+            v-if="isAuthenticated"
+            variant="primary"
+            size="sm"
+            class="rounded-full bg-slate-900 px-4 py-2 text-white shadow-none hover:bg-slate-800"
+            @click="$emit('signOut')"
+          >
+            Sign out
+          </Button>
         </div>
       </div>
     </header>
 
-    <!-- Mobile Offers Carousel -->
-    <OffersCarousel v-if="offers.length > 0" :offers="offers" @click="handleOfferClick" />
+    <div class="grid w-full gap-0 lg:grid-cols-[190px_minmax(0,1fr)]">
+      <aside class="hidden overflow-hidden border-r border-white/70 bg-white/95 lg:flex lg:flex-col">
+        <div class="sticky top-0 flex max-h-[calc(100vh-4rem)] flex-col overflow-hidden">
+          <div class="border-b border-slate-100 px-4 py-3">
+            <h2 class="mt-1 text-[14px] font-black tracking-tight text-slate-950">Shop by category</h2>
+          </div>
 
-    <!-- Main Layout: Sidebar + Content + Right Rail -->
-    <div class="w-full">
-      <div class="lg:flex lg:gap-x-6 lg:px-6 px-4 sm:px-6">
-        <!-- Fixed Sidebar (Desktop) -->
-        <aside class="hidden lg:block fixed left-6 top-16 w-[260px] h-[calc(100vh-4rem)] overflow-y-auto no-scrollbar border-r border-slate-200 bg-slate-50 z-30">
-          <SidebarNav />
-        </aside>
+          <div class="flex-1 overflow-y-auto px-2 py-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <button
+              type="button"
+              @click="openShopping"
+              class="mb-1.5 flex w-full items-center justify-between rounded-2xl border border-teal-500 bg-teal-600 px-3 py-2.5 text-left text-white shadow-[0_12px_30px_rgba(13,148,136,0.18)] transition-all hover:bg-teal-700"
+            >
+              <span class="flex items-center gap-3">
+                <span class="flex h-7 w-7 items-center justify-center rounded-xl bg-white/20 text-white">
+                  <ShoppingBag class="h-4 w-4" />
+                </span>
+                <span class="min-w-0">
+                  <span class="block text-[11px] font-semibold leading-5">All products</span>
+                </span>
+              </span>
+            </button>
 
-        <!-- Main Content Area (with sidebar offset on desktop) -->
-        <main class="lg:ml-[272px] lg:flex-1 min-w-0 py-6">
-          <slot />
-        </main>
+            <div v-for="cat in categories" :key="cat.slug" class="mb-1.5 rounded-2xl border border-slate-200 bg-white">
+              <button
+                type="button"
+                @click="toggleCategory(cat.slug)"
+                class="flex w-full items-center justify-between rounded-2xl px-3 py-2.5 text-left text-slate-700 transition-all hover:bg-teal-50 hover:text-slate-900"
+              >
+                <span class="flex min-w-0 items-center gap-3">
+                  <span class="flex h-7 w-7 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                    <component :is="categoryIcon(cat.icon)" class="h-4 w-4" />
+                  </span>
+                  <span class="min-w-0">
+                    <span class="block truncate text-[11px] font-semibold leading-5 text-red-500">{{ cat.name }}</span>
+                    <span class="block text-[9px] text-slate-500">{{ cat.children?.length || 0 }} subcategories</span>
+                  </span>
+                </span>
+                <ChevronRight class="h-3.5 w-3.5 flex-shrink-0 text-slate-300 transition-transform" :class="{ 'rotate-90': expandedCategorySlug === cat.slug }" />
+              </button>
 
-        <!-- Right Offers Rail (Desktop only, xl+) -->
-        <aside class="hidden xl:block w-[320px] flex-shrink-0 sticky top-20 h-[calc(100vh-5rem)] overflow-hidden">
-          <RightRailOffers :offers="offers" :loading="loadingOffers" @click="handleOfferClick" />
-        </aside>
-      </div>
-    </div>
-
-    <!-- Footer -->
-    <footer class="mt-16 border-t border-slate-200 bg-slate-50">
-      <div class="w-full">
-        <div class="lg:flex lg:gap-x-6 lg:px-6 px-4 sm:px-6">
-          <!-- Spacer for sidebar column on desktop -->
-          <div class="hidden lg:block w-[260px] flex-shrink-0"></div>
-          
-          <!-- Footer Content (aligned with main content) -->
-          <div class="lg:flex-1 py-12">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-              <div>
-                <h3 class="text-teal-700 font-bold text-lg mb-4">BridgeChina</h3>
-                <p class="text-sm text-slate-600">We handle China for you.</p>
+              <div v-if="expandedCategorySlug === cat.slug" class="border-t border-slate-100 p-2">
+                <button
+                  v-for="sub in cat.children || []"
+                  :key="sub.slug"
+                  type="button"
+                  @click="openCategory(sub.slug)"
+                  class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] text-blue-600 hover:bg-teal-50 hover:text-teal-800"
+                >
+                  <span>{{ sub.name }}</span>
+                  <span class="text-[10px] text-slate-400">{{ sub.products?.length || '' }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] font-medium text-teal-700 hover:bg-teal-50"
+                  @click="openCategory(cat.slug)"
+                >
+                  View all {{ cat.name }}
+                </button>
               </div>
-              <div>
-                <h4 class="text-slate-900 font-semibold mb-4">Services</h4>
-                <ul class="space-y-2 text-sm">
-                  <li><router-link to="/services/hotel" class="flex items-center space-x-2 text-slate-600 hover:text-teal-700 transition-colors"><Hotel class="h-4 w-4" /><span>Hotels</span></router-link></li>
-                  <li><router-link to="/services/transport" class="flex items-center space-x-2 text-slate-600 hover:text-teal-700 transition-colors"><Car class="h-4 w-4" /><span>Transport</span></router-link></li>
-                  <li><router-link to="/services/halal-food" class="flex items-center space-x-2 text-slate-600 hover:text-teal-700 transition-colors"><UtensilsCrossed class="h-4 w-4" /><span>Halal Food</span></router-link></li>
-                  <li><router-link to="/services/medical" class="flex items-center space-x-2 text-slate-600 hover:text-teal-700 transition-colors"><HeartPulse class="h-4 w-4" /><span>Medical</span></router-link></li>
-                </ul>
-              </div>
-              <div>
-                <h4 class="text-slate-900 font-semibold mb-4">Support</h4>
-                <ul class="space-y-2 text-sm">
-                  <li><router-link to="/help" class="flex items-center space-x-2 text-slate-600 hover:text-teal-700 transition-colors"><HelpCircle class="h-4 w-4" /><span>Help Center</span></router-link></li>
-                  <li><a href="https://wa.me/1234567890" target="_blank" class="flex items-center space-x-2 text-slate-600 hover:text-teal-700 transition-colors"><MessageCircle class="h-4 w-4" /><span>WhatsApp</span></a></li>
-                  <li><a href="tel:+861234567890" class="flex items-center space-x-2 text-slate-600 hover:text-teal-700 transition-colors"><Phone class="h-4 w-4" /><span>Emergency: +8801718066252</span></a></li>
-                </ul>
-              </div>
-              <div>
-                <h4 class="text-slate-900 font-semibold mb-4">Legal</h4>
-                <ul class="space-y-2 text-sm">
-                  <li><router-link to="/terms" class="text-slate-600 hover:text-teal-700 transition-colors">Terms</router-link></li>
-                  <li><router-link to="/privacy" class="text-slate-600 hover:text-teal-700 transition-colors">Privacy</router-link></li>
-                </ul>
-              </div>
-            </div>
-            <div class="mt-8 pt-8 border-t border-slate-200 text-center text-sm text-slate-500">
-              <p>&copy; {{ new Date().getFullYear() }} BridgeChina. All rights reserved.</p>
             </div>
           </div>
-          
-          <!-- Spacer for right rail column on desktop -->
-          <div class="hidden xl:block w-[320px] flex-shrink-0"></div>
         </div>
-      </div>
-    </footer>
+      </aside>
 
-    <!-- Mobile Drawer -->
-    <Drawer v-model="mobileDrawerOpen" position="left" width="sm" title="Menu">
-      <SidebarNav />
-      <template #footer>
-        <div class="p-4 border-t border-slate-200">
-          <a
-            href="https://wa.me/1234567890"
-            target="_blank"
-            class="flex items-center justify-center space-x-2 w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-          >
-            <MessageCircle class="h-5 w-5" />
-            <span>Chat on WhatsApp</span>
-          </a>
-        </div>
-      </template>
-    </Drawer>
+      <main class="min-h-[calc(100vh-4rem)] min-w-0">
+        <slot />
 
-    <!-- AI Chat Widget -->
-    <FloatingChatWidget />
+        <footer class="border-t border-slate-200 bg-white/90 px-4 py-8 backdrop-blur">
+          <div class="mx-auto grid max-w-7xl gap-6 sm:grid-cols-2 xl:grid-cols-4">
+            <div>
+              <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-red-400">ChinaBuyBD</p>
+              <p class="mt-2 text-sm font-semibold text-slate-900">Premium China shopping concierge</p>
+              <p class="mt-2 text-[12px] leading-5 text-slate-500">
+                Room 13D, No. 29, Jianshe Sixth Road, Yuexiu District, Rongjin Building, Taojin, Guangzhou
+              </p>
+            </div>
+            <div>
+              <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Contact</p>
+              <div class="mt-2 space-y-2 text-[12px] text-slate-600">
+                <div>Phone: +86 189 8941 0063</div>
+                <a class="block text-teal-700 hover:text-teal-800" href="https://wa.me/8618989410063" target="_blank" rel="noreferrer">
+                  WhatsApp: +86 189 8941 0063
+                </a>
+              </div>
+            </div>
+            <div>
+              <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Links</p>
+              <div class="mt-2 space-y-2 text-[12px]">
+                <router-link class="block text-slate-600 hover:text-teal-700" to="/shopping">Shop</router-link>
+                <router-link class="block text-slate-600 hover:text-teal-700" to="/blog">Blog</router-link>
+                <router-link class="block text-slate-600 hover:text-teal-700" to="/contact">Contact</router-link>
+              </div>
+            </div>
+            <div>
+              <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Legal</p>
+              <div class="mt-2 space-y-2 text-[12px]">
+                <router-link class="block text-slate-600 hover:text-teal-700" to="/terms">Terms of condition</router-link>
+                <div class="text-slate-500">Shipping time: 12-14 days</div>
+              </div>
+            </div>
+          </div>
+        </footer>
+      </main>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import { LogIn, User, LogOut, Menu, MessageCircle, HelpCircle, Phone, Sparkles, Hotel, Car, UtensilsCrossed, HeartPulse } from 'lucide-vue-next';
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import Button from '../components/Button.vue';
-import SidebarNav from '../components/SidebarNav.vue';
-import Drawer from '../components/Drawer.vue';
-import RightRailOffers from '../components/RightRailOffers.vue';
-import OffersCarousel from '../components/OffersCarousel.vue';
-import FloatingChatWidget from '../components/FloatingChatWidget.vue';
+import { Camera, ChevronRight, Gem, Home, Package, Search, Shield, Shirt, ShoppingBag, Sparkles, Stars, Truck, Watch, Cpu } from 'lucide-vue-next';
 
 const props = defineProps<{
   isAuthenticated?: boolean;
   userRoles?: string[];
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   signOut: [];
-  loadOffers: [];
-  offerClick: [offer: any];
 }>();
 
 const router = useRouter();
-const route = useRoute();
-const mobileDrawerOpen = ref(false);
-const offers = ref<any[]>([]);
-const loadingOffers = ref(false);
+const searchQuery = ref('');
+const headerImageInput = ref<HTMLInputElement | null>(null);
+const categories = ref<any[]>([]);
+const expandedCategorySlug = ref('');
 
-// Computed for user roles
 const userRoles = computed(() => props.userRoles || []);
 
-// Close drawer on navigation
-watch(() => route.path, () => {
-  mobileDrawerOpen.value = false;
-});
+const iconMap: Record<string, any> = {
+  'shopping-bag': ShoppingBag,
+  gem: Gem,
+  glasses: Package,
+  laptop: Package,
+  monitor: Package,
+  smartphone: Package,
+  watch: Watch,
+  shirt: Shirt,
+  home: Home,
+  truck: Truck,
+  camera: Package,
+  headphones: Package,
+  'gamepad-2': Package,
+  'book-open': Package,
+  sprout: Package,
+  'badge-percent': Package,
+  package: Package,
+  shield: Shield,
+  star: Stars,
+  sparkles: Sparkles,
+  cpu: Cpu,
+};
 
-// Emit event to parent to load offers (parent will use axios)
-onMounted(() => {
-  emit('loadOffers');
-});
-
-function handleOfferClick(offer: any) {
-  emit('offerClick', offer);
+function categoryIcon(icon?: string) {
+  return iconMap[String(icon || '').toLowerCase()] || Package;
 }
 
-// Expose method to set offers (called by parent)
-defineExpose({
-  setOffers: (newOffers: any[]) => {
-    offers.value = newOffers;
-    loadingOffers.value = false;
-  },
-  setLoading: (loading: boolean) => {
-    loadingOffers.value = loading;
-  },
-});
+function submitSearch() {
+  const keyword = searchQuery.value.trim();
+  router.push(keyword ? { path: '/shopping/browse', query: { q: keyword } } : '/shopping');
+}
+
+function openShopping() {
+  router.push('/shopping');
+}
+
+function openImagePicker() {
+  headerImageInput.value?.click();
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Failed to read image file'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleHeaderImageSelect(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) return;
+  const dataUrl = await fileToDataUrl(file);
+  const storageKey = `shopping-image-search-${Date.now()}`;
+  sessionStorage.setItem(storageKey, dataUrl);
+  router.push({ path: '/shopping/browse', query: { imageSearchKey: storageKey } });
+  target.value = '';
+}
+
+function openCategory(slug: string) {
+  router.push({ path: '/shopping/browse', query: { category: slug } });
+}
+
+function toggleCategory(slug: string) {
+  expandedCategorySlug.value = expandedCategorySlug.value === slug ? '' : slug;
+}
+
+async function loadCategories() {
+  try {
+    const response = await fetch('/api/public/shopping/categories');
+    const data = await response.json();
+    categories.value = Array.isArray(data) ? data : [];
+    if (!expandedCategorySlug.value) {
+      expandedCategorySlug.value = categories.value[0]?.slug || '';
+    }
+  } catch (error) {
+    console.error('Failed to load sidebar categories', error);
+    categories.value = [];
+  }
+}
+
+onMounted(loadCategories);
 </script>

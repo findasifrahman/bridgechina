@@ -20,58 +20,58 @@
 CREATE TYPE "HotelSource" AS ENUM ('INTERNAL', 'BOOKINGCOM');
 
 -- DropForeignKey
-ALTER TABLE "city_images" DROP CONSTRAINT "city_images_asset_id_fkey";
+ALTER TABLE IF EXISTS "city_images" DROP CONSTRAINT IF EXISTS "city_images_asset_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "city_images" DROP CONSTRAINT "city_images_city_id_fkey";
+ALTER TABLE IF EXISTS "city_images" DROP CONSTRAINT IF EXISTS "city_images_city_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "city_place_images" DROP CONSTRAINT "city_place_images_asset_id_fkey";
+ALTER TABLE IF EXISTS "city_place_images" DROP CONSTRAINT IF EXISTS "city_place_images_asset_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "city_place_images" DROP CONSTRAINT "city_place_images_city_place_id_fkey";
+ALTER TABLE IF EXISTS "city_place_images" DROP CONSTRAINT IF EXISTS "city_place_images_city_place_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "esim_images" DROP CONSTRAINT "esim_images_asset_id_fkey";
+ALTER TABLE IF EXISTS "esim_images" DROP CONSTRAINT IF EXISTS "esim_images_asset_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "esim_images" DROP CONSTRAINT "esim_images_esim_plan_id_fkey";
+ALTER TABLE IF EXISTS "esim_images" DROP CONSTRAINT IF EXISTS "esim_images_esim_plan_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "hotel_images" DROP CONSTRAINT "hotel_images_asset_id_fkey";
+ALTER TABLE IF EXISTS "hotel_images" DROP CONSTRAINT IF EXISTS "hotel_images_asset_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "hotel_images" DROP CONSTRAINT "hotel_images_hotel_id_fkey";
+ALTER TABLE IF EXISTS "hotel_images" DROP CONSTRAINT IF EXISTS "hotel_images_hotel_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "medical_images" DROP CONSTRAINT "medical_images_asset_id_fkey";
+ALTER TABLE IF EXISTS "medical_images" DROP CONSTRAINT IF EXISTS "medical_images_asset_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "medical_images" DROP CONSTRAINT "medical_images_medical_center_id_fkey";
+ALTER TABLE IF EXISTS "medical_images" DROP CONSTRAINT IF EXISTS "medical_images_medical_center_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "product_images" DROP CONSTRAINT "product_images_asset_id_fkey";
+ALTER TABLE IF EXISTS "product_images" DROP CONSTRAINT IF EXISTS "product_images_asset_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "product_images" DROP CONSTRAINT "product_images_product_id_fkey";
+ALTER TABLE IF EXISTS "product_images" DROP CONSTRAINT IF EXISTS "product_images_product_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "restaurant_images" DROP CONSTRAINT "restaurant_images_asset_id_fkey";
+ALTER TABLE IF EXISTS "restaurant_images" DROP CONSTRAINT IF EXISTS "restaurant_images_asset_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "restaurant_images" DROP CONSTRAINT "restaurant_images_restaurant_id_fkey";
+ALTER TABLE IF EXISTS "restaurant_images" DROP CONSTRAINT IF EXISTS "restaurant_images_restaurant_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "tour_images" DROP CONSTRAINT "tour_images_asset_id_fkey";
+ALTER TABLE IF EXISTS "tour_images" DROP CONSTRAINT IF EXISTS "tour_images_asset_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "tour_images" DROP CONSTRAINT "tour_images_tour_id_fkey";
+ALTER TABLE IF EXISTS "tour_images" DROP CONSTRAINT IF EXISTS "tour_images_tour_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "transport_images" DROP CONSTRAINT "transport_images_asset_id_fkey";
+ALTER TABLE IF EXISTS "transport_images" DROP CONSTRAINT IF EXISTS "transport_images_asset_id_fkey";
 
 -- DropForeignKey
-ALTER TABLE "transport_images" DROP CONSTRAINT "transport_images_transport_product_id_fkey";
+ALTER TABLE IF EXISTS "transport_images" DROP CONSTRAINT IF EXISTS "transport_images_transport_product_id_fkey";
 
 -- DropIndex
 DROP INDEX "external_hot_items_category_slug_idx";
@@ -83,86 +83,86 @@ DROP INDEX "external_hot_items_external_id_idx";
 DROP INDEX "external_search_cache_source_idx";
 
 -- AlterTable
-ALTER TABLE "cities" ADD COLUMN     "cover_asset_id" TEXT,
-ADD COLUMN     "gallery_asset_ids" JSONB;
+ALTER TABLE "cities" ADD COLUMN IF NOT EXISTS "cover_asset_id" TEXT,
+ADD COLUMN IF NOT EXISTS "gallery_asset_ids" JSONB;
 
 -- AlterTable
-ALTER TABLE "city_places" ADD COLUMN     "cover_asset_id" TEXT,
-ADD COLUMN     "gallery_asset_ids" JSONB;
+ALTER TABLE "city_places" ADD COLUMN IF NOT EXISTS "cover_asset_id" TEXT,
+ADD COLUMN IF NOT EXISTS "gallery_asset_ids" JSONB;
 
 -- AlterTable
-ALTER TABLE "esim_plans" ADD COLUMN     "gallery_asset_ids" JSONB;
+ALTER TABLE "esim_plans" ADD COLUMN IF NOT EXISTS "gallery_asset_ids" JSONB;
 
 -- AlterTable
-ALTER TABLE "external_catalog_items" DROP COLUMN "updated_at";
+ALTER TABLE "external_catalog_items" DROP COLUMN IF EXISTS "updated_at";
 
 -- AlterTable
 ALTER TABLE "external_search_cache" ALTER COLUMN "query_json" SET NOT NULL,
 ALTER COLUMN "results_json" SET NOT NULL;
 
 -- AlterTable
-ALTER TABLE "hotel_bookings" ADD COLUMN     "adults" INTEGER DEFAULT 1,
-ADD COLUMN     "children_age" TEXT,
-ADD COLUMN     "external_hotel_id" TEXT,
-ADD COLUMN     "hotel_source" "HotelSource" NOT NULL DEFAULT 'INTERNAL',
-ADD COLUMN     "room_qty" INTEGER DEFAULT 1,
+ALTER TABLE "hotel_bookings" ADD COLUMN IF NOT EXISTS "adults" INTEGER DEFAULT 1,
+ADD COLUMN IF NOT EXISTS "children_age" TEXT,
+ADD COLUMN IF NOT EXISTS "external_hotel_id" TEXT,
+ADD COLUMN IF NOT EXISTS "hotel_source" "HotelSource" NOT NULL DEFAULT 'INTERNAL',
+ADD COLUMN IF NOT EXISTS "room_qty" INTEGER DEFAULT 1,
 ALTER COLUMN "checkin" DROP NOT NULL,
 ALTER COLUMN "checkout" DROP NOT NULL,
 ALTER COLUMN "guests" DROP NOT NULL,
 ALTER COLUMN "rooms" DROP NOT NULL;
 
 -- AlterTable
-ALTER TABLE "hotels" ADD COLUMN     "cover_asset_id" TEXT,
-ADD COLUMN     "gallery_asset_ids" JSONB;
+ALTER TABLE "hotels" ADD COLUMN IF NOT EXISTS "cover_asset_id" TEXT,
+ADD COLUMN IF NOT EXISTS "gallery_asset_ids" JSONB;
 
 -- AlterTable
-ALTER TABLE "medical_centers" ADD COLUMN     "cover_asset_id" TEXT,
-ADD COLUMN     "gallery_asset_ids" JSONB;
+ALTER TABLE "medical_centers" ADD COLUMN IF NOT EXISTS "cover_asset_id" TEXT,
+ADD COLUMN IF NOT EXISTS "gallery_asset_ids" JSONB;
 
 -- AlterTable
-ALTER TABLE "products" ADD COLUMN     "gallery_asset_ids" JSONB;
+ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "gallery_asset_ids" JSONB;
 
 -- AlterTable
-ALTER TABLE "restaurants" ADD COLUMN     "cover_asset_id" TEXT,
-ADD COLUMN     "gallery_asset_ids" JSONB;
+ALTER TABLE "restaurants" ADD COLUMN IF NOT EXISTS "cover_asset_id" TEXT,
+ADD COLUMN IF NOT EXISTS "gallery_asset_ids" JSONB;
 
 -- AlterTable
-ALTER TABLE "tours" ADD COLUMN     "cover_asset_id" TEXT,
-ADD COLUMN     "gallery_asset_ids" JSONB;
+ALTER TABLE "tours" ADD COLUMN IF NOT EXISTS "cover_asset_id" TEXT,
+ADD COLUMN IF NOT EXISTS "gallery_asset_ids" JSONB;
 
 -- AlterTable
-ALTER TABLE "transport_products" ADD COLUMN     "cover_asset_id" TEXT,
-ADD COLUMN     "gallery_asset_ids" JSONB;
+ALTER TABLE "transport_products" ADD COLUMN IF NOT EXISTS "cover_asset_id" TEXT,
+ADD COLUMN IF NOT EXISTS "gallery_asset_ids" JSONB;
 
 -- DropTable
-DROP TABLE "city_images";
+DROP TABLE IF EXISTS "city_images";
 
 -- DropTable
-DROP TABLE "city_place_images";
+DROP TABLE IF EXISTS "city_place_images";
 
 -- DropTable
-DROP TABLE "esim_images";
+DROP TABLE IF EXISTS "esim_images";
 
 -- DropTable
-DROP TABLE "hotel_images";
+DROP TABLE IF EXISTS "hotel_images";
 
 -- DropTable
-DROP TABLE "medical_images";
+DROP TABLE IF EXISTS "medical_images";
 
 -- DropTable
-DROP TABLE "product_images";
+DROP TABLE IF EXISTS "product_images";
 
 -- DropTable
-DROP TABLE "restaurant_images";
+DROP TABLE IF EXISTS "restaurant_images";
 
 -- DropTable
-DROP TABLE "tour_images";
+DROP TABLE IF EXISTS "tour_images";
 
 -- DropTable
-DROP TABLE "transport_images";
+DROP TABLE IF EXISTS "transport_images";
 
 -- CreateTable
-CREATE TABLE "external_hotel_providers" (
+CREATE TABLE IF NOT EXISTS "external_hotel_providers" (
     "id" TEXT NOT NULL,
     "provider" TEXT NOT NULL,
     "host" TEXT NOT NULL,
@@ -174,7 +174,7 @@ CREATE TABLE "external_hotel_providers" (
 );
 
 -- CreateTable
-CREATE TABLE "external_destinations" (
+CREATE TABLE IF NOT EXISTS "external_destinations" (
     "id" TEXT NOT NULL,
     "provider" TEXT NOT NULL,
     "query" TEXT NOT NULL,
@@ -198,7 +198,7 @@ CREATE TABLE "external_destinations" (
 );
 
 -- CreateTable
-CREATE TABLE "external_hotels" (
+CREATE TABLE IF NOT EXISTS "external_hotels" (
     "id" TEXT NOT NULL,
     "provider" TEXT NOT NULL,
     "hotel_id" TEXT NOT NULL,
@@ -242,7 +242,7 @@ CREATE TABLE "external_hotels" (
 );
 
 -- CreateTable
-CREATE TABLE "external_hotel_search_cache" (
+CREATE TABLE IF NOT EXISTS "external_hotel_search_cache" (
     "id" TEXT NOT NULL,
     "provider" TEXT NOT NULL,
     "dest_id" TEXT NOT NULL,
@@ -262,7 +262,7 @@ CREATE TABLE "external_hotel_search_cache" (
 );
 
 -- CreateTable
-CREATE TABLE "guide_profiles" (
+CREATE TABLE IF NOT EXISTS "guide_profiles" (
     "id" TEXT NOT NULL,
     "user_id" TEXT,
     "city_id" TEXT NOT NULL,
@@ -282,7 +282,7 @@ CREATE TABLE "guide_profiles" (
 );
 
 -- CreateTable
-CREATE TABLE "guide_requests" (
+CREATE TABLE IF NOT EXISTS "guide_requests" (
     "request_id" TEXT NOT NULL,
     "service_mode" TEXT NOT NULL,
     "start_time" TIMESTAMP(3),
@@ -299,7 +299,7 @@ CREATE TABLE "guide_requests" (
 );
 
 -- CreateTable
-CREATE TABLE "guide_offers" (
+CREATE TABLE IF NOT EXISTS "guide_offers" (
     "id" TEXT NOT NULL,
     "request_id" TEXT NOT NULL,
     "guide_id" TEXT NOT NULL,
@@ -313,94 +313,138 @@ CREATE TABLE "guide_offers" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "external_hotel_providers_provider_key" ON "external_hotel_providers"("provider");
+CREATE UNIQUE INDEX IF NOT EXISTS "external_hotel_providers_provider_key" ON "external_hotel_providers"("provider");
 
 -- CreateIndex
-CREATE INDEX "external_destinations_provider_query_idx" ON "external_destinations"("provider", "query");
+CREATE INDEX IF NOT EXISTS "external_destinations_provider_query_idx" ON "external_destinations"("provider", "query");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "external_destinations_provider_dest_id_dest_type_key" ON "external_destinations"("provider", "dest_id", "dest_type");
+CREATE UNIQUE INDEX IF NOT EXISTS "external_destinations_provider_dest_id_dest_type_key" ON "external_destinations"("provider", "dest_id", "dest_type");
 
 -- CreateIndex
-CREATE INDEX "external_hotels_provider_city_idx" ON "external_hotels"("provider", "city");
+CREATE INDEX IF NOT EXISTS "external_hotels_provider_city_idx" ON "external_hotels"("provider", "city");
 
 -- CreateIndex
-CREATE INDEX "external_hotels_last_synced_at_idx" ON "external_hotels"("last_synced_at");
+CREATE INDEX IF NOT EXISTS "external_hotels_last_synced_at_idx" ON "external_hotels"("last_synced_at");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "external_hotels_provider_hotel_id_key" ON "external_hotels"("provider", "hotel_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "external_hotels_provider_hotel_id_key" ON "external_hotels"("provider", "hotel_id");
 
 -- CreateIndex
-CREATE INDEX "external_hotel_search_cache_provider_dest_id_idx" ON "external_hotel_search_cache"("provider", "dest_id");
+CREATE INDEX IF NOT EXISTS "external_hotel_search_cache_provider_dest_id_idx" ON "external_hotel_search_cache"("provider", "dest_id");
 
 -- CreateIndex
-CREATE INDEX "external_hotel_search_cache_created_at_idx" ON "external_hotel_search_cache"("created_at");
+CREATE INDEX IF NOT EXISTS "external_hotel_search_cache_created_at_idx" ON "external_hotel_search_cache"("created_at");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "guide_profiles_user_id_key" ON "guide_profiles"("user_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "guide_profiles_user_id_key" ON "guide_profiles"("user_id");
 
 -- CreateIndex
-CREATE INDEX "guide_profiles_city_id_idx" ON "guide_profiles"("city_id");
+CREATE INDEX IF NOT EXISTS "guide_profiles_city_id_idx" ON "guide_profiles"("city_id");
 
 -- CreateIndex
-CREATE INDEX "guide_profiles_verified_idx" ON "guide_profiles"("verified");
+CREATE INDEX IF NOT EXISTS "guide_profiles_verified_idx" ON "guide_profiles"("verified");
 
 -- CreateIndex
-CREATE INDEX "guide_profiles_rating_idx" ON "guide_profiles"("rating");
+CREATE INDEX IF NOT EXISTS "guide_profiles_rating_idx" ON "guide_profiles"("rating");
 
 -- CreateIndex
-CREATE INDEX "guide_profiles_user_id_idx" ON "guide_profiles"("user_id");
+CREATE INDEX IF NOT EXISTS "guide_profiles_user_id_idx" ON "guide_profiles"("user_id");
 
 -- CreateIndex
-CREATE INDEX "guide_offers_request_id_idx" ON "guide_offers"("request_id");
+CREATE INDEX IF NOT EXISTS "guide_offers_request_id_idx" ON "guide_offers"("request_id");
 
 -- CreateIndex
-CREATE INDEX "guide_offers_guide_id_idx" ON "guide_offers"("guide_id");
+CREATE INDEX IF NOT EXISTS "guide_offers_guide_id_idx" ON "guide_offers"("guide_id");
 
 -- CreateIndex
-CREATE INDEX "external_hot_items_pinned_rank_idx" ON "external_hot_items"("pinned_rank");
+CREATE INDEX IF NOT EXISTS "external_hot_items_pinned_rank_idx" ON "external_hot_items"("pinned_rank");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "external_hot_items_source_external_id_key" ON "external_hot_items"("source", "external_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "external_hot_items_source_external_id_key" ON "external_hot_items"("source", "external_id");
 
 -- CreateIndex
-CREATE INDEX "external_search_cache_source_cache_key_idx" ON "external_search_cache"("source", "cache_key");
+CREATE INDEX IF NOT EXISTS "external_search_cache_source_cache_key_idx" ON "external_search_cache"("source", "cache_key");
 
 -- AddForeignKey
-ALTER TABLE "cities" ADD CONSTRAINT "cities_cover_asset_id_fkey" FOREIGN KEY ("cover_asset_id") REFERENCES "media_assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "hotels" ADD CONSTRAINT "hotels_cover_asset_id_fkey" FOREIGN KEY ("cover_asset_id") REFERENCES "media_assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "restaurants" ADD CONSTRAINT "restaurants_cover_asset_id_fkey" FOREIGN KEY ("cover_asset_id") REFERENCES "media_assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "medical_centers" ADD CONSTRAINT "medical_centers_cover_asset_id_fkey" FOREIGN KEY ("cover_asset_id") REFERENCES "media_assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "tours" ADD CONSTRAINT "tours_cover_asset_id_fkey" FOREIGN KEY ("cover_asset_id") REFERENCES "media_assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "transport_products" ADD CONSTRAINT "transport_products_cover_asset_id_fkey" FOREIGN KEY ("cover_asset_id") REFERENCES "media_assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "city_places" ADD CONSTRAINT "city_places_cover_asset_id_fkey" FOREIGN KEY ("cover_asset_id") REFERENCES "media_assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "guide_profiles" ADD CONSTRAINT "guide_profiles_city_id_fkey" FOREIGN KEY ("city_id") REFERENCES "cities"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "guide_profiles" ADD CONSTRAINT "guide_profiles_cover_asset_id_fkey" FOREIGN KEY ("cover_asset_id") REFERENCES "media_assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "guide_profiles" ADD CONSTRAINT "guide_profiles_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "guide_requests" ADD CONSTRAINT "guide_requests_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "service_requests"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "guide_offers" ADD CONSTRAINT "guide_offers_guide_id_fkey" FOREIGN KEY ("guide_id") REFERENCES "guide_profiles"("user_id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "guide_offers" ADD CONSTRAINT "guide_offers_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "guide_requests"("request_id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'cities') AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'cities' AND constraint_name = 'cities_cover_asset_id_fkey'
+    ) THEN
+        ALTER TABLE "cities" ADD CONSTRAINT "cities_cover_asset_id_fkey" FOREIGN KEY ("cover_asset_id") REFERENCES "media_assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'hotels') AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'hotels' AND constraint_name = 'hotels_cover_asset_id_fkey'
+    ) THEN
+        ALTER TABLE "hotels" ADD CONSTRAINT "hotels_cover_asset_id_fkey" FOREIGN KEY ("cover_asset_id") REFERENCES "media_assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'restaurants') AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'restaurants' AND constraint_name = 'restaurants_cover_asset_id_fkey'
+    ) THEN
+        ALTER TABLE "restaurants" ADD CONSTRAINT "restaurants_cover_asset_id_fkey" FOREIGN KEY ("cover_asset_id") REFERENCES "media_assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'medical_centers') AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'medical_centers' AND constraint_name = 'medical_centers_cover_asset_id_fkey'
+    ) THEN
+        ALTER TABLE "medical_centers" ADD CONSTRAINT "medical_centers_cover_asset_id_fkey" FOREIGN KEY ("cover_asset_id") REFERENCES "media_assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'tours') AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'tours' AND constraint_name = 'tours_cover_asset_id_fkey'
+    ) THEN
+        ALTER TABLE "tours" ADD CONSTRAINT "tours_cover_asset_id_fkey" FOREIGN KEY ("cover_asset_id") REFERENCES "media_assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'transport_products') AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'transport_products' AND constraint_name = 'transport_products_cover_asset_id_fkey'
+    ) THEN
+        ALTER TABLE "transport_products" ADD CONSTRAINT "transport_products_cover_asset_id_fkey" FOREIGN KEY ("cover_asset_id") REFERENCES "media_assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'city_places') AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'city_places' AND constraint_name = 'city_places_cover_asset_id_fkey'
+    ) THEN
+        ALTER TABLE "city_places" ADD CONSTRAINT "city_places_cover_asset_id_fkey" FOREIGN KEY ("cover_asset_id") REFERENCES "media_assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'guide_profiles') AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'guide_profiles' AND constraint_name = 'guide_profiles_city_id_fkey'
+    ) THEN
+        ALTER TABLE "guide_profiles" ADD CONSTRAINT "guide_profiles_city_id_fkey" FOREIGN KEY ("city_id") REFERENCES "cities"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'guide_profiles') AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'guide_profiles' AND constraint_name = 'guide_profiles_cover_asset_id_fkey'
+    ) THEN
+        ALTER TABLE "guide_profiles" ADD CONSTRAINT "guide_profiles_cover_asset_id_fkey" FOREIGN KEY ("cover_asset_id") REFERENCES "media_assets"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'guide_profiles') AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'guide_profiles' AND constraint_name = 'guide_profiles_user_id_fkey'
+    ) THEN
+        ALTER TABLE "guide_profiles" ADD CONSTRAINT "guide_profiles_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'guide_requests') AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'guide_requests' AND constraint_name = 'guide_requests_request_id_fkey'
+    ) THEN
+        ALTER TABLE "guide_requests" ADD CONSTRAINT "guide_requests_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "service_requests"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'guide_offers') AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'guide_offers' AND constraint_name = 'guide_offers_guide_id_fkey'
+    ) THEN
+        ALTER TABLE "guide_offers" ADD CONSTRAINT "guide_offers_guide_id_fkey" FOREIGN KEY ("guide_id") REFERENCES "guide_profiles"("user_id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'guide_offers') AND NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_name = 'guide_offers' AND constraint_name = 'guide_offers_request_id_fkey'
+    ) THEN
+        ALTER TABLE "guide_offers" ADD CONSTRAINT "guide_offers_request_id_fkey" FOREIGN KEY ("request_id") REFERENCES "guide_requests"("request_id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;

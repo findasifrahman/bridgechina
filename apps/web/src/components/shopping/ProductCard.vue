@@ -1,25 +1,24 @@
 <template>
   <Card
-    class="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow border border-slate-200"
+    class="group cursor-pointer overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_14px_34px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_54px_rgba(15,23,42,0.12)]"
     @click="$emit('click', product)"
   >
     <div class="relative aspect-square overflow-hidden bg-slate-100">
       <img
-        v-if="product.imageUrl"
-        :src="product.imageUrl"
+        v-if="imageSrc"
+        :src="imageSrc"
         :alt="product.title"
-        class="w-full h-full object-cover"
+        class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
       />
-      <div v-else class="w-full h-full flex items-center justify-center text-slate-400">
-        <Package class="h-16 w-16" />
+      <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
+        <Package class="h-14 w-14" />
       </div>
-      <!-- Hover Actions -->
-      <div class="absolute inset-0 bg-black/0 hover:bg-black/5 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
+      <div class="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-colors hover:bg-black/10 hover:opacity-100">
         <div class="flex gap-2">
           <Button
             variant="primary"
             size="sm"
-            class="bg-teal/90 hover:bg-white text-slate-900"
+            class="rounded-full bg-white/95 px-3 text-[12px] text-black shadow-lg hover:bg-white"
             @click.stop="$emit('click', product)"
           >
             View
@@ -27,27 +26,31 @@
           <Button
             variant="secondary"
             size="sm"
-            class="bg-white/90 hover:bg-white text-slate-900"
+            class="rounded-full bg-slate-900/90 px-3 text-[12px] text-black shadow-lg hover:bg-slate-900"
             @click.stop="$emit('add-to-cart', product)"
           >
-            <ShoppingCart class="h-3 w-3 mr-1" />
+            <ShoppingCart class="mr-1 h-3 w-3" />
             Add
           </Button>
         </div>
       </div>
     </div>
+
     <CardBody class="p-4">
-      <h3 class="font-semibold text-slate-900 mb-1 line-clamp-2 min-h-[2.5rem]">{{ product.title }}</h3>
-      <div v-if="product.totalSold" class="flex items-center gap-3 mb-2 text-xs">
-        <p v-if="product.totalSold" class="text-slate-500">{{ formatSales(product.totalSold) }} sold</p>
+      <h3 class="mb-1 min-h-[2.2rem] text-[13px] font-semibold leading-5 text-slate-900 line-clamp-2">{{ product.title }}</h3>
+      <div v-if="product.totalSold" class="mb-2 flex items-center gap-2 text-[11px] text-slate-500">
+        {{ formatSales(product.totalSold) }} sold
       </div>
-      <div class="flex items-center justify-between">
-        <span class="text-lg font-bold text-teal-600">
+      <div class="flex items-center justify-between gap-2">
+        <span class="text-[15px] font-black text-rose-500">
           <span v-if="product.priceMin && product.priceMax">
             {{ formatPrice(product.priceMin) }}{{ product.priceMin !== product.priceMax ? ' - ' + formatPrice(product.priceMax) : '' }}
           </span>
           <span v-else-if="product.priceMin">{{ formatPrice(product.priceMin) }}</span>
-          <span v-else class="text-slate-500 text-sm">Price on request</span>
+          <span v-else class="text-[12px] text-slate-500">Price on request</span>
+        </span>
+        <span v-if="product.totalSold" class="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-700">
+          {{ formatSales(product.totalSold) }} sold
         </span>
       </div>
     </CardBody>
@@ -67,7 +70,9 @@ const props = defineProps<{
     priceMax?: number;
     currency?: string;
     imageUrl?: string;
+    images?: string[];
     sellerName?: string;
+    totalSold?: number;
   };
   selectedCurrency?: 'CNY' | 'BDT' | 'USD';
   conversionRates?: {
@@ -82,36 +87,37 @@ defineEmits<{
   'add-to-cart': [product: any];
 }>();
 
+const imageSrc = computed(() => props.product.imageUrl || props.product.images?.[0] || '');
+
 function formatPrice(price: number): string {
   const currency = props.selectedCurrency || 'CNY';
-  
+
   if (currency === 'CNY') {
-    return `¥${price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    return `CNY ${price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   }
-  
+
   if (currency === 'BDT') {
-    const rate = props.conversionRates?.CNY_TO_BDT || 15; // Fallback rate
+    const rate = props.conversionRates?.CNY_TO_BDT || 15;
     const bdtPrice = price * rate;
-    return `৳${bdtPrice.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    return `BDT ${bdtPrice.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   }
-  
+
   if (currency === 'USD') {
-    const rate = props.conversionRates?.CNY_TO_USD || 0.14; // Fallback rate
+    const rate = props.conversionRates?.CNY_TO_USD || 0.14;
     const usdPrice = price * rate;
-    return `$${usdPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `USD ${usdPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
-  
-  return `¥${price}`;
+
+  return `CNY ${price}`;
 }
 
 function formatSales(count: number): string {
   if (count >= 1000000) {
-    return (count / 1000000).toFixed(1) + 'M';
+    return `${(count / 1000000).toFixed(1)}M`;
   }
   if (count >= 1000) {
-    return (count / 1000).toFixed(1) + 'K';
+    return `${(count / 1000).toFixed(1)}K`;
   }
-  return count.toString();
+  return String(count);
 }
 </script>
-
