@@ -68,6 +68,7 @@ function buildSearchKeywordSpec(keyword: string): {
   compactKeyword: string;
   tokens: string[];
   relevanceHint: string[];
+  categoryOnly: boolean;
 } {
   const raw = keyword.trim();
   if (!raw) {
@@ -78,6 +79,7 @@ function buildSearchKeywordSpec(keyword: string): {
       compactKeyword: '',
       tokens: [],
       relevanceHint: [],
+      categoryOnly: false,
     };
   }
 
@@ -90,6 +92,7 @@ function buildSearchKeywordSpec(keyword: string): {
       compactKeyword: normalizedKeyword.replace(/\s+/g, ''),
       tokens: extractSearchTokens(raw),
       relevanceHint: [normalizedKeyword],
+      categoryOnly: false,
     };
   }
 
@@ -119,10 +122,14 @@ function buildSearchKeywordSpec(keyword: string): {
     compactKeyword,
     tokens: extractSearchTokens(raw),
     relevanceHint: hints,
+    categoryOnly: false,
   };
 }
 
 function scoreSearchCard(card: ProductCardOTAPI, spec: ReturnType<typeof buildSearchKeywordSpec>): number {
+  if (spec.categoryOnly) {
+    return 1;
+  }
   const title = normalizeSearchText(card.title || '');
   if (!title) return 0;
 
@@ -552,6 +559,7 @@ export async function searchByKeyword(
 ): Promise<SearchResult> {
   const baseKeyword = keyword?.trim() || opts?.category || 'products';
   const prepared = buildSearchKeywordSpec(baseKeyword);
+  prepared.categoryOnly = !keyword?.trim() && !!opts?.category;
   const searchKeyword = prepared.keyword || baseKeyword;
   const languageOfQuery = prepared.languageOfQuery;
   const language = normalizeOtapiLanguage(opts?.language || 'en');
@@ -567,6 +575,7 @@ export async function searchByKeyword(
     minPrice: opts?.minPrice ?? '',
     maxPrice: opts?.maxPrice ?? '',
     minVolume: opts?.minVolume ?? '',
+    categoryOnly: prepared.categoryOnly,
   });
 
   const cached = await getCachedSearch(SOURCE, cacheKey);
@@ -651,6 +660,7 @@ export async function searchByKeyword(
       priceMax: card.priceMax,
       images: card.images,
       sourceUrl: card.sourceUrl,
+      rawJson: card.raw,
     });
     if (!ok) break;
   }
@@ -955,6 +965,32 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
         const normalized = await applyMarkupToDetail(normalizeOTAPIProductDetail(c.raw_json as any));
         items.push(normalized);
         existingIds.add(normalized.externalId);
+      } else {
+        const mainImages = Array.isArray(c.main_images) ? c.main_images.filter((img): img is string => typeof img === 'string' && img.trim().length > 0) : [];
+        const fallbackCard: ProductCardOTAPI = {
+          source: SOURCE,
+          externalId: c.external_id,
+          title: c.title,
+          priceMin: c.price_min ?? undefined,
+          priceMax: c.price_max ?? undefined,
+          currency: (c.currency || 'CNY') as 'CNY',
+          imageUrl: mainImages[0],
+          images: mainImages.length > 0 ? mainImages : undefined,
+          sourceUrl: c.source_url || undefined,
+          raw: {
+            title: c.title,
+            externalId: c.external_id,
+            priceMin: c.price_min,
+            priceMax: c.price_max,
+            imageUrl: mainImages[0],
+            images: mainImages,
+          },
+        };
+        const normalized = await applyMarkupToCards([fallbackCard]).then((cards) => cards[0]);
+        if (normalized) {
+          items.push(normalized);
+          existingIds.add(normalized.externalId);
+        }
       }
       if (items.length >= targetCount) break;
     }

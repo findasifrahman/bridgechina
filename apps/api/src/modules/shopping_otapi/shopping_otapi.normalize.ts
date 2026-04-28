@@ -12,6 +12,7 @@ export interface ProductCardOTAPI {
   sellerName?: string;
   sourceUrl?: string;
   totalSold?: number;
+  raw?: any;
 }
 
 export interface ProductDetailOTAPI extends ProductCardOTAPI {
@@ -530,6 +531,7 @@ export function normalizeOTAPIProductCard(item: any): ProductCardOTAPI {
     images: collectImages(payload),
     sellerName: extractVendorName(payload),
     sourceUrl: buildSourceUrl(externalId),
+    raw: payload,
   };
 
   const sold =

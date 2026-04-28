@@ -300,6 +300,36 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
   fastify.get('/shopping/search', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const query = searchByKeywordSchema.parse(request.query);
+      let categoryKeyword: string | undefined;
+      if (query.category && !query.keyword) {
+        const categoryNode = await prisma.productCategory.findFirst({
+          where: { slug: query.category, is_active: true },
+          select: {
+            name: true,
+            slug: true,
+            parent: {
+              select: {
+                name: true,
+                slug: true,
+                parent: {
+                  select: {
+                    name: true,
+                    slug: true,
+                  },
+                },
+              },
+            },
+          },
+        }).catch(() => null);
+
+        const categoryTrail = [
+          categoryNode?.parent?.parent?.name,
+          categoryNode?.parent?.name,
+          categoryNode?.name,
+        ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+
+        categoryKeyword = Array.from(new Set(categoryTrail)).join(' ').trim() || undefined;
+      }
       const localWhere: any = {
         status: 'published',
       };
@@ -331,7 +361,7 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
           orderBy: [{ is_featured: 'desc' }, { created_at: 'desc' }],
           take: query.pageSize || 20,
         }),
-        searchByKeyword(query.keyword, {
+        searchByKeyword(query.keyword || categoryKeyword, {
           category: query.category,
           page: query.page,
           pageSize: query.pageSize,
