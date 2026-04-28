@@ -485,25 +485,7 @@
             </div>
 
             <div class="mt-3">
-              <div v-if="activeTab === 'overview'" class="grid gap-3 lg:grid-cols-2">
-                <div class="rounded-[16px] border border-slate-200 bg-white p-3">
-                  <div class="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Overview</div>
-                  <div class="mt-3 space-y-2 text-[11px] text-slate-600">
-                    <div class="rounded-2xl bg-slate-50 px-3 py-2"><span class="font-semibold text-slate-800">Source:</span> Factory sourcing</div>
-                    <div class="rounded-2xl bg-slate-50 px-3 py-2"><span class="font-semibold text-slate-800">Support:</span> B2B concierge in China</div>
-                    <div v-if="product.totalSold" class="rounded-2xl bg-slate-50 px-3 py-2"><span class="font-semibold text-slate-800">Sold:</span> {{ formatNumber(product.totalSold) }}</div>
-                  </div>
-                </div>
-                <div class="rounded-[16px] border border-slate-200 bg-white p-3">
-                  <div class="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Highlights</div>
-                  <div class="mt-3 flex flex-wrap gap-2">
-                    <Badge v-for="tag in product.serviceTags || []" :key="tag" variant="success" class="text-[10px]">{{ tag }}</Badge>
-                    <span v-if="!product.serviceTags || product.serviceTags.length === 0" class="text-[11px] text-slate-500">No extra tags provided.</span>
-                  </div>
-                </div>
-              </div>
-
-              <div v-else-if="activeTab === 'spec'" class="grid gap-3 lg:grid-cols-2">
+              <div v-if="activeTab === 'spec'" class="grid gap-3 lg:grid-cols-2">
                 <div class="overflow-hidden rounded-[16px] border border-slate-200 bg-white">
                   <div class="border-b border-slate-200 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Specification</div>
                   <div v-if="specRows.length > 0" class="divide-y divide-slate-100">
@@ -525,6 +507,26 @@
                   <div v-else class="px-3 py-3 text-[11px] text-slate-500">No structured specification was returned by the provider.</div>
                 </div>
               </div>
+
+              <div v-else-if="activeTab === 'overview'" class="grid gap-3 lg:grid-cols-2">
+                <div class="rounded-[16px] border border-slate-200 bg-white p-3">
+                  <div class="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Overview</div>
+                  <div class="mt-3 space-y-2 text-[11px] text-slate-600">
+                    <div class="rounded-2xl bg-slate-50 px-3 py-2"><span class="font-semibold text-slate-800">Source:</span> Factory sourcing</div>
+                    <div class="rounded-2xl bg-slate-50 px-3 py-2"><span class="font-semibold text-slate-800">Support:</span> B2B concierge in China</div>
+                    <div v-if="product.totalSold" class="rounded-2xl bg-slate-50 px-3 py-2"><span class="font-semibold text-slate-800">Sold:</span> {{ formatNumber(product.totalSold) }}</div>
+                  </div>
+                </div>
+                <div class="rounded-[16px] border border-slate-200 bg-white p-3">
+                  <div class="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Highlights</div>
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    <Badge v-for="tag in product.serviceTags || []" :key="tag" variant="success" class="text-[10px]">{{ tag }}</Badge>
+                    <span v-if="!product.serviceTags || product.serviceTags.length === 0" class="text-[11px] text-slate-500">No extra tags provided.</span>
+                  </div>
+                </div>
+              </div>
+
+
 
               <div v-else-if="activeTab === 'seller'" class="grid gap-3 lg:grid-cols-2">
                 <div class="overflow-hidden rounded-[16px] border border-slate-200 bg-white">
@@ -1100,7 +1102,7 @@ function updateSkuQuantity(sku: any, delta: number) {
 
 async function loadSimilarProducts() {
   try {
-    const response = await axios.get('/api/public/shopping/hot', { params: { page: 1, pageSize: 8 } });
+    const response = await axios.get('/api/public/shopping/hot', { params: { page: 1, pageSize: 5 } });
     const products = Array.isArray(response.data) ? response.data : [];
     similarProducts.value = products.filter((p: any) => p.externalId !== product.value?.externalId).slice(0, 8);
   } catch (error) {

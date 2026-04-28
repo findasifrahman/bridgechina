@@ -262,7 +262,7 @@
                   :key="sub.slug"
                   type="button"
                   @click="openCategory(sub.slug)"
-                  class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] text-blue-600 hover:bg-teal-50 hover:text-teal-800"
+                  class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] text-slate-600 hover:bg-teal-50 hover:text-teal-800"
                 >
                   <span>{{ sub.name }}</span>
                   <span class="text-[10px] text-slate-400">{{ sub.products?.length || '' }}</span>

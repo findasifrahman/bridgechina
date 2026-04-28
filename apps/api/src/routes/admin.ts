@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { Prisma } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import { prisma } from '../lib/prisma.js';
 import { deleteFromR2, getPublicUrl, uploadToR2 } from '../utils/r2.js';
 import { z } from 'zod';
@@ -52,6 +53,30 @@ const normalizeSpecifications = (value: unknown) => {
   if (Array.isArray(parsed)) return parsed;
   return [parsed];
 };
+
+const slugifySku = (value: string) => value
+  .toLowerCase()
+  .trim()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '')
+  .slice(0, 40);
+
+async function generateUniqueProductSku(preferredSku: string | null | undefined, title: string) {
+  const base = slugifySku(preferredSku?.trim() || title || 'product') || 'product';
+  let candidate = base;
+  let attempt = 0;
+
+  while (await prisma.product.findFirst({ where: { sku: candidate }, select: { id: true } })) {
+    attempt += 1;
+    candidate = `${base}-${attempt + 1}`;
+  }
+
+  if (!candidate || candidate.length < 3) {
+    return `prod-${randomUUID().slice(0, 8)}`;
+  }
+
+  return candidate;
+}
 
 function buildCategoryTree(rows: any[]) {
   const nodes = rows.map((row) => ({ ...row, children: [] as any[] }));
@@ -472,6 +497,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       specifications: z.any().optional(),
     }).parse(request.body);
     const req = request as any;
+    const sku = await generateUniqueProductSku(body.sku, body.title);
 
     const product = await prisma.product.create({
       data: {
@@ -483,7 +509,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         currency: body.currency || 'BDT',
         stock_qty: body.stock_qty ?? 0,
         minimum_order_qty: body.minimum_order_qty ?? 1,
-        sku: body.sku || null,
+        sku,
         brand: body.seller_name || body.brand || null,
         source_kind: body.source_kind || 'manual',
         source_url: body.source_url || null,

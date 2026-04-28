@@ -474,6 +474,59 @@
               </div>
             </div>
           </div>
+
+          <!---->
+          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)]">
+            <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-blue-500">Order Process</p>
+            <div class="mt-4 space-y-3">
+              <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-[12px] font-semibold text-green-500">Choose Product</span>
+                  <span class="text-[11px] text-slate-500">Search</span>
+                </div>
+                <p class="mt-1 text-[11px] text-slate-600">Search Keyword or by image<</p>
+              </div>
+              <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-[12px] font-semibold text-red-500">Add To Cart</span>
+                  <span class="text-[11px] text-slate-500">Quantity</span>
+                </div>
+                <p class="mt-1 text-[11px] text-slate-600">Select MOQ and add</p>
+              </div>
+              <div class="rounded-2xl border border-dashed border-amber-200 bg-amber-50/70 p-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-[12px] font-semibold text-slate-900">Shipping Address</span>
+                  <span class="text-[11px] text-slate-500">Shipping </span>
+                </div>
+                <p class="mt-1 text-[11px] text-slate-600">
+                  Provide Shipping address from profile or add new address
+                </p>
+              </div>
+
+              <div class="rounded-2xl border border-dashed border-amber-200 bg-amber-50/70 p-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-[12px] font-semibold text-red-500">Upload Payment Proof</span>
+                  <span class="text-[11px] text-slate-500">Payment </span>
+                </div>
+                <p class="mt-1 text-[11px] text-slate-600">
+                  Upload payment proof for verification (Bkash, Rocket, Nagad, Bank transfer)
+                </p>
+              </div>
+              
+              <div class="rounded-2xl border border-dashed border-amber-200 bg-amber-50/70 p-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-[12px] font-semibold text-blue-500">Shipment arrive in 14 days</span>
+                  <span class="text-[11px] text-slate-500">Shipping </span>
+                </div>
+                <p class="mt-1 text-[11px] text-slate-600">
+                  After payment verification, order will be processed and shipped. xpect to receive your products within 12-14 days
+                </p>
+              </div>
+
+            </div>
+          </div>
+
+          <!---->
         </div>
       </aside>
     </div>
