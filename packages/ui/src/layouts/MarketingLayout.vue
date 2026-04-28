@@ -1,16 +1,89 @@
 <template>
   <div class="min-h-screen overflow-x-hidden bg-[#eef3f9] text-slate-900">
     <header class="sticky top-0 z-50 border-b border-white/70 bg-white/90 shadow-[0_8px_24px_rgba(15,23,42,0.04)] backdrop-blur-xl">
-      <div class="grid h-16 w-full grid-cols-[1fr_minmax(0,1.4fr)_auto] items-center gap-3 px-2 sm:px-3 lg:px-4">
-        <router-link to="/shopping" class="flex items-center gap-3">
-          <img src="/logo_verticle.png" alt="BridgeChina" class="h-10 w-10 rounded-2xl object-contain" />
-          <div class="leading-tight">
-            <p class="text-[15px] font-extrabold tracking-tight text-slate-900">ChinaBuyBD</p>
-            <p class="text-[11px] font-medium text-slate-500">Premium China shopping concierge</p>
-          </div>
-        </router-link>
+      <div class="px-2 py-3 sm:px-3 lg:px-4">
+        <div class="flex items-center justify-between gap-3 md:grid md:h-16 md:grid-cols-[1fr_minmax(0,1.4fr)_auto] md:items-center md:gap-3">
+          <router-link to="/shopping" class="flex items-center gap-3">
+            <img src="/logo_verticle.png" alt="BridgeChina" class="h-10 w-10 rounded-2xl object-contain" />
+            <div class="leading-tight">
+              <p class="text-[15px] font-extrabold tracking-tight text-slate-900">ChinaBuyBD</p>
+              <p class="text-[11px] font-medium text-slate-500">Premium China shopping concierge</p>
+            </div>
+          </router-link>
 
-        <form class="hidden md:flex" @submit.prevent="submitSearch">
+          <div class="flex items-center gap-2 md:hidden">
+            <button
+              type="button"
+              class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700"
+              :aria-expanded="mobileMenuOpen"
+              aria-label="Toggle navigation menu"
+              @click="mobileMenuOpen = !mobileMenuOpen"
+            >
+              <X v-if="mobileMenuOpen" class="h-5 w-5" />
+              <Menu v-else class="h-5 w-5" />
+            </button>
+          </div>
+
+          <form class="hidden md:flex" @submit.prevent="submitSearch">
+            <div class="flex h-11 w-full items-center overflow-hidden rounded-full border border-slate-200 bg-white shadow-[0_10px_24px_rgba(15,23,42,0.05)] focus-within:border-teal-300">
+              <span class="pl-4 text-slate-400">
+                <Search class="h-4 w-4" />
+              </span>
+              <input
+                v-model="searchQuery"
+                type="search"
+                placeholder="Search products, factories, or keywords..."
+                class="w-full bg-transparent px-3 text-[12px] font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none"
+              />
+              <button
+                type="button"
+                @click="openImagePicker"
+                class="mr-1 inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-teal-50 hover:text-teal-700"
+                title="Search by image"
+              >
+                <Camera class="h-4 w-4" />
+              </button>
+            </div>
+          </form>
+          <input ref="headerImageInput" type="file" accept="image/*" class="hidden" @change="handleHeaderImageSelect" />
+
+          <div class="hidden items-center gap-2 md:flex">
+            <router-link to="/shopping" class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+              Shop
+            </router-link>
+            <router-link to="/blog" class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+              Blog
+            </router-link>
+            <router-link to="/contact" class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+              Contact
+            </router-link>
+            <router-link
+              v-if="isAuthenticated"
+              :to="userRoles.includes('ADMIN') || userRoles.includes('EDITOR') ? '/admin' : userRoles.includes('SELLER') ? '/seller' : '/user'"
+              class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+            >
+              Dashboard
+            </router-link>
+            <router-link
+              v-else
+              to="/login"
+              class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+            >
+              Sign in
+            </router-link>
+            <Button
+              v-if="isAuthenticated"
+              variant="primary"
+              size="sm"
+              class="rounded-full bg-slate-900 px-4 py-2 text-white shadow-none hover:bg-slate-800"
+              @click="$emit('signOut')"
+            >
+              Sign out
+            </Button>
+          </div>
+        </div>
+
+        <form class="mt-3 flex md:hidden" @submit.prevent="submitSearch">
           <div class="flex h-11 w-full items-center overflow-hidden rounded-full border border-slate-200 bg-white shadow-[0_10px_24px_rgba(15,23,42,0.05)] focus-within:border-teal-300">
             <span class="pl-4 text-slate-400">
               <Search class="h-4 w-4" />
@@ -31,41 +104,109 @@
             </button>
           </div>
         </form>
-        <input ref="headerImageInput" type="file" accept="image/*" class="hidden" @change="handleHeaderImageSelect" />
+      </div>
 
-        <div class="hidden items-center gap-2 md:flex">
-  <router-link to="/shopping" class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900">
-            Shop
-          </router-link>
-          <router-link to="/blog" class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900">
-            Blog
-          </router-link>
-          <router-link to="/contact" class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900">
-            Contact
-          </router-link>
-          <router-link
-            v-if="isAuthenticated"
-            :to="userRoles.includes('ADMIN') || userRoles.includes('EDITOR') ? '/admin' : userRoles.includes('SELLER') ? '/seller' : '/user'"
-            class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900"
-          >
-            Dashboard
-          </router-link>
-          <router-link
-            v-else
-            to="/login"
-            class="rounded-full px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900"
-          >
-            Sign in
-          </router-link>
-          <Button
-            v-if="isAuthenticated"
-            variant="primary"
-            size="sm"
-            class="rounded-full bg-slate-900 px-4 py-2 text-white shadow-none hover:bg-slate-800"
-            @click="$emit('signOut')"
-          >
-            Sign out
-          </Button>
+      <div v-if="mobileMenuOpen" class="border-t border-slate-200 bg-white/98 md:hidden">
+        <div class="max-h-[70vh] space-y-4 overflow-y-auto px-3 py-4">
+          <div class="grid gap-2">
+            <router-link
+              to="/shopping"
+              class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700"
+              @click="mobileMenuOpen = false"
+            >
+              Shop
+            </router-link>
+            <router-link
+              to="/blog"
+              class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700"
+              @click="mobileMenuOpen = false"
+            >
+              Blog
+            </router-link>
+            <router-link
+              to="/contact"
+              class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700"
+              @click="mobileMenuOpen = false"
+            >
+              Contact
+            </router-link>
+            <router-link
+              v-if="isAuthenticated"
+              :to="userRoles.includes('ADMIN') || userRoles.includes('EDITOR') ? '/admin' : userRoles.includes('SELLER') ? '/seller' : '/user'"
+              class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700"
+              @click="mobileMenuOpen = false"
+            >
+              Dashboard
+            </router-link>
+            <router-link
+              v-else
+              to="/login"
+              class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700"
+              @click="mobileMenuOpen = false"
+            >
+              Sign in
+            </router-link>
+            <Button
+              v-if="isAuthenticated"
+              variant="primary"
+              size="sm"
+              class="rounded-2xl bg-slate-900 px-4 py-3 text-white shadow-none hover:bg-slate-800"
+              @click="$emit('signOut'); mobileMenuOpen = false"
+            >
+              Sign out
+            </Button>
+          </div>
+
+          <div class="rounded-3xl border border-slate-200 bg-white p-3 shadow-[0_14px_30px_rgba(15,23,42,0.04)]">
+            <div class="flex items-center justify-between gap-2">
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Shop by category</p>
+                <h2 class="mt-1 text-[14px] font-black tracking-tight text-slate-950">Browse categories</h2>
+              </div>
+              <button
+                type="button"
+                class="rounded-full border border-slate-200 px-3 py-1 text-[10px] font-semibold text-slate-600"
+                @click="openShopping(); mobileMenuOpen = false"
+              >
+                All products
+              </button>
+            </div>
+
+            <div class="mt-3 space-y-2">
+              <div v-for="cat in categories" :key="`mobile-${cat.slug}`" class="rounded-2xl border border-slate-200 bg-slate-50">
+                <button
+                  type="button"
+                  class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+                  @click="toggleCategory(cat.slug)"
+                >
+                  <span class="min-w-0">
+                    <span class="block text-[12px] font-semibold leading-5 text-slate-900">{{ cat.name }}</span>
+                    <span class="block text-[10px] text-slate-500">{{ cat.children?.length || 0 }} subcategories</span>
+                  </span>
+                  <ChevronRight class="h-4 w-4 flex-shrink-0 text-slate-300 transition-transform" :class="{ 'rotate-90': expandedCategorySlug === cat.slug }" />
+                </button>
+                <div v-if="expandedCategorySlug === cat.slug" class="border-t border-slate-200 bg-white px-2 py-2">
+                  <button
+                    v-for="sub in cat.children || []"
+                    :key="sub.slug"
+                    type="button"
+                    class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] text-slate-700 hover:bg-teal-50 hover:text-teal-800"
+                    @click="openCategory(sub.slug); mobileMenuOpen = false"
+                  >
+                    <span>{{ sub.name }}</span>
+                    <span class="text-[10px] text-slate-400">{{ sub.products?.length || '' }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] font-medium text-teal-700 hover:bg-teal-50"
+                    @click="openCategory(cat.slug); mobileMenuOpen = false"
+                  >
+                    View all {{ cat.name }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </header>
@@ -182,7 +323,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import Button from '../components/Button.vue';
-import { Camera, ChevronRight, Gem, Home, Package, Search, Shield, Shirt, ShoppingBag, Sparkles, Stars, Truck, Watch, Cpu } from 'lucide-vue-next';
+import { Camera, ChevronRight, Cpu, Gem, Home, Menu, Package, Search, Shield, Shirt, ShoppingBag, Sparkles, Stars, Truck, Watch, X } from 'lucide-vue-next';
 
 const props = defineProps<{
   isAuthenticated?: boolean;
@@ -198,6 +339,7 @@ const searchQuery = ref('');
 const headerImageInput = ref<HTMLInputElement | null>(null);
 const categories = ref<any[]>([]);
 const expandedCategorySlug = ref('');
+const mobileMenuOpen = ref(false);
 
 const userRoles = computed(() => props.userRoles || []);
 
@@ -231,10 +373,12 @@ function categoryIcon(icon?: string) {
 
 function submitSearch() {
   const keyword = searchQuery.value.trim();
+  mobileMenuOpen.value = false;
   router.push(keyword ? { path: '/shopping/browse', query: { q: keyword } } : '/shopping');
 }
 
 function openShopping() {
+  mobileMenuOpen.value = false;
   router.push('/shopping');
 }
 
@@ -263,6 +407,7 @@ async function handleHeaderImageSelect(event: Event) {
 }
 
 function openCategory(slug: string) {
+  mobileMenuOpen.value = false;
   router.push({ path: '/shopping/browse', query: { category: slug } });
 }
 
@@ -272,7 +417,8 @@ function toggleCategory(slug: string) {
 
 async function loadCategories() {
   try {
-    const response = await fetch('/api/public/shopping/categories');
+    const apiBaseUrl = String((import.meta as any).env?.VITE_API_URL || '').trim().replace(/\/+$/, '');
+    const response = await fetch(`${apiBaseUrl}/api/public/shopping/categories`);
     const data = await response.json();
     categories.value = Array.isArray(data) ? data : [];
     if (!expandedCategorySlug.value) {

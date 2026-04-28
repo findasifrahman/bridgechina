@@ -82,6 +82,7 @@ class OTAPIClient {
 
   async searchItemsFrame(params: {
     language?: string;
+    languageOfQuery?: string;
     framePosition?: number;
     frameSize?: number;
     CategoryId?: string;
@@ -95,6 +96,7 @@ class OTAPIClient {
   }): Promise<any> {
     const qp: any = {
       language: params.language || 'en',
+      LanguageOfQuery: params.languageOfQuery || params.language || 'en',
       framePosition: params.framePosition ?? 0,
       frameSize: params.frameSize ?? 50,
       Provider: 'Alibaba1688',
@@ -113,6 +115,7 @@ class OTAPIClient {
     const xmlParts: string[] = ['<SearchItemsParameters>'];
     xmlParts.push('<Provider>Alibaba1688</Provider>');
     xmlParts.push('<SearchMethod>Default</SearchMethod>');
+    xmlParts.push(`<LanguageOfQuery>${escapeXml(qp.LanguageOfQuery)}</LanguageOfQuery>`);
     xmlParts.push('<EnableDirectSearch xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true" />');
     if (params.CategoryId) xmlParts.push(`<CategoryId>${escapeXml(params.CategoryId)}</CategoryId>`);
     if (params.ItemTitle) xmlParts.push(`<ItemTitle>${escapeXml(params.ItemTitle)}</ItemTitle>`);

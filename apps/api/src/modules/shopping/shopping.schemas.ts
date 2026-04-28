@@ -9,6 +9,9 @@ export const searchByKeywordSchema = z.object({
   category: z.string().optional(),
   page: z.coerce.number().int().min(1).max(100).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(50).optional().default(20),
+  minPrice: z.coerce.number().min(0).optional(),
+  maxPrice: z.coerce.number().min(0).optional(),
+  minVolume: z.coerce.number().min(0).optional(),
   // TMAPI docs sort values: default, sales, price_up, price_down
   // We also accept legacy aliases (price_asc/price_desc) for backward compatibility.
   sort: z.enum(['default', 'sales', 'price_up', 'price_down', 'price_asc', 'price_desc', 'popular']).optional().default('sales'),

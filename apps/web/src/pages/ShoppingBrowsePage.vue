@@ -11,29 +11,29 @@
             <p class="mt-1 text-[11px] text-slate-500">Search by text or image, premium products first, then OTAPI products below.</p>
           </div>
 
-          <div class="flex w-full items-center gap-2 lg:w-auto lg:min-w-[620px]">
+          <form class="flex w-full items-center gap-2 lg:w-auto lg:min-w-[620px]" @submit.prevent="runSearch">
             <div class="flex h-11 flex-1 items-center rounded-full border border-slate-200 bg-white px-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
               <Search class="h-4 w-4 text-slate-400" />
               <input
                 v-model="searchQuery"
                 :placeholder="selectedCategory ? 'Search within category...' : 'Search products, factories, or keywords...'"
                 class="ml-3 w-full bg-transparent text-[12px] font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none"
-                @keyup.enter="runSearch"
               />
             </div>
             <button
+              type="submit"
               class="inline-flex h-11 items-center justify-center rounded-full bg-teal-600 px-5 text-[12px] font-semibold text-white hover:bg-teal-700"
-              @click="runSearch"
             >
               Search
             </button>
             <button
+              type="button"
               class="inline-flex h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-5 text-[12px] font-semibold text-slate-700 hover:border-slate-300"
               @click="clearSearch"
             >
               Clear
             </button>
-          </div>
+          </form>
         </div>
       </div>
 
@@ -186,7 +186,7 @@ function handleAddToCart(product: any) {
 async function runSearch() {
   const requestId = ++searchRequestId;
   imageSearchKey.value = String(route.query.imageSearchKey || '');
-  if (imageSearchKey.value) {
+  if (imageSearchKey.value && !searchQuery.value.trim()) {
     await runImageSearch();
     return;
   }
@@ -292,7 +292,7 @@ async function goToPage(page: number) {
 
 watch(
   () => [route.query.q, route.query.category, route.query.imageSearchKey, route.query.page].join('|'),
-  (query) => {
+  () => {
     const routeQuery = route.query as Record<string, string | undefined>;
     searchQuery.value = String(routeQuery.q || '');
     selectedCategory.value = String(routeQuery.category || '');

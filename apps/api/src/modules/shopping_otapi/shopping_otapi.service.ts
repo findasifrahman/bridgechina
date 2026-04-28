@@ -25,6 +25,185 @@ function applyPercent(price: number | undefined, percent: number): number | unde
   return Math.round(price * (1 + percent / 100));
 }
 
+function hasDisplayablePrice(card: Pick<ProductCardOTAPI, 'priceMin' | 'priceMax'>): boolean {
+  const candidates = [card.priceMin, card.priceMax].filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+  return candidates.some((value) => value > 0);
+}
+
+function filterPricedCards(cards: ProductCardOTAPI[]): ProductCardOTAPI[] {
+  return cards.filter((card) => hasDisplayablePrice(card));
+}
+
+function hasChineseCharacters(value: string): boolean {
+  return /[\u4e00-\u9fff]/.test(value);
+}
+
+function normalizeSearchText(value: string): string {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[_/]+/g, ' ')
+    .replace(/[^\p{L}\p{N}\s-]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function extractSearchTokens(value: string): string[] {
+  const normalized = normalizeSearchText(value);
+  if (!normalized) return [];
+
+  const stopwords = new Set(['a', 'an', 'the', 'and', 'or', 'for', 'to', 'of', 'in', 'on', 'with', 'by', 'e']);
+  return normalized
+    .split(' ')
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0)
+    .filter((token) => token.length > 1 || /\d/.test(token))
+    .filter((token, index, array) => array.indexOf(token) === index)
+    .filter((token) => !stopwords.has(token));
+}
+
+function buildSearchKeywordSpec(keyword: string): {
+  keyword: string;
+  languageOfQuery: 'en' | 'zh';
+  normalizedKeyword: string;
+  compactKeyword: string;
+  tokens: string[];
+  relevanceHint: string[];
+} {
+  const raw = keyword.trim();
+  if (!raw) {
+    return {
+      keyword: raw,
+      languageOfQuery: 'en',
+      normalizedKeyword: '',
+      compactKeyword: '',
+      tokens: [],
+      relevanceHint: [],
+    };
+  }
+
+  if (hasChineseCharacters(raw)) {
+    const normalizedKeyword = normalizeSearchText(raw) || raw;
+    return {
+      keyword: raw,
+      languageOfQuery: 'zh',
+      normalizedKeyword,
+      compactKeyword: normalizedKeyword.replace(/\s+/g, ''),
+      tokens: extractSearchTokens(raw),
+      relevanceHint: [normalizedKeyword],
+    };
+  }
+
+  const normalizedKeyword = normalizeSearchText(raw) || raw.toLowerCase();
+  let primaryKeyword = normalizedKeyword;
+
+  if (/\be[-\s]?bike\b/i.test(normalizedKeyword) || /\bebike\b/i.test(normalizedKeyword)) {
+    primaryKeyword = normalizedKeyword
+      .replace(/\be[-\s]?bike\b/gi, 'electric bike')
+      .replace(/\bebike\b/gi, 'electric bike');
+  } else if (/\bbike\b/i.test(normalizedKeyword) && !/\belectric\b/i.test(normalizedKeyword)) {
+    primaryKeyword = normalizedKeyword.replace(/\bbike\b/gi, 'electric bike');
+  }
+
+  const compactKeyword = primaryKeyword.replace(/\s+/g, '');
+  const hints = Array.from(new Set([
+    normalizedKeyword,
+    primaryKeyword,
+    compactKeyword,
+    ...((/\bbike\b/i.test(normalizedKeyword) || /\bebike\b/i.test(normalizedKeyword)) ? ['electric bike', 'electric bicycle', 'ebike'] : []),
+  ].map((item) => item.trim()).filter(Boolean)));
+
+  return {
+    keyword: primaryKeyword,
+    languageOfQuery: 'en',
+    normalizedKeyword,
+    compactKeyword,
+    tokens: extractSearchTokens(raw),
+    relevanceHint: hints,
+  };
+}
+
+function scoreSearchCard(card: ProductCardOTAPI, spec: ReturnType<typeof buildSearchKeywordSpec>): number {
+  const title = normalizeSearchText(card.title || '');
+  if (!title) return 0;
+
+  const titleCompact = title.replace(/\s+/g, '');
+  const tokens = spec.tokens;
+  const hints = spec.relevanceHint;
+  let score = 0;
+
+  for (const hint of hints) {
+    if (!hint) continue;
+    const normalizedHint = normalizeSearchText(hint);
+    const compactHint = normalizedHint.replace(/\s+/g, '');
+    if (normalizedHint && title.includes(normalizedHint)) score += 250;
+    if (compactHint && titleCompact.includes(compactHint)) score += 180;
+  }
+
+  for (const token of tokens) {
+    if (!token) continue;
+    if (title.includes(token)) {
+      score += token.length >= 5 ? 80 : 30;
+    } else {
+      score -= token.length >= 5 ? 20 : 8;
+    }
+  }
+
+  if (tokens.length > 0 && score <= 0) {
+    return -1000;
+  }
+
+  return score;
+}
+
+function sortRankedCards(
+  cards: ProductCardOTAPI[],
+  spec: ReturnType<typeof buildSearchKeywordSpec>,
+  sort: string
+): ProductCardOTAPI[] {
+  const ranked = cards
+    .map((card, index) => ({
+      card,
+      score: scoreSearchCard(card, spec),
+      index,
+    }))
+    .filter((entry) => entry.score > -1000);
+
+  ranked.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+
+    if (sort === 'price_up' || sort === 'price_asc') {
+      const aPrice = a.card.priceMin ?? a.card.priceMax ?? Number.POSITIVE_INFINITY;
+      const bPrice = b.card.priceMin ?? b.card.priceMax ?? Number.POSITIVE_INFINITY;
+      if (aPrice !== bPrice) return aPrice - bPrice;
+    } else if (sort === 'price_down' || sort === 'price_desc') {
+      const aPrice = a.card.priceMax ?? a.card.priceMin ?? Number.NEGATIVE_INFINITY;
+      const bPrice = b.card.priceMax ?? b.card.priceMin ?? Number.NEGATIVE_INFINITY;
+      if (aPrice !== bPrice) return bPrice - aPrice;
+    } else if (sort === 'popular' || sort === 'sales') {
+      const aSold = a.card.totalSold ?? 0;
+      const bSold = b.card.totalSold ?? 0;
+      if (aSold !== bSold) return bSold - aSold;
+    }
+
+    return a.index - b.index;
+  });
+
+  return ranked.map((entry) => entry.card);
+}
+
+function buildCachedSearchResponse(cards: ProductCardOTAPI[]): any {
+  return {
+    Result: {
+      Items: {
+        Items: {
+          Content: cards,
+          TotalCount: cards.length,
+        },
+      },
+    },
+  };
+}
+
 async function getOtapiMarkupPercent(): Promise<number> {
   const ttl = 5 * 60 * 1000;
   const now = Date.now();
@@ -46,12 +225,14 @@ async function getOtapiMarkupPercent(): Promise<number> {
 
 async function applyMarkupToCards(cards: ProductCardOTAPI[]): Promise<ProductCardOTAPI[]> {
   const percent = await getOtapiMarkupPercent();
-  if (!percent) return cards;
-  return cards.map((card) => ({
-    ...card,
-    priceMin: applyPercent(card.priceMin, percent),
-    priceMax: applyPercent(card.priceMax, percent),
-  }));
+  const marked = percent
+    ? cards.map((card) => ({
+        ...card,
+        priceMin: applyPercent(card.priceMin, percent),
+        priceMax: applyPercent(card.priceMax, percent),
+      }))
+    : cards;
+  return filterPricedCards(marked);
 }
 
 async function applyMarkupToDetail(detail: ProductDetailOTAPI): Promise<ProductDetailOTAPI> {
@@ -364,9 +545,15 @@ export async function searchByKeyword(
     pageSize?: number;
     sort?: string;
     language?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    minVolume?: number;
   }
 ): Promise<SearchResult> {
-  const searchKeyword = keyword?.trim() || opts?.category || 'products';
+  const baseKeyword = keyword?.trim() || opts?.category || 'products';
+  const prepared = buildSearchKeywordSpec(baseKeyword);
+  const searchKeyword = prepared.keyword || baseKeyword;
+  const languageOfQuery = prepared.languageOfQuery;
   const language = normalizeOtapiLanguage(opts?.language || 'en');
   const page = opts?.page ?? 1;
   const pageSize = opts?.pageSize ?? 20;
@@ -375,28 +562,36 @@ export async function searchByKeyword(
   const cacheKey = generateCacheKey('otapi_keyword', {
     keyword: searchKeyword,
     language,
-    page,
-    pageSize,
     sort,
+    category: opts?.category || '',
+    minPrice: opts?.minPrice ?? '',
+    maxPrice: opts?.maxPrice ?? '',
+    minVolume: opts?.minVolume ?? '',
   });
 
   const cached = await getCachedSearch(SOURCE, cacheKey);
   if (cached) {
     const items = extractSearchItems(cached);
     const normalized = await applyMarkupToCards(normalizeOTAPIProductCards(items));
-    const totalCount = extractTotalCount(cached) ?? normalized.length;
+    const ranked = sortRankedCards(normalized, prepared, sort);
+    const framePosition = (page - 1) * pageSize;
+    const paged = ranked.slice(framePosition, framePosition + pageSize);
+    const totalCount = ranked.length;
     const totalPages = Math.ceil(totalCount / pageSize);
     const hasNextPage = page < totalPages;
-    return { items: normalized, totalCount, page, pageSize, totalPages, hasNextPage };
+    return { items: paged, totalCount, page, pageSize, totalPages, hasNextPage };
   }
 
   const framePosition = (page - 1) * pageSize;
+  const fetchSize = Math.min(Math.max(pageSize * 8, 120), 200);
   if (DEBUG_OTAPI) {
     console.log('[OTAPI Service] searchByKeyword request:', {
       keyword: searchKeyword,
+      languageOfQuery,
       language,
       page,
       pageSize,
+      fetchSize,
       framePosition,
       orderBy: mapSortToOrderBy(sort),
     });
@@ -405,10 +600,14 @@ export async function searchByKeyword(
   try {
     response = await otapiClient.searchItemsFrame({
       language,
-      framePosition,
-      frameSize: pageSize,
+      languageOfQuery,
+      framePosition: 0,
+      frameSize: fetchSize,
       ItemTitle: searchKeyword,
       OrderBy: mapSortToOrderBy(sort),
+      MinPrice: opts?.minPrice,
+      MaxPrice: opts?.maxPrice,
+      MinVolume: opts?.minVolume,
     });
   } catch (error) {
     console.warn('[OTAPI Service] searchByKeyword failed, returning empty results:', {
@@ -422,18 +621,21 @@ export async function searchByKeyword(
     return { items: [], totalCount: 0, page, pageSize, totalPages: 0, hasNextPage: false };
   }
 
-  await setCachedSearch(SOURCE, cacheKey, { keyword: searchKeyword, ...opts }, response);
-
   const items = extractSearchItems(response);
   const normalized = await applyMarkupToCards(normalizeOTAPIProductCards(items));
-  const totalCount = extractTotalCount(response) ?? normalized.length;
+  const ranked = sortRankedCards(normalized, prepared, sort);
+  const totalCount = ranked.length;
   const totalPages = Math.ceil(totalCount / pageSize);
   const hasNextPage = page < totalPages;
+  const paged = ranked.slice(framePosition, framePosition + pageSize);
+
+  await setCachedSearch(SOURCE, cacheKey, { keyword: searchKeyword, ...opts }, buildCachedSearchResponse(ranked));
 
   if (DEBUG_OTAPI) {
     console.log('[OTAPI Service] searchByKeyword response summary:', {
       itemsRawCount: Array.isArray(items) ? items.length : 0,
       itemsNormalizedCount: normalized.length,
+      itemsRankedCount: ranked.length,
       totalCount,
       totalPages,
       hasNextPage,
@@ -441,7 +643,7 @@ export async function searchByKeyword(
   }
 
   // Best effort cache into ExternalCatalogItem for hot/pinned items + product details fallback
-  for (const card of normalized) {
+  for (const card of paged) {
     const ok = await cacheCatalogItem({
       externalId: card.externalId,
       title: card.title,
@@ -453,7 +655,7 @@ export async function searchByKeyword(
     if (!ok) break;
   }
 
-  return { items: normalized, totalCount, page, pageSize, totalPages, hasNextPage };
+  return { items: paged, totalCount, page, pageSize, totalPages, hasNextPage };
 }
 
 /**
@@ -783,5 +985,5 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
   }
 
   const start = (safePage - 1) * safePageSize;
-  return items.slice(start, start + safePageSize);
+  return filterPricedCards(items as ProductCardOTAPI[]).slice(start, start + safePageSize);
 }

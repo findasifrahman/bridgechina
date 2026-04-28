@@ -27,6 +27,7 @@ export interface ProductDetailOTAPI extends ProductCardOTAPI {
   detailUrl?: string;
   estimatedWeightKg?: number;
   weight_kg?: number;
+  videoUrl?: string;
 }
 
 function toNumber(val: any): number | undefined {
@@ -255,6 +256,52 @@ function normalizeSkuImage(sku: any): string | undefined {
   return image;
 }
 
+function extractVideoUrl(item: any): string | undefined {
+  const seen = new Set<any>();
+  const urlPattern = /(https?:\/\/[^\s"'<>]+?\.(?:mp4|webm|mov|m4v|m3u8)(?:\?[^\s"'<>]*)?)/i;
+
+  const walk = (node: any, keyHint = ''): string | undefined => {
+    if (node === null || node === undefined) return undefined;
+    if (typeof node === 'string') {
+      const text = node.trim();
+      if (!text) return undefined;
+      if (/^https?:\/\//i.test(text) && (keyHint.toLowerCase().includes('video') || urlPattern.test(text))) {
+        return text;
+      }
+      const match = text.match(urlPattern);
+      return match?.[1];
+    }
+    if (typeof node !== 'object') return undefined;
+    if (seen.has(node)) return undefined;
+    seen.add(node);
+
+    if (Array.isArray(node)) {
+      for (const entry of node) {
+        const found = walk(entry, keyHint);
+        if (found) return found;
+      }
+      return undefined;
+    }
+
+    for (const [key, value] of Object.entries(node)) {
+      const keyLower = String(key || '').toLowerCase();
+      if (keyLower.includes('video')) {
+        const found = walk(value, keyLower);
+        if (found) return found;
+      } else {
+        const found = walk(value, keyLower);
+        if (found && keyLower.includes('url')) {
+          return found;
+        }
+      }
+    }
+
+    return undefined;
+  };
+
+  return walk(item);
+}
+
 function normalizeSkus(itemFullInfo: any): any[] | undefined {
   const candidates: any[] = [];
   const seen = new Set<any>();
@@ -332,6 +379,7 @@ function normalizeSkus(itemFullInfo: any): any[] | undefined {
 
 function extractTitle(item: any): string {
   return (
+    item?.title ||
     item?.Title ||
     item?.ItemTitle ||
     item?.Name ||
@@ -352,6 +400,7 @@ function extractTitle(item: any): string {
 
 function extractItemId(item: any): string {
   const id =
+    item?.externalId ||
     item?.Id ||
     item?.ItemId ||
     item?.ItemID ||
@@ -405,6 +454,8 @@ function extractVendorId(item: any): string | undefined {
 
 function extractPriceRange(item: any): { min?: number; max?: number } {
   const min =
+    toNumber(item?.priceMin) ??
+    toNumber(item?.price_min) ??
     toNumber(item?.Price?.ConvertedPriceWithoutSign) ??
     toNumber(item?.Price?.PriceWithoutSign) ??
     toNumber(item?.Price?.ConvertedPrice) ??
@@ -414,6 +465,8 @@ function extractPriceRange(item: any): { min?: number; max?: number } {
     toNumber(item?.Price);
 
   const max =
+    toNumber(item?.priceMax) ??
+    toNumber(item?.price_max) ??
     toNumber(item?.MaxPrice) ??
     toNumber(item?.PriceMax) ??
     min;
@@ -545,6 +598,7 @@ export function normalizeOTAPIProductDetail(itemFullInfo: any, descriptionData?:
     detailUrl: base.sourceUrl,
     estimatedWeightKg: weightFromFields ?? weightFromDescription,
     weight_kg: weightFromFields ?? weightFromDescription,
+    videoUrl: extractVideoUrl(itemRoot) || extractVideoUrl(descriptionRoot),
   };
 
   const vendorId = extractVendorId(itemFullInfo);

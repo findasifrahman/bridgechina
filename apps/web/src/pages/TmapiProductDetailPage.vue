@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="min-h-screen bg-[#eef3f9] text-slate-800">
+  <div class="min-h-screen overflow-x-hidden bg-[#eef3f9] text-slate-800">
     <div v-if="loading" class="w-full px-2 py-3">
       <div class="animate-pulse space-y-3">
         <div class="h-4 w-28 rounded bg-slate-200" />
@@ -21,7 +21,7 @@
         <div class="min-w-0 space-y-3">
           <div class="grid gap-3 xl:grid-cols-[minmax(0,0.86fr)_minmax(0,0.9fr)]">
             <section class="rounded-[22px] border border-slate-200 bg-white p-3 shadow-[0_16px_38px_rgba(15,23,42,0.05)]">
-              <div class="flex gap-3">
+              <div class="flex flex-col gap-3 lg:flex-row">
                 <div v-if="showGalleryThumbs" class="hidden max-h-[640px] w-24 shrink-0 grid-cols-2 gap-1.5 overflow-y-auto overflow-x-hidden pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden lg:grid">
                   <button
                     v-if="product.videoUrl"
@@ -44,8 +44,8 @@
                   </button>
                 </div>
 
-                <div class="min-w-0 flex-1">
-                  <div class="group relative aspect-[0.94/1] w-full overflow-hidden rounded-[20px] bg-slate-100" @click="openFullscreen(activeMediaUrl)">
+                <div class="min-w-0 flex-1 w-full">
+                  <div class="group relative aspect-square w-full max-w-full overflow-hidden rounded-[20px] bg-slate-100 sm:aspect-[0.94/1]" @click="openFullscreen(activeMediaUrl)">
                     <video
                       v-if="showVideo"
                       ref="videoRef"
@@ -55,14 +55,14 @@
                       playsinline
                       loop
                       controls
-                      class="h-full w-full object-contain"
+                      class="h-full w-full max-w-full object-contain"
                       @click.stop
                     />
                     <img
                       v-else-if="activeMediaUrl"
                       :src="activeMediaUrl"
                       :alt="product.title"
-                      class="h-full w-full object-contain"
+                      class="h-full w-full max-w-full object-contain"
                       @error="markBrokenImage(activeMediaUrl)"
                     />
                     <div v-else class="flex h-full items-center justify-center text-slate-400">
@@ -395,7 +395,7 @@
 
             <div class="mt-3 space-y-3">
               <button
-                v-for="(tab, idx) in shippingSummaryTiles"
+                v-for="tab in shippingSummaryTiles"
                 :key="tab.label"
                 type="button"
                 class="flex w-full items-center gap-3 rounded-[18px] border border-slate-200 bg-slate-50 p-2.5 text-left"
@@ -470,11 +470,11 @@
               >
                 <div class="h-14 w-14 shrink-0 overflow-hidden rounded-[14px] bg-white">
                   <img
-                    v-if="item.imageUrl"
-                    :src="proxyImageUrl(item.imageUrl)"
+                    v-if="collectImageCandidates(item.imageUrl).length > 0 || collectImageCandidates(item.images).length > 0 || collectImageCandidates(item.raw).length > 0"
+                    :src="proxyImageUrl(collectImageCandidates(item.imageUrl)[0] || collectImageCandidates(item.images)[0] || collectImageCandidates(item.raw)[0])"
                     :alt="item.title"
                     class="h-full w-full object-cover"
-                    @error="markBrokenImage(item.imageUrl)"
+                    @error="markBrokenImage(collectImageCandidates(item.imageUrl)[0] || collectImageCandidates(item.images)[0] || collectImageCandidates(item.raw)[0])"
                   />
                   <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
                     <Package class="h-6 w-6" />
@@ -671,6 +671,9 @@ const galleryImages = computed(() => {
   if (Array.isArray(product.value?.images)) {
     sources.push(...collectImageCandidates(product.value.images).map((img) => proxyImageUrl(img)).filter(Boolean));
   }
+  if (product.value?.raw) {
+    sources.push(...collectImageCandidates(product.value.raw).map((img) => proxyImageUrl(img)).filter(Boolean));
+  }
   if (Array.isArray(product.value?.skus)) {
     for (const sku of product.value.skus) {
       sources.push(...collectImageCandidates(sku?.imageUrl).map((img) => proxyImageUrl(img)).filter(Boolean));
@@ -687,9 +690,12 @@ const showGalleryThumbs = computed(() => galleryImages.value.length > 1 || !!pro
 const activeMediaUrl = computed(() => {
   const selected = selectedImage.value && !brokenGalleryImages.value.includes(selectedImage.value) ? selectedImage.value : null;
   const primaryCandidate = collectImageCandidates(product.value?.imageUrl).map((img) => proxyImageUrl(img)).find((img) => !brokenGalleryImages.value.includes(img)) || '';
+  const rawCandidate = product.value?.raw
+    ? collectImageCandidates(product.value.raw).map((img) => proxyImageUrl(img)).find((img) => !brokenGalleryImages.value.includes(img)) || ''
+    : '';
   const primary = primaryCandidate && !brokenGalleryImages.value.includes(primaryCandidate)
     ? primaryCandidate
-    : null;
+    : rawCandidate || null;
   return selected || primary || galleryImages.value[0] || null;
 });
 
@@ -868,6 +874,7 @@ function markBrokenImage(img: string | null | undefined) {
   if (current && current === normalized) {
     const replacement = galleryImages.value.find((candidate) => !brokenGalleryImages.value.includes(candidate) && candidate !== normalized)
       || (product.value?.videoUrl ? proxyImageUrl(product.value.imageUrl) : null)
+      || (product.value?.raw ? proxyImageUrl(collectImageCandidates(product.value.raw)[0]) : null)
       || proxyImageUrl(product.value?.imageUrl)
       || null;
     selectedImage.value = replacement;
@@ -928,6 +935,7 @@ async function loadProduct() {
       await tryAutoplayVideo();
     } else {
       const initialImage = galleryImages.value.find((img) => !brokenGalleryImages.value.includes(img))
+        || (product.value?.raw ? proxyImageUrl(collectImageCandidates(product.value.raw)[0]) : null)
         || proxyImageUrl(product.value?.imageUrl)
         || null;
       selectedImage.value = initialImage;

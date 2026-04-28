@@ -140,6 +140,11 @@ function buildCategoryTree(rows: any[]) {
   return sortNodes(roots);
 }
 
+function hasDisplayablePrice(card: { priceMin?: number | null; priceMax?: number | null }): boolean {
+  const values = [card.priceMin, card.priceMax].filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+  return values.some((value) => value > 0);
+}
+
 export default async function publicShoppingRoutes(fastify: FastifyInstance) {
   const { getShoppingProviderKey } = await import('../modules/shopping/shopping.provider.js');
   const shoppingProvider = getShoppingProviderKey();
@@ -330,6 +335,9 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
           category: query.category,
           page: query.page,
           pageSize: query.pageSize,
+          minPrice: query.minPrice,
+          maxPrice: query.maxPrice,
+          minVolume: query.minVolume,
           sort: query.sort,
           language: query.language,
         }),
@@ -346,8 +354,8 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
           })
         : [];
       const mediaById = new Map<string, any>(localAssets.map((asset) => [asset.id, asset]));
-      const localCards = localProducts.map((product) => normalizeLocalProductCard(product, mediaById));
-      const otapiCards = otapiResults.items || [];
+      const localCards = localProducts.map((product) => normalizeLocalProductCard(product, mediaById)).filter(hasDisplayablePrice);
+      const otapiCards = (otapiResults.items || []).filter(hasDisplayablePrice);
       const merged = [...localCards, ...otapiCards];
       const pageSize = query.pageSize || 20;
       return {

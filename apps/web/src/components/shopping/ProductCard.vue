@@ -154,6 +154,7 @@ function pickBestImage(product: any): string {
   const sources = [
     ...collectImageCandidates(product?.imageUrl),
     ...collectImageCandidates(product?.images),
+    ...collectImageCandidates(product?.raw),
   ]
     .map((img) => String(img || '').trim())
     .filter(Boolean);
