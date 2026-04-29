@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen overflow-x-hidden bg-[linear-gradient(90deg,#f8fafc_0%,#ffffff_28%,#ffffff_100%)] text-slate-900 lg:pt-14">
+  <div class="min-h-screen overflow-x-hidden bg-[linear-gradient(90deg,#f8fafc_0%,#ffffff_28%,#ffffff_100%)] text-slate-900 lg:pt-16">
     <header class="sticky top-0 z-50 border-b border-slate-200 bg-white text-slate-900 shadow-sm backdrop-blur-xl lg:fixed lg:left-0 lg:right-0 lg:top-0">
       <div class="px-3 py-2 sm:px-4">
         <div class="flex items-center gap-3 md:grid md:h-14 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center">
@@ -220,7 +220,7 @@
     </header>
 
     <div class="grid w-full gap-0 lg:items-stretch">
-      <aside class="hidden overflow-hidden border-r border-slate-200 bg-white text-slate-900 shadow-[0_10px_28px_rgba(15,23,42,0.04)] lg:fixed lg:left-0 lg:top-[3.5rem] lg:z-40 lg:flex lg:h-[calc(100vh-3.5rem)] lg:w-[230px] lg:flex-col">
+      <aside class="hidden overflow-hidden border-r border-slate-200 bg-white text-slate-900 shadow-[0_10px_28px_rgba(15,23,42,0.04)] lg:fixed lg:left-0 lg:top-16 lg:z-40 lg:flex lg:h-[calc(100vh-4rem)] lg:w-[230px] lg:flex-col">
         <div class="flex h-full flex-col overflow-hidden">
           <div class="border-b border-slate-200 px-4 py-3">
             <div class="flex items-center justify-between gap-3">
