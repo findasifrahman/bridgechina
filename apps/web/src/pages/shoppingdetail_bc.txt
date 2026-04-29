@@ -193,7 +193,7 @@
           <div class="grid gap-3 xl:grid-cols-[minmax(0,0.86fr)_minmax(0,0.9fr)]">
             <section class="order-1 rounded-[22px] border border-slate-200 bg-white p-3 shadow-[0_16px_38px_rgba(15,23,42,0.05)] xl:order-none">
               <div class="flex flex-col gap-3 lg:flex-row">
-                <div v-if="showGalleryThumbs" class="hidden max-h-[640px] w-24 shrink-0 grid-cols-2 gap-1.5 overflow-y-auto overflow-x-hidden pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden lg:grid">
+                <div v-if="galleryThumbMode === 'rail'" class="hidden max-h-[640px] w-24 shrink-0 grid-cols-2 gap-1.5 overflow-y-auto overflow-x-hidden pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden lg:grid">
                   <button
                     v-if="product.videoUrl"
                     type="button"
@@ -244,9 +244,31 @@
                       <span class="rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold text-teal-700 shadow-sm">BDT</span>
                       <span class="rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold text-slate-700 shadow-sm">Factory direct</span>
                     </div>
-                </div>
+                  </div>
 
-                <div class="mt-3 hidden gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden lg:flex">
+                  <div v-if="galleryThumbMode === 'inline' && showGalleryThumbs" class="mt-3 hidden items-center justify-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden lg:flex">
+                    <button
+                      v-if="product.videoUrl"
+                      type="button"
+                      class="flex h-16 w-16 shrink-0 items-center justify-center rounded-[16px] border bg-slate-50 transition-all"
+                      :class="selectedImage === product.videoUrl ? 'border-teal-500 ring-2 ring-teal-100' : 'border-slate-200 hover:border-teal-300'"
+                      @click="selectVideo()"
+                    >
+                      <Play class="h-4 w-4 text-slate-600" />
+                    </button>
+                    <button
+                      v-for="(img, idx) in galleryImages"
+                      :key="img"
+                      type="button"
+                      class="h-16 w-16 shrink-0 overflow-hidden rounded-[16px] border border-slate-200 bg-slate-50 transition-all"
+                      :class="selectedImage === img ? 'border-teal-500 ring-2 ring-teal-100' : 'hover:border-teal-300'"
+                      @click="selectImage(img)"
+                    >
+                      <img :src="img" :alt="`${product.title} ${idx + 1}`" class="h-full w-full object-cover" @error="markBrokenImage(img)" />
+                    </button>
+                  </div>
+
+                <div v-if="galleryThumbMode === 'rail'" class="mt-3 hidden gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden lg:flex">
                   <button
                     v-for="img in galleryImages"
                     :key="img"
@@ -877,6 +899,11 @@ const galleryImages = computed(() => {
 });
 
 const showGalleryThumbs = computed(() => galleryImages.value.length > 1 || !!product.value?.videoUrl);
+const galleryThumbMode = computed(() => {
+  const count = galleryImages.value.length;
+  if (count <= 1 && !product.value?.videoUrl) return 'none';
+  return count <= 5 ? 'inline' : 'rail';
+});
 
 const activeMediaUrl = computed(() => {
   const selected = selectedImage.value && !brokenGalleryImages.value.includes(selectedImage.value) ? selectedImage.value : null;

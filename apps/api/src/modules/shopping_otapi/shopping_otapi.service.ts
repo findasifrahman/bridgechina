@@ -660,16 +660,27 @@ export async function searchByKeyword(
     const items = extractSearchItems(cached);
     const normalized = await applyMarkupToCards(normalizeOTAPIProductCards(items));
     const ranked = sortRankedCards(normalized, prepared, sort);
-    const framePosition = (page - 1) * pageSize;
-    const paged = ranked.slice(framePosition, framePosition + pageSize);
-    const totalCount = ranked.length;
-    const totalPages = Math.ceil(totalCount / pageSize);
-    const hasNextPage = page < totalPages;
-    const curatedCategorySlug = resolveCuratedCategorySlug(searchKeyword, opts?.category);
-    if (curatedCategorySlug) {
-      await persistCuratedHotItems(curatedCategorySlug, paged);
+    if (ranked.length > 0) {
+      const framePosition = (page - 1) * pageSize;
+      const paged = ranked.slice(framePosition, framePosition + pageSize);
+      const totalCount = ranked.length;
+      const totalPages = Math.ceil(totalCount / pageSize);
+      const hasNextPage = page < totalPages;
+      const curatedCategorySlug = resolveCuratedCategorySlug(searchKeyword, opts?.category);
+      if (curatedCategorySlug) {
+        await persistCuratedHotItems(curatedCategorySlug, paged);
+      }
+      return { items: paged, totalCount, page, pageSize, totalPages, hasNextPage };
     }
-    return { items: paged, totalCount, page, pageSize, totalPages, hasNextPage };
+
+    if (DEBUG_OTAPI) {
+      console.log('[OTAPI Service] searchByKeyword cached result empty, refetching live:', {
+        keyword: searchKeyword,
+        language,
+        sort,
+        category: opts?.category,
+      });
+    }
   }
 
   const framePosition = (page - 1) * pageSize;
@@ -888,7 +899,7 @@ export async function getItemDetail(externalId: string, language: string = 'en')
     fullInfo = await otapiClient.getItemFullInfo({
       itemId,
       language: lang,
-      blockList: ['Description', 'OriginalDescription', 'Vendor', 'DeliveryCosts'],
+      blockList: ['Description', 'OriginalDescription', 'Vendor', 'DeliveryCosts', 'ConfigurationDetails'],
     });
   } catch (error) {
     console.warn('[OTAPI Service] getItemDetail failed, returning cached/null fallback:', {

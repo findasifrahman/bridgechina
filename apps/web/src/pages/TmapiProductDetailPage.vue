@@ -49,7 +49,7 @@
             </div>
           </div>
 
-          <div class="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div class="mt-3 flex max-w-full flex-nowrap overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             <button
               v-for="img in galleryImages"
               :key="img"
@@ -121,8 +121,8 @@
               </span>
               <span class="text-[10px] text-slate-400">Pick color, size, quantity</span>
             </div>
-            <div v-if="product.skus && product.skus.length > 0" class="mt-2 max-h-[220px] divide-y divide-slate-100 overflow-auto">
-              <div v-for="(sku, idx) in product.skus" :key="idx" class="flex items-center gap-3 py-2.5">
+            <div v-if="hasVariantRows" class="mt-2 max-h-[220px] divide-y divide-slate-100 overflow-auto">
+              <div v-for="({ sku, idx, label }) in variantRows" :key="sku.specid || sku.skuid || idx" class="flex items-center gap-3 py-2.5">
                 <button
                   v-if="sku.imageUrl"
                   type="button"
@@ -131,14 +131,18 @@
                 >
                   <img
                     :src="proxyImageUrl(sku.imageUrl)"
-                    :alt="sku.props_names || sku.specid || `SKU ${idx + 1}`"
+                    :alt="label"
                     class="h-full w-full object-cover"
                     @error="markBrokenImage(sku.imageUrl)"
                   />
                 </button>
                 <div class="min-w-0 flex-1">
-                  <div class="truncate text-[11px] font-semibold text-slate-900">{{ sku.props_names || sku.specid || `SKU ${idx + 1}` }}</div>
-                  <div class="mt-1 text-[10px] text-slate-500">{{ formatPrice(sku.sale_price || sku.price || 0) }} · Stock {{ formatNumber(sku.stock || 0) }}</div>
+                  <div class="truncate text-[11px] font-semibold text-slate-900">{{ label }}</div>
+                  <div class="mt-1 text-[10px] text-slate-500">
+                    <span v-if="Number(sku.sale_price || sku.price || 0) > 0">{{ formatPrice(Number(sku.sale_price || sku.price || 0)) }}</span>
+                    <span v-else>Price on request</span>
+                    · Stock {{ formatNumber(sku.stock || 0) }}
+                  </div>
                 </div>
                 <div class="flex items-center gap-2">
                   <button
@@ -156,6 +160,21 @@
                     class="h-8 w-14 rounded-lg border border-slate-200 text-center text-[11px] focus:border-teal-400 focus:ring-2 focus:ring-teal-100"
                   />
                   <button type="button" class="flex h-8 w-8 items-center justify-center rounded-lg border border-teal-200 text-teal-700 hover:bg-teal-50" @click="updateSkuQuantity(sku, 1)">
+                    <Plus class="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div v-else class="mt-2 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-600">Quantity</label>
+                <div class="mt-1 flex items-center gap-2">
+                  <button type="button" @click="quantity = Math.max(1, quantity - 1)" class="flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 text-red-600 hover:bg-red-50">
+                    <Minus class="h-3.5 w-3.5" />
+                  </button>
+                  <Input v-model.number="quantity" type="number" :min="1" class="h-9 w-24 text-center text-[11px]" />
+                  <button type="button" @click="quantity++" class="flex h-9 w-9 items-center justify-center rounded-lg border border-teal-200 text-teal-700 hover:bg-teal-50">
                     <Plus class="h-3.5 w-3.5" />
                   </button>
                 </div>
@@ -184,6 +203,99 @@
                 WhatsApp
               </Button>
             </div>
+
+            <div class="mt-3 rounded-[18px] border border-slate-200 bg-slate-50 p-3">
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="tab in tabs"
+                  :key="tab.key"
+                  type="button"
+                  @click="activeTab = tab.key"
+                  :class="['rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors', activeTab === tab.key ? 'bg-teal-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100']"
+                >
+                  {{ tab.label }}
+                </button>
+              </div>
+
+              <div class="mt-3 space-y-2">
+                <div v-if="activeTab === 'spec'" class="rounded-[16px] border border-slate-200 bg-white p-3">
+                  <div class="border-b border-slate-200 pb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Specification</div>
+                  <div v-if="specRows.length > 0" class="divide-y divide-slate-100">
+                    <div v-for="row in specRows.slice(0, 8)" :key="row.label" class="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-3 py-2 text-[11px]">
+                      <div class="font-medium text-slate-500">{{ row.label }}</div>
+                      <div class="font-semibold text-slate-900">{{ row.value }}</div>
+                    </div>
+                  </div>
+                  <div v-else class="py-3 text-[11px] text-slate-500">No structured specification was returned by the provider.</div>
+                </div>
+
+                <div v-else-if="activeTab === 'overview'" class="rounded-[16px] border border-slate-200 bg-white p-3">
+                  <div class="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Overview</div>
+                  <div class="mt-3 space-y-2 text-[11px] text-slate-600">
+                    <div class="rounded-2xl bg-slate-50 px-3 py-2"><span class="font-semibold text-slate-800">Source:</span> Factory sourcing</div>
+                    <div class="rounded-2xl bg-slate-50 px-3 py-2"><span class="font-semibold text-slate-800">Support:</span> B2B concierge in China</div>
+                    <div v-if="product.totalSold" class="rounded-2xl bg-slate-50 px-3 py-2"><span class="font-semibold text-slate-800">Sold:</span> {{ formatNumber(product.totalSold) }}</div>
+                  </div>
+                </div>
+
+                <div v-else-if="activeTab === 'seller'" class="rounded-[16px] border border-slate-200 bg-white p-3">
+                  <div class="border-b border-slate-200 pb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Seller info</div>
+                  <div class="divide-y divide-slate-100">
+                    <div v-for="row in sellerRows.slice(0, 6)" :key="row.label" class="grid grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] gap-3 py-2 text-[11px]">
+                      <div class="font-medium text-slate-500">{{ row.label }}</div>
+                      <div class="font-semibold text-slate-900">{{ row.value }}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-else class="rounded-[16px] border border-slate-200 bg-white p-3">
+                  <div class="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Description</div>
+                  <div class="prose prose-sm mt-3 max-w-none text-[11px] leading-6 text-slate-700" v-html="organizedDescription" />
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-3 rounded-[20px] border border-slate-200 bg-white p-3 shadow-[0_16px_38px_rgba(15,23,42,0.05)]">
+              <div class="flex items-center justify-between gap-2">
+                <div>
+                  <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Suggestions</p>
+                  <h2 class="mt-1 text-[15px] font-black tracking-tight text-slate-950">Similar products</h2>
+                </div>
+                <button type="button" class="rounded-full border border-slate-200 px-3 py-1 text-[10px] font-semibold text-slate-600" @click="loadSimilarProducts">
+                  <RefreshCw class="inline-block h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              <div class="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  v-for="item in similarProducts.slice(0, 4)"
+                  :key="item.externalId"
+                  type="button"
+                  class="overflow-hidden rounded-[16px] border border-slate-200 bg-slate-50 text-left hover:border-teal-200 hover:bg-teal-50/60"
+                  @click="handleProductClick(item)"
+                >
+                  <div class="aspect-square bg-white">
+                    <img
+                      v-if="collectImageCandidates(item.imageUrl).length > 0 || collectImageCandidates(item.images).length > 0 || collectImageCandidates(item.raw).length > 0"
+                      :src="proxyImageUrl(collectImageCandidates(item.imageUrl)[0] || collectImageCandidates(item.images)[0] || collectImageCandidates(item.raw)[0])"
+                      :alt="item.title"
+                      class="h-full w-full object-cover"
+                      @error="markBrokenImage(collectImageCandidates(item.imageUrl)[0] || collectImageCandidates(item.images)[0] || collectImageCandidates(item.raw)[0])"
+                    />
+                    <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
+                      <Package class="h-6 w-6" />
+                    </div>
+                  </div>
+                  <div class="p-2">
+                    <p class="line-clamp-2 text-[11px] font-semibold leading-5 text-slate-900">{{ item.title }}</p>
+                    <div class="mt-1 text-[10px] font-bold text-teal-700">
+                      <span v-if="item.priceMin">{{ formatPrice(item.priceMin) }}</span>
+                      <span v-else>BDT on request</span>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
           </div>
         </section>
       </div>
@@ -192,105 +304,58 @@
         <div class="min-w-0 space-y-3">
           <div class="grid gap-3 xl:grid-cols-[minmax(0,0.86fr)_minmax(0,0.9fr)]">
             <section class="order-1 rounded-[22px] border border-slate-200 bg-white p-3 shadow-[0_16px_38px_rgba(15,23,42,0.05)] xl:order-none">
-              <div class="flex flex-col gap-3 lg:flex-row">
-                <div v-if="galleryThumbMode === 'rail'" class="hidden max-h-[640px] w-24 shrink-0 grid-cols-2 gap-1.5 overflow-y-auto overflow-x-hidden pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden lg:grid">
+              <div class="min-w-0 w-full">
+                <div class="group relative h-[42vh] w-full max-w-full overflow-hidden rounded-[20px] bg-slate-100 sm:h-auto sm:aspect-[0.94/1]" @click="openFullscreen(activeMediaUrl)">
+                  <video
+                    v-if="showVideo"
+                    ref="videoRef"
+                    :src="product.videoUrl"
+                    :autoplay="videoMode === 'auto'"
+                    :muted="videoMode === 'auto'"
+                    playsinline
+                    loop
+                    controls
+                    class="h-full w-full max-w-full object-contain object-center"
+                    @click.stop
+                  />
+                  <img
+                    v-else-if="activeMediaUrl"
+                    :src="activeMediaUrl"
+                    :alt="product.title"
+                    class="h-full w-full max-w-full object-contain object-center"
+                    @error="markBrokenImage(activeMediaUrl)"
+                  />
+                  <div v-else class="flex h-full items-center justify-center text-slate-400">
+                    <Package class="h-24 w-24" />
+                  </div>
+
+                  <div class="absolute left-3 top-3 flex flex-wrap gap-2">
+                    <span class="rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold text-teal-700 shadow-sm">BDT</span>
+                    <span class="rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold text-slate-700 shadow-sm">Factory direct</span>
+                  </div>
+                </div>
+
+                <div v-if="showGalleryThumbs" class="mt-3 flex max-w-full flex-nowrap overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden" :class="desktopThumbTrackClass">
                   <button
                     v-if="product.videoUrl"
                     type="button"
-                    class="flex aspect-square items-center justify-center rounded-[14px] border bg-slate-50 transition-all"
-                    :class="selectedImage === product.videoUrl ? 'border-teal-500 ring-2 ring-teal-100' : 'border-slate-200 hover:border-teal-300'"
+                    class="shrink-0 overflow-hidden rounded-[16px] border bg-slate-50 transition-all"
+                    :class="[desktopThumbButtonClass, selectedImage === product.videoUrl ? 'border-teal-500 ring-2 ring-teal-100' : 'border-slate-200 hover:border-teal-300']"
                     @click="selectVideo()"
                   >
                     <Play class="h-4 w-4 text-slate-600" />
                   </button>
                   <button
                     v-for="(img, idx) in galleryImages"
-                    :key="idx"
+                    :key="`${img}-${idx}`"
                     type="button"
-                    class="aspect-square overflow-hidden rounded-[14px] border bg-slate-50 transition-all"
-                    :class="selectedImage === img ? 'border-teal-500 ring-2 ring-teal-100' : 'border-slate-200 hover:border-teal-300'"
+                    class="shrink-0 overflow-hidden rounded-[16px] border border-slate-200 bg-slate-50 transition-all"
+                    :class="[desktopThumbButtonClass, selectedImage === img ? 'border-teal-500 ring-2 ring-teal-100' : 'hover:border-teal-300']"
                     @click="selectImage(img)"
                   >
                     <img :src="img" :alt="`${product.title} ${idx + 1}`" class="h-full w-full object-cover" @error="markBrokenImage(img)" />
                   </button>
                 </div>
-
-                <div class="min-w-0 flex-1 w-full">
-                  <div class="group relative h-[42vh] w-full max-w-full overflow-hidden rounded-[20px] bg-slate-100 sm:h-auto sm:aspect-[0.94/1]" @click="openFullscreen(activeMediaUrl)">
-                    <video
-                      v-if="showVideo"
-                      ref="videoRef"
-                      :src="product.videoUrl"
-                      :autoplay="videoMode === 'auto'"
-                      :muted="videoMode === 'auto'"
-                      playsinline
-                      loop
-                      controls
-                      class="h-full w-full max-w-full object-contain object-center"
-                      @click.stop
-                    />
-                    <img
-                      v-else-if="activeMediaUrl"
-                      :src="activeMediaUrl"
-                      :alt="product.title"
-                      class="h-full w-full max-w-full object-contain object-center"
-                      @error="markBrokenImage(activeMediaUrl)"
-                    />
-                    <div v-else class="flex h-full items-center justify-center text-slate-400">
-                      <Package class="h-24 w-24" />
-                    </div>
-
-                    <div class="absolute left-3 top-3 flex flex-wrap gap-2">
-                      <span class="rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold text-teal-700 shadow-sm">BDT</span>
-                      <span class="rounded-full bg-white/90 px-3 py-1 text-[10px] font-bold text-slate-700 shadow-sm">Factory direct</span>
-                    </div>
-                  </div>
-
-                  <div v-if="galleryThumbMode === 'inline' && showGalleryThumbs" class="mt-3 hidden items-center justify-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden lg:flex">
-                    <button
-                      v-if="product.videoUrl"
-                      type="button"
-                      class="flex h-16 w-16 shrink-0 items-center justify-center rounded-[16px] border bg-slate-50 transition-all"
-                      :class="selectedImage === product.videoUrl ? 'border-teal-500 ring-2 ring-teal-100' : 'border-slate-200 hover:border-teal-300'"
-                      @click="selectVideo()"
-                    >
-                      <Play class="h-4 w-4 text-slate-600" />
-                    </button>
-                    <button
-                      v-for="(img, idx) in galleryImages"
-                      :key="img"
-                      type="button"
-                      class="h-16 w-16 shrink-0 overflow-hidden rounded-[16px] border border-slate-200 bg-slate-50 transition-all"
-                      :class="selectedImage === img ? 'border-teal-500 ring-2 ring-teal-100' : 'hover:border-teal-300'"
-                      @click="selectImage(img)"
-                    >
-                      <img :src="img" :alt="`${product.title} ${idx + 1}`" class="h-full w-full object-cover" @error="markBrokenImage(img)" />
-                    </button>
-                  </div>
-
-                <div v-if="galleryThumbMode === 'rail'" class="mt-3 hidden gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden lg:flex">
-                  <button
-                    v-for="img in galleryImages"
-                    :key="img"
-                    type="button"
-                    class="h-14 w-14 shrink-0 overflow-hidden rounded-[14px] border border-slate-200 bg-slate-50"
-                    @click="selectImage(img)"
-                  >
-                    <img :src="img" :alt="product.title" class="h-full w-full object-cover" @error="markBrokenImage(img)" />
-                  </button>
-                </div>
-                <div class="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden lg:hidden">
-                  <button
-                    v-for="img in galleryImages"
-                    :key="img"
-                    type="button"
-                    class="h-12 w-12 shrink-0 overflow-hidden rounded-[14px] border border-slate-200 bg-slate-50"
-                    @click="selectImage(img)"
-                  >
-                    <img :src="img" :alt="product.title" class="h-full w-full object-cover" @error="markBrokenImage(img)" />
-                  </button>
-                </div>
-              </div>
               </div>
 
               <div v-if="product.shippingInfo" class="mt-4 hidden rounded-[18px] border border-slate-200 bg-gradient-to-r from-teal-50 to-amber-50 p-3.5 sm:block">
@@ -389,7 +454,7 @@
               </div>
 
               <div class="mt-3.5">
-                <div v-if="product.skus && product.skus.length > 0" class="rounded-[18px] border border-slate-200">
+                <div v-if="hasVariantRows" class="rounded-[18px] border border-slate-200">
                   <div class="flex items-center justify-between border-b border-slate-200 px-3 py-2">
                     <div class="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
                       <Package class="h-4 w-4 text-slate-500" />
@@ -398,7 +463,7 @@
                     <div class="text-[10px] text-slate-400">Pick color, size, quantity</div>
                   </div>
                   <div class="max-h-[260px] divide-y divide-slate-100 overflow-auto">
-                    <div v-for="(sku, idx) in product.skus" :key="idx" class="flex items-center gap-3 px-3 py-2.5">
+                    <div v-for="({ sku, idx, label }) in variantRows" :key="sku.specid || sku.skuid || idx" class="flex items-center gap-3 px-3 py-2.5">
                       <button
                         v-if="sku.imageUrl"
                         type="button"
@@ -407,14 +472,18 @@
                       >
                         <img
                           :src="proxyImageUrl(sku.imageUrl)"
-                          :alt="sku.props_names || sku.specid || `SKU ${idx + 1}`"
+                          :alt="label"
                           class="h-full w-full object-cover"
                           @error="markBrokenImage(sku.imageUrl)"
                         />
                       </button>
                       <div class="min-w-0 flex-1">
-                        <div class="truncate text-[11px] font-semibold text-slate-900">{{ sku.props_names || sku.specid || `SKU ${idx + 1}` }}</div>
-                        <div class="mt-1 text-[10px] text-slate-500">{{ formatPrice(sku.sale_price || sku.price || 0) }} · Stock {{ formatNumber(sku.stock || 0) }}</div>
+                        <div class="truncate text-[11px] font-semibold text-slate-900">{{ label }}</div>
+                        <div class="mt-1 text-[10px] text-slate-500">
+                          <span v-if="Number(sku.sale_price || sku.price || 0) > 0">{{ formatPrice(Number(sku.sale_price || sku.price || 0)) }}</span>
+                          <span v-else>Price on request</span>
+                          · Stock {{ formatNumber(sku.stock || 0) }}
+                        </div>
                       </div>
                       <div class="flex items-center gap-2">
                         <button
@@ -493,7 +562,7 @@
             </section>
           </div>
 
-          <section class="rounded-[20px] border border-slate-200 bg-slate-50 p-3">
+          <section class="hidden rounded-[20px] border border-slate-200 bg-slate-50 p-3">
             <div class="flex flex-wrap gap-2">
               <button
                 v-for="tab in tabs"
@@ -589,6 +658,121 @@
               </div>
             </div>
           </section>
+
+          <section class="rounded-[20px] border border-slate-200 bg-slate-50 p-3">
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="tab in tabs"
+                :key="tab.key"
+                type="button"
+                @click="activeTab = tab.key"
+                :class="['rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors', activeTab === tab.key ? 'bg-teal-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100']"
+              >
+                {{ tab.label }}
+              </button>
+            </div>
+
+            <div class="mt-3">
+              <div v-if="activeTab === 'spec'" class="space-y-2">
+                <div class="rounded-[16px] border border-slate-200 bg-white p-3">
+                  <div class="border-b border-slate-200 pb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Specification</div>
+                  <div v-if="specRows.length > 0" class="divide-y divide-slate-100">
+                    <div v-for="row in specRows" :key="row.label" class="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-3 py-2 text-[11px]">
+                      <div class="font-medium text-slate-500">{{ row.label }}</div>
+                      <div class="font-semibold text-slate-900">{{ row.value }}</div>
+                    </div>
+                  </div>
+                  <div v-else class="py-3 text-[11px] text-slate-500">No structured specification was returned by the provider.</div>
+                </div>
+              </div>
+
+              <div v-else-if="activeTab === 'overview'" class="space-y-2">
+                <div class="rounded-[16px] border border-slate-200 bg-white p-3">
+                  <div class="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Overview</div>
+                  <div class="mt-3 space-y-2 text-[11px] text-slate-600">
+                    <div class="rounded-2xl bg-slate-50 px-3 py-2"><span class="font-semibold text-slate-800">Source:</span> Factory sourcing</div>
+                    <div class="rounded-2xl bg-slate-50 px-3 py-2"><span class="font-semibold text-slate-800">Support:</span> B2B concierge in China</div>
+                    <div v-if="product.totalSold" class="rounded-2xl bg-slate-50 px-3 py-2"><span class="font-semibold text-slate-800">Sold:</span> {{ formatNumber(product.totalSold) }}</div>
+                  </div>
+                </div>
+                <div class="rounded-[16px] border border-slate-200 bg-white p-3">
+                  <div class="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Highlights</div>
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    <Badge v-for="tag in product.serviceTags || []" :key="tag" variant="success" class="text-[10px]">{{ tag }}</Badge>
+                    <span v-if="!product.serviceTags || product.serviceTags.length === 0" class="text-[11px] text-slate-500">No extra tags provided.</span>
+                  </div>
+                </div>
+              </div>
+
+              <div v-else-if="activeTab === 'seller'" class="space-y-2">
+                <div class="rounded-[16px] border border-slate-200 bg-white p-3">
+                  <div class="border-b border-slate-200 pb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Seller info</div>
+                  <div class="divide-y divide-slate-100">
+                    <div v-for="row in sellerRows" :key="row.label" class="grid grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] gap-3 py-2 text-[11px]">
+                      <div class="font-medium text-slate-500">{{ row.label }}</div>
+                      <div class="font-semibold text-slate-900">{{ row.value }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-else class="space-y-2">
+                <div class="rounded-[16px] border border-slate-200 bg-white p-3">
+                  <div class="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Description</div>
+                  <div class="prose prose-sm mt-3 max-w-none text-[11px] leading-6 text-slate-700" v-html="organizedDescription" />
+                </div>
+                <div class="rounded-[16px] border border-slate-200 bg-white p-3">
+                  <div class="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Overview</div>
+                  <div class="mt-3 grid gap-2">
+                    <div class="rounded-2xl bg-slate-50 px-3 py-2"><span class="font-semibold text-slate-800">Source:</span> Factory sourcing</div>
+                    <div class="rounded-2xl bg-slate-50 px-3 py-2"><span class="font-semibold text-slate-800">Support:</span> B2B concierge in China</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="hidden rounded-[20px] border border-slate-200 bg-white p-3 shadow-[0_16px_38px_rgba(15,23,42,0.05)]">
+            <div class="flex items-center justify-between gap-2">
+              <div>
+                <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Suggestions</p>
+                <h2 class="mt-1 text-[15px] font-black tracking-tight text-slate-950">Similar products</h2>
+              </div>
+              <button type="button" class="rounded-full border border-slate-200 px-3 py-1 text-[10px] font-semibold text-slate-600" @click="loadSimilarProducts">
+                <RefreshCw class="inline-block h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <div class="mt-3 grid grid-cols-2 gap-2">
+              <button
+                v-for="item in similarProducts.slice(0, 4)"
+                :key="item.externalId"
+                type="button"
+                class="overflow-hidden rounded-[16px] border border-slate-200 bg-slate-50 text-left hover:border-teal-200 hover:bg-teal-50/60"
+                @click="handleProductClick(item)"
+              >
+                <div class="aspect-square bg-white">
+                  <img
+                    v-if="collectImageCandidates(item.imageUrl).length > 0 || collectImageCandidates(item.images).length > 0 || collectImageCandidates(item.raw).length > 0"
+                    :src="proxyImageUrl(collectImageCandidates(item.imageUrl)[0] || collectImageCandidates(item.images)[0] || collectImageCandidates(item.raw)[0])"
+                    :alt="item.title"
+                    class="h-full w-full object-cover"
+                    @error="markBrokenImage(collectImageCandidates(item.imageUrl)[0] || collectImageCandidates(item.images)[0] || collectImageCandidates(item.raw)[0])"
+                  />
+                  <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
+                    <Package class="h-6 w-6" />
+                  </div>
+                </div>
+                <div class="p-2">
+                  <p class="line-clamp-2 text-[11px] font-semibold leading-5 text-slate-900">{{ item.title }}</p>
+                  <div class="mt-1 text-[10px] font-bold text-teal-700">
+                    <span v-if="item.priceMin">{{ formatPrice(item.priceMin) }}</span>
+                    <span v-else>BDT on request</span>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </section>
           </div>
 
         <!-- Suggestions -->
@@ -597,7 +781,7 @@
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Purchase</p>
-                <h2 class="mt-1 text-[15px] font-black tracking-tight text-red-500">Shipping and checkout</h2>
+                <h2 class="mt-1 text-[15px] font-black tracking-tight text-red-500">Local Shipping</h2>
               </div>
               <button type="button" class="rounded-full border border-slate-200 px-3 py-1 text-[10px] font-semibold text-slate-600" @click="$router.push('/contact')">
                 Contact
@@ -856,26 +1040,182 @@ function proxyImageUrl(url: string | null | undefined): string {
   return text;
 }
 
-function collectImageCandidates(input: any): string[] {
-  if (!input) return [];
-  if (typeof input === 'string') return [input];
-  if (Array.isArray(input)) return input.flatMap((item) => collectImageCandidates(item));
-  if (typeof input !== 'object') return [];
+function canonicalizeImageKey(url: string | null | undefined): string {
+  const text = String(url || '').trim();
+  if (!text) return '';
+  if (text.startsWith('data:image/')) return text;
 
-  const keys = ['imageUrl', 'image_url', 'publicUrl', 'public_url', 'thumbnail_url', 'thumbnailUrl', 'url', 'src', 'mainImage', 'mainImageUrl'];
-  const values: string[] = [];
-  for (const key of keys) {
-    if (key in input) values.push(...collectImageCandidates(input[key]));
+  const proxyPrefix = '/api/public/image-proxy?url=';
+  if (text.startsWith(proxyPrefix)) {
+    try {
+      const decoded = decodeURIComponent(text.slice(proxyPrefix.length));
+      return canonicalizeImageKey(decoded);
+    } catch {
+      return text;
+    }
   }
-  return values;
+
+  try {
+    const parsed = new URL(text, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
+    return `${parsed.hostname.toLowerCase()}${parsed.pathname}`.replace(/\/+$/, '').toLowerCase();
+  } catch {
+    return text.split('#')[0].split('?')[0].trim().toLowerCase();
+  }
+}
+
+function collectImageCandidates(input: any): string[] {
+  const values: string[] = [];
+  const seen = new Set<any>();
+  const imageKeyPatterns = ['image', 'picture', 'photo', 'thumb', 'preview', 'gallery', 'main', 'url', 'src'];
+
+  const walk = (node: any, keyHint = '') => {
+    if (node === null || node === undefined) return;
+    if (typeof node === 'string') {
+      const text = node.trim();
+      if (text && (isRenderableImageUrl(text) || text.startsWith('/api/public/image-proxy?url='))) {
+        values.push(text);
+      }
+      return;
+    }
+    if (typeof node !== 'object') return;
+    if (seen.has(node)) return;
+    seen.add(node);
+
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item, keyHint);
+      return;
+    }
+
+    for (const [key, value] of Object.entries(node)) {
+      const keyLower = String(key || '').toLowerCase();
+      const nextHint = keyLower || keyHint;
+      if (typeof value === 'string') {
+        const text = value.trim();
+        const shouldCollect =
+          imageKeyPatterns.some((needle) => keyLower.includes(needle)) ||
+          isRenderableImageUrl(text) ||
+          text.startsWith('/api/public/image-proxy?url=');
+        if (shouldCollect) values.push(text);
+        continue;
+      }
+      if (Array.isArray(value) || (value && typeof value === 'object')) {
+        walk(value, nextHint);
+      }
+    }
+  };
+
+  walk(input);
+  return values.filter(Boolean);
 }
 
 function dedupeRenderableImages(urls: string[]): string[] {
-  return Array.from(new Set(
-    urls
-      .map((img) => proxyImageUrl(img))
-      .filter((img) => img && isRenderableImageUrl(img) && !brokenGalleryImages.value.includes(img))
-  ));
+  const deduped = new Map<string, string>();
+  for (const original of urls) {
+    const renderable = proxyImageUrl(original);
+    if (!renderable || !isRenderableImageUrl(renderable) || brokenGalleryImages.value.includes(renderable)) continue;
+    const key = canonicalizeImageKey(original) || canonicalizeImageKey(renderable);
+    if (!key) continue;
+    if (!deduped.has(key)) deduped.set(key, renderable);
+  }
+  return Array.from(deduped.values());
+}
+
+function isMeaningfulVariantLabelText(text: string): boolean {
+  const value = String(text || '').trim();
+  if (!value) return false;
+  if (/^variant\s*\d+$/i.test(value)) return false;
+  if (/^sku-\d+$/i.test(value)) return false;
+  if (/^(cny|rmb|usd|bdt|yuan|yen|money|￥|¥|\$|元)(\s*\/\s*(cny|rmb|usd|bdt|yuan|yen|money|￥|¥|\$|元))?$/i.test(value)) return false;
+  if (/^[\s\/\-_.]*(cny|rmb|usd|bdt|yuan|yen|money|price|rating|stock|sold|currency|qty|quantity|order|offer|amount|score|salesinlast30days|encrypted_vendor_id|salenum|normalizedrating|userid|vendorid)[\s\/\-_.]*$/i.test(value)) return false;
+  if (/\b(price|rating|stock|sold|currency|qty|quantity|order|offer|amount|score|salesinlast30days|encrypted_vendor_id|salenum|normalizedrating|userid|vendorid)\b/i.test(value)) return false;
+  if (!/[a-zA-Z\u4e00-\u9fff]/.test(value)) return false;
+  return true;
+}
+
+function getVariantLabel(sku: any, index: number): string {
+  const directCandidates = [
+    sku?.props_names,
+    sku?.PropsNames,
+    sku?.props,
+    sku?.Props,
+    sku?.name,
+    sku?.Name,
+    sku?.title,
+    sku?.Title,
+    sku?.label,
+    sku?.Label,
+    sku?.variantName,
+    sku?.VariantName,
+    sku?.optionName,
+    sku?.OptionName,
+    sku?.specName,
+    sku?.SpecName,
+    sku?.color,
+    sku?.Color,
+    sku?.size,
+    sku?.Size,
+    sku?.material,
+    sku?.Material,
+    sku?.style,
+    sku?.Style,
+    sku?.pattern,
+    sku?.Pattern,
+  ];
+  for (const candidate of directCandidates) {
+    const text = String(candidate || '').trim();
+    if (isMeaningfulVariantLabelText(text)) {
+      return text;
+    }
+  }
+
+  const configSources = [
+    sku?.ConfigurationDetails,
+    sku?.configurationDetails,
+    sku?.Configuration,
+    sku?.configuration,
+    sku?.Config,
+    sku?.config,
+    sku?.Properties,
+    sku?.properties,
+    sku?.Attrs,
+    sku?.attrs,
+    sku?.Variants,
+    sku?.variants,
+  ];
+
+  const seen = new Set<string>();
+  const labels: string[] = [];
+  const collect = (node: any, keyHint = '') => {
+    if (node === null || node === undefined) return;
+    if (typeof node === 'string') {
+      const text = node.trim();
+      if (isMeaningfulVariantLabelText(text) && !seen.has(text)) {
+        seen.add(text);
+        labels.push(text);
+      }
+      return;
+    }
+    if (typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      for (const entry of node) collect(entry, keyHint);
+      return;
+    }
+    for (const [key, value] of Object.entries(node)) {
+      const keyLower = String(key || '').toLowerCase();
+      const looksLabelish = /name|label|title|value|text|option|variant|color|size|material|style|pattern|property|attr|config/i.test(keyLower || keyHint);
+      if (typeof value === 'string' && looksLabelish) {
+        collect(value, keyLower);
+        continue;
+      }
+      if (Array.isArray(value) || (value && typeof value === 'object')) {
+        collect(value, keyLower);
+      }
+    }
+  };
+
+  for (const source of configSources) collect(source);
+  if (labels.length > 0) return Array.from(new Set(labels)).join(' / ');
+  return `Variant ${index + 1}`;
 }
 
 const galleryImages = computed(() => {
@@ -898,12 +1238,22 @@ const galleryImages = computed(() => {
   return dedupeRenderableImages(sources);
 });
 
+const variantRows = computed(() => {
+  const skus = Array.isArray(product.value?.skus) ? product.value.skus : [];
+  return skus
+    .map((sku: any, idx: number) => ({ sku, idx, label: getVariantLabel(sku, idx) }))
+    .filter((row) => isMeaningfulVariantLabelText(row.label));
+});
+
+const hasVariantRows = computed(() => variantRows.value.length > 0);
 const showGalleryThumbs = computed(() => galleryImages.value.length > 1 || !!product.value?.videoUrl);
 const galleryThumbMode = computed(() => {
   const count = galleryImages.value.length;
   if (count <= 1 && !product.value?.videoUrl) return 'none';
   return count <= 5 ? 'inline' : 'rail';
 });
+const desktopThumbButtonClass = computed(() => (galleryImages.value.length <= 7 ? 'h-20 w-20' : 'h-14 w-14'));
+const desktopThumbTrackClass = computed(() => (galleryImages.value.length <= 7 ? 'justify-center gap-3 mx-auto w-fit' : 'justify-start gap-2 min-w-max'));
 
 const activeMediaUrl = computed(() => {
   const selected = selectedImage.value && !brokenGalleryImages.value.includes(selectedImage.value) ? selectedImage.value : null;
@@ -960,7 +1310,7 @@ const estimatedAirShippingRangeLabel = computed(() => {
 });
 
 const totalQuantity = computed(() => {
-  if (product.value?.skus && Object.keys(selectedSkus.value).length > 0) {
+  if (hasVariantRows.value && Object.keys(selectedSkus.value).length > 0) {
     const total = Object.values(selectedSkus.value).reduce((sum, qty) => sum + qty, 0);
     return total > 0 ? total : quantity.value;
   }
@@ -1190,14 +1540,14 @@ async function loadProduct() {
 }
 
 function buildSkuDetails() {
-  if (!product.value?.skus || Object.keys(selectedSkus.value).length === 0) {
+  if (!hasVariantRows.value || Object.keys(selectedSkus.value).length === 0) {
     return undefined;
   }
 
   const skuDetails: any[] = [];
   for (const [specId, qty] of Object.entries(selectedSkus.value)) {
     if (qty <= 0) continue;
-    const sku = product.value.skus.find((s: any) => (s.specid || s.skuid) === specId);
+    const sku = variantRows.value.find((row) => (row.sku.specid || row.sku.skuid) === specId)?.sku;
     if (sku) skuDetails.push({ specId, qty, sku });
   }
   return skuDetails.length > 0 ? skuDetails : undefined;
@@ -1226,11 +1576,11 @@ function addToCart() {
   }
 
   let skuDetails: any[] | undefined;
-  if (product.value.skus && Object.keys(selectedSkus.value).length > 0) {
+  if (hasVariantRows.value && Object.keys(selectedSkus.value).length > 0) {
     skuDetails = [];
     for (const [specId, qty] of Object.entries(selectedSkus.value)) {
       if (qty <= 0) continue;
-      const sku = product.value.skus.find((s: any) => (s.specid || s.skuid) === specId);
+      const sku = variantRows.value.find((row) => (row.sku.specid || row.sku.skuid) === specId)?.sku;
       if (sku) skuDetails.push({ specId, qty, sku });
     }
   }

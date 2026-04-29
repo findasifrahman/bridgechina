@@ -1,4 +1,4 @@
-import { getProxiedImageUrl } from '../shopping/shopping.normalize.js';
+﻿import { getProxiedImageUrl } from '../shopping/shopping.normalize.js';
 
 export interface ProductCardOTAPI {
   source: 'shopping_otapi';
@@ -257,6 +257,166 @@ function normalizeSkuImage(sku: any): string | undefined {
   return image;
 }
 
+function isMeaningfulVariantLabel(value: unknown): boolean {
+  const text = normalizeString(value);
+  if (!text) return false;
+  if (/^sku-\d+$/i.test(text)) return false;
+  if (/^(variant|option)\s*\d+$/i.test(text)) return false;
+  if (/^(cny|rmb|usd|bdt|yuan|yen|money|￥|¥|\$|元)(\s*\/\s*(cny|rmb|usd|bdt|yuan|yen|money|￥|¥|\$|元))?$/i.test(text)) return false;
+  if (/^[\s\/\-_.]*(cny|rmb|usd|bdt|yuan|yen|money|price|rating|stock|sold|currency|qty|quantity|order|offer|amount|score)[\s\/\-_.]*$/i.test(text)) return false;
+  if (/\b(price|rating|stock|sold|currency|qty|quantity|order|offer|amount|score)\b/i.test(text)) return false;
+  return true;
+}
+
+function collectVariantLabelParts(input: any): string[] {
+  const parts: string[] = [];
+  const seen = new Set<any>();
+  const labelKeys = [
+    'props_names',
+    'PropsNames',
+    'props',
+    'Props',
+    'name',
+    'Name',
+    'title',
+    'Title',
+    'label',
+    'Label',
+    'option',
+    'Option',
+    'optionName',
+    'OptionName',
+    'variant',
+    'Variant',
+    'variantName',
+    'VariantName',
+    'spec',
+    'Spec',
+    'specname',
+    'SpecName',
+    'color',
+    'Color',
+    'size',
+    'Size',
+    'material',
+    'Material',
+    'style',
+    'Style',
+    'pattern',
+    'Pattern',
+    'text',
+    'Text',
+  ];
+  const ignoreKeys = [
+    'currency',
+    'price',
+    'rating',
+    'stock',
+    'sold',
+    'volume',
+    'qty',
+    'quantity',
+    'order',
+    'image',
+    'picture',
+    'photo',
+    'url',
+    'link',
+    'weight',
+    'seller',
+    'vendor',
+    'brand',
+    'description',
+    'content',
+    'title',
+    'name',
+  ];
+
+  const walk = (node: any, keyHint = '') => {
+    if (node === null || node === undefined) return;
+    if (typeof node === 'string') {
+      if (isMeaningfulVariantLabel(node)) parts.push(node.trim());
+      return;
+    }
+    if (typeof node !== 'object') return;
+    if (seen.has(node)) return;
+    seen.add(node);
+
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item, keyHint);
+      return;
+    }
+
+    for (const [key, value] of Object.entries(node)) {
+      const keyLower = String(key || '').toLowerCase();
+      if (ignoreKeys.some((needle) => keyLower.includes(needle))) {
+        if (keyLower === 'name' || keyLower === 'title' || keyLower === 'label' || keyLower === 'value' || keyLower === 'text' || keyLower.includes('option') || keyLower.includes('variant') || keyLower.includes('color') || keyLower.includes('size') || keyLower.includes('material') || keyLower.includes('style') || keyLower.includes('pattern')) {
+          // allow likely label-bearing fields even if they may contain generic words
+        } else {
+          continue;
+        }
+      }
+      const shouldInspect =
+        labelKeys.some((needle) => keyLower.includes(needle.toLowerCase())) ||
+        keyLower.includes('property') ||
+        keyLower.includes('attr') ||
+        keyLower.includes('option') ||
+        keyLower.includes('variant') ||
+        keyLower.includes('config');
+
+      if (shouldInspect) {
+        if (typeof value === 'string') {
+          if (isMeaningfulVariantLabel(value)) parts.push(value.trim());
+          continue;
+        }
+        if (Array.isArray(value)) {
+          for (const entry of value) walk(entry, keyLower);
+          continue;
+        }
+        if (value && typeof value === 'object') {
+          walk(value, keyLower);
+          continue;
+        }
+      }
+
+      if (keyHint && /name|label|title|value|text|option|variant|color|size|material|style|pattern/i.test(keyHint) && typeof value === 'string') {
+        if (isMeaningfulVariantLabel(value)) parts.push(value.trim());
+      } else {
+        walk(value, keyLower);
+      }
+    }
+  };
+
+  walk(input);
+  return Array.from(new Set(parts.filter(Boolean)));
+}
+
+function extractVariantLabel(sku: any, index: number): string {
+  const direct =
+    normalizeString(sku?.props_names || sku?.PropsNames || sku?.props || sku?.Props || sku?.name || sku?.Name || sku?.title || sku?.Title || sku?.label || sku?.Label) ||
+    '';
+  if (isMeaningfulVariantLabel(direct)) return direct;
+
+  const fromConfig =
+    collectVariantLabelParts(
+      sku?.ConfigurationDetails ||
+      sku?.configurationDetails ||
+      sku?.Configuration ||
+      sku?.configuration ||
+      sku?.Config ||
+      sku?.config ||
+      sku?.Properties ||
+      sku?.properties ||
+      sku?.Attrs ||
+      sku?.attrs ||
+      sku?.Variants ||
+      sku?.variants
+    ).join(' / ');
+  if (isMeaningfulVariantLabel(fromConfig)) return fromConfig;
+
+  return `Variant ${index + 1}`;
+}
+
 function extractVideoUrl(item: any): string | undefined {
   const seen = new Set<any>();
   const urlPattern = /(https?:\/\/[^\s"'<>]+?\.(?:mp4|webm|mov|m4v|m3u8)(?:\?[^\s"'<>]*)?)/i;
@@ -306,11 +466,15 @@ function extractVideoUrl(item: any): string | undefined {
 function normalizeSkus(itemFullInfo: any): any[] | undefined {
   const candidates: any[] = [];
   const seen = new Set<any>();
+  const configKeyPattern = /(configurationdetails|configuration|config|variant|variants|option|options|attr|attrs|property|properties|sku|skus)/i;
 
   const isSkuLike = (obj: any) => {
     if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
     const keys = Object.keys(obj).map((key) => key.toLowerCase());
-    return keys.some((key) => ['specid', 'skuid', 'sku', 'saleprice', 'price', 'stock', 'quantity', 'props', 'name', 'image'].some((needle) => key.includes(needle)));
+    const hasCoreField = keys.some((key) => ['specid', 'skuid', 'sku', 'saleprice', 'price', 'stock', 'quantity', 'id'].some((needle) => key.includes(needle)));
+    const hasOptionField = keys.some((key) => ['props', 'name', 'title', 'label', 'option', 'variant', 'color', 'size', 'material', 'style', 'pattern', 'value', 'text'].some((needle) => key.includes(needle)));
+    const looksLikeMetaNoise = keys.some((key) => ['salesinlast30days', 'encrypted_vendor_id', 'salenum', 'normalizedrating', 'currency', 'vendorname', 'sellername'].some((needle) => key.includes(needle)));
+    return hasCoreField && hasOptionField && !looksLikeMetaNoise;
   };
 
   const walk = (node: any, keyHint = '') => {
@@ -320,7 +484,7 @@ function normalizeSkus(itemFullInfo: any): any[] | undefined {
     seen.add(node);
 
     if (Array.isArray(node)) {
-      if (node.length > 0 && node.every((item) => isSkuLike(item))) {
+      if (configKeyPattern.test(keyHint) && node.length > 0 && node.every((item) => isSkuLike(item))) {
         candidates.push(...node);
       } else {
         for (const item of node) walk(item, keyHint);
@@ -330,7 +494,7 @@ function normalizeSkus(itemFullInfo: any): any[] | undefined {
 
     for (const [key, value] of Object.entries(node)) {
       const keyLower = String(key || '').toLowerCase();
-      if (Array.isArray(value) && (keyLower.includes('sku') || keyLower.includes('config') || keyLower.includes('spec') || keyLower.includes('variant'))) {
+      if (Array.isArray(value) && configKeyPattern.test(keyLower)) {
         if (value.every((item) => isSkuLike(item))) {
           candidates.push(...value);
           continue;
@@ -355,9 +519,7 @@ function normalizeSkus(itemFullInfo: any): any[] | undefined {
       toNumber(sku?.Quantity) ??
       toNumber(sku?.quantity);
     const specid = normalizeString(sku?.specid || sku?.SpecId || sku?.SkuId || sku?.skuId || sku?.id || sku?.Id || `sku-${index}`);
-    const props_names =
-      normalizeString(sku?.props_names || sku?.PropsNames || sku?.props || sku?.Props || sku?.name || sku?.Name || sku?.title || sku?.Title) ||
-      specid;
+    const props_names = extractVariantLabel(sku, index);
 
     return {
       ...sku,
@@ -610,3 +772,4 @@ export function normalizeOTAPIProductDetail(itemFullInfo: any, descriptionData?:
 
   return detail;
 }
+
