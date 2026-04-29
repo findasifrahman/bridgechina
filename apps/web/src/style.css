@@ -3,9 +3,23 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+    color-scheme: light;
+  }
+
   body {
-    @apply bg-slate-50 text-slate-900;
+    @apply text-slate-900;
+    background:
+      radial-gradient(circle at top left, rgba(220, 38, 38, 0.08), transparent 32%),
+      radial-gradient(circle at top right, rgba(13, 148, 136, 0.08), transparent 30%),
+      linear-gradient(180deg, #fff8f6 0%, #fffdfa 26%, #ffffff 100%);
     font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  ::selection {
+    background: rgba(13, 148, 136, 0.22);
+    color: #0f172a;
   }
   
   /* Ensure headings use dark neutral-900 for better contrast */

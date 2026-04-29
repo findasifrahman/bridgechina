@@ -7,13 +7,13 @@
           <div class="relative grid items-start lg:grid-cols-[minmax(0,1.22fr)_minmax(0,0.88fr)]">
             <div class="px-4 py-3 sm:px-5 lg:px-6 lg:py-3">
               <div class="flex flex-wrap items-center gap-2">
-                <span class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">Premium shopping</span>
+                <span class="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-semibold text-rose-600">Premium shopping</span>
                 <span class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold text-slate-600">Factory direct</span>
                 <span class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold text-slate-600">Bangladesh support</span>
               </div>
 
               <div class="mt-3 max-w-3xl">
-                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-teal-700">ChinaBuyBD Marketplace</p>
+                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-600">ChinaBuyBD Marketplace</p>
                 <p class="mt-2 max-w-5xl text-[12px] leading-5 text-slate-600 sm:text-[13px]">
                   Search by product name or image, compare price, add cart and shipping address , upload payment document, Recieve product and pay shipment fee once reached to your destination.
                 </p>
@@ -38,14 +38,14 @@
                       <button
                         type="button"
                         @click.stop="fileInput?.click()"
-                        class="mr-1 inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-teal-50 hover:text-teal-700"
+                        class="mr-1 inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-700"
                         :title="selectedImage ? 'Change image' : 'Search by image'"
                       >
                         <Camera class="h-4 w-4" />
                       </button>
                     </div>
 
-                    <div v-if="selectedImage" class="mt-3 flex items-center gap-3 rounded-2xl border border-teal-100 bg-teal-50/70 px-3 py-2">
+              <div v-if="selectedImage" class="mt-3 flex items-center gap-3 rounded-2xl border border-rose-100 bg-rose-50/70 px-3 py-2">
                       <img :src="imagePreview" alt="Preview" class="h-11 w-11 rounded-xl object-cover" />
                       <div class="min-w-0 flex-1">
                         <p class="truncate text-[12px] font-semibold text-slate-900">{{ selectedImage.name }}</p>
@@ -87,8 +87,8 @@
                   :class="[
                     'rounded-full border px-4 py-2 text-[11px] font-semibold transition-all',
                     selectedCurrency === curr
-                      ? 'border-teal-600 bg-teal-600 text-white shadow-[0_8px_22px_rgba(13,148,136,0.18)]'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-teal-200 hover:text-teal-700'
+                      ? 'border-rose-600 bg-rose-600 text-white shadow-[0_8px_22px_rgba(225,29,72,0.18)]'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-rose-200 hover:text-rose-700'
                   ]"
                 >
                   {{ curr }}
@@ -143,7 +143,7 @@
                     <div class="flex flex-col items-end gap-2">
                       <button
                         type="button"
-                        class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold text-slate-600 hover:border-teal-200 hover:text-teal-700"
+                class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold text-slate-600 hover:border-rose-200 hover:text-rose-700"
                         @click.stop="openBannerModal(currentHeroSlide)"
                       >
                         View details
@@ -201,7 +201,7 @@
                       <p class="line-clamp-2 text-[11px] font-semibold leading-4 text-slate-900">{{ item.title }}</p>
                       <div class="mt-1 flex items-center justify-between gap-2">
                         <span class="text-[11px] font-black text-rose-500">{{ formatPrice(item.priceMin ?? item.priceMax ?? 0) }}</span>
-                        <span class="rounded-full bg-teal-50 px-2 py-0.5 text-[9px] font-semibold text-teal-700">MOQ {{ item.minimumOrderQty || shoppingSettings.moqRule?.minimum_product || 3 }}</span>
+                <span class="rounded-full bg-rose-50 px-2 py-0.5 text-[9px] font-semibold text-rose-600">MOQ {{ item.minimumOrderQty || shoppingSettings.moqRule?.minimum_product || 3 }}</span>
                       </div>
                     </div>
                   </button>
@@ -212,9 +212,9 @@
           <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)] sm:p-5">
             <div class="flex items-start justify-between gap-4">
               <div>
-                <h2 class="mt-1 text-[17px] font-black tracking-tight text-red-400">Premium factory products (ChinaBuyBD Commitment)</h2>
+                <h2 class="mt-1 text-[17px] font-black tracking-tight text-rose-500">Premium factory products (ChinaBuyBD Commitment)</h2>
               </div>
-              <span class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">Top 4 highlighted</span>
+              <span class="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-semibold text-rose-600">Top 4 highlighted</span>
             </div>
 
             <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -222,7 +222,7 @@
                 v-for="product in premiumProducts"
                 :key="product.id"
                 type="button"
-                class="overflow-hidden rounded-[22px] border border-slate-200 bg-slate-50 text-left transition-all hover:-translate-y-0.5 hover:border-teal-200 hover:bg-white hover:shadow-[0_14px_32px_rgba(15,23,42,0.08)]"
+                class="overflow-hidden rounded-[22px] border border-slate-200 bg-slate-50 text-left transition-all hover:-translate-y-0.5 hover:border-rose-200 hover:bg-white hover:shadow-[0_14px_32px_rgba(15,23,42,0.08)]"
                 @click="handleProductClick(product)"
               >
                 <div class="aspect-[4/3] bg-slate-100">
@@ -240,7 +240,7 @@
                   <p class="line-clamp-2 text-[12px] font-semibold leading-5 text-slate-900">{{ product.title }}</p>
                   <div class="mt-2 flex items-center justify-between gap-2">
                     <span class="text-[13px] font-black text-rose-500">{{ formatPrice(product.priceMin ?? product.priceMax ?? 0) }}</span>
-                    <span class="rounded-full bg-teal-50 px-2.5 py-1 text-[10px] font-semibold text-teal-700">
+                <span class="rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-600">
                       MOQ {{ product.minimumOrderQty || shoppingSettings.moqRule?.minimum_product || 3 }}
                     </span>
                   </div>
@@ -254,10 +254,10 @@
           <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)] sm:p-5">
             <div class="flex items-center justify-between gap-4">
               <div>
-                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-400">How it works</p>
-                <h2 class="mt-1 text-[17px] font-black tracking-tight text-slate-950">Four steps from search to shipment</h2>
+                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-400">How it works</p>
+                <h2 class="mt-1 text-[17px] font-black tracking-tight text-rose-600">Four steps from search to shipment</h2>
               </div>
-              <span class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">B2B service from China</span>
+              <span class="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-semibold text-rose-600">B2B service from China</span>
             </div>
 
             <div class="mt-4 grid gap-3 lg:grid-cols-4">
@@ -265,28 +265,28 @@
                 <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-600 text-white">
                   <Package class="h-5 w-5" />
                 </div>
-                <h3 class="mt-3 text-[13px] font-black text-red-500">Choose product</h3>
+                <h3 class="mt-3 text-[13px] font-black text-rose-500">Choose product</h3>
                 <p class="mt-1 text-[11px] leading-5 text-slate-500">Browse categories and discover factory listings that fit your business needs.</p>
               </div>
               <div class="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
                 <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-600 text-white">
                   <Search class="h-5 w-5" />
                 </div>
-                <h3 class="mt-3 text-[13px] font-black text-green-500">Search by text or image</h3>
+                <h3 class="mt-3 text-[13px] font-black text-rose-500">Search by text or image</h3>
                 <p class="mt-1 text-[11px] leading-5 text-slate-500">Type a keyword or upload a photo to find the closest match fast.</p>
               </div>
               <div class="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
                 <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500 text-white">
                   <ShoppingCart class="h-5 w-5" />
                 </div>
-                <h3 class="mt-3 text-[13px] font-black text-red-500">Click product and checkout</h3>
+                <h3 class="mt-3 text-[13px] font-black text-rose-500">Click product and checkout</h3>
                 <p class="mt-1 text-[11px] leading-5 text-slate-500">Review the detail page, confirm quantity, and add items to checkout.</p>
               </div>
               <div class="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
                 <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-600 text-white">
                   <Truck class="h-5 w-5" />
                 </div>
-                <h3 class="mt-3 text-[13px] font-black text-blue-500">Payment and shipment</h3>
+                <h3 class="mt-3 text-[13px] font-black text-rose-500">Payment and shipment</h3>
                   <p class="mt-1 text-[11px] leading-5 text-slate-500">Confirm payment, then get shipment in 12-14 days. Contact us in China for B2B help.</p>
               </div>
             </div>
@@ -297,12 +297,12 @@
           <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)] sm:p-5">
             <div class="flex items-start justify-between gap-4">
               <div>
-                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-400">Curated categories</p>
-                <h2 class="mt-1 text-[17px] font-black tracking-tight text-slate-950">iPhone, bags, jewelry, and kitchenware</h2>
+                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-400">Curated categories</p>
+                <h2 class="mt-1 text-[17px] font-black tracking-tight text-rose-600">iPhone, bags, jewelry, and kitchenware</h2>
               </div>
               <button
                 type="button"
-                class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-semibold text-slate-700 transition-colors hover:border-teal-200 hover:text-teal-700"
+                class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-semibold text-rose-700 transition-colors hover:border-rose-200 hover:text-rose-700"
                 @click="loadCuratedSections"
               >
                 <RefreshCw class="h-4 w-4" />
@@ -318,10 +318,10 @@
               >
                 <div class="flex items-center justify-between gap-3">
                   <div>
-                    <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">{{ section.label }}</p>
-                    <p class="mt-1 text-[12px] font-semibold text-slate-700">Premium Items</p>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-rose-400">{{ section.label }}</p>
+                    <p class="mt-1 text-[12px] font-semibold text-rose-700">Premium Items</p>
                   </div>
-                  <span class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">Platform backed</span>
+                  <span class="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-semibold text-rose-600">Platform backed</span>
                 </div>
 
                 <div class="mt-3 grid grid-cols-2 gap-2">
@@ -347,7 +347,7 @@
                       <p class="line-clamp-2 text-[11px] font-semibold leading-4 text-slate-900">{{ item.title }}</p>
                       <div class="mt-1 flex items-center justify-between gap-2">
                         <span class="text-[11px] font-black text-rose-500">{{ formatPrice(item.priceMin ?? item.priceMax ?? 0) }}</span>
-                        <span class="rounded-full bg-teal-50 px-2 py-0.5 text-[9px] font-semibold text-teal-700">ID</span>
+                <span class="rounded-full bg-rose-50 px-2 py-0.5 text-[9px] font-semibold text-rose-600">ID</span>
                       </div>
                     </div>
                   </button>
@@ -369,12 +369,12 @@
           <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)] sm:p-5">
             <div class="flex items-center justify-between gap-3">
               <div>
-                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-400">Recent searches</p>
-                <h2 class="mt-1 text-[16px] font-black tracking-tight text-slate-950">Pick up where you left off</h2>
+                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-400">Recent searches</p>
+                <h2 class="mt-1 text-[16px] font-black tracking-tight text-rose-600">Pick up where you left off</h2>
               </div>
               <button
                 type="button"
-                class="text-[11px] font-semibold text-teal-700 hover:text-teal-800"
+                class="text-[11px] font-semibold text-rose-700 hover:text-rose-800"
                 @click="loadRecentSearches"
               >
                 Refresh
@@ -386,7 +386,7 @@
                 :key="keyword"
                 type="button"
                 @click="handleRecentSearchClick(keyword)"
-                class="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-medium text-slate-700 transition-colors hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                class="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-[11px] font-medium text-slate-700 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
               >
                 {{ keyword }}
               </button>
@@ -403,7 +403,7 @@
                 <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-400">Offers</p>
                 <h3 class="mt-1 text-[16px] font-black text-slate-950">Featured deals</h3>
               </div>
-              <span class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">
+              <span class="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-semibold text-rose-600">
                 {{ offers.length > 0 ? `${offers.length} live` : 'No live offers' }}
               </span>
             </div>
@@ -418,7 +418,7 @@
                 :key="offer.id"
                 type="button"
                 @click="handleOfferClick(offer)"
-                class="group w-full overflow-hidden rounded-[22px] border border-slate-200 bg-slate-50 text-left transition-all hover:-translate-y-0.5 hover:border-teal-200 hover:bg-white hover:shadow-[0_14px_32px_rgba(15,23,42,0.08)]"
+                class="group w-full overflow-hidden rounded-[22px] border border-slate-200 bg-slate-50 text-left transition-all hover:-translate-y-0.5 hover:border-rose-200 hover:bg-white hover:shadow-[0_14px_32px_rgba(15,23,42,0.08)]"
               >
                 <div v-if="offer.coverAsset?.public_url || offer.coverAsset?.thumbnail_url" class="aspect-[16/10] bg-slate-100">
                   <img
@@ -428,7 +428,7 @@
                   />
                 </div>
                 <div v-else class="flex h-24 items-center justify-center bg-gradient-to-br from-teal-100 to-cyan-100">
-                  <div class="flex flex-col items-center gap-1 text-teal-600">
+                  <div class="flex flex-col items-center gap-1 text-rose-600">
                     <Sparkles class="h-7 w-7" />
                     <span class="text-[10px] font-semibold uppercase tracking-[0.22em]">Featured deal</span>
                   </div>
@@ -451,14 +451,14 @@
             <div class="mt-4 space-y-3">
               <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                 <div class="flex items-center justify-between">
-                  <span class="text-[12px] font-semibold text-green-500">Air shipping</span>
+                <span class="text-[12px] font-semibold text-rose-500">Air shipping</span>
                   <span class="text-[11px] text-slate-500">12-14 days</span>
                 </div>
                 <p class="mt-1 text-[11px] text-slate-600">{{ shippingRateItems.air }}</p>
               </div>
               <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                 <div class="flex items-center justify-between">
-                  <span class="text-[12px] font-semibold text-red-500">Sea shipping</span>
+                <span class="text-[12px] font-semibold text-rose-500">Sea shipping</span>
                   <span class="text-[11px] text-slate-500">12-14 days</span>
                 </div>
                 <p class="mt-1 text-[11px] text-slate-600">{{ shippingRateItems.sea }}</p>
@@ -477,18 +477,18 @@
 
           <!---->
           <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)]">
-            <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-blue-500">Order Process</p>
+              <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-500">Order Process</p>
             <div class="mt-4 space-y-3">
               <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                 <div class="flex items-center justify-between">
-                  <span class="text-[12px] font-semibold text-green-500">Choose Product</span>
+                <span class="text-[12px] font-semibold text-rose-500">Choose Product</span>
                   <span class="text-[11px] text-slate-500">Search</span>
                 </div>
                 <p class="mt-1 text-[11px] text-slate-600">Search Keyword or by image<</p>
               </div>
               <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
                 <div class="flex items-center justify-between">
-                  <span class="text-[12px] font-semibold text-red-500">Add To Cart</span>
+                <span class="text-[12px] font-semibold text-rose-500">Add To Cart</span>
                   <span class="text-[11px] text-slate-500">Quantity</span>
                 </div>
                 <p class="mt-1 text-[11px] text-slate-600">Select MOQ and add</p>
@@ -505,7 +505,7 @@
 
               <div class="rounded-2xl border border-dashed border-amber-200 bg-amber-50/70 p-3">
                 <div class="flex items-center justify-between">
-                  <span class="text-[12px] font-semibold text-red-500">Upload Payment Proof</span>
+                <span class="text-[12px] font-semibold text-rose-500">Upload Payment Proof</span>
                   <span class="text-[11px] text-slate-500">Payment </span>
                 </div>
                 <p class="mt-1 text-[11px] text-slate-600">
@@ -515,7 +515,7 @@
               
               <div class="rounded-2xl border border-dashed border-amber-200 bg-amber-50/70 p-3">
                 <div class="flex items-center justify-between">
-                  <span class="text-[12px] font-semibold text-blue-500">Shipment arrive in 14 days</span>
+                <span class="text-[12px] font-semibold text-rose-500">Shipment arrive in 14 days</span>
                   <span class="text-[11px] text-slate-500">Shipping </span>
                 </div>
                 <p class="mt-1 text-[11px] text-slate-600">
