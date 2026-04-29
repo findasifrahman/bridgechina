@@ -315,6 +315,8 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
     try {
       const query = searchByKeywordSchema.parse(request.query);
       let categoryKeyword: string | undefined;
+      let categoryTrailKeyword: string | undefined;
+      let categoryLeafKeyword: string | undefined;
       if (query.category && !query.keyword) {
         const categoryNode = await prisma.productCategory.findFirst({
           where: { slug: query.category, is_active: true },
@@ -342,7 +344,9 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
           categoryNode?.name,
         ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
 
-        categoryKeyword = Array.from(new Set(categoryTrail)).join(' ').trim() || undefined;
+        categoryLeafKeyword = categoryNode?.name?.trim() || undefined;
+        categoryTrailKeyword = Array.from(new Set(categoryTrail)).join(' ').trim() || undefined;
+        categoryKeyword = categoryLeafKeyword || categoryTrailKeyword || undefined;
       }
       const localWhere: any = {
         status: 'published',
@@ -384,6 +388,12 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
           minVolume: query.minVolume,
           sort: query.sort,
           language: query.language,
+          categoryOnly: !query.keyword && !!query.category,
+          debugContext: query.keyword
+            ? `search:${query.keyword}:${query.category || 'no-category'}`
+            : query.category
+              ? `category:${query.category}${categoryLeafKeyword ? ` leaf:${categoryLeafKeyword}` : ''}${categoryTrailKeyword && categoryTrailKeyword !== categoryLeafKeyword ? ` trail:${categoryTrailKeyword}` : ''}`
+              : 'search:empty',
         }),
       ]);
 

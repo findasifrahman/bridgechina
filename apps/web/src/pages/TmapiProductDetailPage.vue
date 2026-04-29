@@ -111,6 +111,17 @@
                 Weight unknown - agent will confirm
               </div>
             </div>
+
+            <div v-if="otapiSummaryBlocks.length > 0" class="mt-3 grid gap-2 sm:grid-cols-2">
+              <div
+                v-for="block in otapiSummaryBlocks"
+                :key="block.label"
+                class="rounded-[16px] border border-slate-200 bg-white px-3 py-2 text-[11px] leading-5 text-slate-600 shadow-[0_10px_20px_rgba(15,23,42,0.03)]"
+              >
+                <div class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">{{ block.label }}</div>
+                <div class="mt-1 font-semibold text-slate-800">{{ block.value }}</div>
+              </div>
+            </div>
           </div>
 
           <div class="mt-3.5 rounded-[18px] border border-slate-200 bg-white p-3">
@@ -439,6 +450,17 @@
                   <div v-if="product.totalSold" class="rounded-[16px] border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
                     <span class="font-semibold text-slate-800">Sold:</span>
                     {{ formatNumber(product.totalSold) }}
+                  </div>
+                </div>
+
+                <div v-if="otapiSummaryBlocks.length > 0" class="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div
+                    v-for="block in otapiSummaryBlocks"
+                    :key="block.label"
+                    class="rounded-[16px] border border-slate-200 bg-white px-3 py-2 text-[11px] leading-5 text-slate-600 shadow-[0_10px_20px_rgba(15,23,42,0.03)]"
+                  >
+                    <div class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">{{ block.label }}</div>
+                    <div class="mt-1 font-semibold text-slate-800">{{ block.value }}</div>
                   </div>
                 </div>
 
@@ -1005,6 +1027,94 @@ const shippingRateSummary = computed(() => {
   return parts.join(' · ');
 });
 
+function humanizeKey(key: string): string {
+  return String(key || '')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^./, (char) => char.toUpperCase());
+}
+
+function formatNumberish(value: any): string {
+  if (value === null || value === undefined || value === '') return '-';
+  const numeric = Number(value);
+  if (Number.isFinite(numeric)) {
+    return numeric.toLocaleString('en-US', { maximumFractionDigits: 4 });
+  }
+  return String(value);
+}
+
+function formatPriceBlock(value: any): string {
+  if (!value || typeof value !== 'object') return '';
+  const parts: string[] = [];
+  const original = value?.OriginalPrice ?? value?.originalPrice;
+  const margin = value?.MarginPrice ?? value?.marginPrice;
+  const currency = value?.OriginalCurrencyCode ?? value?.originalCurrencyCode ?? 'CNY';
+  const internal = value?.ConvertedPriceList?.Internal;
+  const displayed = Array.isArray(value?.ConvertedPriceList?.DisplayedMoneys) ? value.ConvertedPriceList.DisplayedMoneys[0] : null;
+
+  if (original !== undefined) parts.push(`Original ${currency} ${formatNumberish(original)}`);
+  if (margin !== undefined) parts.push(`Margin ${currency} ${formatNumberish(margin)}`);
+  if (internal?.Price !== undefined) parts.push(`Internal ${internal.Code || 'USD'} ${formatNumberish(internal.Price)}`);
+  if (displayed?.Price !== undefined) parts.push(`Displayed ${displayed.Code || currency} ${formatNumberish(displayed.Price)}`);
+
+  return parts.join(' · ');
+}
+
+function isUsefulFeaturedName(name: string): boolean {
+  const lower = String(name || '').trim().toLowerCase();
+  if (!lower) return false;
+  if (['encrypted_vendor_id', 'userid', 'vendorid', 'sendaddresscode', 'locationcode', 'locationdivisioncode'].some((needle) => lower.includes(needle))) return false;
+  return [
+    'goodrates',
+    'rating',
+    'salesinlast30days',
+    'salenum',
+    'payorder30day',
+    'reviews',
+    'unit',
+    'isskuoffer',
+    'totalsales',
+    'normalizedrating',
+  ].some((needle) => lower.includes(needle));
+}
+
+const otapiSummaryBlocks = computed(() => {
+  const blocks: Array<{ label: string; value: string }> = [];
+  const features = Array.isArray(product.value?.features) ? product.value.features.filter(Boolean) : [];
+  const featuredValues = Array.isArray(product.value?.featuredValues) ? product.value.featuredValues : [];
+  const physicalParameters = product.value?.physicalParameters && typeof product.value.physicalParameters === 'object' ? product.value.physicalParameters : null;
+
+  const oneItemPrice = formatPriceBlock(product.value?.oneItemPriceWithoutDelivery);
+  if (oneItemPrice) {
+    blocks.push({ label: 'One item price without delivery', value: oneItemPrice });
+  }
+
+  if (features.length > 0) {
+    blocks.push({ label: 'Features', value: features.join(', ') });
+  }
+
+  const featuredRows = featuredValues
+    .filter((entry: any) => entry && isUsefulFeaturedName(String(entry?.Name ?? entry?.name ?? '')))
+    .slice(0, 6)
+    .map((entry: any) => ({
+      label: humanizeKey(String(entry?.Name ?? entry?.name ?? 'Feature')),
+      value: formatNumberish(entry?.Value ?? entry?.value),
+    }));
+
+  blocks.push(...featuredRows);
+
+  if (physicalParameters) {
+    for (const [key, value] of Object.entries(physicalParameters).slice(0, 6)) {
+      if (value === null || value === undefined || value === '') continue;
+      blocks.push({ label: `Physical ${humanizeKey(key)}`, value: formatNumberish(value) });
+    }
+  }
+
+  return blocks;
+});
+
 function isRenderableImageUrl(url: string): boolean {
   const text = String(url || '').trim();
   if (!text) return false;
@@ -1336,6 +1446,28 @@ const specRows = computed(() => {
   if (product.value?.priceMin) {
     rows.unshift({ label: 'Price', value: formatPrice(product.value.priceMin) });
   }
+  if (product.value?.oneItemPriceWithoutDelivery) {
+    rows.push({
+      label: 'One item price without delivery',
+      value: formatPriceBlock(product.value.oneItemPriceWithoutDelivery) || 'Available',
+    });
+  }
+  if (Array.isArray(product.value?.features) && product.value.features.length > 0) {
+    rows.push({ label: 'Features', value: product.value.features.join(', ') });
+  }
+  if (Array.isArray(product.value?.featuredValues)) {
+    for (const entry of product.value.featuredValues) {
+      const name = String(entry?.Name ?? entry?.name ?? '').trim();
+      if (!isUsefulFeaturedName(name)) continue;
+      rows.push({ label: humanizeKey(name), value: formatNumberish(entry?.Value ?? entry?.value) });
+    }
+  }
+  if (product.value?.physicalParameters && typeof product.value.physicalParameters === 'object') {
+    for (const [key, value] of Object.entries(product.value.physicalParameters)) {
+      if (value === null || value === undefined || value === '') continue;
+      rows.push({ label: `Physical ${humanizeKey(key)}`, value: formatNumberish(value) });
+    }
+  }
   return rows;
 });
 
@@ -1344,6 +1476,8 @@ const sellerRows = computed(() => {
   if (product.value?.sellerName) rows.push({ label: 'Seller', value: String(product.value.sellerName) });
   if (product.value?.sellerTitle) rows.push({ label: 'Title', value: String(product.value.sellerTitle) });
   if (product.value?.sourceUrl) rows.push({ label: 'Source URL', value: String(product.value.sourceUrl) });
+  if (product.value?.vendorScore !== undefined) rows.push({ label: 'Vendor score', value: String(product.value.vendorScore) });
+  if (product.value?.masterQuantity !== undefined) rows.push({ label: 'Master quantity', value: formatNumber(Number(product.value.masterQuantity)) });
 
   const sellerInfo = product.value?.sellerInfo;
   if (sellerInfo && typeof sellerInfo === 'object') {

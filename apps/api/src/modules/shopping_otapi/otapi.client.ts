@@ -14,6 +14,31 @@ const OTAPI_TIMEOUT_MS = Number(process.env.OTAPI_TIMEOUT_MS || 60000);
 
 const DEBUG_OTAPI = process.env.DEBUG_OTAPI === '1' || process.env.DEBUG_OTAPI === 'true';
 
+function safeJson(value: any): string {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function summarizeOtapiDebugItem(item: any) {
+  if (!item || typeof item !== 'object') {
+    return { missing: true, type: typeof item };
+  }
+
+  return {
+    id: item?.Id ?? item?.ItemId ?? item?.ItemID,
+    title: item?.Title ?? item?.ItemTitle ?? item?.Name,
+    price: item?.Price ?? null,
+    features: item?.Features ?? null,
+    featuredValues: item?.FeaturedValues ?? null,
+    physicalParameters: item?.PhysicalParameters ?? null,
+    masterQuantity: item?.MasterQuantity ?? item?.masterQuantity ?? item?.MasterQty ?? null,
+    vendorScore: item?.VendorScore ?? item?.Vendor?.Score ?? item?.Vendor?.VendorScore ?? null,
+  };
+}
+
 console.log('[OTAPI Client] Initialized:', {
   baseURL: OTAPI_BASE_URL,
   hasToken: !!OTAPI_RAPID_TOKEN,
@@ -54,6 +79,9 @@ class OTAPIClient {
     this.client.interceptors.response.use(
       (res) => {
         if (DEBUG_OTAPI) {
+          const itemsContainer = res.data?.Result?.Items;
+          const items = itemsContainer?.Items?.Content || itemsContainer?.Items || itemsContainer?.Item || [];
+          const sampleItems = Array.isArray(items) ? items.slice(0, 3) : [];
           console.log('[OTAPI Client] Response:', {
             method: res.config.method,
             url: res.config.url,
@@ -61,6 +89,13 @@ class OTAPIClient {
             hasData: res.data !== undefined,
             topLevelKeys: res.data && typeof res.data === 'object' ? Object.keys(res.data).slice(0, 25) : undefined,
           });
+          console.log(
+            '[OTAPI Client] OTAPI items summary:',
+            safeJson({
+              totalCount: itemsContainer?.Items?.TotalCount ?? itemsContainer?.TotalCount ?? res.data?.TotalCount,
+              sample: sampleItems.map(summarizeOtapiDebugItem),
+            })
+          );
         }
         return res;
       },

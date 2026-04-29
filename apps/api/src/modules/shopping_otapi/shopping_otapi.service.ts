@@ -239,6 +239,56 @@ function scoreSearchCard(card: ProductCardOTAPI, spec: ReturnType<typeof buildSe
   return score;
 }
 
+function debugScoreSearchCard(card: ProductCardOTAPI, spec: ReturnType<typeof buildSearchKeywordSpec>) {
+  const title = normalizeSearchText(card.title || '');
+  const titleCompact = title.replace(/\s+/g, '');
+  const matchedHints: string[] = [];
+  const matchedTokens: string[] = [];
+  const missedTokens: string[] = [];
+  let score = 0;
+
+  for (const hint of spec.relevanceHint) {
+    if (!hint) continue;
+    const normalizedHint = normalizeSearchText(hint);
+    const compactHint = normalizedHint.replace(/\s+/g, '');
+    let hit = false;
+    if (normalizedHint && title.includes(normalizedHint)) {
+      score += 250;
+      hit = true;
+    }
+    if (compactHint && titleCompact.includes(compactHint)) {
+      score += 180;
+      hit = true;
+    }
+    if (hit) matchedHints.push(hint);
+  }
+
+  for (const token of spec.tokens) {
+    if (!token) continue;
+    if (title.includes(token)) {
+      score += token.length >= 5 ? 80 : 30;
+      matchedTokens.push(token);
+    } else {
+      score -= token.length >= 5 ? 20 : 8;
+      missedTokens.push(token);
+    }
+  }
+
+  return {
+    externalId: card.externalId,
+    title: card.title,
+    score,
+    matchedHints,
+    matchedTokens,
+    missedTokens,
+    priceMin: card.priceMin,
+    priceMax: card.priceMax,
+    hasDisplayablePrice: hasDisplayablePrice(card),
+    vendorScore: card.vendorScore,
+    masterQuantity: card.masterQuantity,
+  };
+}
+
 function sortRankedCards(
   cards: ProductCardOTAPI[],
   spec: ReturnType<typeof buildSearchKeywordSpec>,
@@ -285,6 +335,33 @@ function buildCachedSearchResponse(cards: ProductCardOTAPI[]): any {
         },
       },
     },
+  };
+}
+
+function debugOtapiItemSummary(item: any) {
+  return {
+    id: item?.Id ?? item?.ItemId ?? item?.ItemID,
+    title: item?.Title ?? item?.ItemTitle ?? item?.Name,
+    //price: item?.Price,
+    //features: item?.Features,
+    //featuredValues: item?.FeaturedValues,
+    //physicalParameters: item?.PhysicalParameters,
+    //masterQuantity: item?.MasterQuantity ?? item?.masterQuantity ?? item?.MasterQty,
+    //vendorScore: item?.VendorScore ?? item?.Vendor?.Score ?? item?.Vendor?.VendorScore,
+  };
+}
+
+function debugOtapiCardSummary(card: ProductCardOTAPI) {
+  return {
+    externalId: card.externalId,
+    title: card.title,
+    priceMin: card.priceMin,
+    priceMax: card.priceMax,
+    hasDisplayablePrice: hasDisplayablePrice(card),
+    imageUrl: card.imageUrl,
+    totalSold: card.totalSold,
+    masterQuantity: card.masterQuantity,
+    vendorScore: card.vendorScore,
   };
 }
 
@@ -632,11 +709,13 @@ export async function searchByKeyword(
     minPrice?: number;
     maxPrice?: number;
     minVolume?: number;
+    debugContext?: string;
+    categoryOnly?: boolean;
   }
 ): Promise<SearchResult> {
   const baseKeyword = keyword?.trim() || opts?.category || 'products';
   const prepared = buildSearchKeywordSpec(baseKeyword);
-  prepared.categoryOnly = !keyword?.trim() && !!opts?.category;
+  prepared.categoryOnly = opts?.categoryOnly ?? (!keyword?.trim() && !!opts?.category);
   const searchKeyword = prepared.keyword || baseKeyword;
   const languageOfQuery = prepared.languageOfQuery;
   const language = normalizeOtapiLanguage(opts?.language || 'en');
@@ -687,6 +766,9 @@ export async function searchByKeyword(
   const fetchSize = Math.min(Math.max(pageSize * 8, 120), 200);
   if (DEBUG_OTAPI) {
     console.log('[OTAPI Service] searchByKeyword request:', {
+      debugContext: opts?.debugContext || 'search',
+      baseKeyword,
+      searchKeyword,
       keyword: searchKeyword,
       languageOfQuery,
       language,
@@ -695,6 +777,8 @@ export async function searchByKeyword(
       fetchSize,
       framePosition,
       orderBy: mapSortToOrderBy(sort),
+      categoryOnly: prepared.categoryOnly,
+      category: opts?.category,
     });
   }
   let response: any;
@@ -723,8 +807,36 @@ export async function searchByKeyword(
   }
 
   const items = extractSearchItems(response);
-  const normalized = await applyMarkupToCards(normalizeOTAPIProductCards(items));
-  const ranked = sortRankedCards(normalized, prepared, sort);
+  if (DEBUG_OTAPI) {
+    console.log('[OTAPI Service] searchByKeyword raw item sample:', JSON.stringify({
+      debugContext: opts?.debugContext || 'search',
+      sample: items.slice(0, 3).map(debugOtapiItemSummary),
+    }, null, 2));
+  }
+  const normalizedCards = normalizeOTAPIProductCards(items);
+  const pricedCards = await applyMarkupToCards(normalizedCards);
+  const droppedNoPriceCards = normalizedCards.filter((card) => !hasDisplayablePrice(card));
+
+  if (DEBUG_OTAPI) {
+    console.log(
+      '[OTAPI Service] searchByKeyword filter summary:',
+      JSON.stringify(
+        {
+          debugContext: opts?.debugContext || 'search',
+          rawCount: Array.isArray(items) ? items.length : 0,
+          normalizedCount: normalizedCards.length,
+          pricedCount: pricedCards.length,
+          droppedNoPriceCount: droppedNoPriceCards.length,
+          droppedNoPriceSample: droppedNoPriceCards.slice(0, 3).map(debugOtapiCardSummary),
+          pricedSample: pricedCards.slice(0, 3).map(debugOtapiCardSummary),
+        },
+        null,
+        2
+      )
+    );
+  }
+
+  const ranked = sortRankedCards(pricedCards, prepared, sort);
   const totalCount = ranked.length;
   const totalPages = Math.ceil(totalCount / pageSize);
   const hasNextPage = page < totalPages;
@@ -735,13 +847,50 @@ export async function searchByKeyword(
 
   if (DEBUG_OTAPI) {
     console.log('[OTAPI Service] searchByKeyword response summary:', {
+      debugContext: opts?.debugContext || 'search',
+      baseKeyword,
+      searchKeyword,
+      categoryOnly: prepared.categoryOnly,
       itemsRawCount: Array.isArray(items) ? items.length : 0,
-      itemsNormalizedCount: normalized.length,
+      itemsNormalizedCount: normalizedCards.length,
+      itemsPricedCount: pricedCards.length,
       itemsRankedCount: ranked.length,
       totalCount,
       totalPages,
       hasNextPage,
     });
+    console.log(
+      '[OTAPI Service] searchByKeyword score diagnostics:',
+      JSON.stringify(
+        {
+          debugContext: opts?.debugContext || 'search',
+          keyword: searchKeyword,
+          category: opts?.category,
+          tokens: prepared.tokens,
+          hints: prepared.relevanceHint,
+          topRanked: ranked.slice(0, 10).map((card) => debugScoreSearchCard(card, prepared)),
+          topDropped: pricedCards
+            .map((card) => debugScoreSearchCard(card, prepared))
+            .filter((entry) => entry.score <= -1000)
+            .slice(0, 10),
+        },
+        null,
+        2
+      )
+    );
+    console.log(
+      '[OTAPI Service] searchByKeyword ranked sample:',
+      JSON.stringify(
+        {
+          debugContext: opts?.debugContext || 'search',
+          keyword: searchKeyword,
+          category: opts?.category,
+          sample: ranked.slice(0, 5).map(debugOtapiCardSummary),
+        },
+        null,
+        2
+      )
+    );
   }
 
   // Best effort cache into ExternalCatalogItem for hot/pinned items + product details fallback
@@ -932,6 +1081,14 @@ export async function getItemDetail(externalId: string, language: string = 'en')
 
   const itemData = unwrapOtapiPayload(fullInfo);
   const descriptionData = unwrapOtapiPayload(desc);
+  if (DEBUG_OTAPI) {
+    console.log('[OTAPI Service] getItemDetail raw item summary:', debugOtapiItemSummary(itemData));
+    console.log('[OTAPI Service] getItemDetail raw description summary:', {
+      hasDescription: !!descriptionData,
+      imageCount: Array.isArray(descriptionData?.Pictures) ? descriptionData.Pictures.length : undefined,
+      keys: descriptionData && typeof descriptionData === 'object' ? Object.keys(descriptionData).slice(0, 30) : undefined,
+    });
+  }
   const normalized = await applyMarkupToDetail(normalizeOTAPIProductDetail(itemData, descriptionData));
   fallback = await fallbackDetailFromSearchCache(externalId);
   const merged = fallback ? mergeProductDetail(normalized, fallback) : normalized;
@@ -1149,6 +1306,7 @@ export async function getCuratedHomeSections(): Promise<Array<{ slug: string; la
           pageSize: 2,
           sort: 'sales',
           language: 'en',
+          debugContext: `home-curated:${def.slug}`,
         });
         for (const card of searchResult.items || []) {
           if (cards.some((existing) => existing.externalId === card.externalId)) continue;

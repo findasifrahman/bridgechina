@@ -12,6 +12,8 @@ export interface ProductCardOTAPI {
   sellerName?: string;
   sourceUrl?: string;
   totalSold?: number;
+  masterQuantity?: number;
+  vendorScore?: number;
   raw?: any;
 }
 
@@ -20,9 +22,15 @@ export interface ProductDetailOTAPI extends ProductCardOTAPI {
   skus?: any[];
   productProps?: Array<Record<string, any>>;
   raw?: any;
+  features?: string[];
+  featuredValues?: Array<{ Name?: string; Value?: string }>;
+  physicalParameters?: Record<string, any>;
+  oneItemPriceWithoutDelivery?: Record<string, any>;
   rating?: number;
   ratingCount?: number;
+  vendorScore?: number;
   availableQuantity?: number;
+  masterQuantity?: number;
   tieredPricing?: Array<{ minQty: number; maxQty?: number; price: number }>;
   stock?: number;
   detailUrl?: string;
@@ -705,6 +713,22 @@ export function normalizeOTAPIProductCard(item: any): ProductCardOTAPI {
     card.totalSold = Math.trunc(sold);
   }
 
+  const masterQuantity =
+    toNumber(payload?.MasterQuantity) ??
+    toNumber(payload?.masterQuantity) ??
+    toNumber(payload?.MasterQty);
+  if (masterQuantity !== undefined) {
+    card.masterQuantity = Math.trunc(masterQuantity);
+  }
+
+  const vendorScore =
+    toNumber(payload?.VendorScore) ??
+    toNumber(payload?.Vendor?.Score) ??
+    toNumber(payload?.Vendor?.VendorScore);
+  if (vendorScore !== undefined) {
+    card.vendorScore = vendorScore;
+  }
+
   return card;
 }
 
@@ -742,6 +766,10 @@ export function normalizeOTAPIProductDetail(itemFullInfo: any, descriptionData?:
     imageUrl: base.imageUrl || mergedImages[0],
     images: mergedImages.length > 0 ? mergedImages : base.images,
     description,
+    features: Array.isArray(itemRoot?.Features) ? itemRoot.Features : Array.isArray(itemRoot?.features) ? itemRoot.features : undefined,
+    featuredValues: Array.isArray(itemRoot?.FeaturedValues) ? itemRoot.FeaturedValues : Array.isArray(itemRoot?.featuredValues) ? itemRoot.featuredValues : undefined,
+    physicalParameters: itemRoot?.PhysicalParameters || itemRoot?.physicalParameters || undefined,
+    oneItemPriceWithoutDelivery: itemRoot?.OneItemPriceWithoutDelivery || itemRoot?.oneItemPriceWithoutDelivery || undefined,
     skus: skus || null,
     productProps: skus
       ? skus.map((sku) => ({
@@ -754,10 +782,15 @@ export function normalizeOTAPIProductDetail(itemFullInfo: any, descriptionData?:
     raw: itemRoot,
     rating: toNumber(itemRoot?.Rating) ?? toNumber(itemRoot?.VendorRating),
     ratingCount: toNumber(itemRoot?.RatingCount) ? Math.trunc(toNumber(itemRoot?.RatingCount) as number) : undefined,
+    vendorScore: toNumber(itemRoot?.VendorScore) ?? toNumber(itemRoot?.Vendor?.Score) ?? toNumber(itemRoot?.Vendor?.VendorScore),
     availableQuantity:
       toNumber(itemRoot?.Quantity) ??
       toNumber(itemRoot?.AvailableQuantity) ??
       toNumber(itemRoot?.Stock),
+    masterQuantity:
+      toNumber(itemRoot?.MasterQuantity) ??
+      toNumber(itemRoot?.masterQuantity) ??
+      toNumber(itemRoot?.MasterQty),
     stock: toNumber(itemRoot?.Stock) ? Math.trunc(toNumber(itemRoot?.Stock) as number) : undefined,
     detailUrl: base.sourceUrl,
     estimatedWeightKg: weightFromFields ?? weightFromDescription,
