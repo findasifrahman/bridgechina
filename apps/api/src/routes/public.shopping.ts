@@ -160,6 +160,8 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
     searchByKeyword,
     searchByImage,
     getItemDetail,
+    getVendorInfo,
+    searchByVendorId,
     getHotItems,
     getCuratedHomeSections,
   } = shoppingModule as any;
@@ -350,44 +352,44 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
         categoryTrailKeyword = Array.from(new Set(categoryTrail)).join(' ').trim() || undefined;
         categoryKeyword = categoryLeafKeyword || categoryTrailKeyword || undefined;
       }
-      const localWhere: any = {
-        status: 'published',
-      };
-      if (query.category) {
-        localWhere.OR = [
-          { category: { slug: query.category } },
-          { category: { parent: { slug: query.category } } },
-        ];
-      }
-      if (query.keyword) {
-        const searchTerms = searchContext.searchTerms.length > 0
-          ? searchContext.searchTerms
-          : [query.keyword];
-        localWhere.OR = [
-          ...(localWhere.OR || []),
-          ...searchTerms.flatMap((term) => [
-            { title: { contains: term, mode: 'insensitive' } },
-            { description: { contains: term, mode: 'insensitive' } },
-            { brand: { contains: term, mode: 'insensitive' } },
-          ]),
-        ];
-      }
-
-      const [localProducts, otapiResults] = await Promise.all([
-        prisma.product.findMany({
-          where: localWhere,
-          include: {
-            coverAsset: true,
-            seller: {
-              include: { sellerProfile: true },
-            },
-            category: true,
+      const localProducts = query.vendorId ? [] : await prisma.product.findMany({
+        where: (() => {
+          const localWhere: any = { status: 'published' };
+          if (query.category) {
+            localWhere.OR = [
+              { category: { slug: query.category } },
+              { category: { parent: { slug: query.category } } },
+            ];
+          }
+          if (query.keyword) {
+            const searchTerms = searchContext.searchTerms.length > 0
+              ? searchContext.searchTerms
+              : [query.keyword];
+            localWhere.OR = [
+              ...(localWhere.OR || []),
+              ...searchTerms.flatMap((term) => [
+                { title: { contains: term, mode: 'insensitive' } },
+                { description: { contains: term, mode: 'insensitive' } },
+                { brand: { contains: term, mode: 'insensitive' } },
+              ]),
+            ];
+          }
+          return localWhere;
+        })(),
+        include: {
+          coverAsset: true,
+          seller: {
+            include: { sellerProfile: true },
           },
-          orderBy: [{ is_featured: 'desc' }, { created_at: 'desc' }],
-          take: query.pageSize || 20,
-        }),
-        searchByKeyword(query.keyword || categoryKeyword, {
+          category: true,
+        },
+        orderBy: [{ is_featured: 'desc' }, { created_at: 'desc' }],
+        take: query.pageSize || 20,
+      });
+
+      const otapiResults = await searchByKeyword(query.keyword || categoryKeyword, {
             category: query.category,
+            vendorId: query.vendorId || undefined,
             fallbackKeywords: [
               categoryLeafKeyword,
               categoryTrailKeyword,
@@ -404,11 +406,12 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
             synonymHints: searchContext.relevanceHints,
             debugContext: query.keyword
               ? `search:${query.keyword}:${query.category || 'no-category'}`
-              : query.category
-                ? `category:${query.category}${categoryLeafKeyword ? ` leaf:${categoryLeafKeyword}` : ''}${categoryTrailKeyword && categoryTrailKeyword !== categoryLeafKeyword ? ` trail:${categoryTrailKeyword}` : ''}`
-                : 'search:empty',
-        }),
-      ]);
+              : query.vendorId
+                ? `vendor:${query.vendorId}${query.keyword ? ` keyword:${query.keyword}` : ''}`
+                : query.category
+                  ? `category:${query.category}${categoryLeafKeyword ? ` leaf:${categoryLeafKeyword}` : ''}${categoryTrailKeyword && categoryTrailKeyword !== categoryLeafKeyword ? ` trail:${categoryTrailKeyword}` : ''}`
+                  : 'search:empty',
+        });
 
       const localAssetIds = Array.from(new Set(localProducts.flatMap((product: any) => [
         ...(Array.isArray(product.gallery_asset_ids) ? product.gallery_asset_ids : []),
@@ -433,6 +436,39 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
       };
     } catch (error: any) {
       fastify.log.error({ error, stack: error.stack, query: request.query }, '[Public Shopping Route] /shopping/search error');
+      reply.status(400).send({ error: error.message || 'Invalid query parameters' });
+    }
+  });
+
+  fastify.get('/shopping/vendor/:vendorId', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { vendorId } = request.params as { vendorId: string };
+      const query = request.query as { language?: string; page?: string; pageSize?: string; sort?: string; keyword?: string; q?: string; category?: string };
+      const language = query.language === 'en' ? 'en' : 'zh';
+      const page = parseInt(query.page || '1', 10);
+      const pageSize = parseInt(query.pageSize || '8', 10);
+      const sort = query.sort || 'sales';
+      const keyword = String(query.keyword || query.q || '').trim();
+
+      const [vendor, products] = await Promise.all([
+        typeof getVendorInfo === 'function' ? getVendorInfo(vendorId, language) : null,
+        searchByKeyword(keyword || undefined, {
+          vendorId,
+          page,
+          pageSize,
+          sort,
+          language,
+          category: query.category,
+          debugContext: keyword ? `vendor:${vendorId} keyword:${keyword}` : `vendor:${vendorId}`,
+        }),
+      ]);
+
+      return {
+        vendor,
+        products,
+      };
+    } catch (error: any) {
+      fastify.log.error({ error, stack: error.stack }, '[Public Shopping Route] /shopping/vendor/:vendorId error');
       reply.status(400).send({ error: error.message || 'Invalid query parameters' });
     }
   });

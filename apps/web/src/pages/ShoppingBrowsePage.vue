@@ -37,6 +37,63 @@
         </div>
       </div>
 
+      <div v-if="topShops.length > 0" class="border-b border-slate-200 bg-white px-3 pb-3 sm:px-4 lg:px-5">
+        <div class="rounded-[24px] border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-white p-4 shadow-[0_14px_30px_rgba(15,23,42,0.04)]">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Top shops</p>
+              <h2 class="mt-1 text-[15px] font-black tracking-tight text-slate-950">
+                {{ selectedVendorId ? 'Shop filtered results' : 'Top shops matching your search' }}
+              </h2>
+            </div>
+            <div class="flex items-center gap-2">
+              <span v-if="selectedShop" class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">
+                Selected: {{ selectedShop.name }}
+              </span>
+              <span class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold text-slate-600">{{ topShops.length }} shops</span>
+            </div>
+          </div>
+
+          <div class="mt-4 flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <button
+              v-for="shop in topShops"
+              :key="shop.key"
+              type="button"
+              @click="openShop(shop)"
+              :class="[
+                'min-w-[240px] shrink-0 rounded-[22px] border p-4 text-left transition-all',
+                selectedVendorId && shop.vendorId === selectedVendorId
+                  ? 'border-teal-500 bg-teal-50 shadow-[0_12px_28px_rgba(13,148,136,0.12)]'
+                  : 'border-slate-200 bg-white hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-[0_12px_28px_rgba(15,23,42,0.06)]'
+              ]"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="line-clamp-2 text-[13px] font-black leading-5 text-slate-900">{{ shop.name }}</p>
+                  <p class="mt-1 text-[10px] text-slate-500">{{ formatShopSubtitle(shop) }}</p>
+                </div>
+                <span v-if="shop.isOfficial || shop.isVerified || shop.isBrand" class="rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-semibold text-slate-700">
+                  {{ shop.badges[0] || 'Top shop' }}
+                </span>
+              </div>
+
+              <div class="mt-3 flex flex-wrap gap-1.5">
+                <span
+                  v-for="badge in shop.badges.slice(0, 3)"
+                  :key="`${shop.key}-${badge}`"
+                  class="rounded-full bg-teal-50 px-2.5 py-1 text-[9px] font-semibold text-teal-700"
+                >
+                  {{ badge }}
+                </span>
+                <span v-if="shop.matchedTerms.length > 0" class="rounded-full bg-rose-50 px-2.5 py-1 text-[9px] font-semibold text-rose-600">
+                  Search match
+                </span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div class="w-full px-3 py-4 sm:px-4 lg:px-5">
         <div class="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
           <span class="rounded-full bg-white px-3 py-1.5 shadow-sm">Shipping time: 12-14 days</span>
@@ -76,17 +133,71 @@
             <div v-for="i in 8" :key="i" class="h-80 animate-pulse rounded-[24px] bg-slate-100" />
           </div>
 
-          <div v-else-if="otapiItems.length > 0" class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5 2xl:grid-cols-6">
-            <ProductCard
-              v-for="product in otapiItems"
-              :key="product.externalId"
-              :product="product"
-              :selected-currency="selectedCurrency"
-              :conversion-rates="conversionRates"
-              @click="handleProductClick"
-              @request-buy="handleAddToCart"
-            />
-          </div>
+          <template v-else-if="otapiItems.length > 0">
+            <div v-if="searchQuery.trim()" class="mt-4 space-y-6">
+              <div>
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">{{ otapiResultSplit.primaryLabel }}</p>
+                    <h3 class="mt-1 text-[15px] font-black tracking-tight text-slate-950">Strongest matches for "{{ searchQuery.trim() }}"</h3>
+                  </div>
+                  <span class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">
+                    {{ otapiResultSplit.primary.length }} shown
+                  </span>
+                </div>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5 2xl:grid-cols-6">
+                  <ProductCard
+                    v-for="product in otapiResultSplit.primary"
+                    :key="`primary-${product.externalId}`"
+                    :product="product"
+                    :selected-currency="selectedCurrency"
+                    :conversion-rates="conversionRates"
+                    @click="handleProductClick"
+                    @request-buy="handleAddToCart"
+                  />
+                </div>
+              </div>
+
+              <div v-if="otapiResultSplit.hasSecondary" class="border-t border-slate-200 pt-5">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">{{ otapiResultSplit.secondaryLabel }}</p>
+                    <h3 class="mt-1 text-[15px] font-black tracking-tight text-slate-950">Broader marketplace results</h3>
+                  </div>
+                  <span class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold text-slate-600">
+                    {{ otapiResultSplit.secondary.length }} more
+                  </span>
+                </div>
+                <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5 2xl:grid-cols-6">
+                  <ProductCard
+                    v-for="product in otapiResultSplit.secondary"
+                    :key="`secondary-${product.externalId}`"
+                    :product="product"
+                    :selected-currency="selectedCurrency"
+                    :conversion-rates="conversionRates"
+                    @click="handleProductClick"
+                    @request-buy="handleAddToCart"
+                  />
+                </div>
+              </div>
+
+              <p v-if="searchTraceNote" class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-[11px] text-slate-500">
+                {{ searchTraceNote }}
+              </p>
+            </div>
+
+            <div v-else class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5 2xl:grid-cols-6">
+              <ProductCard
+                v-for="product in otapiItems"
+                :key="product.externalId"
+                :product="product"
+                :selected-currency="selectedCurrency"
+                :conversion-rates="conversionRates"
+                @click="handleProductClick"
+                @request-buy="handleAddToCart"
+              />
+            </div>
+          </template>
 
           <div v-else class="mt-8 rounded-2xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
             No products found. Try another category or keyword.
@@ -136,6 +247,7 @@ import { useToast } from '@bridgechina/ui';
 import ProductCard from '@/components/shopping/ProductCard.vue';
 import { Search } from 'lucide-vue-next';
 import { useShoppingCart } from '@/composables/useShoppingCart';
+import { aggregateTopShops, formatShopSubtitle, splitSearchResultsByFocus } from '@/utils/shop';
 
 const router = useRouter();
 const route = useRoute();
@@ -146,15 +258,32 @@ const loading = ref(false);
 const searchQuery = ref(String(route.query.q || ''));
 const selectedCategory = ref(String(route.query.category || ''));
 const imageSearchKey = ref(String(route.query.imageSearchKey || ''));
+const selectedVendorId = ref(String(route.query.vendorId || ''));
 const currentPage = ref(Math.max(1, Number(route.query.page || 1)));
 const pageSize = ref(24);
 const totalPages = ref(1);
 const totalCount = ref(0);
+const searchTrace = ref<any>(null);
 const selectedCurrency = ref<'BDT' | 'CNY' | 'USD'>('BDT');
 const conversionRates = ref({ CNY_TO_BDT: 15, CNY_TO_USD: 0.14 });
 const localItems = ref<any[]>([]);
 const otapiItems = ref<any[]>([]);
 let searchRequestId = 0;
+const allItems = computed(() => [...localItems.value, ...otapiItems.value]);
+const topShops = computed(() => aggregateTopShops(allItems.value, searchQuery.value || selectedCategory.value || '', 6).filter((shop) => !!shop.vendorId));
+const otapiResultSplit = computed(() => splitSearchResultsByFocus(otapiItems.value, searchQuery.value || selectedCategory.value || '', 4));
+const searchTraceNote = computed(() => {
+  const trace = searchTrace.value;
+  if (!trace) return '';
+  const trail = Array.isArray(trace.searchTrail) ? trace.searchTrail.filter(Boolean) : [];
+  if (trace.fallbackUsed && trail.length > 1) {
+    return `Broadened search path: ${trail.join(' → ')}`;
+  }
+  if (trace.searchKeyword && trace.searchKeyword !== trace.baseKeyword) {
+    return `Searching with: ${trace.searchKeyword}`;
+  }
+  return '';
+});
 const paginationPages = computed(() => {
   const total = totalPages.value;
   const current = currentPage.value;
@@ -166,15 +295,31 @@ const paginationPages = computed(() => {
 });
 
 const heading = computed(() => {
+  if (selectedVendorId.value) return 'Shop results';
   if (searchQuery.value.trim()) return `Search results for "${searchQuery.value.trim()}"`;
   if (selectedCategory.value) return `Browsing ${selectedCategory.value}`;
   return 'All shopping products';
 });
 
+const selectedShop = computed(() => topShops.value.find((shop) => shop.vendorId && shop.vendorId === selectedVendorId.value) || null);
+
 function handleProductClick(product: any) {
   router.push({
     path: `/shopping/item/${product.externalId}`,
     query: { language: 'en' },
+  });
+}
+
+async function openShop(shop: { vendorId?: string }) {
+  if (!shop.vendorId) return;
+  await router.push({
+    name: 'shopping-shop',
+    params: { vendorId: shop.vendorId },
+    query: {
+      q: searchQuery.value || undefined,
+      category: selectedCategory.value || undefined,
+      language: 'en',
+    },
   });
 }
 
@@ -196,6 +341,7 @@ async function runSearch() {
       params: {
         keyword: searchQuery.value.trim() || undefined,
         category: selectedCategory.value || undefined,
+        vendorId: selectedVendorId.value || undefined,
         page: currentPage.value,
         pageSize: pageSize.value,
         language: 'en',
@@ -205,10 +351,12 @@ async function runSearch() {
     if (requestId !== searchRequestId) return;
     localItems.value = Array.isArray(response.data?.localItems) ? response.data.localItems : [];
     otapiItems.value = Array.isArray(response.data?.otapiItems) ? response.data.otapiItems : [];
+    searchTrace.value = response.data?.searchTrace || null;
     totalPages.value = Number(response.data?.totalPages || response.data?.pageSize ? Math.ceil(Number(response.data?.totalCount || otapiItems.value.length || 0) / pageSize.value) : 1) || 1;
     totalCount.value = Number(response.data?.totalCount || localItems.value.length + otapiItems.value.length || 0);
   } catch (error) {
     console.error('Search failed', error);
+    searchTrace.value = null;
     toast.error('Failed to load products');
   } finally {
     loading.value = false;
@@ -253,6 +401,7 @@ async function runImageSearch() {
     } else {
       otapiItems.value = [];
     }
+    searchTrace.value = searchRes.data?.searchTrace || null;
     totalPages.value = Number(searchRes.data?.totalPages || 1);
     totalCount.value = Number(searchRes.data?.totalCount || otapiItems.value.length || 0);
   } catch (error) {
@@ -261,6 +410,7 @@ async function runImageSearch() {
     if (requestId !== searchRequestId) return;
     localItems.value = [];
     otapiItems.value = [];
+    searchTrace.value = null;
   } finally {
     if (requestId !== searchRequestId) return;
     loading.value = false;
@@ -271,6 +421,8 @@ function clearSearch() {
   searchQuery.value = '';
   selectedCategory.value = '';
   imageSearchKey.value = '';
+  selectedVendorId.value = '';
+  searchTrace.value = null;
   router.replace({ name: 'shopping-browse', query: {} });
   runSearch();
 }
@@ -284,6 +436,7 @@ async function goToPage(page: number) {
       q: searchQuery.value || undefined,
       category: selectedCategory.value || undefined,
       imageSearchKey: imageSearchKey.value || undefined,
+      vendorId: selectedVendorId.value || undefined,
       page: String(page),
     },
   });
@@ -291,12 +444,13 @@ async function goToPage(page: number) {
 }
 
 watch(
-  () => [route.query.q, route.query.category, route.query.imageSearchKey, route.query.page].join('|'),
+  () => [route.query.q, route.query.category, route.query.imageSearchKey, route.query.vendorId, route.query.page].join('|'),
   () => {
     const routeQuery = route.query as Record<string, string | undefined>;
     searchQuery.value = String(routeQuery.q || '');
     selectedCategory.value = String(routeQuery.category || '');
     imageSearchKey.value = String(routeQuery.imageSearchKey || '');
+    selectedVendorId.value = String(routeQuery.vendorId || '');
     currentPage.value = Math.max(1, Number(routeQuery.page || 1));
     runSearch();
   },

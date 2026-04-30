@@ -24,6 +24,13 @@ const router = createRouter({
           path: 'shopping/browse',
           name: 'shopping-browse',
           component: () => import('@/pages/ShoppingBrowsePage.vue'),
+          meta: { requiresAuth: false },
+        },
+        {
+          path: 'shopping/shop/:vendorId',
+          name: 'shopping-shop',
+          component: () => import('@/pages/ShoppingShopPage.vue'),
+          meta: { requiresAuth: false },
         },
         {
           path: 'shopping/item/:externalId',
@@ -258,13 +265,14 @@ router.beforeEach(async (to, from, next) => {
   console.log('[Router] Navigating to:', to.path, 'from:', from.path);
   console.log('[Router] Route meta:', to.meta);
   const authStore = useAuthStore();
-  
+
   // Check if this is a public route - check both the route and matched routes
-  const isPublicRoute = to.meta.requiresAuth === false || 
-    to.matched.some(record => record.meta.requiresAuth === false) ||
+  const isPublicRoute =
+    to.meta.requiresAuth === false ||
+    to.matched.some((record) => record.meta.requiresAuth === false) ||
     to.name === 'home' ||
     to.path === '/' ||
-    ['login', 'register', 'forgot-password', 'contact', 'blog', 'terms', 'shopping', 'shopping-browse', 'product-detail', 'shopping-cart', 'shopping-checkout'].includes(to.name as string);
+    ['login', 'register', 'forgot-password', 'contact', 'blog', 'terms', 'shopping', 'shopping-browse', 'shopping-shop', 'product-detail', 'shopping-cart', 'shopping-checkout'].includes(to.name as string);
   
   if (isPublicRoute) {
     console.log('[Router] Public route, allowing navigation');

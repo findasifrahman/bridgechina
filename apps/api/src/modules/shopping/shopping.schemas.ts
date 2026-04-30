@@ -7,6 +7,7 @@ import { z } from 'zod';
 export const searchByKeywordSchema = z.object({
   keyword: z.string().max(200).optional(), // Allow empty keyword if category is provided
   category: z.string().optional(),
+  vendorId: z.string().max(200).optional(),
   page: z.coerce.number().int().min(1).max(100).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(50).optional().default(20),
   minPrice: z.coerce.number().min(0).optional(),
@@ -16,8 +17,8 @@ export const searchByKeywordSchema = z.object({
   // We also accept legacy aliases (price_asc/price_desc) for backward compatibility.
   sort: z.enum(['default', 'sales', 'price_up', 'price_down', 'price_asc', 'price_desc', 'popular']).optional().default('sales'),
   language: z.enum(['en', 'zh']).optional().default('zh'), // Language: 'en' for English, 'zh' for Chinese
-}).refine((data) => data.keyword || data.category, {
-  message: "Either keyword or category must be provided",
+}).refine((data) => data.keyword || data.category || data.vendorId, {
+  message: 'Either keyword, category, or vendorId must be provided',
 });
 
 export const searchByImageSchema = z.object({

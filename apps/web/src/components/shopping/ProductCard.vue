@@ -39,6 +39,13 @@
 
     <CardBody class="p-4">
       <h3 class="mb-1 min-h-[2.2rem] text-[13px] font-semibold leading-5 text-slate-900 line-clamp-2">{{ product.title }}</h3>
+      <div v-if="shopLabel" class="mb-2 flex items-center gap-1.5 text-[10px] text-slate-500">
+        <Store class="h-3.5 w-3.5 shrink-0 text-slate-400" />
+        <span class="truncate">{{ shopLabel }}</span>
+        <span v-if="product.vendorScore" class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
+          {{ Number(product.vendorScore).toFixed(1) }} rating
+        </span>
+      </div>
       <div v-if="product.totalSold" class="mb-2 flex items-center gap-2 text-[11px] text-slate-500">
         {{ formatSales(product.totalSold) }} sold
       </div>
@@ -60,7 +67,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { Package, ShoppingCart } from 'lucide-vue-next';
+import { Package, ShoppingCart, Store } from 'lucide-vue-next';
 import { Card, CardBody, Button } from '@bridgechina/ui';
 
 const props = defineProps<{
@@ -73,20 +80,29 @@ const props = defineProps<{
     imageUrl?: string;
     images?: string[];
     sellerName?: string;
+    vendorId?: string;
+    vendorName?: string;
+    shopName?: string;
+    shop?: { name?: string; badges?: string[] };
     totalSold?: number;
+    vendorScore?: number;
   };
   selectedCurrency?: 'CNY' | 'BDT' | 'USD';
   conversionRates?: {
     CNY_TO_BDT?: number;
     CNY_TO_USD?: number;
   };
-}>();
+  }>();
 
 defineEmits<{
   click: [product: any];
   'request-buy': [product: any];
   'add-to-cart': [product: any];
 }>();
+
+const shopLabel = computed(() => {
+  return String(props.product?.shop?.name || props.product?.shopName || props.product?.sellerName || props.product?.vendorName || '').trim();
+});
 
 function isRenderableImageUrl(url: string): boolean {
   const text = String(url || '').trim();

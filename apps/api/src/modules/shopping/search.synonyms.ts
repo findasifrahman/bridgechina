@@ -190,6 +190,110 @@ const SEARCH_QUERY_REWRITES: Array<{ match: RegExp; candidates: string[] }> = [
   { match: /\bshow\b/i, candidates: ['shoes', 'footwear'] },
 ];
 
+const SEARCH_MODIFIER_WORDS = new Set([
+  'men',
+  'mens',
+  'man',
+  'women',
+  'womens',
+  'woman',
+  'lady',
+  'ladies',
+  'girl',
+  'girls',
+  'boy',
+  'boys',
+  'adult',
+  'adults',
+  'casual',
+  'fashion',
+  'classic',
+  'luxury',
+  'premium',
+  'original',
+  'authentic',
+  'new',
+  'latest',
+  'hot',
+  'best',
+  'top',
+]);
+
+const COMMON_QUERY_PRODUCT_EXPANSIONS: Array<{
+  aliases: string[];
+  canonical: string;
+  variants: string[];
+  zhVariants: string[];
+}> = [
+  {
+    aliases: ['bag', 'bags', 'handbag', 'handbags', 'purse', 'purses', 'tote', 'tote bag', 'shoulder bag', 'backpack', 'satchel'],
+    canonical: 'handbag',
+    variants: ['bag', 'handbag', 'purse', 'tote bag', 'shoulder bag', 'backpack', 'satchel'],
+    zhVariants: ['包', '手提包', '女包', '背包'],
+  },
+  {
+    aliases: ['shoe', 'shoes', 'sneaker', 'sneakers', 'footwear', 'trainer', 'trainers', 'running shoe', 'running shoes'],
+    canonical: 'shoes',
+    variants: ['shoes', 'sneakers', 'footwear', 'running shoes', 'sports shoes'],
+    zhVariants: ['鞋', '运动鞋', '休闲鞋'],
+  },
+  {
+    aliases: ['sunglass', 'sunglasses', 'sun glass', 'sun glasses', 'eyewear', 'glasses'],
+    canonical: 'sunglasses',
+    variants: ['sunglasses', 'eyewear', 'glasses', 'sun glasses'],
+    zhVariants: ['太阳镜', '眼镜'],
+  },
+  {
+    aliases: ['phone', 'phones', 'mobile', 'mobile phone', 'smartphone', 'smart phones', 'cell phone'],
+    canonical: 'smartphone',
+    variants: ['smartphone', 'mobile phone', 'cell phone', 'phone'],
+    zhVariants: ['手机', '智能手机'],
+  },
+  {
+    aliases: ['laptop', 'laptops', 'notebook', 'notebooks', 'computer', 'computers'],
+    canonical: 'laptop',
+    variants: ['laptop', 'notebook', 'computer', 'pc'],
+    zhVariants: ['笔记本电脑', '电脑'],
+  },
+  {
+    aliases: ['watch', 'watches', 'wrist watch', 'wristwatch', 'smartwatch'],
+    canonical: 'watch',
+    variants: ['watch', 'wrist watch', 'smartwatch', 'watches'],
+    zhVariants: ['手表', '腕表'],
+  },
+  {
+    aliases: ['wallet', 'wallets'],
+    canonical: 'wallet',
+    variants: ['wallet', 'wallets', 'card holder', 'coin purse'],
+    zhVariants: ['钱包'],
+  },
+  {
+    aliases: ['perfume', 'fragrance', 'cologne'],
+    canonical: 'perfume',
+    variants: ['perfume', 'fragrance', 'cologne'],
+    zhVariants: ['香水', '香氛'],
+  },
+  {
+    aliases: ['jacket', 'jackets', 'coat', 'coats', 'outerwear'],
+    canonical: 'jacket',
+    variants: ['jacket', 'coat', 'outerwear', 'hoodie'],
+    zhVariants: ['外套', '夹克'],
+  },
+];
+
+function findCommonQueryExpansion(text: string) {
+  const normalized = normalizeShoppingText(text);
+  if (!normalized) return null;
+  return COMMON_QUERY_PRODUCT_EXPANSIONS.find((expansion) => expansion.aliases.some((alias) => aliasMatches(normalized, alias))) || null;
+}
+
+function extractBrandLikeToken(tokens: string[], expansion?: { aliases: string[] } | null): string | undefined {
+  const expansionAliasTokens = new Set(
+    (expansion?.aliases || []).flatMap((alias) => extractSearchTokens(alias))
+  );
+  return tokens.find((token) => !SEARCH_MODIFIER_WORDS.has(token) && !expansionAliasTokens.has(token) && !GENERIC_QUERY_WORDS.has(token));
+}
+
 export const SHOPPING_SYNONYM_CATALOG: ShoppingSynonymGroup[] = [
   {
     slug: 'baby',
@@ -586,6 +690,8 @@ export function buildShoppingSearchCandidates(keyword?: string, category?: strin
   const context = buildShoppingSearchContext(keyword, category);
   const raw = normalizeShoppingText([keyword, category].filter(Boolean).join(' '));
   const candidates: string[] = [];
+  const expansion = findCommonQueryExpansion(raw);
+  const brandToken = extractBrandLikeToken(context.tokens, expansion);
 
   const pushCandidate = (value: string | undefined) => {
     const normalized = normalizeShoppingText(value || '');
@@ -604,6 +710,26 @@ export function buildShoppingSearchCandidates(keyword?: string, category?: strin
   pushCandidate(context.primaryKeyword);
   for (const term of context.searchTerms.slice(0, 4)) {
     pushCandidate(term);
+  }
+
+  if (expansion) {
+    pushCandidate(expansion.canonical);
+    for (const variant of expansion.variants) {
+      pushCandidate(variant);
+    }
+    if (brandToken) {
+      pushCandidate(`${brandToken} ${expansion.canonical}`);
+      for (const variant of expansion.variants.slice(0, 4)) {
+        pushCandidate(`${brandToken} ${variant}`);
+      }
+    }
+  }
+
+  if (brandToken && context.tokens.length > 1) {
+    const strippedTokens = context.tokens.filter((token) => token !== brandToken && !SEARCH_MODIFIER_WORDS.has(token));
+    if (strippedTokens.length > 0) {
+      pushCandidate(`${brandToken} ${strippedTokens.join(' ')}`);
+    }
   }
 
   if (/\bkids?\b|\bchildren\b|\bchildrens\b/i.test(raw)) {
@@ -643,7 +769,7 @@ export function buildShoppingSearchCandidates(keyword?: string, category?: strin
     pushCandidate('kitchen items');
   }
 
-  return candidates.slice(0, 6);
+  return candidates.slice(0, 10);
 }
 
 export function hasChineseCharacters(value: string): boolean {
@@ -652,10 +778,14 @@ export function hasChineseCharacters(value: string): boolean {
 
 export function buildChineseShoppingQuery(keyword?: string, category?: string): string {
   const context = buildShoppingSearchContext(keyword, category);
+  const raw = normalizeShoppingText([keyword, category].filter(Boolean).join(' '));
+  const expansion = findCommonQueryExpansion(raw);
+  const brandToken = extractBrandLikeToken(context.tokens, expansion);
   const hasStrongShoppingSignal =
     context.matchedGroupSlugs.length > 0 ||
     context.matchedSubgroupSlugs.length > 0 ||
     context.buyerIntentTerms.length > 0 ||
+    !!expansion ||
     /(\bbaby\b|\binfant\b|\btoddler\b|\bkids?\b|\bchildren\b|\bmen'?s\b|\bmens\b|\bwomen'?s\b|\bwomens\b|\bhome[-\s]?kitchen\b|\bkitchen\b|\bdrill\b|\belectric drill\b|\bcordless drill\b|\bpower tools?\b|\blabubu\b|\bdoll(s)?\b|\btoy(s)?\b|\bpillow\b|\bneck[-\s]?pillow\b|\bnecpillow\b|\bpencil[-\s]?box\b|\bstationery\b)/i.test(normalizeShoppingText([keyword, category].filter(Boolean).join(' ')));
   if (!hasStrongShoppingSignal) return '';
   const parts: string[] = [];
@@ -675,7 +805,13 @@ export function buildChineseShoppingQuery(keyword?: string, category?: string): 
     addParts(SUBGROUP_ZH_HINTS[subgroupSlug] || []);
   }
 
-  const raw = normalizeShoppingText([keyword, category].filter(Boolean).join(' '));
+  if (expansion) {
+    addParts(expansion.zhVariants);
+    if (brandToken) {
+      addParts(expansion.zhVariants.map((zhTerm) => `${brandToken} ${zhTerm}`));
+    }
+  }
+
   if (/\bbaby\b|\binfant\b|\btoddler\b|\bkids?\b|\bchildren\b/i.test(raw)) {
     addParts(['婴儿', '童装', '儿童']);
   }

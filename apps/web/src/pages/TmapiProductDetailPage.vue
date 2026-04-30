@@ -74,6 +74,29 @@
             <span v-if="product.totalSold">{{ formatNumber(product.totalSold) }} sold</span>
           </div>
 
+          <div class="mt-3 rounded-[18px] border border-slate-200 bg-slate-50 p-3">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Shop</p>
+                <p class="mt-1 truncate text-[13px] font-black text-slate-950">{{ shopIdentity?.name || product.sellerName || 'Marketplace shop' }}</p>
+                <p class="mt-1 text-[10px] text-slate-500">{{ shopSubtitle || 'Tap to browse more from this seller' }}</p>
+              </div>
+              <button
+                type="button"
+                class="shrink-0 rounded-full bg-teal-600 px-3 py-1.5 text-[10px] font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                :disabled="!shopVendorId"
+                @click="goToShop"
+              >
+                View shop
+              </button>
+            </div>
+            <div v-if="shopBadges.length > 0" class="mt-2 flex flex-wrap gap-1.5">
+              <span v-for="badge in shopBadges.slice(0, 3)" :key="badge" class="rounded-full bg-white px-2.5 py-1 text-[9px] font-semibold text-teal-700">
+                {{ badge }}
+              </span>
+            </div>
+          </div>
+
           <div class="mt-3.5 border-y border-slate-200 py-3.5">
             <div class="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">Price</div>
             <div class="mt-1 text-[26px] font-black tracking-tight text-teal-700">
@@ -274,7 +297,7 @@
               <div class="flex items-center justify-between gap-2">
                 <div>
                   <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Suggestions</p>
-                  <h2 class="mt-1 text-[15px] font-black tracking-tight text-slate-950">Similar products</h2>
+                  <h2 class="mt-1 text-[15px] font-black tracking-tight text-slate-950">{{ relatedSectionTitle }}</h2>
                 </div>
                 <button type="button" class="rounded-full border border-slate-200 px-3 py-1 text-[10px] font-semibold text-slate-600" @click="loadSimilarProducts">
                   <RefreshCw class="inline-block h-3.5 w-3.5" />
@@ -405,6 +428,31 @@
                   <span v-if="product.ratingCount">({{ product.ratingCount }})</span>
                 </div>
                 <span v-if="product.sellerName">Seller: {{ product.sellerName }}</span>
+              </div>
+
+              <div class="mt-3 rounded-[18px] border border-slate-200 bg-slate-50 p-3">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Shop</p>
+                    <p class="mt-1 truncate text-[13px] font-black text-slate-950">{{ shopIdentity?.name || product.sellerName || 'Marketplace shop' }}</p>
+                    <p class="mt-1 text-[10px] text-slate-500">{{ shopSubtitle || 'Tap to browse more from this seller' }}</p>
+                  </div>
+                  <div class="flex shrink-0 flex-col items-end gap-2">
+                    <button
+                      type="button"
+                      class="rounded-full bg-teal-600 px-3 py-1.5 text-[10px] font-semibold text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                      :disabled="!shopVendorId"
+                      @click="goToShop"
+                    >
+                      View shop
+                    </button>
+                    <div v-if="shopBadges.length > 0" class="flex flex-wrap justify-end gap-1.5">
+                      <span v-for="badge in shopBadges.slice(0, 3)" :key="badge" class="rounded-full bg-white px-2.5 py-1 text-[9px] font-semibold text-teal-700">
+                        {{ badge }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div class="mt-3.5 border-y border-slate-200 py-3.5">
@@ -764,7 +812,7 @@
             <div class="flex items-center justify-between gap-2">
               <div>
                 <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Suggestions</p>
-                <h2 class="mt-1 text-[15px] font-black tracking-tight text-slate-950">Similar products</h2>
+                <h2 class="mt-1 text-[15px] font-black tracking-tight text-slate-950">{{ relatedSectionTitle }}</h2>
               </div>
               <button type="button" class="rounded-full border border-slate-200 px-3 py-1 text-[10px] font-semibold text-slate-600" @click="loadSimilarProducts">
                 <RefreshCw class="inline-block h-3.5 w-3.5" />
@@ -876,7 +924,7 @@
             <div class="flex items-center justify-between">
               <div>
                 <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">Suggestions</p>
-                <h2 class="mt-1 text-[15px] font-black tracking-tight text-slate-950">Similar products</h2>
+                <h2 class="mt-1 text-[15px] font-black tracking-tight text-slate-950">{{ relatedSectionTitle }}</h2>
               </div>
               <button type="button" class="rounded-full border border-slate-200 px-3 py-1 text-[10px] font-semibold text-slate-600" @click="loadSimilarProducts">
                 <RefreshCw class="inline-block h-3.5 w-3.5" />
@@ -916,7 +964,7 @@
               </button>
 
               <div v-if="similarProducts.length === 0" class="rounded-[18px] border border-dashed border-slate-200 px-3 py-6 text-center text-[11px] text-slate-500">
-                Similar products will appear here after the first search.
+                {{ relatedSectionEmptyText }}
               </div>
             </div>
           </section>
@@ -956,6 +1004,7 @@ import { Badge, Button, EmptyState, Input } from '@bridgechina/ui';
 import { useWhatsApp } from '@/composables/useWhatsApp';
 import { useShoppingCart } from '@/composables/useShoppingCart';
 import ShippingCard from '@/components/shopping/ShippingCard.vue';
+import { extractShopIdentity } from '@/utils/shop';
 
 const route = useRoute();
 const router = useRouter();
@@ -1032,6 +1081,25 @@ const shippingRateSummary = computed(() => {
   if (sea) parts.push(`Sea ${sea.currency} ${sea.min_rate_per_kg}-${sea.max_rate_per_kg}/kg`);
   return parts.join(' · ');
 });
+const shopIdentity = computed(() => extractShopIdentity(product.value));
+const shopSubtitle = computed(() => {
+  if (!shopIdentity.value) return '';
+  const parts: string[] = [];
+  if (shopIdentity.value.isOfficial || shopIdentity.value.isBrand || shopIdentity.value.isVerified) {
+    parts.push(shopIdentity.value.badges[0] || 'Top shop');
+  }
+  if (product.value?.vendorScore) parts.push(`${Number(product.value.vendorScore).toFixed(1)} rating`);
+  if (product.value?.totalSold) parts.push(`${formatNumber(Number(product.value.totalSold))} sold`);
+  return parts.join(' · ') || 'Tap to browse more from this seller';
+});
+const shopBadges = computed(() => shopIdentity.value?.badges || []);
+const shopVendorId = computed(() => shopIdentity.value?.vendorId || '');
+const relatedSectionTitle = computed(() => (shopVendorId.value ? 'More from this shop' : 'Similar products'));
+const relatedSectionEmptyText = computed(() => (
+  shopVendorId.value
+    ? 'More products from this shop will appear here.'
+    : 'Similar products will appear here after the first search.'
+));
 
 function humanizeKey(key: string): string {
   return String(key || '')
@@ -1480,10 +1548,14 @@ const specRows = computed(() => {
 const sellerRows = computed(() => {
   const rows: Array<{ label: string; value: string }> = [];
   if (product.value?.sellerName) rows.push({ label: 'Seller', value: String(product.value.sellerName) });
+  if (shopIdentity.value?.name && shopIdentity.value.name !== product.value?.sellerName) rows.push({ label: 'Shop', value: shopIdentity.value.name });
+  if (shopIdentity.value?.vendorId) rows.push({ label: 'Vendor ID', value: shopIdentity.value.vendorId });
+  if (shopIdentity.value?.url) rows.push({ label: 'Shop URL', value: shopIdentity.value.url });
   if (product.value?.sellerTitle) rows.push({ label: 'Title', value: String(product.value.sellerTitle) });
   if (product.value?.sourceUrl) rows.push({ label: 'Source URL', value: String(product.value.sourceUrl) });
   if (product.value?.vendorScore !== undefined) rows.push({ label: 'Vendor score', value: String(product.value.vendorScore) });
   if (product.value?.masterQuantity !== undefined) rows.push({ label: 'Master quantity', value: formatNumber(Number(product.value.masterQuantity)) });
+  if (shopBadges.value.length > 0) rows.push({ label: 'Shop badges', value: shopBadges.value.join(', ') });
 
   const sellerInfo = product.value?.sellerInfo;
   if (sellerInfo && typeof sellerInfo === 'object') {
@@ -1611,6 +1683,15 @@ function handleProductClick(item: any) {
   router.push({ path: `/shopping/item/${item.externalId}`, query: { language: selectedLanguage.value } });
 }
 
+function goToShop() {
+  if (!shopVendorId.value) return;
+  router.push({
+    name: 'shopping-shop',
+    params: { vendorId: shopVendorId.value },
+    query: { language: selectedLanguage.value || 'en' },
+  });
+}
+
 function updateSkuQuantity(sku: any, delta: number) {
   const key = sku.specid || sku.skuid || String(Math.random());
   const current = selectedSkus.value[key] || 0;
@@ -1619,6 +1700,25 @@ function updateSkuQuantity(sku: any, delta: number) {
 
 async function loadSimilarProducts() {
   try {
+    if (shopVendorId.value) {
+      const response = await axios.get('/api/public/shopping/search', {
+        params: {
+          vendorId: shopVendorId.value,
+          page: 1,
+          pageSize: 8,
+          language: selectedLanguage.value,
+          sort: 'sales',
+        },
+      });
+      const products = Array.isArray(response.data?.otapiItems)
+        ? response.data.otapiItems
+        : Array.isArray(response.data?.items)
+          ? response.data.items
+          : [];
+      similarProducts.value = products.filter((p: any) => p.externalId !== product.value?.externalId).slice(0, 8);
+      return;
+    }
+
     const response = await axios.get('/api/public/shopping/hot', { params: { page: 1, pageSize: 5 } });
     const products = Array.isArray(response.data) ? response.data : [];
     similarProducts.value = products.filter((p: any) => p.externalId !== product.value?.externalId).slice(0, 8);

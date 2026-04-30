@@ -10,6 +10,20 @@ export interface ProductCardOTAPI {
   imageUrl?: string;
   images?: string[];
   sellerName?: string;
+  vendorId?: string;
+  shopName?: string;
+  shopUrl?: string;
+  shop?: {
+    vendorId?: string;
+    name?: string;
+    url?: string;
+    score?: number;
+    badges?: string[];
+    isOfficial?: boolean;
+    isVerified?: boolean;
+    isBrand?: boolean;
+    raw?: Record<string, any>;
+  };
   sourceUrl?: string;
   totalSold?: number;
   masterQuantity?: number;
@@ -29,6 +43,10 @@ export interface ProductDetailOTAPI extends ProductCardOTAPI {
   rating?: number;
   ratingCount?: number;
   vendorScore?: number;
+  vendorId?: string;
+  shopName?: string;
+  shopUrl?: string;
+  shop?: ProductCardOTAPI['shop'];
   availableQuantity?: number;
   masterQuantity?: number;
   tieredPricing?: Array<{ minQty: number; maxQty?: number; price: number }>;
@@ -623,6 +641,127 @@ function extractVendorId(item: any): string | undefined {
   return id ? String(id) : undefined;
 }
 
+function isTruthyFlag(value: any): boolean {
+  if (value === true) return true;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    return ['1', 'true', 'yes', 'y', 'official', 'brand', 'verified', 'authenticated', 'flagship', 'brand store', 'official store'].includes(normalized);
+  }
+  return false;
+}
+
+function collectShopBadges(shopSource: Record<string, any>): string[] {
+  const badges: string[] = [];
+  const pushBadge = (enabled: boolean, label: string) => {
+    if (enabled && !badges.includes(label)) badges.push(label);
+  };
+
+  pushBadge(
+    isTruthyFlag(shopSource?.IsOfficial) ||
+      isTruthyFlag(shopSource?.Official) ||
+      isTruthyFlag(shopSource?.OfficialStore) ||
+      isTruthyFlag(shopSource?.isOfficial) ||
+      isTruthyFlag(shopSource?.official),
+    'Official'
+  );
+  pushBadge(
+    isTruthyFlag(shopSource?.IsBrand) ||
+      isTruthyFlag(shopSource?.Brand) ||
+      isTruthyFlag(shopSource?.isBrand) ||
+      isTruthyFlag(shopSource?.brand),
+    'Brand'
+  );
+  pushBadge(
+    isTruthyFlag(shopSource?.IsVerified) ||
+      isTruthyFlag(shopSource?.Verified) ||
+      isTruthyFlag(shopSource?.Authenticated) ||
+      isTruthyFlag(shopSource?.isVerified),
+    'Verified'
+  );
+  pushBadge(
+    isTruthyFlag(shopSource?.IsFlagship) ||
+      isTruthyFlag(shopSource?.Flagship) ||
+      isTruthyFlag(shopSource?.flagship),
+    'Flagship'
+  );
+
+  return badges;
+}
+
+function extractShopInfo(item: any): ProductCardOTAPI['shop'] {
+  const vendorSource =
+    item?.Vendor ||
+    item?.VendorInfo ||
+    item?.Seller ||
+    item?.Shop ||
+    item?.Store ||
+    item?.vendor ||
+    item?.vendorInfo ||
+    item?.seller ||
+    item?.shop ||
+    item?.store ||
+    {};
+
+  const vendorId = extractVendorId(item) || normalizeString(vendorSource?.Id || vendorSource?.VendorId || vendorSource?.SellerId);
+  const name =
+    extractVendorName(item) ||
+    normalizeString(
+      vendorSource?.ShopName ||
+        vendorSource?.shopName ||
+        vendorSource?.Name ||
+        vendorSource?.name ||
+        vendorSource?.Title ||
+        vendorSource?.title ||
+        vendorSource?.DisplayName ||
+        vendorSource?.displayName ||
+        vendorSource?.CompanyName ||
+        vendorSource?.companyName
+    );
+  const url =
+    normalizeString(
+      vendorSource?.ShopUrl ||
+        vendorSource?.shopUrl ||
+        vendorSource?.Url ||
+        vendorSource?.url ||
+        item?.ShopUrl ||
+        item?.shopUrl ||
+        item?.VendorUrl ||
+        item?.vendorUrl ||
+        item?.SourceUrl ||
+        item?.sourceUrl
+    ) || undefined;
+  const score =
+    toNumber(item?.VendorScore) ??
+    toNumber(item?.Vendor?.Score) ??
+    toNumber(item?.Vendor?.VendorScore) ??
+    toNumber(vendorSource?.Score) ??
+    toNumber(vendorSource?.VendorScore);
+
+  const badges = collectShopBadges({
+    ...vendorSource,
+    ...item,
+  });
+
+  const shop: ProductCardOTAPI['shop'] = {
+    vendorId: vendorId || undefined,
+    name: name || undefined,
+    url,
+    score,
+    badges: badges.length > 0 ? badges : undefined,
+    isOfficial: badges.includes('Official'),
+    isVerified: badges.includes('Verified'),
+    isBrand: badges.includes('Brand') || badges.includes('Flagship'),
+    raw: vendorSource && typeof vendorSource === 'object' ? vendorSource : undefined,
+  };
+
+  if (!shop.vendorId && !shop.name && !shop.url && !shop.score && !shop.badges && !shop.raw) {
+    return undefined;
+  }
+
+  return shop;
+}
+
 function extractPriceRange(item: any): { min?: number; max?: number } {
   const min =
     toNumber(item?.priceMin) ??
@@ -689,6 +828,7 @@ export function normalizeOTAPIProductCard(item: any): ProductCardOTAPI {
   const externalId = extractItemId(payload);
   const title = extractTitle(payload);
   const { min, max } = extractPriceRange(payload);
+  const shop = extractShopInfo(payload);
 
   const card: ProductCardOTAPI = {
     source: 'shopping_otapi',
@@ -699,7 +839,11 @@ export function normalizeOTAPIProductCard(item: any): ProductCardOTAPI {
     priceMax: max,
     imageUrl: pickFirstImage(payload),
     images: collectImages(payload),
-    sellerName: extractVendorName(payload),
+    sellerName: extractVendorName(payload) || shop?.name,
+    vendorId: shop?.vendorId,
+    shopName: shop?.name,
+    shopUrl: shop?.url,
+    shop,
     sourceUrl: buildSourceUrl(externalId),
     raw: payload,
   };
@@ -783,6 +927,10 @@ export function normalizeOTAPIProductDetail(itemFullInfo: any, descriptionData?:
     rating: toNumber(itemRoot?.Rating) ?? toNumber(itemRoot?.VendorRating),
     ratingCount: toNumber(itemRoot?.RatingCount) ? Math.trunc(toNumber(itemRoot?.RatingCount) as number) : undefined,
     vendorScore: toNumber(itemRoot?.VendorScore) ?? toNumber(itemRoot?.Vendor?.Score) ?? toNumber(itemRoot?.Vendor?.VendorScore),
+    vendorId: base.vendorId,
+    shopName: base.shopName,
+    shopUrl: base.shopUrl,
+    shop: base.shop,
     availableQuantity:
       toNumber(itemRoot?.Quantity) ??
       toNumber(itemRoot?.AvailableQuantity) ??

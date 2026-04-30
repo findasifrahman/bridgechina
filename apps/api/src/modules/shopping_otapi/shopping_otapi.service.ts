@@ -131,6 +131,62 @@ function normalizeSearchText(value: string): string {
     .trim();
 }
 
+function levenshteinDistance(a: string, b: string, maxDistance = 2): number {
+  const left = String(a || '').trim();
+  const right = String(b || '').trim();
+  if (left === right) return 0;
+  if (!left.length) return right.length;
+  if (!right.length) return left.length;
+  if (Math.abs(left.length - right.length) > maxDistance) {
+    return Math.abs(left.length - right.length);
+  }
+
+  let previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+  let current = new Array<number>(right.length + 1).fill(0);
+
+  for (let i = 1; i <= left.length; i += 1) {
+    current[0] = i;
+    let rowMin = current[0];
+
+    for (let j = 1; j <= right.length; j += 1) {
+      const substitutionCost = left[i - 1] === right[j - 1] ? 0 : 1;
+      current[j] = Math.min(
+        previous[j] + 1,
+        current[j - 1] + 1,
+        previous[j - 1] + substitutionCost
+      );
+      rowMin = Math.min(rowMin, current[j]);
+    }
+
+    if (rowMin > maxDistance) return rowMin;
+    [previous, current] = [current, previous];
+  }
+
+  return previous[right.length];
+}
+
+function isApproximateTextMatch(text: string, token: string): boolean {
+  const normalizedText = normalizeSearchText(text);
+  const normalizedToken = normalizeSearchText(token);
+  if (!normalizedText || !normalizedToken) return false;
+
+  if (normalizedText.includes(normalizedToken)) return true;
+
+  const compactText = normalizedText.replace(/\s+/g, '');
+  const compactToken = normalizedToken.replace(/\s+/g, '');
+  if (compactText.includes(compactToken)) return true;
+
+  const textTokens = normalizedText.split(' ').filter(Boolean);
+  const maxDistance = normalizedToken.length <= 5 ? 1 : normalizedToken.length <= 8 ? 2 : 3;
+
+  return textTokens.some((textToken) => {
+    if (textToken === normalizedToken) return true;
+    if (textToken.includes(normalizedToken) || normalizedToken.includes(textToken)) return true;
+    if (Math.abs(textToken.length - normalizedToken.length) > maxDistance) return false;
+    return levenshteinDistance(textToken, normalizedToken, maxDistance) <= maxDistance;
+  });
+}
+
 const GENERIC_QUERY_WORDS = new Set([
   'machine',
   'machines',
@@ -244,7 +300,6 @@ function scoreSearchCard(card: ProductCardOTAPI, spec: ReturnType<typeof buildSe
   const title = normalizeSearchText(card.title || '');
   if (!title) return 0;
 
-  const titleCompact = title.replace(/\s+/g, '');
   const tokens = spec.tokens;
   const hints = spec.relevanceHint;
   let score = 0;
@@ -255,17 +310,9 @@ function scoreSearchCard(card: ProductCardOTAPI, spec: ReturnType<typeof buildSe
   for (const hint of hints) {
     if (!hint) continue;
     const normalizedHint = normalizeSearchText(hint);
-    const compactHint = normalizedHint.replace(/\s+/g, '');
-    if (normalizedHint && title.includes(normalizedHint)) {
+    if (normalizedHint && isApproximateTextMatch(title, normalizedHint)) {
       score += 250;
       if (normalizedHint === spec.normalizedKeyword || normalizedHint === spec.keyword) {
-        exactPhraseHit = true;
-      }
-      matchedHintCount += 1;
-    }
-    if (compactHint && titleCompact.includes(compactHint)) {
-      score += 180;
-      if (compactHint === spec.compactKeyword) {
         exactPhraseHit = true;
       }
       matchedHintCount += 1;
@@ -274,7 +321,7 @@ function scoreSearchCard(card: ProductCardOTAPI, spec: ReturnType<typeof buildSe
 
   for (const token of tokens) {
     if (!token) continue;
-    if (title.includes(token)) {
+    if (isApproximateTextMatch(title, token)) {
       matchedTokenCount += 1;
       score += token.length >= 5 ? 80 : 30;
     } else {
@@ -295,7 +342,6 @@ function scoreSearchCard(card: ProductCardOTAPI, spec: ReturnType<typeof buildSe
 
 function debugScoreSearchCard(card: ProductCardOTAPI, spec: ReturnType<typeof buildSearchKeywordSpec>) {
   const title = normalizeSearchText(card.title || '');
-  const titleCompact = title.replace(/\s+/g, '');
   const matchedHints: string[] = [];
   const matchedTokens: string[] = [];
   const missedTokens: string[] = [];
@@ -307,20 +353,11 @@ function debugScoreSearchCard(card: ProductCardOTAPI, spec: ReturnType<typeof bu
   for (const hint of spec.relevanceHint) {
     if (!hint) continue;
     const normalizedHint = normalizeSearchText(hint);
-    const compactHint = normalizedHint.replace(/\s+/g, '');
     let hit = false;
-    if (normalizedHint && title.includes(normalizedHint)) {
+    if (normalizedHint && isApproximateTextMatch(title, normalizedHint)) {
       score += 250;
       hit = true;
       if (normalizedHint === spec.normalizedKeyword || normalizedHint === spec.keyword) {
-        exactPhraseHit = true;
-      }
-      matchedHintCount += 1;
-    }
-    if (compactHint && titleCompact.includes(compactHint)) {
-      score += 180;
-      hit = true;
-      if (compactHint === spec.compactKeyword) {
         exactPhraseHit = true;
       }
       matchedHintCount += 1;
@@ -330,7 +367,7 @@ function debugScoreSearchCard(card: ProductCardOTAPI, spec: ReturnType<typeof bu
 
   for (const token of spec.tokens) {
     if (!token) continue;
-    if (title.includes(token)) {
+    if (isApproximateTextMatch(title, token)) {
       score += token.length >= 5 ? 80 : 30;
       matchedTokens.push(token);
       matchedTokenCount += 1;
@@ -672,6 +709,13 @@ export interface SearchResult {
   pageSize?: number;
   totalPages?: number;
   hasNextPage?: boolean;
+  searchTrace?: {
+    baseKeyword: string;
+    searchKeyword: string;
+    searchTrail: string[];
+    fallbackCandidates: string[];
+    fallbackUsed: boolean;
+  };
 }
 
 function normalizeOtapiLanguage(language?: string): string {
@@ -820,6 +864,7 @@ export async function searchByKeyword(
   keyword: string | undefined,
   opts?: {
     category?: string;
+    vendorId?: string;
     fallbackKeywords?: string[];
     fallbackIndex?: number;
     page?: number;
@@ -833,30 +878,37 @@ export async function searchByKeyword(
     categoryOnly?: boolean;
     synonymHints?: string[];
     disableChineseFallback?: boolean;
+    searchTrail?: string[];
   }
 ): Promise<SearchResult> {
-  const baseKeyword = keyword?.trim() || opts?.category || 'products';
+  const vendorOnlySearch = !!opts?.vendorId && !keyword?.trim() && !opts?.category;
+  const baseKeyword = keyword?.trim() || opts?.category || (vendorOnlySearch ? '' : 'products');
   const searchContext = buildShoppingSearchContext(baseKeyword, opts?.category);
   const candidateFallbacks = Array.from(new Set(
     (opts?.fallbackKeywords && opts.fallbackKeywords.length > 0)
       ? opts.fallbackKeywords
       : buildShoppingSearchCandidates(baseKeyword, opts?.category)
   ));
-  let rawSearchKeyword = searchContext.primaryKeyword || baseKeyword;
+  let rawSearchKeyword = vendorOnlySearch ? '' : (searchContext.primaryKeyword || baseKeyword);
   const strongShoppingSignal =
     searchContext.matchedGroupSlugs.length > 0 ||
     searchContext.matchedSubgroupSlugs.length > 0 ||
     searchContext.buyerIntentTerms.length > 0;
-  if (!opts?.disableChineseFallback && rawSearchKeyword && rawSearchKeyword !== 'products' && !hasChineseCharacters(rawSearchKeyword)) {
+  if (!vendorOnlySearch && !opts?.disableChineseFallback && rawSearchKeyword && rawSearchKeyword !== 'products' && !hasChineseCharacters(rawSearchKeyword)) {
     const fallbackChinese = buildChineseShoppingQuery(rawSearchKeyword, opts?.category);
     if (fallbackChinese && strongShoppingSignal) {
       rawSearchKeyword = fallbackChinese;
     }
   }
   const prepared = buildSearchKeywordSpec(rawSearchKeyword, searchContext);
-  prepared.categoryOnly = opts?.categoryOnly ?? (!keyword?.trim() && !!opts?.category);
+  prepared.categoryOnly = vendorOnlySearch || opts?.categoryOnly || (!keyword?.trim() && !!opts?.category);
   const searchKeyword = prepared.keyword || rawSearchKeyword || searchContext.primaryKeyword || baseKeyword;
   const languageOfQuery = prepared.languageOfQuery;
+  const searchTrail = Array.from(new Set([
+    ...(opts?.searchTrail || []),
+    baseKeyword,
+    searchKeyword,
+  ].map((value) => String(value || '').trim()).filter(Boolean)));
   const language = normalizeOtapiLanguage(opts?.language || 'en');
   const page = opts?.page ?? 1;
   const pageSize = opts?.pageSize ?? 20;
@@ -867,6 +919,7 @@ export async function searchByKeyword(
     language,
     sort,
     category: opts?.category || '',
+    vendorId: opts?.vendorId || '',
     minPrice: opts?.minPrice ?? '',
     maxPrice: opts?.maxPrice ?? '',
     minVolume: opts?.minVolume ?? '',
@@ -888,7 +941,21 @@ export async function searchByKeyword(
       if (curatedCategorySlug) {
         await persistCuratedHotItems(curatedCategorySlug, paged);
       }
-      return { items: paged, totalCount, page, pageSize, totalPages, hasNextPage };
+      return {
+        items: paged,
+        totalCount,
+        page,
+        pageSize,
+        totalPages,
+        hasNextPage,
+        searchTrace: {
+          baseKeyword,
+          searchKeyword,
+          searchTrail,
+          fallbackCandidates: candidateFallbacks.slice(0, 6),
+          fallbackUsed: searchTrail.length > 1,
+        },
+      };
     }
 
     if (DEBUG_OTAPI) {
@@ -918,6 +985,7 @@ export async function searchByKeyword(
       orderBy: mapSortToOrderBy(sort),
       categoryOnly: prepared.categoryOnly,
       category: opts?.category,
+      vendorId: opts?.vendorId,
       synonymHints: opts?.synonymHints?.slice(0, 12),
     });
   }
@@ -928,11 +996,12 @@ export async function searchByKeyword(
       languageOfQuery,
       framePosition: 0,
       frameSize: fetchSize,
-      ItemTitle: searchKeyword,
+      ItemTitle: vendorOnlySearch ? undefined : searchKeyword,
       OrderBy: mapSortToOrderBy(sort),
       MinPrice: opts?.minPrice,
       MaxPrice: opts?.maxPrice,
       MinVolume: opts?.minVolume,
+      VendorId: opts?.vendorId,
     });
   } catch (error) {
     console.warn('[OTAPI Service] searchByKeyword failed, returning empty results:', {
@@ -1039,8 +1108,8 @@ export async function searchByKeyword(
     .filter((value, index, array) => value.length > 0 && array.indexOf(value) === index)
     .filter((value) => value.toLowerCase() !== searchKeyword.toLowerCase());
   const fallbackIndex = opts?.fallbackIndex ?? 0;
-  const maxRetries = 2;
-  if (totalCount < minimumUsefulCount && fallbackIndex < fallbackCandidates.length && fallbackIndex < maxRetries) {
+  const maxRetries = Math.max(1, Math.min(6, fallbackCandidates.length));
+  if (!vendorOnlySearch && totalCount < minimumUsefulCount && fallbackIndex < fallbackCandidates.length && fallbackIndex < maxRetries) {
     const nextKeyword = fallbackCandidates[fallbackIndex];
     if (nextKeyword && nextKeyword.toLowerCase() !== searchKeyword.toLowerCase()) {
       if (DEBUG_OTAPI) {
@@ -1059,12 +1128,13 @@ export async function searchByKeyword(
         fallbackKeywords: fallbackCandidates,
         fallbackIndex: fallbackIndex + 1,
         disableChineseFallback: true,
+        searchTrail,
         debugContext: opts?.debugContext ? `${opts.debugContext} fallback:${nextKeyword}` : `fallback:${nextKeyword}`,
       });
     }
   }
 
-  if (totalCount === 0) {
+  if (!vendorOnlySearch && totalCount === 0) {
     const cachedFallback = await searchCachedCatalogFallback(fallbackCandidates, prepared, sort, page, pageSize);
     if (cachedFallback && cachedFallback.items.length > 0) {
       if (DEBUG_OTAPI) {
@@ -1075,7 +1145,16 @@ export async function searchByKeyword(
           totalCount: cachedFallback.totalCount,
         });
       }
-      return cachedFallback;
+      return {
+        ...cachedFallback,
+        searchTrace: {
+          baseKeyword,
+          searchKeyword,
+          searchTrail,
+          fallbackCandidates: fallbackCandidates.slice(0, 6),
+          fallbackUsed: searchTrail.length > 1,
+        },
+      };
     }
   }
 
@@ -1097,7 +1176,21 @@ export async function searchByKeyword(
     await persistCuratedHotItems(curatedCategorySlug, paged);
   }
 
-  return { items: paged, totalCount, page, pageSize, totalPages, hasNextPage };
+  return {
+    items: paged,
+    totalCount,
+    page,
+    pageSize,
+    totalPages,
+    hasNextPage,
+    searchTrace: {
+      baseKeyword,
+      searchKeyword,
+      searchTrail,
+      fallbackCandidates: fallbackCandidates.slice(0, 6),
+      fallbackUsed: searchTrail.length > 1,
+    },
+  };
 }
 
 /**
@@ -1310,8 +1403,60 @@ export async function getItemDetail(externalId: string, language: string = 'en')
   return merged;
 }
 
+export async function searchByVendorId(
+  vendorId: string,
+  opts?: {
+    page?: number;
+    pageSize?: number;
+    sort?: string;
+    language?: string;
+  }
+): Promise<SearchResult> {
+  const safeVendorId = String(vendorId || '').trim();
+  const page = opts?.page ?? 1;
+  const pageSize = opts?.pageSize ?? 20;
+  const sort = opts?.sort || 'sales';
+  const language = normalizeOtapiLanguage(opts?.language || 'en');
+  const framePosition = (page - 1) * pageSize;
+  const fetchSize = Math.min(Math.max(pageSize * 8, 120), 200);
+
+  if (!safeVendorId) {
+    return { items: [], totalCount: 0, page, pageSize, totalPages: 0, hasNextPage: false };
+  }
+
+  let response: any;
+  try {
+    response = await otapiClient.searchItemsFrame({
+      language,
+      languageOfQuery: language,
+      framePosition: 0,
+      frameSize: fetchSize,
+      VendorId: safeVendorId,
+      OrderBy: mapSortToOrderBy(sort),
+    });
+  } catch (error) {
+    console.warn('[OTAPI Service] searchByVendorId failed, returning empty results:', {
+      vendorId: safeVendorId,
+      language,
+      page,
+      pageSize,
+      sort,
+      message: String((error as any)?.message || error),
+    });
+    return { items: [], totalCount: 0, page, pageSize, totalPages: 0, hasNextPage: false };
+  }
+
+  const items = extractSearchItems(response);
+  const normalized = await applyMarkupToCards(normalizeOTAPIProductCards(items));
+  const totalCount = extractTotalCount(response) ?? normalized.length;
+  const totalPages = Math.ceil(totalCount / pageSize);
+  const hasNextPage = page < totalPages;
+  const paged = normalized.slice(framePosition, framePosition + pageSize);
+  return { items: paged, totalCount, page, pageSize, totalPages, hasNextPage };
+}
+
 export async function getVendorInfo(vendorId: string, language: string = 'en'): Promise<any> {
-  return otapiClient.getVendorInfo({ vendorId: ensureAbbPrefix(vendorId), language });
+  return otapiClient.getVendorInfo({ vendorId: String(vendorId || '').trim(), language });
 }
 
 export async function getItemDescription(externalId: string, language: string = 'en'): Promise<any> {
