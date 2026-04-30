@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/prisma.js';
+import { buildShoppingSearchContext } from '../modules/shopping/search.synonyms.js';
 
 function isDatabaseUnavailable(error: any): boolean {
   const message = String(error?.message || '');
@@ -314,6 +315,7 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
   fastify.get('/shopping/search', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const query = searchByKeywordSchema.parse(request.query);
+      const searchContext = buildShoppingSearchContext(query.keyword, query.category);
       let categoryKeyword: string | undefined;
       let categoryTrailKeyword: string | undefined;
       let categoryLeafKeyword: string | undefined;
@@ -358,11 +360,16 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
         ];
       }
       if (query.keyword) {
+        const searchTerms = searchContext.searchTerms.length > 0
+          ? searchContext.searchTerms
+          : [query.keyword];
         localWhere.OR = [
           ...(localWhere.OR || []),
-          { title: { contains: query.keyword, mode: 'insensitive' } },
-          { description: { contains: query.keyword, mode: 'insensitive' } },
-          { brand: { contains: query.keyword, mode: 'insensitive' } },
+          ...searchTerms.flatMap((term) => [
+            { title: { contains: term, mode: 'insensitive' } },
+            { description: { contains: term, mode: 'insensitive' } },
+            { brand: { contains: term, mode: 'insensitive' } },
+          ]),
         ];
       }
 
@@ -380,20 +387,26 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
           take: query.pageSize || 20,
         }),
         searchByKeyword(query.keyword || categoryKeyword, {
-          category: query.category,
-          page: query.page,
-          pageSize: query.pageSize,
-          minPrice: query.minPrice,
-          maxPrice: query.maxPrice,
-          minVolume: query.minVolume,
-          sort: query.sort,
-          language: query.language,
-          categoryOnly: !query.keyword && !!query.category,
-          debugContext: query.keyword
-            ? `search:${query.keyword}:${query.category || 'no-category'}`
-            : query.category
-              ? `category:${query.category}${categoryLeafKeyword ? ` leaf:${categoryLeafKeyword}` : ''}${categoryTrailKeyword && categoryTrailKeyword !== categoryLeafKeyword ? ` trail:${categoryTrailKeyword}` : ''}`
-              : 'search:empty',
+            category: query.category,
+            fallbackKeywords: [
+              categoryLeafKeyword,
+              categoryTrailKeyword,
+              query.category,
+            ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0),
+            page: query.page,
+            pageSize: query.pageSize,
+            minPrice: query.minPrice,
+            maxPrice: query.maxPrice,
+            minVolume: query.minVolume,
+            sort: query.sort,
+            language: query.language,
+            categoryOnly: !query.keyword && !!query.category,
+            synonymHints: searchContext.relevanceHints,
+            debugContext: query.keyword
+              ? `search:${query.keyword}:${query.category || 'no-category'}`
+              : query.category
+                ? `category:${query.category}${categoryLeafKeyword ? ` leaf:${categoryLeafKeyword}` : ''}${categoryTrailKeyword && categoryTrailKeyword !== categoryLeafKeyword ? ` trail:${categoryTrailKeyword}` : ''}`
+                : 'search:empty',
         }),
       ]);
 

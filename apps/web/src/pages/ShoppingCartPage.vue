@@ -34,6 +34,26 @@
 
       <div v-else class="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_420px]">
         <section class="space-y-4">
+          <div v-if="!authStore.isAuthenticated" class="rounded-[2rem] border border-teal-200 bg-teal-50 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.04)]">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p class="text-xs font-bold uppercase tracking-[0.24em] text-teal-700">Fast checkout</p>
+                <h2 class="mt-1 text-xl font-black text-slate-900">Sign in or create an account to continue</h2>
+                <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                  You can log in or register right here without leaving checkout. After that, add your shipping address on this page and place the order.
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-3">
+                <Button variant="primary" class="rounded-2xl bg-teal-600 px-5 py-3 text-white hover:bg-teal-700" @click="openAuthModal('login')">
+                  Sign in
+                </Button>
+                <Button variant="ghost" class="rounded-2xl border border-teal-200 bg-white px-5 py-3 text-teal-700 hover:bg-teal-50" @click="openAuthModal('register')">
+                  Create account
+                </Button>
+              </div>
+            </div>
+          </div>
+
           <div class="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-[0_18px_45px_rgba(15,23,42,0.05)]">
             <div class="flex items-center justify-between gap-3">
               <div>
@@ -146,12 +166,38 @@
               <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">
                 Shipping time is 12-14 days. MOQ and minimum order value are checked before order placement.
               </div>
-              <Select
-                v-model="selectedAddressId"
-                label="Delivery address"
-                :options="addressOptions"
-                placeholder="Select an address"
-              />
+              <div v-if="authStore.isAuthenticated">
+                <Select
+                  v-if="addresses.length > 0"
+                  v-model="selectedAddressId"
+                  label="Delivery address"
+                  :options="addressOptions"
+                  placeholder="Select an address"
+                />
+                <div v-else class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                  <p class="text-sm font-semibold text-slate-900">No shipping address yet</p>
+                  <p class="mt-1 text-xs leading-5 text-slate-500">
+                    Add an address here now. You do not need to go to your profile.
+                  </p>
+                  <Button variant="primary" class="mt-3 rounded-2xl bg-teal-600 px-4 py-2 text-white hover:bg-teal-700" @click="showAddressModal = true">
+                    Add shipping address
+                  </Button>
+                </div>
+              </div>
+              <div v-else class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                <p class="text-sm font-semibold text-slate-900">Sign in to unlock saved addresses</p>
+                <p class="mt-1 text-xs leading-5 text-slate-500">
+                  Use the quick sign in or register form on this page. No redirect needed.
+                </p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <Button variant="primary" class="rounded-2xl bg-teal-600 px-4 py-2 text-white hover:bg-teal-700" @click="openAuthModal('login')">
+                    Sign in
+                  </Button>
+                  <Button variant="ghost" class="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-slate-700 hover:bg-slate-50" @click="openAuthModal('register')">
+                    Register
+                  </Button>
+                </div>
+              </div>
               <Select
                 v-model="shippingMethod"
                 label="Shipping method"
@@ -197,15 +243,18 @@
               size="lg"
               class="mt-5 w-full rounded-2xl bg-teal-600 py-3 text-white hover:bg-teal-700"
               :loading="submitting"
-              :disabled="!selectedAddressId || addresses.length === 0 || orderWarnings.length > 0"
-              @click="submitCheckout"
+              :disabled="orderWarnings.length > 0 || submitting"
+              @click="handleCheckoutPrimaryAction"
             >
               <ShoppingCart class="mr-2 h-4 w-4" />
-              Place order
+              {{ checkoutPrimaryLabel }}
             </Button>
 
-            <p v-if="addresses.length === 0" class="mt-3 text-center text-xs leading-6 text-amber-700">
-              Add a shipping address in your profile before placing the order.
+            <p v-if="!authStore.isAuthenticated" class="mt-3 text-center text-xs leading-6 text-slate-500">
+              Sign in or register right here to complete checkout.
+            </p>
+            <p v-else-if="addresses.length === 0" class="mt-3 text-center text-xs leading-6 text-amber-700">
+              Add a shipping address on this page before placing the order.
             </p>
             <p v-else class="mt-3 text-center text-xs leading-6 text-slate-500">
               Payment is not collected now. You can upload the payment slip from your orders page after checkout.
@@ -215,14 +264,81 @@
       </div>
     </div>
   </div>
+
+  <Modal v-model="showAuthModal" :title="authMode === 'login' ? 'Sign in to checkout' : 'Create account to checkout'" size="lg">
+    <div class="mb-4 flex rounded-2xl border border-slate-200 bg-slate-50 p-1">
+      <button
+        type="button"
+        class="flex-1 rounded-xl px-4 py-2 text-sm font-semibold transition"
+        :class="authMode === 'login' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'"
+        @click="authMode = 'login'"
+      >
+        Sign in
+      </button>
+      <button
+        type="button"
+        class="flex-1 rounded-xl px-4 py-2 text-sm font-semibold transition"
+        :class="authMode === 'register' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'"
+        @click="authMode = 'register'"
+      >
+        Register
+      </button>
+    </div>
+
+    <div v-if="authMode === 'login'" class="space-y-4">
+      <Input v-model="loginForm.identifier" label="Email or phone" placeholder="your@email.com or +880..." />
+      <Input v-model="loginForm.password" label="Password" type="password" />
+      <Button variant="primary" class="w-full rounded-2xl bg-teal-600 py-3 text-white hover:bg-teal-700" :loading="authLoading" @click="handleInlineLogin">
+        Sign in and continue
+      </Button>
+      <p class="text-center text-xs text-slate-500">
+        After sign in, add your shipping address right here if needed.
+      </p>
+    </div>
+
+    <div v-else class="space-y-4">
+      <Input v-model="registerForm.email" label="Email (optional)" type="email" placeholder="your@email.com" />
+      <Input v-model="registerForm.phone" label="Phone number" type="tel" placeholder="+880..." />
+      <Input v-model="registerForm.password" label="Password" type="password" />
+      <Input v-model="registerForm.confirmPassword" label="Confirm password" type="password" />
+      <Button variant="primary" class="w-full rounded-2xl bg-teal-600 py-3 text-white hover:bg-teal-700" :loading="authLoading" @click="handleInlineRegister">
+        Create account and continue
+      </Button>
+      <p class="text-center text-xs text-slate-500">
+        We will keep you on checkout and open the address form next if needed.
+      </p>
+    </div>
+  </Modal>
+
+  <Modal v-model="showAddressModal" title="Add shipping address" size="lg">
+    <form class="space-y-4" @submit.prevent="handleAddAddress">
+      <Input v-model="addressForm.name" label="Recipient name" required />
+      <Input v-model="addressForm.phone" label="Phone" required />
+      <Input v-model="addressForm.country" label="Country" placeholder="Bangladesh" />
+      <Input v-model="addressForm.city" label="City" required />
+      <Input v-model="addressForm.address_line" label="Address line" required />
+      <Input v-model="addressForm.postal_code" label="Postal code" />
+      <Input v-model="addressForm.notes" label="Notes" placeholder="Apartment, floor, landmark..." />
+      <div class="flex items-center gap-2">
+        <input v-model="addressForm.is_default" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+        <span class="text-sm text-slate-700">Set as default address</span>
+      </div>
+      <div class="flex justify-end gap-3 pt-2">
+        <Button variant="ghost" type="button" @click="showAddressModal = false">Cancel</Button>
+        <Button variant="primary" type="submit" :loading="savingAddress" class="rounded-2xl bg-teal-600 px-5 py-3 text-white hover:bg-teal-700">
+          Save address
+        </Button>
+      </div>
+    </form>
+  </Modal>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from '@bridgechina/ui';
 import { ChevronLeft, Minus, Package, Plus, ShoppingCart } from 'lucide-vue-next';
-import { Button, Input, Select } from '@bridgechina/ui';
+import { Button, Input, Modal, Select } from '@bridgechina/ui';
 import { useShoppingCart } from '@/composables/useShoppingCart';
 import { useAuthStore } from '@/stores/auth';
 import axios from '@/utils/axios';
@@ -240,6 +356,28 @@ const shippingMethod = ref('air');
 const shippingFee = ref<number>(0);
 const notes = ref('');
 const moqRule = ref({ minimum_product: 1, minimum_price_threshold: 0, currency: 'BDT' });
+const showAuthModal = ref(false);
+const showAddressModal = ref(false);
+const authMode = ref<'login' | 'register'>('login');
+const authLoading = ref(false);
+const savingAddress = ref(false);
+const loginForm = ref({ identifier: '', password: '' });
+const registerForm = ref({
+  email: '',
+  phone: '',
+  password: '',
+  confirmPassword: '',
+});
+const addressForm = ref({
+  name: '',
+  phone: '',
+  country: 'Bangladesh',
+  city: '',
+  address_line: '',
+  postal_code: '',
+  notes: '',
+  is_default: false,
+});
 
 const subtotal = computed(() => {
   return cartItems.value.reduce((sum, item) => sum + ((item.priceMin || 0) * item.quantity), 0);
@@ -267,6 +405,13 @@ const addressOptions = computed(() =>
   }))
 );
 
+const checkoutPrimaryLabel = computed(() => {
+  if (!authStore.isAuthenticated) return 'Sign in to checkout';
+  if (addresses.value.length === 0) return 'Add address to continue';
+  if (!selectedAddressId.value) return 'Select address to continue';
+  return 'Place order';
+});
+
 const shippingOptions = [
   { value: 'air', label: 'Air shipping' },
   { value: 'sea', label: 'Sea shipping' },
@@ -290,6 +435,19 @@ async function loadAddresses() {
   }
 }
 
+function resetAddressForm() {
+  addressForm.value = {
+    name: '',
+    phone: '',
+    country: 'Bangladesh',
+    city: '',
+    address_line: '',
+    postal_code: '',
+    notes: '',
+    is_default: addresses.value.length === 0,
+  };
+}
+
 async function loadShoppingSettings() {
   try {
     const response = await axios.get('/api/public/shopping/settings');
@@ -299,10 +457,98 @@ async function loadShoppingSettings() {
   }
 }
 
+function openAuthModal(mode: 'login' | 'register' = 'login') {
+  authMode.value = mode;
+  showAuthModal.value = true;
+}
+
+async function handleInlineLogin() {
+  if (!loginForm.value.identifier.trim() || !loginForm.value.password.trim()) {
+    toast.error('Enter your email or phone and password');
+    return;
+  }
+
+  authLoading.value = true;
+  try {
+    await authStore.login(loginForm.value.identifier.trim(), loginForm.value.password);
+    toast.success('Signed in successfully');
+    showAuthModal.value = false;
+    await loadAddresses();
+    if (addresses.value.length === 0) {
+      resetAddressForm();
+      showAddressModal.value = true;
+    }
+  } catch (error: any) {
+    toast.error(error.response?.data?.error || 'Sign in failed');
+  } finally {
+    authLoading.value = false;
+  }
+}
+
+async function handleInlineRegister() {
+  if (!registerForm.value.phone.trim() || !registerForm.value.password.trim()) {
+    toast.error('Phone number and password are required');
+    return;
+  }
+
+  if (registerForm.value.password !== registerForm.value.confirmPassword) {
+    toast.error('Passwords do not match');
+    return;
+  }
+
+  authLoading.value = true;
+  try {
+    await authStore.register({
+      email: registerForm.value.email.trim() || undefined,
+      phone: registerForm.value.phone.trim(),
+      password: registerForm.value.password,
+    });
+    toast.success('Account created');
+    showAuthModal.value = false;
+    await loadAddresses();
+    if (addresses.value.length === 0) {
+      resetAddressForm();
+      showAddressModal.value = true;
+    }
+  } catch (error: any) {
+    toast.error(error.response?.data?.error || 'Registration failed');
+  } finally {
+    authLoading.value = false;
+  }
+}
+
+async function handleAddAddress() {
+  if (!authStore.isAuthenticated) {
+    openAuthModal('login');
+    return;
+  }
+
+  if (!addressForm.value.name.trim() || !addressForm.value.phone.trim() || !addressForm.value.city.trim() || !addressForm.value.address_line.trim()) {
+    toast.error('Please complete the required address fields');
+    return;
+  }
+
+  savingAddress.value = true;
+  try {
+    const response = await axios.post('/api/user/addresses', {
+      ...addressForm.value,
+      is_default: !!addressForm.value.is_default,
+    });
+    toast.success('Address added');
+    showAddressModal.value = false;
+    resetAddressForm();
+    await loadAddresses();
+    selectedAddressId.value = response.data?.id || addresses.value[0]?.id || '';
+  } catch (error: any) {
+    toast.error(error.response?.data?.error || 'Failed to add address');
+  } finally {
+    savingAddress.value = false;
+  }
+}
+
 async function submitCheckout() {
   if (!authStore.isAuthenticated) {
-    toast.error('Please log in to place the order');
-    router.push('/login');
+    openAuthModal('login');
     return;
   }
 
@@ -350,6 +596,52 @@ async function submitCheckout() {
   }
 }
 
-onMounted(loadAddresses);
+function handleCheckoutPrimaryAction() {
+  if (orderWarnings.value.length > 0) {
+    toast.error(orderWarnings.value[0]);
+    return;
+  }
+
+  if (!authStore.isAuthenticated) {
+    openAuthModal('login');
+    return;
+  }
+
+  if (addresses.value.length === 0) {
+    resetAddressForm();
+    showAddressModal.value = true;
+    return;
+  }
+
+  if (!selectedAddressId.value && addresses.value.length > 0) {
+    selectedAddressId.value = addresses.value[0].id;
+  }
+
+  if (!selectedAddressId.value) {
+    resetAddressForm();
+    showAddressModal.value = true;
+    return;
+  }
+
+  submitCheckout();
+}
+
+watch(
+  () => authStore.isAuthenticated,
+  (isAuthenticated) => {
+    if (isAuthenticated) {
+      loadAddresses();
+    } else {
+      addresses.value = [];
+      selectedAddressId.value = '';
+    }
+  }
+);
+
+onMounted(() => {
+  if (authStore.isAuthenticated) {
+    loadAddresses();
+  }
+});
 onMounted(loadShoppingSettings);
 </script>

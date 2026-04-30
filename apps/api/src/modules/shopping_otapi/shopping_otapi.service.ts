@@ -13,6 +13,13 @@ import {
   setCachedSearch,
 } from '../shopping/cache.js';
 import { prisma } from '../../lib/prisma.js';
+import {
+  buildChineseShoppingQuery,
+  buildShoppingSearchCandidates,
+  buildShoppingSearchContext,
+  hasChineseCharacters,
+  type ShoppingSearchContext,
+} from '../shopping/search.synonyms.js';
 
 const SOURCE = 'shopping_otapi';
 const CURATED_CATEGORY_DEFS = [
@@ -124,6 +131,28 @@ function normalizeSearchText(value: string): string {
     .trim();
 }
 
+const GENERIC_QUERY_WORDS = new Set([
+  'machine',
+  'machines',
+  'product',
+  'products',
+  'item',
+  'items',
+  'goods',
+  'tool',
+  'tools',
+  'equipment',
+  'accessory',
+  'accessories',
+  'set',
+  'sets',
+  'new',
+  'best',
+  'top',
+  'premium',
+  'sale',
+]);
+
 function extractSearchTokens(value: string): string[] {
   const normalized = normalizeSearchText(value);
   if (!normalized) return [];
@@ -135,10 +164,11 @@ function extractSearchTokens(value: string): string[] {
     .filter((token) => token.length > 0)
     .filter((token) => token.length > 1 || /\d/.test(token))
     .filter((token, index, array) => array.indexOf(token) === index)
-    .filter((token) => !stopwords.has(token));
+    .filter((token) => !stopwords.has(token))
+    .filter((token) => !GENERIC_QUERY_WORDS.has(token));
 }
 
-function buildSearchKeywordSpec(keyword: string): {
+function buildSearchKeywordSpec(keyword: string, context?: ShoppingSearchContext): {
   keyword: string;
   languageOfQuery: 'en' | 'zh';
   normalizedKeyword: string;
@@ -148,33 +178,36 @@ function buildSearchKeywordSpec(keyword: string): {
   categoryOnly: boolean;
 } {
   const raw = keyword.trim();
+  const searchContext = context || buildShoppingSearchContext(raw);
   if (!raw) {
     return {
       keyword: raw,
       languageOfQuery: 'en',
       normalizedKeyword: '',
       compactKeyword: '',
-      tokens: [],
-      relevanceHint: [],
+      tokens: searchContext.tokens,
+      relevanceHint: searchContext.relevanceHints,
       categoryOnly: false,
     };
   }
 
   if (hasChineseCharacters(raw)) {
     const normalizedKeyword = normalizeSearchText(raw) || raw;
+    const tokens = searchContext.tokens.length > 0 ? searchContext.tokens : extractSearchTokens(raw);
     return {
       keyword: raw,
       languageOfQuery: 'zh',
       normalizedKeyword,
       compactKeyword: normalizedKeyword.replace(/\s+/g, ''),
-      tokens: extractSearchTokens(raw),
-      relevanceHint: [normalizedKeyword],
+      tokens,
+      relevanceHint: Array.from(new Set([normalizedKeyword, ...searchContext.relevanceHints])),
       categoryOnly: false,
     };
   }
 
   const normalizedKeyword = normalizeSearchText(raw) || raw.toLowerCase();
-  let primaryKeyword = normalizedKeyword;
+  const tokens = searchContext.tokens.length > 0 ? searchContext.tokens : extractSearchTokens(raw);
+  let primaryKeyword = searchContext.primaryKeyword || tokens.join(' ') || normalizedKeyword;
 
   if (/\be[-\s]?bike\b/i.test(normalizedKeyword) || /\bebike\b/i.test(normalizedKeyword)) {
     primaryKeyword = normalizedKeyword
@@ -189,6 +222,7 @@ function buildSearchKeywordSpec(keyword: string): {
     normalizedKeyword,
     primaryKeyword,
     compactKeyword,
+    ...searchContext.relevanceHints,
     ...((/\bbike\b/i.test(normalizedKeyword) || /\bebike\b/i.test(normalizedKeyword)) ? ['electric bike', 'electric bicycle', 'ebike'] : []),
   ].map((item) => item.trim()).filter(Boolean)));
 
@@ -197,7 +231,7 @@ function buildSearchKeywordSpec(keyword: string): {
     languageOfQuery: 'en',
     normalizedKeyword,
     compactKeyword,
-    tokens: extractSearchTokens(raw),
+    tokens,
     relevanceHint: hints,
     categoryOnly: false,
   };
@@ -214,26 +248,46 @@ function scoreSearchCard(card: ProductCardOTAPI, spec: ReturnType<typeof buildSe
   const tokens = spec.tokens;
   const hints = spec.relevanceHint;
   let score = 0;
+  let matchedTokenCount = 0;
+  let matchedHintCount = 0;
+  let exactPhraseHit = false;
 
   for (const hint of hints) {
     if (!hint) continue;
     const normalizedHint = normalizeSearchText(hint);
     const compactHint = normalizedHint.replace(/\s+/g, '');
-    if (normalizedHint && title.includes(normalizedHint)) score += 250;
-    if (compactHint && titleCompact.includes(compactHint)) score += 180;
+    if (normalizedHint && title.includes(normalizedHint)) {
+      score += 250;
+      if (normalizedHint === spec.normalizedKeyword || normalizedHint === spec.keyword) {
+        exactPhraseHit = true;
+      }
+      matchedHintCount += 1;
+    }
+    if (compactHint && titleCompact.includes(compactHint)) {
+      score += 180;
+      if (compactHint === spec.compactKeyword) {
+        exactPhraseHit = true;
+      }
+      matchedHintCount += 1;
+    }
   }
 
   for (const token of tokens) {
     if (!token) continue;
     if (title.includes(token)) {
+      matchedTokenCount += 1;
       score += token.length >= 5 ? 80 : 30;
     } else {
       score -= token.length >= 5 ? 20 : 8;
     }
   }
 
-  if (tokens.length > 0 && score <= 0) {
+  if (matchedTokenCount === 0 && matchedHintCount === 0) {
     return -1000;
+  }
+
+  if (tokens.length > 1 && !exactPhraseHit) {
+    score += matchedTokenCount >= 2 ? 80 : matchedTokenCount === 1 ? 30 : 0;
   }
 
   return score;
@@ -246,6 +300,9 @@ function debugScoreSearchCard(card: ProductCardOTAPI, spec: ReturnType<typeof bu
   const matchedTokens: string[] = [];
   const missedTokens: string[] = [];
   let score = 0;
+  let matchedTokenCount = 0;
+  let matchedHintCount = 0;
+  let exactPhraseHit = false;
 
   for (const hint of spec.relevanceHint) {
     if (!hint) continue;
@@ -255,10 +312,18 @@ function debugScoreSearchCard(card: ProductCardOTAPI, spec: ReturnType<typeof bu
     if (normalizedHint && title.includes(normalizedHint)) {
       score += 250;
       hit = true;
+      if (normalizedHint === spec.normalizedKeyword || normalizedHint === spec.keyword) {
+        exactPhraseHit = true;
+      }
+      matchedHintCount += 1;
     }
     if (compactHint && titleCompact.includes(compactHint)) {
       score += 180;
       hit = true;
+      if (compactHint === spec.compactKeyword) {
+        exactPhraseHit = true;
+      }
+      matchedHintCount += 1;
     }
     if (hit) matchedHints.push(hint);
   }
@@ -268,10 +333,17 @@ function debugScoreSearchCard(card: ProductCardOTAPI, spec: ReturnType<typeof bu
     if (title.includes(token)) {
       score += token.length >= 5 ? 80 : 30;
       matchedTokens.push(token);
+      matchedTokenCount += 1;
     } else {
       score -= token.length >= 5 ? 20 : 8;
       missedTokens.push(token);
     }
+  }
+
+  if (matchedTokenCount === 0 && matchedHintCount === 0) {
+    score = -1000;
+  } else if (spec.tokens.length > 1 && !exactPhraseHit) {
+    score += matchedTokenCount >= 2 ? 80 : matchedTokenCount === 1 ? 30 : 0;
   }
 
   return {
@@ -394,6 +466,52 @@ async function applyMarkupToCards(cards: ProductCardOTAPI[]): Promise<ProductCar
       }))
     : cards;
   return filterPricedCards(marked);
+}
+
+async function searchCachedCatalogFallback(
+  candidates: string[],
+  spec: ReturnType<typeof buildSearchKeywordSpec>,
+  sort: string,
+  page: number,
+  pageSize: number
+): Promise<SearchResult | null> {
+  const terms = Array.from(new Set(candidates.map((value) => normalizeSearchText(value)).filter(Boolean))).slice(0, 6);
+  if (terms.length === 0) return null;
+
+  const cachedItems = await prisma.externalCatalogItem.findMany({
+    where: {
+      source: SOURCE,
+      expires_at: { gt: new Date() },
+      OR: terms.flatMap((term) => [
+        { title: { contains: term, mode: 'insensitive' } },
+        { title_en: { contains: term, mode: 'insensitive' } },
+      ]),
+    },
+    orderBy: { last_synced_at: 'desc' },
+    take: Math.min(Math.max(pageSize * 8, 80), 120),
+  });
+
+  if (cachedItems.length === 0) return null;
+
+  const fallbackCards = cachedItems
+    .map(buildFallbackCardFromCatalogItem)
+    .filter((card): card is ProductCardOTAPI => !!card);
+  if (fallbackCards.length === 0) return null;
+
+  const normalized = await applyMarkupToCards(fallbackCards);
+  const ranked = sortRankedCards(normalized, spec, sort);
+  if (ranked.length === 0) return null;
+
+  const framePosition = (page - 1) * pageSize;
+  const paged = ranked.slice(framePosition, framePosition + pageSize);
+  return {
+    items: paged,
+    totalCount: ranked.length,
+    page,
+    pageSize,
+    totalPages: Math.ceil(ranked.length / pageSize),
+    hasNextPage: page * pageSize < ranked.length,
+  };
 }
 
 async function applyMarkupToDetail(detail: ProductDetailOTAPI): Promise<ProductDetailOTAPI> {
@@ -702,6 +820,8 @@ export async function searchByKeyword(
   keyword: string | undefined,
   opts?: {
     category?: string;
+    fallbackKeywords?: string[];
+    fallbackIndex?: number;
     page?: number;
     pageSize?: number;
     sort?: string;
@@ -711,12 +831,31 @@ export async function searchByKeyword(
     minVolume?: number;
     debugContext?: string;
     categoryOnly?: boolean;
+    synonymHints?: string[];
+    disableChineseFallback?: boolean;
   }
 ): Promise<SearchResult> {
   const baseKeyword = keyword?.trim() || opts?.category || 'products';
-  const prepared = buildSearchKeywordSpec(baseKeyword);
+  const searchContext = buildShoppingSearchContext(baseKeyword, opts?.category);
+  const candidateFallbacks = Array.from(new Set(
+    (opts?.fallbackKeywords && opts.fallbackKeywords.length > 0)
+      ? opts.fallbackKeywords
+      : buildShoppingSearchCandidates(baseKeyword, opts?.category)
+  ));
+  let rawSearchKeyword = searchContext.primaryKeyword || baseKeyword;
+  const strongShoppingSignal =
+    searchContext.matchedGroupSlugs.length > 0 ||
+    searchContext.matchedSubgroupSlugs.length > 0 ||
+    searchContext.buyerIntentTerms.length > 0;
+  if (!opts?.disableChineseFallback && rawSearchKeyword && rawSearchKeyword !== 'products' && !hasChineseCharacters(rawSearchKeyword)) {
+    const fallbackChinese = buildChineseShoppingQuery(rawSearchKeyword, opts?.category);
+    if (fallbackChinese && strongShoppingSignal) {
+      rawSearchKeyword = fallbackChinese;
+    }
+  }
+  const prepared = buildSearchKeywordSpec(rawSearchKeyword, searchContext);
   prepared.categoryOnly = opts?.categoryOnly ?? (!keyword?.trim() && !!opts?.category);
-  const searchKeyword = prepared.keyword || baseKeyword;
+  const searchKeyword = prepared.keyword || rawSearchKeyword || searchContext.primaryKeyword || baseKeyword;
   const languageOfQuery = prepared.languageOfQuery;
   const language = normalizeOtapiLanguage(opts?.language || 'en');
   const page = opts?.page ?? 1;
@@ -779,6 +918,7 @@ export async function searchByKeyword(
       orderBy: mapSortToOrderBy(sort),
       categoryOnly: prepared.categoryOnly,
       category: opts?.category,
+      synonymHints: opts?.synonymHints?.slice(0, 12),
     });
   }
   let response: any;
@@ -891,6 +1031,52 @@ export async function searchByKeyword(
         2
       )
     );
+  }
+
+  const minimumUsefulCount = prepared.categoryOnly ? 6 : 1;
+  const fallbackCandidates = candidateFallbacks
+    .map((value) => String(value || '').trim())
+    .filter((value, index, array) => value.length > 0 && array.indexOf(value) === index)
+    .filter((value) => value.toLowerCase() !== searchKeyword.toLowerCase());
+  const fallbackIndex = opts?.fallbackIndex ?? 0;
+  const maxRetries = 2;
+  if (totalCount < minimumUsefulCount && fallbackIndex < fallbackCandidates.length && fallbackIndex < maxRetries) {
+    const nextKeyword = fallbackCandidates[fallbackIndex];
+    if (nextKeyword && nextKeyword.toLowerCase() !== searchKeyword.toLowerCase()) {
+      if (DEBUG_OTAPI) {
+        console.log('[OTAPI Service] searchByKeyword fallback retry:', {
+          debugContext: opts?.debugContext || 'search',
+          from: searchKeyword,
+          to: nextKeyword,
+          totalCount,
+          minimumUsefulCount,
+          fallbackIndex,
+          fallbackCandidates: fallbackCandidates.slice(0, 6),
+        });
+      }
+      return searchByKeyword(nextKeyword, {
+        ...opts,
+        fallbackKeywords: fallbackCandidates,
+        fallbackIndex: fallbackIndex + 1,
+        disableChineseFallback: true,
+        debugContext: opts?.debugContext ? `${opts.debugContext} fallback:${nextKeyword}` : `fallback:${nextKeyword}`,
+      });
+    }
+  }
+
+  if (totalCount === 0) {
+    const cachedFallback = await searchCachedCatalogFallback(fallbackCandidates, prepared, sort, page, pageSize);
+    if (cachedFallback && cachedFallback.items.length > 0) {
+      if (DEBUG_OTAPI) {
+        console.log('[OTAPI Service] searchByKeyword cached catalog fallback hit:', {
+          debugContext: opts?.debugContext || 'search',
+          keyword: searchKeyword,
+          candidateFallbacks: fallbackCandidates.slice(0, 6),
+          totalCount: cachedFallback.totalCount,
+        });
+      }
+      return cachedFallback;
+    }
   }
 
   // Best effort cache into ExternalCatalogItem for hot/pinned items + product details fallback

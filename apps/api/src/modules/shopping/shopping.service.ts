@@ -21,6 +21,12 @@ import {
   setCachedItem,
 } from './cache.js';
 import { translateKeywordToChinese } from './googleTranslate.js';
+import {
+  buildChineseShoppingQuery,
+  buildShoppingSearchContext,
+  hasChineseCharacters,
+  type ShoppingSearchContext,
+} from './search.synonyms.js';
 const SOURCE = 'tmapi_1688';
 
 function isDatabaseUnavailable(error: any): boolean {
@@ -133,23 +139,41 @@ export async function searchByKeyword(
     pageSize?: number;
     sort?: string; // 'sales', 'price_asc', 'price_desc', 'popular', 'default'
     language?: string; // 'en' for English, 'zh' for Chinese (default)
+    synonymHints?: string[];
   }
 ): Promise<SearchResult> {
   // If no keyword but category provided, use category name as keyword
-  let searchKeyword = keyword?.trim() || opts?.category || 'products';
+  const baseKeyword = keyword?.trim() || opts?.category || 'products';
+  const searchContext = buildShoppingSearchContext(baseKeyword, opts?.category);
+  let searchKeyword = searchContext.primaryKeyword || baseKeyword;
   const language = opts?.language || 'zh';
-  
-  // Translate English keyword to Chinese if language is 'zh' and keyword looks non-Chinese
-  if (language === 'zh' && searchKeyword && searchKeyword !== 'products') {
+  const strongShoppingSignal =
+    searchContext.matchedGroupSlugs.length > 0 ||
+    searchContext.matchedSubgroupSlugs.length > 0 ||
+    searchContext.buyerIntentTerms.length > 0;
+
+  // Prefer Chinese search terms for TMAPI when the query is Latin text.
+  if (searchKeyword && searchKeyword !== 'products' && !hasChineseCharacters(searchKeyword)) {
     try {
       const translated = await translateKeywordToChinese(searchKeyword);
-      if (translated !== searchKeyword) {
-        console.log('[Shopping Service] Translated keyword:', { original: searchKeyword, translated });
-        searchKeyword = translated;
+      const fallbackChinese = buildChineseShoppingQuery(searchKeyword, opts?.category);
+      const chosen = translated && translated !== searchKeyword
+        ? translated
+        : strongShoppingSignal
+          ? fallbackChinese
+          : '';
+      if (chosen && chosen !== searchKeyword) {
+        console.log('[Shopping Service] Chinese keyword selected:', { original: searchKeyword, chosen, fallbackChinese });
+        searchKeyword = chosen;
       }
     } catch (error: any) {
-      console.warn('[Shopping Service] Translation failed, using original keyword:', error.message);
-      // Continue with original keyword
+      const fallbackChinese = buildChineseShoppingQuery(searchKeyword, opts?.category);
+      if (strongShoppingSignal && fallbackChinese && fallbackChinese !== searchKeyword) {
+        console.log('[Shopping Service] Translation failed, using fallback Chinese query:', { original: searchKeyword, fallbackChinese });
+        searchKeyword = fallbackChinese;
+      } else {
+        console.warn('[Shopping Service] Translation failed, using original keyword:', error.message);
+      }
     }
   }
   
@@ -157,7 +181,8 @@ export async function searchByKeyword(
     originalKeyword: keyword, 
     searchKeyword,
     language,
-    opts 
+    opts,
+    synonymHints: opts?.synonymHints?.slice(0, 12),
   });
   
   const page = opts?.page ?? 1;
