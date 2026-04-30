@@ -84,7 +84,7 @@
               v-if="isAuthenticated"
               variant="primary"
               size="sm"
-              class="ml-1 rounded-full border border-rose-200 bg-white px-4 py-2 text-[13px] font-semibold text-rose-700 shadow-none hover:bg-rose-50"
+              class="ml-1 rounded-full border border-rose-200 bg-white px-4 py-2 text-[13px] font-semibold text-red-500 shadow-none hover:bg-rose-50"
               @click="$emit('signOut')"
             >
               Sign out
@@ -159,7 +159,7 @@
               v-if="isAuthenticated"
               variant="primary"
               size="sm"
-              class="rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm font-semibold text-rose-700 shadow-none hover:bg-rose-50"
+              class="rounded-2xl border border-rose-200 bg-green px-4 py-3 text-sm font-semibold text-red-700 shadow-none hover:bg-rose-50"
               @click="$emit('signOut'); mobileMenuOpen = false"
             >
               Sign out
