@@ -256,6 +256,18 @@ const COMMON_QUERY_PRODUCT_EXPANSIONS: Array<{
     zhVariants: ['笔记本电脑', '电脑'],
   },
   {
+    aliases: ['fridge', 'fridges', 'refrigerator', 'refrigerators', 'freezer', 'freezers', 'ice box', 'icebox', 'cooler', 'coolers'],
+    canonical: 'refrigerator',
+    variants: ['refrigerator', 'fridge', 'freezer', 'cooler'],
+    zhVariants: ['冰箱', '冷柜', '冷藏柜', '冷冻柜'],
+  },
+  {
+    aliases: ['blender', 'blenders', 'blender machine', 'mixer', 'mixers', 'juicer', 'juicers', 'smoothie maker', 'smoothie makers', 'food processor', 'food processors', 'milkshake maker'],
+    canonical: 'blender',
+    variants: ['blender', 'blender machine', 'mixer', 'juicer', 'food processor', 'smoothie maker'],
+    zhVariants: ['搅拌机', '破壁机', '榨汁机', '料理机'],
+  },
+  {
     aliases: ['watch', 'watches', 'wrist watch', 'wristwatch', 'smartwatch'],
     canonical: 'watch',
     variants: ['watch', 'wrist watch', 'smartwatch', 'watches'],
@@ -552,6 +564,10 @@ function dedupeKeywords(values: string[]): string[] {
   return Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean)));
 }
 
+function uniqueStrings(values: Array<string | undefined | null>): string[] {
+  return Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean)));
+}
+
 export function buildShoppingSearchContext(keyword?: string, category?: string): ShoppingSearchContext {
   const rawKeyword = String([keyword, category].filter(Boolean).join(' ')).trim();
   const normalizedKeyword = normalizeShoppingText(rawKeyword);
@@ -845,4 +861,26 @@ export function buildChineseShoppingQuery(keyword?: string, category?: string): 
   }
 
   return parts.join(' ').trim();
+}
+
+export function extractSearchFocusTokens(keyword?: string, category?: string): string[] {
+  const context = buildShoppingSearchContext(keyword, category);
+  const raw = normalizeShoppingText([keyword, category].filter(Boolean).join(' '));
+  const expansion = findCommonQueryExpansion(raw);
+  if (expansion) {
+    return uniqueStrings([expansion.canonical]);
+  }
+
+  const focusTokens = context.tokens.filter((token) => {
+    if (!token) return false;
+    if (SEARCH_MODIFIER_WORDS.has(token)) return false;
+    if (GENERIC_QUERY_WORDS.has(token)) return false;
+    if (/^\d+$/.test(token)) return false;
+    return token.length > 1;
+  });
+  return uniqueStrings([focusTokens[focusTokens.length - 1]]);
+}
+
+export function extractSearchFocusToken(keyword?: string, category?: string): string | undefined {
+  return extractSearchFocusTokens(keyword, category)[0];
 }

@@ -17,6 +17,7 @@ import {
   buildChineseShoppingQuery,
   buildShoppingSearchCandidates,
   buildShoppingSearchContext,
+  extractSearchFocusTokens,
   hasChineseCharacters,
   type ShoppingSearchContext,
 } from '../shopping/search.synonyms.js';
@@ -230,6 +231,7 @@ function buildSearchKeywordSpec(keyword: string, context?: ShoppingSearchContext
   normalizedKeyword: string;
   compactKeyword: string;
   tokens: string[];
+  focusTokens: string[];
   relevanceHint: string[];
   categoryOnly: boolean;
 } {
@@ -242,6 +244,7 @@ function buildSearchKeywordSpec(keyword: string, context?: ShoppingSearchContext
       normalizedKeyword: '',
       compactKeyword: '',
       tokens: searchContext.tokens,
+      focusTokens: extractSearchFocusTokens(raw),
       relevanceHint: searchContext.relevanceHints,
       categoryOnly: false,
     };
@@ -256,6 +259,7 @@ function buildSearchKeywordSpec(keyword: string, context?: ShoppingSearchContext
       normalizedKeyword,
       compactKeyword: normalizedKeyword.replace(/\s+/g, ''),
       tokens,
+      focusTokens: extractSearchFocusTokens(raw),
       relevanceHint: Array.from(new Set([normalizedKeyword, ...searchContext.relevanceHints])),
       categoryOnly: false,
     };
@@ -288,6 +292,7 @@ function buildSearchKeywordSpec(keyword: string, context?: ShoppingSearchContext
     normalizedKeyword,
     compactKeyword,
     tokens,
+    focusTokens: extractSearchFocusTokens(raw),
     relevanceHint: hints,
     categoryOnly: false,
   };
@@ -327,6 +332,10 @@ function scoreSearchCard(card: ProductCardOTAPI, spec: ReturnType<typeof buildSe
     } else {
       score -= token.length >= 5 ? 20 : 8;
     }
+  }
+
+  if (spec.focusTokens.length > 0 && !spec.focusTokens.some((token) => isApproximateTextMatch(title, token))) {
+    return -1000;
   }
 
   if (matchedTokenCount === 0 && matchedHintCount === 0) {
@@ -377,6 +386,10 @@ function debugScoreSearchCard(card: ProductCardOTAPI, spec: ReturnType<typeof bu
     }
   }
 
+  if (spec.focusTokens.length > 0 && !spec.focusTokens.some((token) => isApproximateTextMatch(title, token))) {
+    score = -1000;
+  }
+
   if (matchedTokenCount === 0 && matchedHintCount === 0) {
     score = -1000;
   } else if (spec.tokens.length > 1 && !exactPhraseHit) {
@@ -390,6 +403,7 @@ function debugScoreSearchCard(card: ProductCardOTAPI, spec: ReturnType<typeof bu
     matchedHints,
     matchedTokens,
     missedTokens,
+    focusTokens: spec.focusTokens,
     priceMin: card.priceMin,
     priceMax: card.priceMax,
     hasDisplayablePrice: hasDisplayablePrice(card),
@@ -884,12 +898,13 @@ export async function searchByKeyword(
   const vendorOnlySearch = !!opts?.vendorId && !keyword?.trim() && !opts?.category;
   const baseKeyword = keyword?.trim() || opts?.category || (vendorOnlySearch ? '' : 'products');
   const searchContext = buildShoppingSearchContext(baseKeyword, opts?.category);
+  const focusTokens = extractSearchFocusTokens(baseKeyword, opts?.category);
   const candidateFallbacks = Array.from(new Set(
     (opts?.fallbackKeywords && opts.fallbackKeywords.length > 0)
       ? opts.fallbackKeywords
       : buildShoppingSearchCandidates(baseKeyword, opts?.category)
   ));
-  let rawSearchKeyword = vendorOnlySearch ? '' : (searchContext.primaryKeyword || baseKeyword);
+  let rawSearchKeyword = vendorOnlySearch ? '' : (focusTokens[0] || searchContext.primaryKeyword || baseKeyword);
   const strongShoppingSignal =
     searchContext.matchedGroupSlugs.length > 0 ||
     searchContext.matchedSubgroupSlugs.length > 0 ||
