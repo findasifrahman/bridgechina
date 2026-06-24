@@ -14,12 +14,12 @@
       <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
         <Package class="h-14 w-14" />
       </div>
-      <div class="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-colors hover:bg-black/10 hover:opacity-100">
+      <div class="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-300 group-hover:bg-black/40 group-hover:opacity-100">
         <div class="flex gap-2">
           <Button
             variant="primary"
             size="sm"
-            class="rounded-full bg-slate-900/90 px-3 text-[12px] text-black shadow-lg hover:bg-slate-400"
+            class="rounded-full bg-white/20 backdrop-blur-sm px-3 text-[12px] text-white shadow-lg border border-white/30 hover:bg-white/30"
             @click.stop="$emit('click', product)"
           >
             View
@@ -27,7 +27,7 @@
           <Button
             variant="secondary"
             size="sm"
-            class="rounded-full bg-slate-900/90 px-3 text-[12px] text-black shadow-lg hover:bg-slate-900"
+            class="rounded-full bg-rose-600 px-3 text-[12px] text-white shadow-lg border-0 hover:bg-rose-700"
             @click.stop="$emit('add-to-cart', product)"
           >
             <ShoppingCart class="mr-1 h-3 w-3" />
@@ -38,27 +38,27 @@
     </div>
 
     <CardBody class="p-4">
-      <h3 class="mb-1 min-h-[2.2rem] text-[13px] font-semibold leading-5 text-slate-900 line-clamp-2">{{ product.title }}</h3>
-      <div v-if="shopLabel" class="mb-2 flex items-center gap-1.5 text-[10px] text-slate-500">
+      <h3 class="mb-1 min-h-[2.2rem] text-sm font-semibold leading-5 text-slate-900 line-clamp-2">{{ product.title }}</h3>
+      <div v-if="shopLabel" class="mb-2 flex items-center gap-1.5 text-xs text-slate-500">
         <Store class="h-3.5 w-3.5 shrink-0 text-slate-400" />
         <span class="truncate">{{ shopLabel }}</span>
         <span v-if="product.vendorScore" class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600">
           {{ Number(product.vendorScore).toFixed(1) }} rating
         </span>
       </div>
-      <div v-if="product.totalSold" class="mb-2 flex items-center gap-2 text-[11px] text-slate-500">
+      <div v-if="product.totalSold" class="mb-2 flex items-center gap-2 text-xs text-slate-500">
         {{ formatSales(product.totalSold) }} sold
       </div>
       <div class="flex items-center justify-between gap-2">
-        <span class="text-[15px] font-black text-rose-500">
+        <span class="text-base font-black text-rose-600">
           <span v-if="product.priceMin && product.priceMax">
-            {{ formatPrice(product.priceMin) }}{{ product.priceMin !== product.priceMax ? ' - ' + formatPrice(product.priceMax) : '' }}
+            {{ formatPrice(product.priceMin) }}{{ product.priceMin !== product.priceMax ? '–' + formatPrice(product.priceMax) : '' }}
           </span>
           <span v-else-if="product.priceMin">{{ formatPrice(product.priceMin) }}</span>
-          <span v-else class="text-[12px] text-slate-500">Price on request</span>
+          <span v-else class="text-sm text-slate-500">Price on request</span>
         </span>
-        <span v-if="product.totalSold" class="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-700">
-          {{ formatSales(product.totalSold) }} sold
+        <span v-if="product.vendorScore" class="rounded-full bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700">
+          ★ {{ Number(product.vendorScore).toFixed(1) }}
         </span>
       </div>
     </CardBody>

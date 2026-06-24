@@ -584,3 +584,545 @@
 [WEB] AggregateError [ECONNREFUSED]: 
 [WEB]     at internalConnectMultiple (node:net:1134:18)
 [WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:32 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/style.css[22m
+[WEB] [2m5:19:33 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/components/Button.vue, /src/style.css[22m
+[WEB] [2m5:19:42 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/components/Button.vue, /src/style.css[22m
+[WEB] [2m5:19:51 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m5:19:52 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:52 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/hot?page=1&pageSize=12[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:52 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/offers[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:52 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/homepage-banners[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:52 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/premium-products?limit=4[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:52 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-visual-menu[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:52 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-curated[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:52 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/settings[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:52 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/recent-searches?limit=8&language=en[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:53 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/components/shopping/ProductCard.vue[22m
+[WEB] [2m5:19:54 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:54 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:54 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/refresh[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:54 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/logout[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:54 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/refresh[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:54 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:54 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:54 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:54 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/logout[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:54 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/hot?page=1&pageSize=12[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:54 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/offers[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:54 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/homepage-banners[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:54 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/premium-products?limit=4[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:54 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-visual-menu[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:54 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-curated[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:54 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/settings[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:54 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/recent-searches?limit=8&language=en[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:19:59 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m5:20:00 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/components/shopping/ProductCard.vue[22m
+[WEB] [2m5:20:02 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:02 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:02 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/refresh[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:02 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/refresh[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:02 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/logout[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:02 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/logout[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:02 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:02 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/hot?page=1&pageSize=12[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:02 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:02 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:02 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/offers[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:02 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/homepage-banners[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:02 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/premium-products?limit=4[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:02 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-visual-menu[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:02 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-curated[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:02 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/settings[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:02 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/recent-searches?limit=8&language=en[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:06 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/components/shopping/ProductCard.vue[22m
+[WEB] [2m5:20:08 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:08 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:08 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/refresh[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:08 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:08 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:08 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/refresh[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:08 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/logout[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:08 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:08 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/logout[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:08 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/hot?page=1&pageSize=12[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:08 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/offers[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:08 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/homepage-banners[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:08 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/premium-products?limit=4[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:08 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-visual-menu[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:08 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-curated[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:08 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/settings[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:08 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/recent-searches?limit=8&language=en[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:17 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/components/shopping/ProductCard.vue[22m
+[WEB] [2m5:20:18 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:19 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:19 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:19 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/refresh[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:19 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:19 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:19 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/refresh[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:19 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/logout[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:19 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/logout[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:19 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/hot?page=1&pageSize=12[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:19 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/offers[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:19 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/homepage-banners[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:19 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/premium-products?limit=4[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:19 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-visual-menu[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:19 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-curated[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:19 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/settings[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:19 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/recent-searches?limit=8&language=en[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:23 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m5:20:25 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/components/shopping/ProductCard.vue[22m
+[WEB] [2m5:20:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/refresh[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/refresh[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/logout[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/logout[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/hot?page=1&pageSize=12[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/offers[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/homepage-banners[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/premium-products?limit=4[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-visual-menu[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-curated[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/settings[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/recent-searches?limit=8&language=en[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:32 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/layouts/MarketingLayout.vue, /src/style.css[22m
+[WEB] [2m5:20:33 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:33 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:33 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:33 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/hot?page=1&pageSize=12[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:33 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/offers[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:33 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/homepage-banners[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:33 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/premium-products?limit=4[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:33 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-visual-menu[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:33 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-curated[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:33 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/settings[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:33 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/recent-searches?limit=8&language=en[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:36 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/layouts/MarketingLayout.vue, /src/style.css[22m
+[WEB] [2m5:20:40 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/layouts/MarketingLayout.vue, /src/style.css[22m
+[WEB] [2m5:20:45 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/layouts/MarketingLayout.vue, /src/style.css[22m
+[WEB] [2m5:20:45 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:45 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:45 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/hot?page=1&pageSize=12[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:45 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:45 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/offers[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:45 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/homepage-banners[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:45 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/premium-products?limit=4[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:45 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-visual-menu[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:45 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-curated[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:45 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/settings[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:20:45 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/recent-searches?limit=8&language=en[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:21:05 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/layouts/MarketingLayout.vue, /src/style.css[22m
+[WEB] [2m5:21:06 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:21:06 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:21:06 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:21:06 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/hot?page=1&pageSize=12[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:21:06 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/offers[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:21:06 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/homepage-banners[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:21:06 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/premium-products?limit=4[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:21:06 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-visual-menu[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:21:06 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-curated[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:21:06 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/settings[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:21:06 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/recent-searches?limit=8&language=en[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m5:21:21 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/layouts/MarketingLayout.vue, /src/style.css[22m
+[WEB] [2m5:21:27 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/layouts/MarketingLayout.vue, /src/style.css[22m
+[WEB] [2m5:21:56 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m5:22:00 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m5:41:08 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/layouts/MarketingLayout.vue, /src/style.css[22m
+[WEB] [2m5:41:13 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/layouts/MarketingLayout.vue, /src/style.css[22m
+[WEB] [2m5:41:18 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/layouts/MarketingLayout.vue, /src/style.css[22m
+[WEB] [2m5:41:23 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/layouts/MarketingLayout.vue, /src/style.css[22m
+[WEB] [2m5:41:30 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/layouts/MarketingLayout.vue, /src/style.css[22m
+[WEB] [2m5:41:35 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/layouts/MarketingLayout.vue, /src/style.css[22m
+[WEB] [2m5:41:40 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/layouts/MarketingLayout.vue, /src/style.css[22m
+[WEB] [2m5:41:44 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/layouts/MarketingLayout.vue, /src/style.css[22m
+[WEB] [2m5:41:52 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/layouts/MarketingLayout.vue, /src/style.css[22m
+[WEB] [2m5:41:57 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/layouts/MarketingLayout.vue, /src/style.css[22m
+[WEB] [2m5:42:08 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m5:42:58 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m5:53:23 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m5:54:35 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/layouts/MarketingLayout.vue, /src/style.css[22m

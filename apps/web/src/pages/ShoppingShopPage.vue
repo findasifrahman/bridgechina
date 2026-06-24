@@ -106,7 +106,7 @@
               <div class="flex flex-wrap gap-2">
                 <button
                   type="submit"
-                  class="inline-flex h-10 items-center justify-center rounded-full bg-teal-600 px-4 text-[11px] font-semibold text-white transition-colors hover:bg-teal-700"
+                  class="inline-flex h-10 items-center justify-center rounded-full bg-rose-600 px-4 text-[11px] font-semibold text-white transition-colors hover:bg-rose-700"
                 >
                   Search shop
                 </button>
@@ -198,7 +198,7 @@
               v-for="page in paginationPages"
               :key="page"
               class="min-w-9 rounded-full px-3 py-1.5 text-[11px] font-semibold"
-              :class="page === currentPage ? 'bg-teal-600 text-white' : 'border border-slate-200 bg-white text-slate-700 hover:border-slate-300'"
+              :class="page === currentPage ? 'bg-rose-600 text-white' : 'border border-slate-200 bg-white text-slate-700 hover:border-slate-300'"
               @click="goToPage(page)"
             >
               {{ page }}

@@ -58,11 +58,11 @@ defineEmits<{
 
 const buttonClasses = computed(() => {
   const base =
-    'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+    'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
   
   const variants = {
-    primary: 'bg-teal-600 text-white hover:bg-teal-700 active:bg-teal-800',
-    secondary: 'bg-white text-teal-600 border-2 border-teal-600 hover:bg-teal-100 active:bg-teal-200',
+    primary: 'bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800',
+    secondary: 'bg-white text-rose-600 border-2 border-rose-600 hover:bg-rose-50 active:bg-rose-100',
     accent: 'bg-amber-500 text-slate-900 hover:bg-amber-600 active:bg-amber-700',
     ghost: 'text-slate-700 hover:bg-slate-100 active:bg-slate-200',
     danger: 'bg-red-600 text-white hover:bg-red-700 active:bg-red-800',

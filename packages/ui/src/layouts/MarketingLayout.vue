@@ -1,20 +1,20 @@
 <template>
   <div class="min-h-screen overflow-x-hidden bg-[linear-gradient(90deg,#f8fafc_0%,#ffffff_28%,#ffffff_100%)] text-slate-900 lg:pt-16">
-    <header class="sticky top-0 z-50 border-b border-slate-200 bg-white text-slate-900 shadow-sm backdrop-blur-xl lg:fixed lg:left-0 lg:right-0 lg:top-0">
+    <header class="sticky top-0 z-50 border-b border-white/10 bg-slate-950 text-white shadow-sm lg:fixed lg:left-0 lg:right-0 lg:top-0">
       <div class="px-3 py-2 sm:px-4">
         <div class="flex items-center gap-3 md:grid md:h-14 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center">
           <router-link to="/shopping" class="flex min-w-0 items-center gap-3">
-            <img src="/logo_verticle.png" alt="BridgeChina" class="h-9 w-9 rounded-2xl object-contain shadow-[0_10px_20px_rgba(15,23,42,0.08)] ring-1 ring-slate-200" />
+            <img src="/logo_verticle.png" alt="BridgeChina" class="h-9 w-9 rounded-2xl object-contain shadow-[0_10px_20px_rgba(0,0,0,0.22)] ring-1 ring-white/10" />
             <div class="min-w-0 leading-tight">
-              <p class="truncate text-[15px] font-black tracking-tight text-slate-900">ChinaBuyBD</p>
-              <p class="truncate text-[10px] font-medium text-slate-500">Redefined sourcing for premium ecommerce</p>
+              <p class="truncate text-[15px] font-black tracking-tight text-white">ChinaBuyBD</p>
+              <p class="truncate text-[10px] font-medium text-white/60">Redefined sourcing for premium ecommerce</p>
             </div>
           </router-link>
 
           <div class="flex items-center gap-2 md:hidden">
             <button
               type="button"
-              class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 backdrop-blur transition-colors hover:bg-slate-50"
+              class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white backdrop-blur transition-colors hover:bg-white/10"
               :aria-expanded="mobileMenuOpen"
               aria-label="Toggle navigation menu"
               @click="mobileMenuOpen = !mobileMenuOpen"
@@ -25,20 +25,20 @@
           </div>
 
           <form class="hidden md:flex md:min-w-0" @submit.prevent="submitSearch">
-            <div class="flex h-10 w-full items-center overflow-hidden rounded-full border border-slate-200 bg-slate-50 shadow-[0_12px_30px_rgba(15,23,42,0.04)] backdrop-blur focus-within:border-rose-200 focus-within:bg-white">
-              <span class="pl-4 text-slate-400">
+            <div class="flex h-10 w-full items-center overflow-hidden rounded-full border border-white/10 bg-white/5 shadow-[0_4px_14px_rgba(0,0,0,0.14)] focus-within:border-rose-300 focus-within:ring-2 focus-within:ring-rose-100">
+              <span class="pl-4 text-white/55">
                 <Search class="h-4 w-4" />
               </span>
               <input
                 v-model="searchQuery"
                 type="search"
                 placeholder="Search products, factories, or keywords..."
-                class="w-full bg-transparent px-3 text-[12px] font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none"
+                class="w-full bg-transparent px-3 text-[12px] font-medium text-white placeholder:text-white/45 focus:outline-none"
               />
               <button
                 type="button"
                 @click="openImagePicker"
-                class="mr-1 inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-700"
+                class="mr-1 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/70 transition-colors hover:bg-rose-500/20 hover:text-rose-200"
                 title="Search by image"
               >
                 <Camera class="h-4 w-4" />
@@ -50,41 +50,41 @@
           <div class="hidden items-center gap-1 md:flex">
             <router-link
               to="/shopping"
-              class="rounded-full px-3 py-2 text-[13px] font-semibold text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900"
+              class="rounded-full px-3 py-2 text-[13px] font-semibold text-white/80 transition-colors hover:bg-white/10 hover:text-white"
             >
               Shop
             </router-link>
             <router-link
               to="/blog"
-              class="rounded-full px-3 py-2 text-[13px] font-semibold text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900"
+              class="rounded-full px-3 py-2 text-[13px] font-semibold text-white/80 transition-colors hover:bg-white/10 hover:text-white"
             >
               Blog
             </router-link>
             <router-link
               to="/contact"
-              class="rounded-full px-3 py-2 text-[13px] font-semibold text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900"
+              class="rounded-full px-3 py-2 text-[13px] font-semibold text-white/80 transition-colors hover:bg-white/10 hover:text-white"
             >
               Contact
             </router-link>
             <router-link
               v-if="isAuthenticated"
               :to="userRoles.includes('ADMIN') || userRoles.includes('EDITOR') ? '/admin' : userRoles.includes('SELLER') ? '/seller' : '/user'"
-              class="rounded-full px-3 py-2 text-[13px] font-semibold text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900"
+              class="rounded-full px-3 py-2 text-[13px] font-semibold text-white/80 transition-colors hover:bg-white/10 hover:text-white"
             >
               Dashboard
             </router-link>
             <router-link
               v-else
               to="/login"
-              class="rounded-full px-3 py-2 text-[13px] font-semibold text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900"
+              class="rounded-full px-3 py-2 text-[13px] font-semibold text-white/80 transition-colors hover:bg-white/10 hover:text-white"
             >
               Sign in
             </router-link>
             <Button
               v-if="isAuthenticated"
-              variant="primary"
+              variant="ghost"
               size="sm"
-              class="ml-1 rounded-full border border-rose-200 bg-white px-4 py-2 text-[13px] font-semibold text-red-500 shadow-none hover:bg-rose-50"
+              class="ml-1 rounded-full border border-rose-400/40 bg-rose-500/15 px-4 py-2 text-[13px] font-semibold text-rose-100 hover:bg-rose-500/25 hover:border-rose-300/60"
               @click="$emit('signOut')"
             >
               Sign out
@@ -93,7 +93,7 @@
         </div>
 
         <form class="mt-3 flex md:hidden" @submit.prevent="submitSearch">
-          <div class="flex h-11 w-full items-center overflow-hidden rounded-full border border-slate-200 bg-slate-50 shadow-[0_12px_30px_rgba(15,23,42,0.04)] backdrop-blur focus-within:border-rose-200 focus-within:bg-white">
+          <div class="flex h-11 w-full items-center overflow-hidden rounded-full border border-slate-200 bg-white shadow-[0_4px_14px_rgba(15,23,42,0.06)] focus-within:border-rose-300 focus-within:ring-2 focus-within:ring-rose-100">
             <span class="pl-4 text-slate-400">
               <Search class="h-4 w-4" />
             </span>
@@ -115,26 +115,26 @@
         </form>
       </div>
 
-      <div v-if="mobileMenuOpen" class="border-t border-slate-200 bg-white md:hidden">
+      <div v-if="mobileMenuOpen" class="border-t border-white/10 bg-slate-950 md:hidden">
         <div class="max-h-[72vh] space-y-4 overflow-y-auto px-3 py-4">
           <div class="grid gap-2">
             <router-link
               to="/shopping"
-              class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 backdrop-blur"
+              class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white/80 backdrop-blur"
               @click="mobileMenuOpen = false"
             >
               Shop
             </router-link>
             <router-link
               to="/blog"
-              class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 backdrop-blur"
+              class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white/80 backdrop-blur"
               @click="mobileMenuOpen = false"
             >
               Blog
             </router-link>
             <router-link
               to="/contact"
-              class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 backdrop-blur"
+              class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white/80 backdrop-blur"
               @click="mobileMenuOpen = false"
             >
               Contact
@@ -142,7 +142,7 @@
             <router-link
               v-if="isAuthenticated"
               :to="userRoles.includes('ADMIN') || userRoles.includes('EDITOR') ? '/admin' : userRoles.includes('SELLER') ? '/seller' : '/user'"
-              class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 backdrop-blur"
+              class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white/80 backdrop-blur"
               @click="mobileMenuOpen = false"
             >
               Dashboard
@@ -150,30 +150,30 @@
             <router-link
               v-else
               to="/login"
-              class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 backdrop-blur"
+              class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white/80 backdrop-blur"
               @click="mobileMenuOpen = false"
             >
               Sign in
             </router-link>
             <Button
               v-if="isAuthenticated"
-              variant="primary"
+              variant="ghost"
               size="sm"
-              class="rounded-2xl border border-rose-200 bg-green px-4 py-3 text-sm font-semibold text-red-700 shadow-none hover:bg-rose-50"
+              class="rounded-2xl border border-rose-400/40 bg-rose-500/15 px-4 py-3 text-sm font-semibold text-rose-100 hover:bg-rose-500/25"
               @click="$emit('signOut'); mobileMenuOpen = false"
             >
               Sign out
             </Button>
           </div>
 
-          <div class="rounded-[28px] border border-slate-200 bg-white p-3 shadow-[0_14px_30px_rgba(15,23,42,0.04)] backdrop-blur">
+          <div class="rounded-[28px] border border-white/10 bg-white/5 p-3 shadow-[0_14px_30px_rgba(0,0,0,0.16)] backdrop-blur">
             <div class="flex items-center justify-between gap-2">
               <div>
-                <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-rose-400">Shop by category</p>
+                <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-rose-300">Shop by category</p>
               </div>
               <button
                 type="button"
-                class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-semibold text-slate-600"
+                class="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] font-semibold text-white/75"
                 @click="openShopping(); mobileMenuOpen = false"
               >
                 All products
@@ -181,36 +181,36 @@
             </div>
 
             <div class="mt-3 space-y-2">
-              <div v-for="cat in categories" :key="`mobile-${cat.slug}`" class="rounded-[20px] border border-slate-200 bg-slate-50">
+              <div v-for="cat in categories" :key="`mobile-${cat.slug}`" class="rounded-[20px] border border-white/10 bg-white/5">
                 <button
                   type="button"
                   class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
                   @click="toggleCategory(cat.slug)"
                 >
                   <span class="min-w-0">
-                    <span class="block text-[12px] font-semibold leading-5 text-slate-900">{{ cat.name }}</span>
-                    <span class="block text-[10px] text-slate-500">{{ cat.children?.length || 0 }} subcategories</span>
+                    <span class="block text-[12px] font-semibold leading-5 text-white">{{ cat.name }}</span>
+                    <span class="block text-[10px] text-white/55">{{ cat.children?.length || 0 }} subcategories</span>
                   </span>
-                  <ChevronRight class="h-4 w-4 flex-shrink-0 text-slate-300 transition-transform" :class="{ 'rotate-90 text-rose-400': expandedCategorySlug === cat.slug }" />
+                  <ChevronRight class="h-4 w-4 flex-shrink-0 text-white/35 transition-transform" :class="{ 'rotate-90 text-rose-300': expandedCategorySlug === cat.slug }" />
                 </button>
-                <div v-if="expandedCategorySlug === cat.slug" class="border-t border-slate-200 bg-white px-2 py-2">
+                <div v-if="expandedCategorySlug === cat.slug" class="border-t border-white/10 bg-slate-950 px-2 py-2">
                   <button
                     v-for="sub in regularChildren(cat)"
                     :key="sub.slug"
                     type="button"
-                    class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] text-slate-600 hover:bg-rose-50 hover:text-rose-700"
+                    class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] text-white/70 hover:bg-white/10 hover:text-white"
                     @click="openCategory(sub.slug); mobileMenuOpen = false"
                   >
                     <span>{{ sub.name }}</span>
-                    <span class="text-[10px] text-slate-400">{{ sub.products?.length || '' }}</span>
+                    <span class="text-[10px] text-white/40">{{ sub.products?.length || '' }}</span>
                   </button>
-                  <div v-if="brandChildren(cat).length > 0" class="mt-2 border-t border-slate-100 pt-2">
-                    <div class="px-3 pb-1 text-[9px] font-bold uppercase tracking-[0.24em] text-slate-400">Brand selection</div>
+                  <div v-if="brandChildren(cat).length > 0" class="mt-2 border-t border-white/10 pt-2">
+                    <div class="px-3 pb-1 text-[9px] font-bold uppercase tracking-[0.24em] text-white/40">Brand selection</div>
                     <button
                       v-for="sub in brandChildren(cat)"
                       :key="sub.slug"
                       type="button"
-                      class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] text-slate-600 hover:bg-rose-50 hover:text-rose-700"
+                      class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] text-white/70 hover:bg-white/10 hover:text-white"
                       @click="openCategory(sub.slug); mobileMenuOpen = false"
                     >
                       <span>{{ sub.name }}</span>
@@ -218,7 +218,7 @@
                   </div>
                   <button
                     type="button"
-                    class="mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] font-medium text-rose-700 hover:bg-rose-50"
+                    class="mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] font-medium text-rose-300 hover:bg-white/10"
                     @click="openCategory(cat.slug); mobileMenuOpen = false"
                   >
                     View all {{ cat.name }}
@@ -232,88 +232,78 @@
     </header>
 
     <div class="grid w-full gap-0 lg:items-stretch">
-      <aside class="hidden overflow-hidden border-r border-slate-200 bg-white text-slate-900 shadow-[0_10px_28px_rgba(15,23,42,0.04)] lg:fixed lg:left-0 lg:top-16 lg:z-40 lg:flex lg:h-[calc(100vh-4rem)] lg:w-[230px] lg:flex-col">
+      <aside class="hidden overflow-hidden border-r border-white/10 bg-slate-950 text-white lg:fixed lg:left-0 lg:top-16 lg:z-40 lg:flex lg:h-[calc(100vh-4rem)] lg:w-[230px] lg:flex-col">
         <div class="flex h-full flex-col overflow-hidden">
-          <div class="border-b border-slate-200 px-4 py-3">
+          <div class="border-b border-white/10 px-4 py-3">
             <div class="flex items-center justify-between gap-3">
               <div>
-                <h2 class="mt-1 text-[15px] font-black tracking-tight text-slate-900">Shop by category</h2>
+                <h2 class="mt-1 text-[15px] font-black tracking-tight text-white">Shop by category</h2>
               </div>
-              <span class="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-600">Live</span>
+              <span class="rounded-full border border-rose-400/30 bg-rose-500/15 px-2.5 py-1 text-[10px] font-semibold text-rose-100">Live</span>
             </div>
           </div>
 
           <div class="flex-1 overflow-y-auto px-2.5 py-2.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             <div class="relative">
-              <div class="absolute left-[15px] top-1.5 bottom-2 w-px bg-[linear-gradient(180deg,rgba(148,163,184,0)_0%,rgba(148,163,184,0.22)_12%,rgba(148,163,184,0.18)_88%,rgba(148,163,184,0)_100%)]" />
+              <div class="absolute left-[15px] top-1.5 bottom-2 w-px bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.14)_12%,rgba(255,255,255,0.12)_88%,rgba(255,255,255,0)_100%)]" />
 
               <div
                 v-for="cat in categories"
                 :key="cat.slug"
-                class="group relative mb-1.5 rounded-[18px] border border-transparent px-1.5 py-0.5 transition-all duration-200 hover:border-slate-200 hover:bg-slate-50"
+                class="group relative mb-0.5 rounded-[18px] border border-transparent px-1.5 py-0.5 transition-all duration-200 hover:border-white/10 hover:bg-white/5"
               >
                 <button
                   type="button"
                   @click="toggleCategory(cat.slug)"
-                  class="relative flex w-full items-center justify-between gap-2.5 rounded-[16px] px-2 py-2 text-left transition-colors"
+                  class="relative flex w-full items-center justify-between gap-2.5 rounded-[16px] px-2 py-1.5 text-left transition-colors"
                 >
                   <span class="flex min-w-0 items-center gap-2.5">
                     <span
-                      class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white ring-1 ring-slate-100 transition-transform duration-200 group-hover:scale-[1.02]"
+                      class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/10 ring-1 ring-white/5 transition-transform duration-200 group-hover:scale-[1.02]"
                       :style="categoryBadgeStyle(cat.slug)"
                     >
                       <component :is="categoryIcon(cat.icon)" class="h-4 w-4" />
                     </span>
                     <span class="min-w-0">
-                      <span class="block truncate text-[12px] font-semibold leading-5 text-slate-900">{{ cat.name }}</span>
+                      <span class="block truncate text-[12px] font-semibold leading-5 text-white">{{ cat.name }}</span>
                     </span>
                   </span>
-                  <ChevronRight class="h-3.5 w-3.5 flex-shrink-0 text-slate-300 transition-transform duration-200" :class="{ 'rotate-90 text-rose-500': expandedCategorySlug === cat.slug }" />
+                  <ChevronRight class="h-3.5 w-3.5 flex-shrink-0 text-white/35 transition-transform duration-200" :class="{ 'rotate-90 text-rose-300': expandedCategorySlug === cat.slug }" />
                 </button>
 
-                <div v-if="expandedCategorySlug === cat.slug" class="mt-1 space-y-1 border-l border-dashed border-slate-200 pl-3">
+                <div v-if="expandedCategorySlug === cat.slug" class="mt-1 space-y-1 border-l border-dashed border-white/10 pl-3">
                   <button
                     v-for="sub in regularChildren(cat)"
                     :key="sub.slug"
                     type="button"
                     @click="openCategory(sub.slug)"
-                    class="group/sub flex w-full items-center gap-2.5 rounded-[14px] px-2.5 py-2 text-left text-[11px] text-slate-600 transition-colors hover:bg-rose-50 hover:text-rose-700"
+                    class="group/sub flex w-full items-center gap-2.5 rounded-[14px] px-2.5 py-2 text-left text-[11px] text-white/70 transition-colors hover:bg-white/10 hover:text-white"
                   >
                     <span class="flex items-center gap-3">
-                      <span class="h-px w-2.5 rounded-full bg-slate-200 transition-colors group-hover/sub:bg-rose-300" />
-                      <span
-                        class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-[9px] font-bold"
-                        :style="subcategoryBadgeStyle(cat.slug, sub.slug)"
-                      >
-                        {{ sub.name.slice(0, 1).toUpperCase() }}
-                      </span>
+                      <span class="h-px w-2.5 rounded-full bg-white/15 transition-colors group-hover/sub:bg-rose-300" />
+                      <span class="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-white/25 transition-colors group-hover/sub:bg-rose-300" />
                     </span>
                     <span class="min-w-0 flex-1 truncate">{{ sub.name }}</span>
                   </button>
-                  <div v-if="brandChildren(cat).length > 0" class="mt-2 border-t border-slate-100 pt-2">
-                    <div class="px-2.5 pb-1 text-[9px] font-bold uppercase tracking-[0.22em] text-slate-400">Brand selection</div>
+                  <div v-if="brandChildren(cat).length > 0" class="mt-2 border-t border-white/10 pt-2">
+                    <div class="px-2.5 pb-1 text-[9px] font-bold uppercase tracking-[0.22em] text-white/40">Brand selection</div>
                     <button
                       v-for="sub in brandChildren(cat)"
                       :key="sub.slug"
                       type="button"
                       @click="openCategory(sub.slug)"
-                      class="group/sub flex w-full items-center gap-2.5 rounded-[14px] px-2.5 py-2 text-left text-[11px] text-slate-600 transition-colors hover:bg-rose-50 hover:text-rose-700"
+                      class="group/sub flex w-full items-center gap-2.5 rounded-[14px] px-2.5 py-2 text-left text-[11px] text-white/70 transition-colors hover:bg-white/10 hover:text-white"
                     >
                       <span class="flex items-center gap-3">
-                        <span class="h-px w-2.5 rounded-full bg-slate-200 transition-colors group-hover/sub:bg-rose-300" />
-                        <span
-                          class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-[9px] font-bold"
-                          :style="subcategoryBadgeStyle(cat.slug, sub.slug)"
-                        >
-                          {{ sub.name.slice(0, 1).toUpperCase() }}
-                        </span>
+                        <span class="h-px w-2.5 rounded-full bg-white/15 transition-colors group-hover/sub:bg-rose-300" />
+                        <span class="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-white/25 transition-colors group-hover/sub:bg-rose-300" />
                       </span>
                       <span class="min-w-0 flex-1 truncate">{{ sub.name }}</span>
                     </button>
                   </div>
                   <button
                     type="button"
-                    class="flex w-full items-center justify-between rounded-[14px] px-2.5 py-2 text-left text-[11px] font-semibold text-rose-700 transition-colors hover:bg-rose-50"
+                    class="flex w-full items-center justify-between rounded-[14px] px-2.5 py-2 text-left text-[11px] font-semibold text-rose-300 transition-colors hover:bg-white/10"
                     @click="openCategory(cat.slug)"
                   >
                     <span>View all {{ cat.name }}</span>
@@ -329,7 +319,7 @@
       <main class="min-w-0 lg:ml-[230px]">
         <slot />
 
-        <footer class="border-t border-white/10 bg-[linear-gradient(135deg,#8f0f1b_0%,#b91c1c_52%,#0f766e_100%)] px-4 py-6 text-white shadow-[0_-10px_28px_rgba(127,29,29,0.14)]">
+        <footer class="border-t border-white/10 bg-slate-950 px-4 py-6 text-white shadow-[0_-10px_28px_rgba(0,0,0,0.18)]">
           <div class="mx-auto grid max-w-7xl gap-5 sm:grid-cols-2 xl:grid-cols-[1.1fr_0.8fr_1fr]">
             <div class="space-y-2">
               <p class="text-[10px] font-bold uppercase tracking-[0.34em] text-white/[0.55]">ChinaBuyBD</p>
@@ -425,6 +415,14 @@ import {
   Youtube,
   Cpu,
   Home,
+  Laptop,
+  Monitor,
+  Smartphone,
+  Glasses,
+  Gamepad2,
+  BookOpen,
+  Sprout,
+  BadgePercent,
 } from 'lucide-vue-next';
 
 const props = defineProps<{
@@ -448,20 +446,20 @@ const userRoles = computed(() => props.userRoles || []);
 const iconMap: Record<string, any> = {
   'shopping-bag': ShoppingBag,
   gem: Gem,
-  glasses: Package,
-  laptop: Package,
-  monitor: Package,
-  smartphone: Package,
+  glasses: Glasses,
+  laptop: Laptop,
+  monitor: Monitor,
+  smartphone: Smartphone,
   watch: Watch,
   shirt: Shirt,
   home: Home,
   truck: Truck,
-  camera: Package,
+  camera: Camera,
   headphones: Headphones,
-  'gamepad-2': Package,
-  'book-open': Package,
-  sprout: Package,
-  'badge-percent': Package,
+  'gamepad-2': Gamepad2,
+  'book-open': BookOpen,
+  sprout: Sprout,
+  'badge-percent': BadgePercent,
   package: Package,
   shield: Shield,
   star: Stars,

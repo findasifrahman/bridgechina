@@ -60,7 +60,7 @@
                   <div class="flex items-center gap-2">
                     <button
                       type="button"
-                      class="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-teal-600 px-5 text-[12px] font-semibold text-white shadow-[0_12px_30px_rgba(13,148,136,0.2)] transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                      class="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-rose-600 px-5 text-[12px] font-semibold text-white shadow-[0_12px_30px_rgba(225,29,72,0.2)] transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-slate-300"
                       @click="handleUnifiedSearch"
                       :disabled="!searchQuery.trim() && !selectedImage"
                     >
@@ -99,7 +99,7 @@
                   :class="[
                     'rounded-full border px-4 py-2 text-[11px] font-semibold transition-all',
                     selectedLanguage === 'zh'
-                      ? 'border-slate-900 bg-slate-900 text-white'
+                      ? 'border-rose-600 bg-rose-600 text-white'
                       : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
                   ]"
                 >
@@ -111,7 +111,7 @@
                   :class="[
                     'rounded-full border px-4 py-2 text-[11px] font-semibold transition-all',
                     selectedLanguage === 'en'
-                      ? 'border-slate-900 bg-slate-900 text-white'
+                      ? 'border-rose-600 bg-rose-600 text-white'
                       : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
                   ]"
                 >
@@ -153,7 +153,7 @@
                         :key="slide.key"
                         type="button"
                         class="h-2.5 rounded-full transition-all"
-                        :class="currentHeroSlideIndex === index ? 'w-8 bg-teal-600' : 'w-2.5 bg-slate-300'"
+                        :class="currentHeroSlideIndex === index ? 'w-8 bg-rose-600' : 'w-2.5 bg-slate-300'"
                         @click.stop="currentHeroSlideIndex = index"
                         :aria-label="`Show hero slide ${index + 1}`"
                       />
@@ -447,138 +447,136 @@
         </section>
       </main>
 
-      <aside class="hidden border-l border-white/70 bg-[#eef3f9] xl:flex xl:flex-col">
-        <div class="sticky top-0 flex h-screen flex-col gap-4 p-4">
-          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)]">
+      <aside class="hidden border-l border-slate-200/60 bg-[#eef3f9] lg:flex lg:flex-col">
+        <div class="no-scrollbar sticky top-[4.5rem] flex max-h-[calc(100vh-4.5rem)] flex-col gap-3 overflow-y-auto p-3">
+
+          <!-- Featured deals -->
+          <div class="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
             <div class="flex items-center justify-between">
               <div>
                 <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-400">Offers</p>
-                <h3 class="mt-1 text-[16px] font-black text-slate-950">Featured deals</h3>
+                <h3 class="mt-0.5 text-[13px] font-black text-slate-950">Featured deals</h3>
               </div>
-              <span class="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-semibold text-rose-600">
-                {{ offers.length > 0 ? `${offers.length} live` : 'No live offers' }}
+              <span class="rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-600">
+                {{ offers.length > 0 ? `${offers.length} live` : 'No offers' }}
               </span>
             </div>
 
-            <div v-if="displayOffers.length === 0" class="mt-4 rounded-[22px] border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-[11px] text-slate-500">
+            <div v-if="displayOffers.length === 0" class="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-center text-[11px] text-slate-500">
               No live offers yet.
             </div>
 
-            <div class="mt-4 space-y-3">
+            <div class="mt-3 space-y-2">
               <button
                 v-for="offer in displayOffers"
                 :key="offer.id"
                 type="button"
                 @click="handleOfferClick(offer)"
-                class="group w-full overflow-hidden rounded-[22px] border border-slate-200 bg-slate-50 text-left transition-all hover:-translate-y-0.5 hover:border-rose-200 hover:bg-white hover:shadow-[0_14px_32px_rgba(15,23,42,0.08)]"
+                class="group w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50 text-left transition-all hover:-translate-y-0.5 hover:border-rose-200 hover:bg-white hover:shadow-[0_8px_20px_rgba(15,23,42,0.07)]"
               >
-                <div v-if="offer.coverAsset?.public_url || offer.coverAsset?.thumbnail_url" class="aspect-[16/10] bg-slate-100">
+                <div v-if="offer.coverAsset?.public_url || offer.coverAsset?.thumbnail_url" class="h-[72px] bg-slate-100">
                   <img
                     :src="offer.coverAsset?.public_url || offer.coverAsset?.thumbnail_url"
                     :alt="offer.title"
                     class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                 </div>
-                <div v-else class="flex h-24 items-center justify-center bg-gradient-to-br from-teal-100 to-cyan-100">
-                  <div class="flex flex-col items-center gap-1 text-rose-600">
-                    <Sparkles class="h-7 w-7" />
-                    <span class="text-[10px] font-semibold uppercase tracking-[0.22em]">Featured deal</span>
-                  </div>
+                <div v-else class="flex h-14 items-center justify-center bg-gradient-to-br from-rose-50 to-rose-100">
+                  <Sparkles class="h-5 w-5 text-rose-400" />
                 </div>
-                <div class="p-4">
-                  <div class="flex items-center gap-2">
-
-                    <p class="truncate text-[12px] font-semibold text-slate-900">{{ offer.title || 'Special offer' }}</p>
-                  </div>
-                  <p class="mt-2 line-clamp-2 text-[11px] leading-5 text-slate-500">
-                    {{ offer.description || 'Tap to view the promotion details.' }}
-                  </p>
+                <div class="px-2.5 py-2">
+                  <p class="truncate text-[11px] font-semibold text-slate-900">{{ offer.title || 'Special offer' }}</p>
+                  <p class="mt-0.5 line-clamp-1 text-[10px] text-slate-500">{{ offer.description || 'Tap to view details.' }}</p>
                 </div>
               </button>
             </div>
           </div>
 
-          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)]">
+          <!-- Shipping rates -->
+          <div class="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
             <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-400">Shipping rates</p>
-            <div class="mt-4 space-y-3">
-              <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+            <div class="mt-2.5 space-y-2">
+              <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
                 <div class="flex items-center justify-between">
-                <span class="text-[12px] font-semibold text-rose-500">Air shipping</span>
-                  <span class="text-[11px] text-slate-500">12-14 days</span>
+                  <span class="text-[11px] font-semibold text-rose-500">Air shipping</span>
+                  <span class="text-[10px] text-slate-500">12–14 days</span>
                 </div>
-                <p class="mt-1 text-[11px] text-slate-600">{{ shippingRateItems.air }}</p>
+                <p class="mt-1 text-[10px] text-slate-600">{{ shippingRateItems.air }}</p>
               </div>
-              <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
                 <div class="flex items-center justify-between">
-                <span class="text-[12px] font-semibold text-rose-500">Sea shipping</span>
-                  <span class="text-[11px] text-slate-500">12-14 days</span>
+                  <span class="text-[11px] font-semibold text-rose-500">Sea shipping</span>
+                  <span class="text-[10px] text-slate-500">30–45 days</span>
                 </div>
-                <p class="mt-1 text-[11px] text-slate-600">{{ shippingRateItems.sea }}</p>
+                <p class="mt-1 text-[10px] text-slate-600">{{ shippingRateItems.sea }}</p>
               </div>
-              <div class="rounded-2xl border border-dashed border-amber-200 bg-amber-50/70 p-3">
+              <div class="rounded-xl border border-dashed border-amber-200 bg-amber-50/70 p-2.5">
                 <div class="flex items-center justify-between">
-                  <span class="text-[12px] font-semibold text-slate-900">MOQ rule</span>
-                  <span class="text-[11px] text-slate-500">{{ shoppingSettings.moqRule?.minimum_product || 1 }} pcs</span>
+                  <span class="text-[11px] font-semibold text-slate-900">MOQ rule</span>
+                  <span class="text-[10px] text-slate-500">{{ shoppingSettings.moqRule?.minimum_product || 1 }} pcs</span>
                 </div>
-                <p class="mt-1 text-[11px] text-slate-600">
-                  Minimum order value {{ shoppingSettings.moqRule?.currency || 'BDT' }} {{ Number(shoppingSettings.moqRule?.minimum_price_threshold || 0).toLocaleString() }}
+                <p class="mt-1 text-[10px] text-slate-600">
+                  Min value {{ shoppingSettings.moqRule?.currency || 'BDT' }} {{ Number(shoppingSettings.moqRule?.minimum_price_threshold || 0).toLocaleString() }}
                 </p>
               </div>
             </div>
           </div>
 
-          <!---->
-          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)]">
-              <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-500">Order Process</p>
-            <div class="mt-4 space-y-3">
-              <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                <div class="flex items-center justify-between">
-                <span class="text-[12px] font-semibold text-rose-500">Choose Product</span>
-                  <span class="text-[11px] text-slate-500">Search</span>
+          <!-- Order process -->
+          <div class="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
+            <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-500">Order process</p>
+            <div class="mt-2.5 space-y-1.5">
+              <div class="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+                <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-rose-100 text-[9px] font-black text-rose-700">1</span>
+                <div>
+                  <p class="text-[11px] font-semibold text-rose-600">Choose product</p>
+                  <p class="text-[10px] text-slate-500">Search by keyword or image</p>
                 </div>
-                <p class="mt-1 text-[11px] text-slate-600">Search Keyword or by image<</p>
               </div>
-              <div class="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                <div class="flex items-center justify-between">
-                <span class="text-[12px] font-semibold text-rose-500">Add To Cart</span>
-                  <span class="text-[11px] text-slate-500">Quantity</span>
+              <div class="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
+                <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-rose-100 text-[9px] font-black text-rose-700">2</span>
+                <div>
+                  <p class="text-[11px] font-semibold text-rose-600">Add to cart</p>
+                  <p class="text-[10px] text-slate-500">Select MOQ and quantity</p>
                 </div>
-                <p class="mt-1 text-[11px] text-slate-600">Select MOQ and add</p>
               </div>
-              <div class="rounded-2xl border border-dashed border-amber-200 bg-amber-50/70 p-3">
-                <div class="flex items-center justify-between">
-                  <span class="text-[12px] font-semibold text-slate-900">Shipping Address</span>
-                  <span class="text-[11px] text-slate-500">Shipping </span>
+              <div class="flex items-start gap-2 rounded-xl border border-dashed border-amber-200 bg-amber-50/70 p-2.5">
+                <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 text-[9px] font-black text-amber-700">3</span>
+                <div>
+                  <p class="text-[11px] font-semibold text-slate-800">Shipping address</p>
+                  <p class="text-[10px] text-slate-500">From profile or add new</p>
                 </div>
-                <p class="mt-1 text-[11px] text-slate-600">
-                  Provide Shipping address from profile or add new address
-                </p>
               </div>
-
-              <div class="rounded-2xl border border-dashed border-amber-200 bg-amber-50/70 p-3">
-                <div class="flex items-center justify-between">
-                <span class="text-[12px] font-semibold text-rose-500">Upload Payment Proof</span>
-                  <span class="text-[11px] text-slate-500">Payment </span>
+              <div class="flex items-start gap-2 rounded-xl border border-dashed border-amber-200 bg-amber-50/70 p-2.5">
+                <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 text-[9px] font-black text-amber-700">4</span>
+                <div>
+                  <p class="text-[11px] font-semibold text-rose-600">Upload payment proof</p>
+                  <p class="text-[10px] text-slate-500">Bkash · Rocket · Nagad · Bank</p>
                 </div>
-                <p class="mt-1 text-[11px] text-slate-600">
-                  Upload payment proof for verification (Bkash, Rocket, Nagad, Bank transfer)
-                </p>
               </div>
-              
-              <div class="rounded-2xl border border-dashed border-amber-200 bg-amber-50/70 p-3">
-                <div class="flex items-center justify-between">
-                <span class="text-[12px] font-semibold text-rose-500">Shipment arrive in 14 days</span>
-                  <span class="text-[11px] text-slate-500">Shipping </span>
+              <div class="flex items-start gap-2 rounded-xl border border-dashed border-amber-200 bg-amber-50/70 p-2.5">
+                <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 text-[9px] font-black text-amber-700">5</span>
+                <div>
+                  <p class="text-[11px] font-semibold text-rose-600">Receive in 12–14 days</p>
+                  <p class="text-[10px] text-slate-500">Air shipping, door delivery</p>
                 </div>
-                <p class="mt-1 text-[11px] text-slate-600">
-                  After payment verification, order will be processed and shipped. xpect to receive your products within 12-14 days
-                </p>
               </div>
-
             </div>
           </div>
 
-          <!---->
+          <!-- WhatsApp support -->
+          <a
+            href="https://wa.me/8618989410063"
+            target="_blank"
+            rel="noreferrer"
+            class="flex items-center gap-2.5 rounded-2xl border border-green-200 bg-green-50 px-3 py-2.5 transition-colors hover:bg-green-100"
+          >
+            <span class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-green-100 text-[14px] font-bold text-green-700">W</span>
+            <div>
+              <p class="text-[11px] font-semibold text-green-800">WhatsApp support</p>
+              <p class="text-[10px] text-green-700">+86 189 8941 0063</p>
+            </div>
+          </a>
         </div>
       </aside>
     </div>
@@ -616,7 +614,7 @@
           @click="selectAllCategories"
           :class="[
             'shrink-0 rounded-full border px-4 py-2 text-[11px] font-semibold transition-all',
-            !selectedCategory ? 'border-teal-600 bg-teal-600 text-white' : 'border-slate-200 bg-white text-slate-700'
+            !selectedCategory ? 'border-rose-600 bg-rose-600 text-white' : 'border-slate-200 bg-white text-slate-700'
           ]"
         >
           All products
@@ -628,7 +626,7 @@
           @click="handleCategorySelect(cat.slug)"
           :class="[
             'shrink-0 rounded-full border px-4 py-2 text-[11px] font-semibold transition-all',
-            selectedCategory === cat.slug ? 'border-teal-600 bg-teal-600 text-white' : 'border-slate-200 bg-white text-slate-700'
+            selectedCategory === cat.slug ? 'border-rose-600 bg-rose-600 text-white' : 'border-slate-200 bg-white text-slate-700'
           ]"
         >
           {{ cat.name }}
@@ -777,7 +775,7 @@ const currentHeroSlideIndex = heroSlideIndex;
 
 let heroTimer: number | undefined;
 
-const layoutClass = computed(() => 'xl:grid-cols-[minmax(0,1fr)_300px]');
+const layoutClass = computed(() => 'lg:grid-cols-[minmax(0,1fr)_280px]');
 
 const carouselItems = computed<CarouselItem[]>(() => {
   if (homepageBanners.value.length > 0) {
@@ -1056,9 +1054,6 @@ async function loadCategories() {
   try {
     const response = await axios.get('/api/public/shopping/categories');
     categories.value = Array.isArray(response.data) ? response.data : [];
-    if (!expandedCategorySlug.value) {
-      expandedCategorySlug.value = categories.value[0]?.slug || '';
-    }
   } catch (error) {
     console.error('Failed to load categories', error);
     categories.value = [];
