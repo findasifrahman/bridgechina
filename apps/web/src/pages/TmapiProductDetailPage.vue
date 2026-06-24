@@ -998,6 +998,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from '@/utils/axios';
+import { buildImageProxyUrl } from '@/utils/api-url';
 import { useToast } from '@bridgechina/ui';
 import { AlertTriangle, ArrowLeft, MessageCircle, Minus, Package, Play, Plus, RefreshCw, ShoppingCart, Star, Truck, X } from 'lucide-vue-next';
 import { Badge, Button, EmptyState, Input } from '@bridgechina/ui';
@@ -1205,7 +1206,6 @@ function isRenderableImageUrl(url: string): boolean {
 function proxyImageUrl(url: string | null | undefined): string {
   const text = String(url || '').trim();
   if (!text) return '';
-  if (text.startsWith('/api/public/image-proxy')) return text;
   if (text.startsWith('data:image/')) return text;
   if (text.startsWith('/')) return text;
   try {
@@ -1216,7 +1216,7 @@ function proxyImageUrl(url: string | null | undefined): string {
       return host === normalized || host.endsWith(`.${normalized}`) || host.includes(normalized);
     });
     if (shouldProxy && (parsed.protocol === 'http:' || parsed.protocol === 'https:')) {
-      return `/api/public/image-proxy?url=${encodeURIComponent(text)}`;
+      return buildImageProxyUrl(text);
     }
   } catch {
     return text;

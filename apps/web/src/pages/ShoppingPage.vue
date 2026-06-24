@@ -642,6 +642,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from '@/utils/axios';
+import { buildImageProxyUrl } from '@/utils/api-url';
 import { useToast } from '@bridgechina/ui';
 import { useShoppingCart } from '@/composables/useShoppingCart';
 import { Modal } from '@bridgechina/ui';
@@ -894,7 +895,6 @@ function formatSales(count: number): string {
 function proxyImageUrl(url: string | null | undefined): string {
   const text = String(url || '').trim();
   if (!text) return '';
-  if (text.startsWith('/api/public/image-proxy')) return text;
   if (text.startsWith('data:image/')) return text;
   if (text.startsWith('/')) return text;
   try {
@@ -905,7 +905,7 @@ function proxyImageUrl(url: string | null | undefined): string {
       return host === normalized || host.endsWith(`.${normalized}`) || host.includes(normalized);
     });
     if (shouldProxy && (parsed.protocol === 'http:' || parsed.protocol === 'https:')) {
-      return `/api/public/image-proxy?url=${encodeURIComponent(text)}`;
+      return buildImageProxyUrl(text);
     }
   } catch {
     return text;

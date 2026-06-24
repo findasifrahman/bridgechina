@@ -145,6 +145,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from '@/utils/axios';
+import { buildImageProxyUrl } from '@/utils/api-url';
 import { useToast } from '@bridgechina/ui';
 import {
   Badge,
@@ -219,8 +220,7 @@ const sections = computed(() => {
 function proxyImageUrl(url: string | null | undefined): string {
   const value = String(url || '').trim();
   if (!value) return '';
-  const apiBaseUrl = String((import.meta as any).env?.VITE_API_URL || '').trim().replace(/\/+$/, '');
-  return `${apiBaseUrl}/api/public/image-proxy?url=${encodeURIComponent(value)}`;
+  return buildImageProxyUrl(value);
 }
 
 async function loadItems() {

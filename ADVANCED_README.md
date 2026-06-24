@@ -31,6 +31,7 @@ TMAPI_BASE_URL="http://api.tmapi.top"
 - `IS_OTAPI_ACTIVE="false"` routes shopping calls to `shopping`, the TMAPI implementation.
 - The TMAPI client normalizes `http://api.tmapi.top` to `https://api.tmapi.top`.
 - Do not remove either implementation; both are supported by the provider switch.
+- Production image proxy URLs are built from `VITE_API_URL`, so the frontend should point to the backend origin itself, for example `https://bridgechina-production.up.railway.app`, not a Vercel-only `/api` path.
 
 ## TMAPI Search Behavior
 

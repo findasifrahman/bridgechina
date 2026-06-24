@@ -168,3 +168,4 @@ pnpm --filter @bridgechina/web dev
 - The category sidebar and top search experience are shared across public shopping pages.
 - Advanced shopping provider, TMAPI, taxonomy, and search verification notes are in `ADVANCED_README.md`.
 - Homepage visual menu tiles live in the new `homepage_visual_menu_items` table and can be edited from the admin panel.
+- In production, set `VITE_API_URL` to the backend origin, for example `https://bridgechina-production.up.railway.app`, so proxied 1688 images resolve correctly outside local dev.

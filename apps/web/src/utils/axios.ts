@@ -1,10 +1,10 @@
 import axios from 'axios';
+import { getApiBaseUrl } from './api-url';
 
 // Configure axios defaults
 // For local dev: empty string uses Vite proxy (configured in vite.config.ts)
 // For production: set VITE_API_URL environment variable
-const apiUrl = import.meta.env.VITE_API_URL || '';
-axios.defaults.baseURL = apiUrl;
+axios.defaults.baseURL = getApiBaseUrl();
 axios.defaults.withCredentials = true;
 
 // Request interceptor to add auth token

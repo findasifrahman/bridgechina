@@ -67,6 +67,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { buildImageProxyUrl } from '@/utils/api-url';
 import { Package, ShoppingCart, Store } from 'lucide-vue-next';
 import { Card, CardBody, Button } from '@bridgechina/ui';
 
@@ -152,13 +153,12 @@ function collectImageCandidates(input: any): string[] {
 function proxyImageUrl(url: string): string {
   const text = String(url || '').trim();
   if (!text) return '';
-  if (text.startsWith('/api/public/image-proxy')) return text;
   if (text.startsWith('data:image/')) return text;
   if (!shouldProxyImageUrl(text)) return text;
   try {
     const parsed = new URL(text);
     if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-      return `/api/public/image-proxy?url=${encodeURIComponent(text)}`;
+      return buildImageProxyUrl(text);
     }
   } catch {
     return text;

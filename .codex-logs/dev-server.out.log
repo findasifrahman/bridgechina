@@ -352,3 +352,235 @@
 [API] {"level":30,"time":1782297566608,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-12","res":{"statusCode":200},"responseTime":1982.506500005722,"msg":"request completed"}
 [API] prisma:query SELECT "public"."seller_profiles"."id", "public"."seller_profiles"."user_id", "public"."seller_profiles"."shop_name", "public"."seller_profiles"."display_name", "public"."seller_profiles"."contact_name", "public"."seller_profiles"."whatsapp", "public"."seller_profiles"."wechat", "public"."seller_profiles"."email", "public"."seller_profiles"."website", "public"."seller_profiles"."description", "public"."seller_profiles"."address_text", "public"."seller_profiles"."service_area", "public"."seller_profiles"."verified", "public"."seller_profiles"."is_active", "public"."seller_profiles"."rating", "public"."seller_profiles"."review_count", "public"."seller_profiles"."logo_asset_id", "public"."seller_profiles"."banner_asset_id", "public"."seller_profiles"."created_at", "public"."seller_profiles"."updated_at" FROM "public"."seller_profiles" WHERE "public"."seller_profiles"."user_id" IN ($1) OFFSET $2
 [API] {"level":30,"time":1782297566827,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-u","res":{"statusCode":200},"responseTime":4424.229299992323,"msg":"request completed"}
+[WEB] [2m4:40:16 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[API] {"level":30,"time":1782297616854,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-15","req":{"method":"GET","url":"/api/public/shopping/categories","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":39377},"msg":"incoming request"}
+[API] {"level":30,"time":1782297616915,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-16","req":{"method":"GET","url":"/api/public/shopping/hot?page=1&pageSize=12","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":39379},"msg":"incoming request"}
+[API] [Shopping Service] getHotItems called: { categorySlug: undefined, page: 1, pageSize: 12 }
+[API] {"level":30,"time":1782297617008,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-17","req":{"method":"GET","url":"/api/public/offers","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":39381},"msg":"incoming request"}
+[API] {"level":30,"time":1782297617014,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-18","req":{"method":"GET","url":"/api/public/homepage-banners","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":48153},"msg":"incoming request"}
+[API] {"level":30,"time":1782297617039,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-19","req":{"method":"GET","url":"/api/public/shopping/premium-products?limit=4","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":14788},"msg":"incoming request"}
+[API] prisma:query SELECT 1
+[API] prisma:query SELECT 1
+[API] prisma:query SELECT 1
+[API] prisma:query SELECT 1
+[API] prisma:query SELECT 1
+[API] {"level":30,"time":1782297617392,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1a","req":{"method":"GET","url":"/api/public/shopping/home-visual-menu","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":53811},"msg":"incoming request"}
+[API] prisma:query SELECT "public"."external_hot_items"."id", "public"."external_hot_items"."source", "public"."external_hot_items"."external_id", "public"."external_hot_items"."category_slug", "public"."external_hot_items"."pinned_rank", "public"."external_hot_items"."created_at" FROM "public"."external_hot_items" WHERE ("public"."external_hot_items"."source" = $1 AND "public"."external_hot_items"."pinned_rank" > $2) ORDER BY "public"."external_hot_items"."pinned_rank" ASC LIMIT $3 OFFSET $4
+[API] prisma:query SELECT 1
+[API] prisma:query SELECT "public"."homepage_offers"."id", "public"."homepage_offers"."offer_type", "public"."homepage_offers"."value", "public"."homepage_offers"."currency", "public"."homepage_offers"."title", "public"."homepage_offers"."subtitle", "public"."homepage_offers"."description", "public"."homepage_offers"."link", "public"."homepage_offers"."gallery_asset_ids", "public"."homepage_offers"."valid_from", "public"."homepage_offers"."valid_until", "public"."homepage_offers"."cover_asset_id" FROM "public"."homepage_offers" WHERE ("public"."homepage_offers"."is_active" = $1 AND (("public"."homepage_offers"."valid_from" IS NULL AND "public"."homepage_offers"."valid_until" IS NULL) OR ("public"."homepage_offers"."valid_from" <= $2 AND "public"."homepage_offers"."valid_until" >= $3) OR ("public"."homepage_offers"."valid_from" <= $4 AND "public"."homepage_offers"."valid_until" IS NULL) OR ("public"."homepage_offers"."valid_from" IS NULL AND "public"."homepage_offers"."valid_until" >= $5))) ORDER BY "public"."homepage_offers"."valid_from" ASC, "public"."homepage_offers"."updated_at" DESC LIMIT $6 OFFSET $7
+[API] {"level":30,"time":1782297617660,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-17","res":{"statusCode":200},"responseTime":651.526800006628,"msg":"request completed"}
+[API] prisma:query SELECT "public"."homepage_banners"."id", "public"."homepage_banners"."title", "public"."homepage_banners"."subtitle", "public"."homepage_banners"."link", "public"."homepage_banners"."cta_text", "public"."homepage_banners"."sort_order", "public"."homepage_banners"."cover_asset_id" FROM "public"."homepage_banners" WHERE "public"."homepage_banners"."is_active" = $1 ORDER BY "public"."homepage_banners"."sort_order" ASC, "public"."homepage_banners"."created_at" DESC LIMIT $2 OFFSET $3
+[API] prisma:query SELECT "public"."product_categories"."id", "public"."product_categories"."parent_id", "public"."product_categories"."name", "public"."product_categories"."slug", "public"."product_categories"."description", "public"."product_categories"."icon", "public"."product_categories"."sort_order", "public"."product_categories"."is_active", "public"."product_categories"."created_at", "public"."product_categories"."updated_at" FROM "public"."product_categories" WHERE "public"."product_categories"."is_active" = $1 ORDER BY "public"."product_categories"."sort_order" ASC, "public"."product_categories"."name" ASC OFFSET $2
+[API] {"level":30,"time":1782297617675,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1b","req":{"method":"GET","url":"/api/public/shopping/home-curated","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":31582},"msg":"incoming request"}
+[API] {"level":30,"time":1782297617676,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1b","res":{"statusCode":200},"responseTime":0.633899986743927,"msg":"request completed"}
+[API] {"level":30,"time":1782297617684,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-15","res":{"statusCode":200},"responseTime":830.4501999914646,"msg":"request completed"}
+[API] {"level":30,"time":1782297617691,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1c","req":{"method":"GET","url":"/api/public/shopping/settings","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":28706},"msg":"incoming request"}
+[API] prisma:query SELECT "public"."products"."id", "public"."products"."seller_id", "public"."products"."category_id", "public"."products"."title", "public"."products"."description", "public"."products"."price", "public"."products"."currency", "public"."products"."original_price", "public"."products"."stock_qty", "public"."products"."minimum_order_qty", "public"."products"."status", "public"."products"."source_kind", "public"."products"."source_url", "public"."products"."external_id", "public"."products"."cover_asset_id", "public"."products"."brand", "public"."products"."dimensions", "public"."products"."rating", "public"."products"."review_count", "public"."products"."sku", "public"."products"."specifications", "public"."products"."tags", "public"."products"."weight_kg", "public"."products"."gallery_asset_ids", "public"."products"."is_featured", "public"."products"."created_at", "public"."products"."updated_at" FROM "public"."products" WHERE ("public"."products"."status" = $1 AND "public"."products"."source_kind" = $2) ORDER BY "public"."products"."is_featured" DESC, "public"."products"."created_at" DESC LIMIT $3 OFFSET $4
+[API] {"level":30,"time":1782297617706,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1d","req":{"method":"GET","url":"/api/public/shopping/recent-searches?limit=8&language=en","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":28796},"msg":"incoming request"}
+[API] prisma:query SELECT 1
+[API] prisma:query SELECT 1
+[API] prisma:query SELECT "public"."external_search_cache"."id", "public"."external_search_cache"."source", "public"."external_search_cache"."cache_key", "public"."external_search_cache"."query_json", "public"."external_search_cache"."results_json", "public"."external_search_cache"."created_at", "public"."external_search_cache"."expires_at" FROM "public"."external_search_cache" WHERE "public"."external_search_cache"."source" = $1 ORDER BY "public"."external_search_cache"."id" ASC LIMIT $2 OFFSET $3
+[API] [Shopping Service] Found 0 total search cache entries
+[API] [Shopping Service] 0 non-expired entries after filtering
+[API] [Shopping Service] Found 0 recent search cache entries
+[API] [Shopping Service] Current items count: 0, needed: 12
+[API] [Shopping Service] After processing search cache, items count: 0
+[API] prisma:query SELECT "public"."homepage_visual_menu_items"."id", "public"."homepage_visual_menu_items"."section_key", "public"."homepage_visual_menu_items"."section_label", "public"."homepage_visual_menu_items"."section_sort_order", "public"."homepage_visual_menu_items"."title", "public"."homepage_visual_menu_items"."search_keyword", "public"."homepage_visual_menu_items"."image_url", "public"."homepage_visual_menu_items"."image_alt", "public"."homepage_visual_menu_items"."sort_order", "public"."homepage_visual_menu_items"."is_active", "public"."homepage_visual_menu_items"."created_at", "public"."homepage_visual_menu_items"."updated_at" FROM "public"."homepage_visual_menu_items" WHERE "public"."homepage_visual_menu_items"."is_active" = $1 ORDER BY "public"."homepage_visual_menu_items"."section_sort_order" ASC, "public"."homepage_visual_menu_items"."sort_order" ASC, "public"."homepage_visual_menu_items"."created_at" ASC OFFSET $2
+[API] {"level":30,"time":1782297618040,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1a","res":{"statusCode":200},"responseTime":647.6217999756336,"msg":"request completed"}
+[API] {"level":30,"time":1782297618044,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1e","req":{"method":"GET","url":"/api/public/offers","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":8613},"msg":"incoming request"}
+[API] prisma:query SELECT "public"."media_assets"."id", "public"."media_assets"."r2_key", "public"."media_assets"."public_url", "public"."media_assets"."mime_type", "public"."media_assets"."size", "public"."media_assets"."uploaded_by", "public"."media_assets"."created_at", "public"."media_assets"."category", "public"."media_assets"."height", "public"."media_assets"."tags", "public"."media_assets"."thumbnail_key", "public"."media_assets"."thumbnail_url", "public"."media_assets"."width" FROM "public"."media_assets" WHERE "public"."media_assets"."id" IN ($1) OFFSET $2
+[API] prisma:query SELECT "public"."media_assets"."id", "public"."media_assets"."public_url", "public"."media_assets"."thumbnail_url", "public"."media_assets"."width", "public"."media_assets"."height" FROM "public"."media_assets" WHERE "public"."media_assets"."id" IN ($1,$2) OFFSET $3
+[API] {"level":30,"time":1782297618123,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-18","res":{"statusCode":200},"responseTime":1109.3495000004768,"msg":"request completed"}
+[API] {"level":30,"time":1782297618128,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1f","req":{"method":"GET","url":"/api/public/shopping/home-curated","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":64360},"msg":"incoming request"}
+[API] {"level":30,"time":1782297618129,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1f","res":{"statusCode":200},"responseTime":0.3609999716281891,"msg":"request completed"}
+[API] prisma:query SELECT "public"."source_markup_settings"."id", "public"."source_markup_settings"."source_kind", "public"."source_markup_settings"."percent_rate", "public"."source_markup_settings"."updated_by", "public"."source_markup_settings"."created_at", "public"."source_markup_settings"."updated_at" FROM "public"."source_markup_settings" WHERE ("public"."source_markup_settings"."source_kind" = $1 AND 1=1) LIMIT $2 OFFSET $3
+[API] prisma:query SELECT "public"."shipping_rate_settings"."id", "public"."shipping_rate_settings"."method", "public"."shipping_rate_settings"."currency", "public"."shipping_rate_settings"."min_rate_per_kg", "public"."shipping_rate_settings"."max_rate_per_kg", "public"."shipping_rate_settings"."is_active", "public"."shipping_rate_settings"."updated_by", "public"."shipping_rate_settings"."created_at", "public"."shipping_rate_settings"."updated_at" FROM "public"."shipping_rate_settings" WHERE "public"."shipping_rate_settings"."is_active" = $1 ORDER BY "public"."shipping_rate_settings"."method" ASC, "public"."shipping_rate_settings"."currency" ASC OFFSET $2
+[API] {"level":30,"time":1782297618138,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1g","req":{"method":"GET","url":"/api/public/shopping/categories","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":40408},"msg":"incoming request"}
+[API] prisma:query SELECT "public"."moq_shopping_otapi_rule"."id", "public"."moq_shopping_otapi_rule"."scope", "public"."moq_shopping_otapi_rule"."minimum_product", "public"."moq_shopping_otapi_rule"."minimum_price_threshold", "public"."moq_shopping_otapi_rule"."currency", "public"."moq_shopping_otapi_rule"."updated_by", "public"."moq_shopping_otapi_rule"."created_at", "public"."moq_shopping_otapi_rule"."updated_at" FROM "public"."moq_shopping_otapi_rule" WHERE ("public"."moq_shopping_otapi_rule"."scope" = $1 AND 1=1) LIMIT $2 OFFSET $3
+[API] {"level":30,"time":1782297618342,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1c","res":{"statusCode":200},"responseTime":648.9334000051022,"msg":"request completed"}
+[API] {"level":30,"time":1782297618346,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1h","req":{"method":"GET","url":"/api/public/shopping/home-visual-menu","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":5966},"msg":"incoming request"}
+[API] prisma:query SELECT "public"."external_search_cache"."id", "public"."external_search_cache"."source", "public"."external_search_cache"."cache_key", "public"."external_search_cache"."query_json", "public"."external_search_cache"."results_json", "public"."external_search_cache"."created_at", "public"."external_search_cache"."expires_at" FROM "public"."external_search_cache" WHERE "public"."external_search_cache"."source" = $1 ORDER BY "public"."external_search_cache"."created_at" DESC LIMIT $2 OFFSET $3
+[API] {"level":30,"time":1782297618355,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1d","res":{"statusCode":200},"responseTime":648.1854999959469,"msg":"request completed"}
+[API] prisma:query SELECT "public"."product_categories"."id", "public"."product_categories"."parent_id", "public"."product_categories"."name", "public"."product_categories"."slug", "public"."product_categories"."description", "public"."product_categories"."icon", "public"."product_categories"."sort_order", "public"."product_categories"."is_active", "public"."product_categories"."created_at", "public"."product_categories"."updated_at" FROM "public"."product_categories" WHERE "public"."product_categories"."is_active" = $1 ORDER BY "public"."product_categories"."sort_order" ASC, "public"."product_categories"."name" ASC OFFSET $2
+[API] {"level":30,"time":1782297618358,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1i","req":{"method":"GET","url":"/api/public/homepage-banners","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":53955},"msg":"incoming request"}
+[API] {"level":30,"time":1782297618361,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1g","res":{"statusCode":200},"responseTime":223.16390001773834,"msg":"request completed"}
+[API] {"level":30,"time":1782297618368,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1j","req":{"method":"GET","url":"/api/public/shopping/settings","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":14696},"msg":"incoming request"}
+[API] prisma:query SELECT "public"."external_catalog_items"."id", "public"."external_catalog_items"."source", "public"."external_catalog_items"."external_id", "public"."external_catalog_items"."title", "public"."external_catalog_items"."price_min", "public"."external_catalog_items"."price_max", "public"."external_catalog_items"."currency", "public"."external_catalog_items"."main_images", "public"."external_catalog_items"."skus_json", "public"."external_catalog_items"."seller_json", "public"."external_catalog_items"."source_url", "public"."external_catalog_items"."raw_json", "public"."external_catalog_items"."last_synced_at", "public"."external_catalog_items"."expires_at", "public"."external_catalog_items"."title_en" FROM "public"."external_catalog_items" WHERE ("public"."external_catalog_items"."source" = $1 AND "public"."external_catalog_items"."expires_at" > $2) ORDER BY "public"."external_catalog_items"."last_synced_at" DESC LIMIT $3 OFFSET $4
+[API] [Shopping Service] getHotItems returning 0 items (total: 0, page: 1, pageSize: 12)
+[API] {"level":30,"time":1782297618462,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-16","res":{"statusCode":200},"responseTime":1546.6730999946594,"msg":"request completed"}
+[API] {"level":30,"time":1782297618467,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1k","req":{"method":"GET","url":"/api/public/shopping/recent-searches?limit=8&language=en","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":53559},"msg":"incoming request"}
+[API] prisma:query SELECT "public"."homepage_offers"."id", "public"."homepage_offers"."offer_type", "public"."homepage_offers"."value", "public"."homepage_offers"."currency", "public"."homepage_offers"."title", "public"."homepage_offers"."subtitle", "public"."homepage_offers"."description", "public"."homepage_offers"."link", "public"."homepage_offers"."gallery_asset_ids", "public"."homepage_offers"."valid_from", "public"."homepage_offers"."valid_until", "public"."homepage_offers"."cover_asset_id" FROM "public"."homepage_offers" WHERE ("public"."homepage_offers"."is_active" = $1 AND (("public"."homepage_offers"."valid_from" IS NULL AND "public"."homepage_offers"."valid_until" IS NULL) OR ("public"."homepage_offers"."valid_from" <= $2 AND "public"."homepage_offers"."valid_until" >= $3) OR ("public"."homepage_offers"."valid_from" <= $4 AND "public"."homepage_offers"."valid_until" IS NULL) OR ("public"."homepage_offers"."valid_from" IS NULL AND "public"."homepage_offers"."valid_until" >= $5))) ORDER BY "public"."homepage_offers"."valid_from" ASC, "public"."homepage_offers"."updated_at" DESC LIMIT $6 OFFSET $7
+[API] {"level":30,"time":1782297618477,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1e","res":{"statusCode":200},"responseTime":432.4718999862671,"msg":"request completed"}
+[API] {"level":30,"time":1782297618481,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1l","req":{"method":"GET","url":"/api/public/shopping/hot?page=1&pageSize=12","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":36949},"msg":"incoming request"}
+[API] [Shopping Service] getHotItems called: { categorySlug: undefined, page: 1, pageSize: 12 }
+[API] prisma:query SELECT "public"."users"."id", "public"."users"."email", "public"."users"."phone", "public"."users"."password_hash", "public"."users"."status", "public"."users"."created_at", "public"."users"."updated_at" FROM "public"."users" WHERE "public"."users"."id" IN ($1,$2) OFFSET $3
+[API] prisma:query SELECT "public"."source_markup_settings"."id", "public"."source_markup_settings"."source_kind", "public"."source_markup_settings"."percent_rate", "public"."source_markup_settings"."updated_by", "public"."source_markup_settings"."created_at", "public"."source_markup_settings"."updated_at" FROM "public"."source_markup_settings" WHERE ("public"."source_markup_settings"."source_kind" = $1 AND 1=1) LIMIT $2 OFFSET $3
+[API] prisma:query SELECT "public"."external_hot_items"."id", "public"."external_hot_items"."source", "public"."external_hot_items"."external_id", "public"."external_hot_items"."category_slug", "public"."external_hot_items"."pinned_rank", "public"."external_hot_items"."created_at" FROM "public"."external_hot_items" WHERE ("public"."external_hot_items"."source" = $1 AND "public"."external_hot_items"."pinned_rank" > $2) ORDER BY "public"."external_hot_items"."pinned_rank" ASC LIMIT $3 OFFSET $4
+[API] prisma:query SELECT "public"."homepage_visual_menu_items"."id", "public"."homepage_visual_menu_items"."section_key", "public"."homepage_visual_menu_items"."section_label", "public"."homepage_visual_menu_items"."section_sort_order", "public"."homepage_visual_menu_items"."title", "public"."homepage_visual_menu_items"."search_keyword", "public"."homepage_visual_menu_items"."image_url", "public"."homepage_visual_menu_items"."image_alt", "public"."homepage_visual_menu_items"."sort_order", "public"."homepage_visual_menu_items"."is_active", "public"."homepage_visual_menu_items"."created_at", "public"."homepage_visual_menu_items"."updated_at" FROM "public"."homepage_visual_menu_items" WHERE "public"."homepage_visual_menu_items"."is_active" = $1 ORDER BY "public"."homepage_visual_menu_items"."section_sort_order" ASC, "public"."homepage_visual_menu_items"."sort_order" ASC, "public"."homepage_visual_menu_items"."created_at" ASC OFFSET $2
+[API] {"level":30,"time":1782297618778,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1h","res":{"statusCode":200},"responseTime":431.55979999899864,"msg":"request completed"}
+[API] prisma:query SELECT "public"."homepage_banners"."id", "public"."homepage_banners"."title", "public"."homepage_banners"."subtitle", "public"."homepage_banners"."link", "public"."homepage_banners"."cta_text", "public"."homepage_banners"."sort_order", "public"."homepage_banners"."cover_asset_id" FROM "public"."homepage_banners" WHERE "public"."homepage_banners"."is_active" = $1 ORDER BY "public"."homepage_banners"."sort_order" ASC, "public"."homepage_banners"."created_at" DESC LIMIT $2 OFFSET $3
+[API] prisma:query SELECT "public"."shipping_rate_settings"."id", "public"."shipping_rate_settings"."method", "public"."shipping_rate_settings"."currency", "public"."shipping_rate_settings"."min_rate_per_kg", "public"."shipping_rate_settings"."max_rate_per_kg", "public"."shipping_rate_settings"."is_active", "public"."shipping_rate_settings"."updated_by", "public"."shipping_rate_settings"."created_at", "public"."shipping_rate_settings"."updated_at" FROM "public"."shipping_rate_settings" WHERE "public"."shipping_rate_settings"."is_active" = $1 ORDER BY "public"."shipping_rate_settings"."method" ASC, "public"."shipping_rate_settings"."currency" ASC OFFSET $2
+[API] prisma:query SELECT "public"."moq_shopping_otapi_rule"."id", "public"."moq_shopping_otapi_rule"."scope", "public"."moq_shopping_otapi_rule"."minimum_product", "public"."moq_shopping_otapi_rule"."minimum_price_threshold", "public"."moq_shopping_otapi_rule"."currency", "public"."moq_shopping_otapi_rule"."updated_by", "public"."moq_shopping_otapi_rule"."created_at", "public"."moq_shopping_otapi_rule"."updated_at" FROM "public"."moq_shopping_otapi_rule" WHERE ("public"."moq_shopping_otapi_rule"."scope" = $1 AND 1=1) LIMIT $2 OFFSET $3
+[API] {"level":30,"time":1782297618803,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1j","res":{"statusCode":200},"responseTime":435.3236000239849,"msg":"request completed"}
+[API] prisma:query SELECT "public"."external_search_cache"."id", "public"."external_search_cache"."source", "public"."external_search_cache"."cache_key", "public"."external_search_cache"."query_json", "public"."external_search_cache"."results_json", "public"."external_search_cache"."created_at", "public"."external_search_cache"."expires_at" FROM "public"."external_search_cache" WHERE "public"."external_search_cache"."source" = $1 ORDER BY "public"."external_search_cache"."created_at" DESC LIMIT $2 OFFSET $3
+[API] {"level":30,"time":1782297618905,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1k","res":{"statusCode":200},"responseTime":437.3130999803543,"msg":"request completed"}
+[API] prisma:query SELECT "public"."external_search_cache"."id", "public"."external_search_cache"."source", "public"."external_search_cache"."cache_key", "public"."external_search_cache"."query_json", "public"."external_search_cache"."results_json", "public"."external_search_cache"."created_at", "public"."external_search_cache"."expires_at" FROM "public"."external_search_cache" WHERE "public"."external_search_cache"."source" = $1 ORDER BY "public"."external_search_cache"."id" ASC LIMIT $2 OFFSET $3
+[API] [Shopping Service] Found 0 total search cache entries
+[API] [Shopping Service] 0 non-expired entries after filtering
+[API] [Shopping Service] Found 0 recent search cache entries
+[API] [Shopping Service] Current items count: 0, needed: 12
+[API] [Shopping Service] After processing search cache, items count: 0
+[API] prisma:query SELECT "public"."seller_profiles"."id", "public"."seller_profiles"."user_id", "public"."seller_profiles"."shop_name", "public"."seller_profiles"."display_name", "public"."seller_profiles"."contact_name", "public"."seller_profiles"."whatsapp", "public"."seller_profiles"."wechat", "public"."seller_profiles"."email", "public"."seller_profiles"."website", "public"."seller_profiles"."description", "public"."seller_profiles"."address_text", "public"."seller_profiles"."service_area", "public"."seller_profiles"."verified", "public"."seller_profiles"."is_active", "public"."seller_profiles"."rating", "public"."seller_profiles"."review_count", "public"."seller_profiles"."logo_asset_id", "public"."seller_profiles"."banner_asset_id", "public"."seller_profiles"."created_at", "public"."seller_profiles"."updated_at" FROM "public"."seller_profiles" WHERE "public"."seller_profiles"."user_id" IN ($1,$2) OFFSET $3
+[API] prisma:query SELECT "public"."external_catalog_items"."id", "public"."external_catalog_items"."source", "public"."external_catalog_items"."external_id", "public"."external_catalog_items"."title", "public"."external_catalog_items"."price_min", "public"."external_catalog_items"."price_max", "public"."external_catalog_items"."currency", "public"."external_catalog_items"."main_images", "public"."external_catalog_items"."skus_json", "public"."external_catalog_items"."seller_json", "public"."external_catalog_items"."source_url", "public"."external_catalog_items"."raw_json", "public"."external_catalog_items"."last_synced_at", "public"."external_catalog_items"."expires_at", "public"."external_catalog_items"."title_en" FROM "public"."external_catalog_items" WHERE ("public"."external_catalog_items"."source" = $1 AND "public"."external_catalog_items"."expires_at" > $2) ORDER BY "public"."external_catalog_items"."last_synced_at" DESC LIMIT $3 OFFSET $4
+[API] [Shopping Service] getHotItems returning 0 items (total: 0, page: 1, pageSize: 12)
+[API] {"level":30,"time":1782297619132,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1l","res":{"statusCode":200},"responseTime":650.4598000049591,"msg":"request completed"}
+[API] prisma:query SELECT "public"."media_assets"."id", "public"."media_assets"."public_url", "public"."media_assets"."thumbnail_url", "public"."media_assets"."width", "public"."media_assets"."height" FROM "public"."media_assets" WHERE "public"."media_assets"."id" IN ($1,$2) OFFSET $3
+[API] {"level":30,"time":1782297619225,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1i","res":{"statusCode":200},"responseTime":866.1261000037193,"msg":"request completed"}
+[API] prisma:query SELECT "public"."product_categories"."id", "public"."product_categories"."parent_id", "public"."product_categories"."name", "public"."product_categories"."slug", "public"."product_categories"."description", "public"."product_categories"."icon", "public"."product_categories"."sort_order", "public"."product_categories"."is_active", "public"."product_categories"."created_at", "public"."product_categories"."updated_at" FROM "public"."product_categories" WHERE "public"."product_categories"."id" IN ($1,$2,$3,$4) OFFSET $5
+[API] prisma:query SELECT "public"."media_assets"."id", "public"."media_assets"."public_url", "public"."media_assets"."thumbnail_url" FROM "public"."media_assets" WHERE "public"."media_assets"."id" IN ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) OFFSET $13
+[API] {"level":30,"time":1782297619851,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-19","res":{"statusCode":200},"responseTime":2812.058400005102,"msg":"request completed"}
+[API] {"level":30,"time":1782297619858,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1m","req":{"method":"GET","url":"/api/public/shopping/premium-products?limit=4","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":17433},"msg":"incoming request"}
+[API] prisma:query SELECT "public"."products"."id", "public"."products"."seller_id", "public"."products"."category_id", "public"."products"."title", "public"."products"."description", "public"."products"."price", "public"."products"."currency", "public"."products"."original_price", "public"."products"."stock_qty", "public"."products"."minimum_order_qty", "public"."products"."status", "public"."products"."source_kind", "public"."products"."source_url", "public"."products"."external_id", "public"."products"."cover_asset_id", "public"."products"."brand", "public"."products"."dimensions", "public"."products"."rating", "public"."products"."review_count", "public"."products"."sku", "public"."products"."specifications", "public"."products"."tags", "public"."products"."weight_kg", "public"."products"."gallery_asset_ids", "public"."products"."is_featured", "public"."products"."created_at", "public"."products"."updated_at" FROM "public"."products" WHERE ("public"."products"."status" = $1 AND "public"."products"."source_kind" = $2) ORDER BY "public"."products"."is_featured" DESC, "public"."products"."created_at" DESC LIMIT $3 OFFSET $4
+[API] prisma:query SELECT "public"."media_assets"."id", "public"."media_assets"."r2_key", "public"."media_assets"."public_url", "public"."media_assets"."mime_type", "public"."media_assets"."size", "public"."media_assets"."uploaded_by", "public"."media_assets"."created_at", "public"."media_assets"."category", "public"."media_assets"."height", "public"."media_assets"."tags", "public"."media_assets"."thumbnail_key", "public"."media_assets"."thumbnail_url", "public"."media_assets"."width" FROM "public"."media_assets" WHERE "public"."media_assets"."id" IN ($1) OFFSET $2
+[API] prisma:query SELECT "public"."users"."id", "public"."users"."email", "public"."users"."phone", "public"."users"."password_hash", "public"."users"."status", "public"."users"."created_at", "public"."users"."updated_at" FROM "public"."users" WHERE "public"."users"."id" IN ($1,$2) OFFSET $3
+[API] prisma:query SELECT "public"."seller_profiles"."id", "public"."seller_profiles"."user_id", "public"."seller_profiles"."shop_name", "public"."seller_profiles"."display_name", "public"."seller_profiles"."contact_name", "public"."seller_profiles"."whatsapp", "public"."seller_profiles"."wechat", "public"."seller_profiles"."email", "public"."seller_profiles"."website", "public"."seller_profiles"."description", "public"."seller_profiles"."address_text", "public"."seller_profiles"."service_area", "public"."seller_profiles"."verified", "public"."seller_profiles"."is_active", "public"."seller_profiles"."rating", "public"."seller_profiles"."review_count", "public"."seller_profiles"."logo_asset_id", "public"."seller_profiles"."banner_asset_id", "public"."seller_profiles"."created_at", "public"."seller_profiles"."updated_at" FROM "public"."seller_profiles" WHERE "public"."seller_profiles"."user_id" IN ($1,$2) OFFSET $3
+[API] prisma:query SELECT "public"."product_categories"."id", "public"."product_categories"."parent_id", "public"."product_categories"."name", "public"."product_categories"."slug", "public"."product_categories"."description", "public"."product_categories"."icon", "public"."product_categories"."sort_order", "public"."product_categories"."is_active", "public"."product_categories"."created_at", "public"."product_categories"."updated_at" FROM "public"."product_categories" WHERE "public"."product_categories"."id" IN ($1,$2,$3,$4) OFFSET $5
+[API] prisma:query SELECT "public"."media_assets"."id", "public"."media_assets"."public_url", "public"."media_assets"."thumbnail_url" FROM "public"."media_assets" WHERE "public"."media_assets"."id" IN ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) OFFSET $13
+[API] {"level":30,"time":1782297621162,"pid":10548,"hostname":"DESKTOP-FT34RPM","reqId":"req-1m","res":{"statusCode":200},"responseTime":1302.7682000100613,"msg":"request completed"}
+[WEB] [2m4:40:31 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m4:54:03 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/utils/axios.ts[22m
+[WEB] [2m4:54:05 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:54:05 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:54:05 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/refresh[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:54:05 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/refresh[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:54:05 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/logout[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:54:05 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/logout[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:54:05 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:54:25 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m4:54:26 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:54:26 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/hot?page=1&pageSize=12[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:54:26 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/offers[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:54:26 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/homepage-banners[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:54:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/premium-products?limit=4[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:54:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-visual-menu[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:54:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-curated[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:54:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/settings[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:54:27 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/recent-searches?limit=8&language=en[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:54:29 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/admin/HomepageVisualMenuPage.vue, /src/style.css[22m
+[WEB] [2m4:54:34 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/components/shopping/ProductCard.vue[22m
+[WEB] [2m4:54:35 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:54:35 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/refresh[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:54:35 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:54:35 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/logout[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:55:03 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/me[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:55:03 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/refresh[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:55:03 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:55:03 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/hot?page=1&pageSize=12[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:55:03 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/offers[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:55:03 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/homepage-banners[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:55:03 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/premium-products?limit=4[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:55:03 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/categories[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:55:03 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-visual-menu[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:55:03 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/home-curated[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:55:03 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/settings[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:55:03 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/public/shopping/recent-searches?limit=8&language=en[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
+[WEB] [2m4:55:03 PM[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/auth/logout[39m
+[WEB] AggregateError [ECONNREFUSED]: 
+[WEB]     at internalConnectMultiple (node:net:1134:18)
+[WEB]     at afterConnectMultiple (node:net:1715:7)
