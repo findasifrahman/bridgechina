@@ -140,20 +140,37 @@ export async function searchByKeyword(
     sort?: string; // 'sales', 'price_asc', 'price_desc', 'popular', 'default'
     language?: string; // 'en' for English, 'zh' for Chinese (default)
     synonymHints?: string[];
+    vendorId?: string;
+    minPrice?: number;
+    maxPrice?: number;
   }
 ): Promise<SearchResult> {
+  if (opts?.vendorId) {
+    return searchByVendorId(opts.vendorId, {
+      page: opts.page,
+      pageSize: opts.pageSize,
+      sort: opts.sort,
+      language: opts.language,
+      keyword,
+    });
+  }
+
   // If no keyword but category provided, use category name as keyword
   const baseKeyword = keyword?.trim() || opts?.category || 'products';
   const searchContext = buildShoppingSearchContext(baseKeyword, opts?.category);
-  let searchKeyword = searchContext.primaryKeyword || baseKeyword;
   const language = opts?.language || 'zh';
+  let searchKeyword = language === 'en' && keyword?.trim()
+    ? baseKeyword
+    : searchContext.primaryKeyword || baseKeyword;
   const strongShoppingSignal =
     searchContext.matchedGroupSlugs.length > 0 ||
     searchContext.matchedSubgroupSlugs.length > 0 ||
     searchContext.buyerIntentTerms.length > 0;
 
-  // Prefer Chinese search terms for TMAPI when the query is Latin text.
-  if (searchKeyword && searchKeyword !== 'products' && !hasChineseCharacters(searchKeyword)) {
+  // Prefer Chinese search terms only for TMAPI's native Chinese endpoint.
+  // The English/global endpoint works best with English accessory terms such as
+  // "phone case"; translating those before calling it can broaden the result set.
+  if (language !== 'en' && searchKeyword && searchKeyword !== 'products' && !hasChineseCharacters(searchKeyword)) {
     try {
       const translated = await translateKeywordToChinese(searchKeyword);
       const fallbackChinese = buildChineseShoppingQuery(searchKeyword, opts?.category);
@@ -618,9 +635,9 @@ export async function searchByImage(
     console.log('[Shopping Service] Using cached image search results');
     // Cached response structure: { code: 200, msg: "success", data: { items: [...] } }
     // The cached response is the full TMAPI response, so we need cached.results_json.data.items
-    const items = cached.results_json?.data?.items || cached.results_json?.items || [];
+    const items = cached?.data?.items || cached?.items || [];
     const normalized = normalizeProductCards(items);
-    const totalCount = cached.results_json?.data?.total_count || normalized.length;
+    const totalCount = cached?.data?.total_count || normalized.length;
     const totalPages = Math.ceil(totalCount / pageSize);
     const hasNextPage = page < totalPages;
     return {
@@ -684,6 +701,115 @@ export async function searchByImage(
   };
 }
 
+function normalizeTmapiShopInfo(raw: any, vendorId: string) {
+  const data = raw?.data || raw || {};
+  const ratings = Array.isArray(data.shop_ratings) ? data.shop_ratings : [];
+  const compositeRating = ratings.find((rating: any) => rating?.type === 'comprehensive') || ratings[0];
+  const badges = [
+    data.is_industry_brand ? 'Brand' : '',
+    data.is_super_factory ? 'Super factory' : '',
+    data.is_factory ? 'Factory' : '',
+    data.is_flagship_shop ? 'Flagship' : '',
+  ].filter(Boolean);
+
+  return {
+    ...data,
+    VendorId: data.member_id || vendorId,
+    VendorID: data.member_id || vendorId,
+    SellerId: data.member_id || vendorId,
+    ShopName: data.shop_name || data.company_name || vendorId,
+    CompanyName: data.company_name || data.shop_name,
+    Name: data.shop_name || data.company_name || vendorId,
+    ShopUrl: data.shop_url,
+    Url: data.shop_url,
+    Score: compositeRating?.score,
+    IsOfficial: Boolean(data.is_flagship_shop),
+    IsBrand: Boolean(data.is_industry_brand || data.is_flagship_shop),
+    IsVerified: Boolean(data.is_factory || data.is_super_factory || data.is_tp),
+    badges,
+  };
+}
+
+export async function searchByVendorId(
+  vendorId: string,
+  opts?: {
+    page?: number;
+    pageSize?: number;
+    sort?: string;
+    language?: string;
+    keyword?: string;
+  }
+): Promise<SearchResult> {
+  const safeVendorId = String(vendorId || '').trim();
+  const page = opts?.page ?? 1;
+  const pageSize = opts?.pageSize ?? 20;
+  const sort = opts?.sort || 'sales';
+  const keyword = String(opts?.keyword || '').trim().toLowerCase();
+
+  if (!safeVendorId) {
+    return { items: [], totalCount: 0, page, pageSize, totalPages: 0, hasNextPage: false };
+  }
+
+  try {
+    const response = await tmapiClient.getShopItemsByMemberId(safeVendorId, {
+      page,
+      pageSize,
+      sort,
+    });
+    const rawItems = response.data?.items || response.items || [];
+    let normalized = normalizeProductCards(rawItems);
+
+    if (keyword) {
+      normalized = normalized.filter((item) => {
+        const haystack = [
+          item.title,
+          item.titleOrigin,
+          item.sellerName,
+          item.shopName,
+        ].join(' ').toLowerCase();
+        return haystack.includes(keyword);
+      });
+    }
+
+    const totalCount = keyword ? normalized.length : Number(response.data?.total_count || normalized.length);
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    return {
+      items: normalized,
+      totalCount,
+      page,
+      pageSize,
+      totalPages,
+      hasNextPage: Boolean(response.data?.has_next_page ?? page < totalPages),
+    };
+  } catch (error: any) {
+    console.warn('[Shopping Service] TMAPI vendor search failed, returning empty results:', {
+      vendorId: safeVendorId,
+      page,
+      pageSize,
+      sort,
+      message: error.message,
+    });
+    return { items: [], totalCount: 0, page, pageSize, totalPages: 0, hasNextPage: false };
+  }
+}
+
+export async function getVendorInfo(vendorId: string, language: string = 'zh'): Promise<any> {
+  const safeVendorId = String(vendorId || '').trim();
+  if (!safeVendorId) return null;
+
+  try {
+    const response = await tmapiClient.getShopInfo(safeVendorId);
+    return normalizeTmapiShopInfo(response, safeVendorId);
+  } catch (error: any) {
+    console.warn('[Shopping Service] TMAPI shop info failed, returning minimal vendor info:', {
+      vendorId: safeVendorId,
+      language,
+      message: error.message,
+    });
+    return normalizeTmapiShopInfo({ data: { member_id: safeVendorId, shop_name: safeVendorId } }, safeVendorId);
+  }
+}
+
 /**
  * Get item detail with caching - saves to ExternalCatalogItem
  */
@@ -724,18 +850,14 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
     
     try {
       const descResponse = await tmapiClient.getItemDescription(externalId);
-      if (descResponse.data?.data) {
-        description = descResponse.data.data;
-      }
+      description = descResponse.data?.data || descResponse.data || null;
     } catch (error) {
       console.warn('[Shopping Service] Failed to fetch description for cached item:', error);
     }
     
     try {
       const ratingsResponse = await tmapiClient.getItemRatings(externalId, 1);
-      if (ratingsResponse.data?.data) {
-        ratings = ratingsResponse.data.data;
-      }
+      ratings = ratingsResponse.data?.data || ratingsResponse.data || null;
     } catch (error) {
       console.warn('[Shopping Service] Failed to fetch ratings for cached item:', error);
     }
@@ -745,9 +867,7 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
       const shippingResponse = await tmapiClient.getItemShipping(externalId, {
         province: process.env.TMAPI_DEFAULT_PROVINCE || '广东',
       });
-      if (shippingResponse.data?.data) {
-        shipping = shippingResponse.data.data;
-      }
+      shipping = shippingResponse.data?.data || shippingResponse.data || null;
     } catch (error: any) {
       // Log once but don't crash - shipping is optional
       console.warn('[Shopping Service] Failed to fetch shipping for cached item (non-critical):', {
@@ -864,18 +984,14 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
   
   try {
     const descResponse = await tmapiClient.getItemDescription(externalId);
-    if (descResponse.data?.data) {
-      description = descResponse.data.data;
-    }
+    description = descResponse.data?.data || descResponse.data || null;
   } catch (error) {
     console.warn('[Shopping Service] Failed to fetch item description:', error);
   }
   
   try {
     const ratingsResponse = await tmapiClient.getItemRatings(externalId, 1);
-    if (ratingsResponse.data?.data) {
-      ratings = ratingsResponse.data.data;
-    }
+    ratings = ratingsResponse.data?.data || ratingsResponse.data || null;
   } catch (error) {
     console.warn('[Shopping Service] Failed to fetch item ratings:', error);
   }
@@ -885,9 +1001,7 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
     const shippingResponse = await tmapiClient.getItemShipping(externalId, {
       province: process.env.TMAPI_DEFAULT_PROVINCE || '广东',
     });
-    if (shippingResponse.data?.data) {
-      shipping = shippingResponse.data.data;
-    }
+    shipping = shippingResponse.data?.data || shippingResponse.data || null;
   } catch (error: any) {
     // Log once but don't crash - shipping is optional
     console.warn('[Shopping Service] Failed to fetch item shipping (non-critical):', {

@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import argon2 from 'argon2';
+import { SHOPPING_CATEGORY_TREE, type ShoppingCategorySeed } from '../src/modules/shopping/category-taxonomy.js';
 
 const prisma = new PrismaClient();
 
@@ -40,6 +41,228 @@ async function ensureUser(email: string, password: string, roleName: string, pho
       },
     },
   });
+}
+
+async function syncSeedCategoryTree(categories: ShoppingCategorySeed[], parentId: string | null = null) {
+  for (const category of categories) {
+    const record = await prisma.productCategory.upsert({
+      where: { slug: category.slug },
+      update: {
+        name: category.name,
+        icon: category.icon,
+        description: category.description ?? null,
+        sort_order: category.sort_order,
+        is_active: true,
+        parent_id: parentId,
+      },
+      create: {
+        name: category.name,
+        slug: category.slug,
+        icon: category.icon,
+        description: category.description ?? null,
+        sort_order: category.sort_order,
+        parent_id: parentId,
+        is_active: true,
+      },
+    });
+
+    await syncSeedCategoryTree(category.children || [], record.id);
+  }
+}
+
+const HOMEPAGE_VISUAL_MENU_SEED = [
+  {
+    section_key: 'mobile-accessories',
+    section_label: 'Mobile accessories',
+    section_sort_order: 1,
+    title: 'Phone Cover',
+    search_keyword: 'xiaomi phone cover',
+    image_url: 'https://cbu01.alicdn.com/img/ibank/O1CN01qKi0sm2A8QFIA4KyN_!!2221515018158-0-cib.jpg',
+    image_alt: 'Phone cover',
+    sort_order: 1,
+  },
+  {
+    section_key: 'mobile-accessories',
+    section_label: 'Mobile accessories',
+    section_sort_order: 1,
+    title: 'Phone Charger',
+    search_keyword: 'phone charger',
+    image_url: 'https://cbu01.alicdn.com/img/ibank/O1CN01rMc9TR1uqol85owES_!!1627406089-0-cib.jpg',
+    image_alt: 'Phone charger',
+    sort_order: 2,
+  },
+  {
+    section_key: 'mobile-accessories',
+    section_label: 'Mobile accessories',
+    section_sort_order: 1,
+    title: 'Phone Glass',
+    search_keyword: 'phone tempered glass',
+    image_url: 'https://cbu01.alicdn.com/img/ibank/O1CN01kc2INO1ocituoDdXA_!!1865165246-0-cib.jpg',
+    image_alt: 'Phone glass',
+    sort_order: 3,
+  },
+  {
+    section_key: 'mobile-accessories',
+    section_label: 'Mobile accessories',
+    section_sort_order: 1,
+    title: 'Power Bank',
+    search_keyword: 'power bank',
+    image_url: 'https://cbu01.alicdn.com/img/ibank/O1CN01UN76QO2GOo6gcHTlZ_!!2210980869006-0-cib.jpg',
+    image_alt: 'Power bank',
+    sort_order: 4,
+  },
+  {
+    section_key: 'jewelry',
+    section_label: 'Jewellery',
+    section_sort_order: 2,
+    title: 'Necklace',
+    search_keyword: 'necklace',
+    image_url: 'https://cbu01.alicdn.com/img/ibank/O1CN01sGqqN32J8Gej32yYU_!!2212479439376-0-cib.jpg',
+    image_alt: 'Necklace',
+    sort_order: 1,
+  },
+  {
+    section_key: 'jewelry',
+    section_label: 'Jewellery',
+    section_sort_order: 2,
+    title: 'Earrings',
+    search_keyword: 'earrings',
+    image_url: 'https://cbu01.alicdn.com/img/ibank/O1CN01lLgdAc1S6jgGU39gr_!!2217782572198-0-cib.jpg',
+    image_alt: 'Earrings',
+    sort_order: 2,
+  },
+  {
+    section_key: 'jewelry',
+    section_label: 'Jewellery',
+    section_sort_order: 2,
+    title: 'Ring',
+    search_keyword: 'ring',
+    image_url: 'https://cbu01.alicdn.com/img/ibank/O1CN01aYTEe21HE6F2IrMAe_!!2220643820725-0-cib.jpg',
+    image_alt: 'Ring',
+    sort_order: 3,
+  },
+  {
+    section_key: 'jewelry',
+    section_label: 'Jewellery',
+    section_sort_order: 2,
+    title: 'Bracelet',
+    search_keyword: 'bracelet',
+    image_url: 'https://cbu01.alicdn.com/img/ibank/O1CN0120w1kD1k00vTcLPOD_!!2216152464620-0-cib.jpg',
+    image_alt: 'Bracelet',
+    sort_order: 4,
+  },
+  {
+    section_key: 'bags',
+    section_label: 'Bags',
+    section_sort_order: 3,
+    title: 'School Bag',
+    search_keyword: 'school bag',
+    image_url: 'https://cbu01.alicdn.com/img/ibank/O1CN01oO69Yg1CdgJYsDBgz_!!2599330104-0-cib.jpg',
+    image_alt: 'School bag',
+    sort_order: 1,
+  },
+  {
+    section_key: 'bags',
+    section_label: 'Bags',
+    section_sort_order: 3,
+    title: 'Ladies Bag',
+    search_keyword: 'ladies bag',
+    image_url: 'https://cbu01.alicdn.com/img/ibank/O1CN01vQzHyB1XNI4fCWxTu_!!2218396842911-0-cib.jpg',
+    image_alt: 'Ladies bag',
+    sort_order: 2,
+  },
+  {
+    section_key: 'bags',
+    section_label: 'Bags',
+    section_sort_order: 3,
+    title: 'Handbag',
+    search_keyword: 'handbag',
+    image_url: 'https://cbu01.alicdn.com/img/ibank/O1CN01z2uk2S1ieerG7Snp9_!!2221298764438-0-cib.jpg',
+    image_alt: 'Handbag',
+    sort_order: 3,
+  },
+  {
+    section_key: 'bags',
+    section_label: 'Bags',
+    section_sort_order: 3,
+    title: 'Bucket Bag',
+    search_keyword: 'bucket bag',
+    image_url: 'https://cbu01.alicdn.com/img/ibank/O1CN01hUMFah1lzfuKGpM1g_!!2219122354890-0-cib.jpg',
+    image_alt: 'Bucket bag',
+    sort_order: 4,
+  },
+  {
+    section_key: 'women-hijab',
+    section_label: 'Women Hijab',
+    section_sort_order: 4,
+    title: 'Hijab',
+    search_keyword: 'hijab',
+    image_url: 'https://cbu01.alicdn.com/img/ibank/O1CN010A5I0h1X6LQAqegsB_!!2222131472874-0-cib.jpg',
+    image_alt: 'Hijab',
+    sort_order: 1,
+  },
+  {
+    section_key: 'women-hijab',
+    section_label: 'Women Hijab',
+    section_sort_order: 4,
+    title: 'Headscarf',
+    search_keyword: 'headscarf',
+    image_url: 'https://cbu01.alicdn.com/img/ibank/O1CN010A5I0h1X6LQAqegsB_!!2222131472874-0-cib.jpg',
+    image_alt: 'Headscarf',
+    sort_order: 2,
+  },
+  {
+    section_key: 'women-hijab',
+    section_label: 'Women Hijab',
+    section_sort_order: 4,
+    title: 'Burkha',
+    search_keyword: 'burkha',
+    image_url: 'https://cbu01.alicdn.com/img/ibank/O1CN0171w1W01yE7mVcXQ3D_!!2222264526546-0-cib.jpg',
+    image_alt: 'Burkha',
+    sort_order: 3,
+  },
+  {
+    section_key: 'women-hijab',
+    section_label: 'Women Hijab',
+    section_sort_order: 4,
+    title: 'Modest Dress',
+    search_keyword: 'modest dress',
+    image_url: 'https://cbu01.alicdn.com/img/ibank/O1CN01f9L5mZ1QcDblHOhI7_!!2207798121996-0-cib.jpg',
+    image_alt: 'Modest dress',
+    sort_order: 4,
+  },
+] as const;
+
+async function syncHomepageVisualMenuSeed() {
+  for (const item of HOMEPAGE_VISUAL_MENU_SEED) {
+    const existing = await prisma.homepageVisualMenuItem.findFirst({
+      where: {
+        section_key: item.section_key,
+        title: item.title,
+      },
+    });
+
+    const data = {
+      section_key: item.section_key,
+      section_label: item.section_label,
+      section_sort_order: item.section_sort_order,
+      title: item.title,
+      search_keyword: item.search_keyword,
+      image_url: item.image_url,
+      image_alt: item.image_alt,
+      sort_order: item.sort_order,
+      is_active: true,
+    };
+
+    if (existing) {
+      await prisma.homepageVisualMenuItem.update({
+        where: { id: existing.id },
+        data,
+      });
+    } else {
+      await prisma.homepageVisualMenuItem.create({ data });
+    }
+  }
 }
 
 async function main() {
@@ -244,6 +467,7 @@ async function main() {
       categoryMap.set(childRecord.slug, childRecord.id);
     }
   }
+  await syncSeedCategoryTree(SHOPPING_CATEGORY_TREE);
   console.log('✓ Product categories created');
 
   const products = [
@@ -370,6 +594,9 @@ async function main() {
     },
   });
   console.log('✓ Homepage content created');
+
+  await syncHomepageVisualMenuSeed();
+  console.log('✓ Homepage visual menu created');
 
   await prisma.moqShoppingOtapiRule.upsert({
     where: { scope: 'global' },

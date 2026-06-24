@@ -26,6 +26,12 @@ export type ShoppingSearchContext = {
 };
 
 const GROUP_ZH_HINTS: Record<string, string[]> = {
+  'phone-accessories': ['手机配件', '手机周边', '手机壳', '手机充电器', '手机膜'],
+  gadgets: ['数码产品', '智能设备', '电子小工具'],
+  'mens-wear': ['男装', '男士服装', '男士衣服'],
+  'women-wear': ['女装', '女士服装', '女士衣服', '穆斯林女装'],
+  shoes: ['鞋子', '运动鞋', '休闲鞋', '鞋类'],
+  watches: ['手表', '腕表', '智能手表'],
   electronics: ['电子产品', '数码', '电器'],
   clothing: ['服装', '童装', '婴儿服装', '男装', '女装'],
   home: ['家居', '厨房', '家用', '家居厨房', '家居配件', '家居用品'],
@@ -42,6 +48,17 @@ const GROUP_ZH_HINTS: Record<string, string[]> = {
 };
 
 const SUBGROUP_ZH_HINTS: Record<string, string[]> = {
+  'phone-charger': ['手机充电器', '充电器', '快充充电器', '充电头'],
+  'phone-cover': ['手机壳', '手机保护壳', '手机套', '手机后盖'],
+  'phone-glass': ['手机钢化膜', '手机膜', '屏幕保护膜'],
+  'phone-cable': ['数据线', '充电线', '手机数据线'],
+  'power-bank': ['充电宝', '移动电源'],
+  'phone-earphones': ['手机耳机', '耳机', '蓝牙耳机'],
+  'phone-holder': ['手机支架', '车载手机支架'],
+  'phone-brand': ['手机品牌配件'],
+  hijab: ['头巾', '穆斯林头巾', '盖头'],
+  burkha: ['罩袍', '布卡', '穆斯林长袍'],
+  abaya: ['阿巴亚', '穆斯林长裙'],
   smartphones: ['手机', '智能手机', '移动电话'],
   laptops: ['笔记本电脑', '电脑'],
   tablets: ['平板电脑'],
@@ -182,6 +199,10 @@ const BUYER_INTENT_ZH_HINTS: Record<string, string[]> = {
 };
 
 const SEARCH_QUERY_REWRITES: Array<{ match: RegExp; candidates: string[] }> = [
+  { match: /\b(phone|mobile|cell)\s+(case|cover|back cover|back case|protector)\b|\b(case|cover|back cover|back case)\s+(for\s+)?(phone|mobile|cell|iphone|xiaomi|oppo|huawei|samsung|vivo|realme)\b/i, candidates: ['phone case', 'phone cover', 'mobile phone case', 'phone back cover'] },
+  { match: /\b(phone|mobile|cell|screen)\s+(glass|tempered glass|protector|screen protector|film)\b|\btempered\s+glass\b/i, candidates: ['phone tempered glass', 'screen protector', 'mobile phone glass'] },
+  { match: /\b(phone|mobile|cell)\s+(charger|charging adapter|adapter|fast charger)\b|\b(charger|fast charger)\s+(for\s+)?(phone|mobile|cell|iphone|xiaomi|oppo|huawei|samsung)\b/i, candidates: ['phone charger', 'fast charger', 'mobile charger'] },
+  { match: /\b(phone|mobile|cell)\s+(cable|charging cable|data cable|usb cable)\b/i, candidates: ['phone charging cable', 'data cable', 'usb charging cable'] },
   { match: /\bnecpillow\b|\bneck[-\s]?pillow\b/i, candidates: ['neck pillow', 'travel pillow', 'cervical pillow'] },
   { match: /\bpencil[-\s]?box\b|\bpencil case\b|\bpen box\b/i, candidates: ['pencil case', 'stationery box', 'pen case'] },
   { match: /\bkids?\s+toys?\b|\bchildren'?s?\s+toys?\b/i, candidates: ['children toys', 'toy', 'toys'] },
@@ -225,6 +246,30 @@ const COMMON_QUERY_PRODUCT_EXPANSIONS: Array<{
   variants: string[];
   zhVariants: string[];
 }> = [
+  {
+    aliases: ['phone case', 'phone cases', 'phone cover', 'phone covers', 'phone back cover', 'mobile cover', 'mobile back cover', 'mobile phone case', 'phone protector', 'iphone case', 'xiaomi phone cover', 'oppo phone cover', 'huawei phone cover', 'huwawei phone cover'],
+    canonical: 'phone case',
+    variants: ['phone case', 'phone cover', 'mobile phone case', 'phone back cover', 'protective phone case'],
+    zhVariants: ['手机壳', '手机保护壳', '手机套', '手机后盖'],
+  },
+  {
+    aliases: ['phone glass', 'phone tempered glass', 'tempered glass', 'screen protector', 'phone screen protector', 'mobile glass', 'mobile phone glass', 'phone film', 'screen glass'],
+    canonical: 'phone tempered glass',
+    variants: ['phone tempered glass', 'screen protector', 'mobile phone glass', 'phone screen protector'],
+    zhVariants: ['手机钢化膜', '手机膜', '屏幕保护膜', '钢化玻璃膜'],
+  },
+  {
+    aliases: ['phone charger', 'mobile charger', 'phone charging adapter', 'fast charger', 'charger for phone', 'iphone charger', 'xiaomi charger', 'oppo charger', 'huawei charger', 'anker charger'],
+    canonical: 'phone charger',
+    variants: ['phone charger', 'mobile charger', 'fast charger', 'charging adapter', 'usb charger'],
+    zhVariants: ['手机充电器', '快充充电器', '充电头', '电源适配器'],
+  },
+  {
+    aliases: ['phone cable', 'phone charging cable', 'mobile cable', 'data cable', 'usb cable', 'type c cable', 'iphone cable', 'lightning cable'],
+    canonical: 'phone charging cable',
+    variants: ['phone charging cable', 'data cable', 'usb charging cable', 'type c cable'],
+    zhVariants: ['手机数据线', '充电线', '数据线', 'Type-C数据线'],
+  },
   {
     aliases: ['bag', 'bags', 'handbag', 'handbags', 'purse', 'purses', 'tote', 'tote bag', 'shoulder bag', 'backpack', 'satchel'],
     canonical: 'handbag',
@@ -307,6 +352,90 @@ function extractBrandLikeToken(tokens: string[], expansion?: { aliases: string[]
 }
 
 export const SHOPPING_SYNONYM_CATALOG: ShoppingSynonymGroup[] = [
+  {
+    slug: 'phone-accessories',
+    label: 'Phone Accessories',
+    primary: 'phone accessories',
+    aliases: ['phone accessories', 'mobile accessories', 'phone accessory', 'mobile accessory', 'cell phone accessories', 'iphone accessories'],
+    subgroups: [
+      { slug: 'phone-charger', label: 'Phone Charger', primary: 'phone charger', aliases: ['phone charger', 'mobile charger', 'fast charger', 'charger adapter', 'charging adapter', 'anker charger'] },
+      { slug: 'phone-cover', label: 'Phone Cover', primary: 'phone case', aliases: ['phone cover', 'phone case', 'phone back cover', 'mobile cover', 'mobile back cover', 'mobile phone case', 'protective case', 'iphone case', 'xiaomi phone cover', 'oppo phone back cover'] },
+      { slug: 'phone-glass', label: 'Phone Glass', primary: 'phone tempered glass', aliases: ['phone glass', 'phone tempered glass', 'tempered glass', 'screen protector', 'phone screen protector', 'mobile glass', 'screen glass', 'phone film'] },
+      { slug: 'phone-cable', label: 'Charging Cable', primary: 'phone charging cable', aliases: ['charging cable', 'phone cable', 'phone charging cable', 'data cable', 'usb cable', 'type c cable', 'lightning cable'] },
+      { slug: 'power-bank', label: 'Power Bank', primary: 'power bank', aliases: ['power bank', 'portable charger', 'mobile power bank', 'anker power bank'] },
+      { slug: 'phone-earphones', label: 'Earphones', primary: 'phone earphones', aliases: ['earphones', 'earbuds', 'bluetooth earbuds', 'phone earphones', 'wireless earbuds'] },
+      { slug: 'phone-holder', label: 'Phone Holder', primary: 'phone holder', aliases: ['phone holder', 'mobile holder', 'car phone holder', 'phone stand', 'mobile stand'] },
+      { slug: 'phone-brand', label: 'Phone Brands', primary: 'phone brand accessories', aliases: ['xiaomi', 'oppo', 'huawei', 'huwawei', 'iphone', 'apple', 'samsung', 'vivo', 'realme', 'oneplus', 'honor', 'infinix', 'tecno', 'nothing', 'google pixel', 'motorola', 'nokia', 'asus', 'sony', 'lenovo', 'anker', 'baseus', 'ugreen', 'joyroom', 'remax'] },
+    ],
+  },
+  {
+    slug: 'mens-wear',
+    label: 'Mens Wear',
+    primary: 'mens wear',
+    aliases: ['mens wear', "men's wear", 'men clothing', 'mens clothing', 'men fashion', 'male clothing'],
+    subgroups: [
+      { slug: 'mens-tshirts', label: 'T-Shirts', primary: 'mens t shirt', aliases: ['mens t shirt', "men's t shirt", 'men tee', 'mens tshirt', 't shirt'] },
+      { slug: 'mens-shirts', label: 'Shirts', primary: 'mens shirt', aliases: ['mens shirt', "men's shirt", 'formal shirt', 'casual shirt'] },
+      { slug: 'mens-pants', label: 'Pants', primary: 'mens pants', aliases: ['mens pants', "men's pants", 'trousers', 'mens trousers'] },
+      { slug: 'mens-jackets', label: 'Jackets', primary: 'mens jacket', aliases: ['mens jacket', "men's jacket", 'men coat', 'hoodie'] },
+      { slug: 'mens-panjabi', label: 'Panjabi', primary: 'mens panjabi', aliases: ['panjabi', 'punjabi', 'mens panjabi', 'kurta'] },
+      { slug: 'mens-jeans', label: 'Jeans', primary: 'mens jeans', aliases: ['mens jeans', "men's jeans", 'denim pants'] },
+    ],
+  },
+  {
+    slug: 'women-wear',
+    label: 'Women Wear',
+    primary: 'women wear',
+    aliases: ['women wear', "women's wear", 'womens wear', 'women clothing', 'ladies wear', 'female clothing'],
+    subgroups: [
+      { slug: 'dresses', label: 'Dresses', primary: 'women dress', aliases: ['dress', 'dresses', 'women dress', 'ladies dress', 'gown'] },
+      { slug: 'women-tops', label: 'Tops', primary: 'women tops', aliases: ['women tops', 'ladies tops', 'top', 'blouse'] },
+      { slug: 'women-skirts', label: 'Skirts', primary: 'women skirt', aliases: ['skirt', 'skirts', 'women skirt', 'ladies skirt'] },
+      { slug: 'hijab', label: 'Hijab', primary: 'hijab', aliases: ['hijab', 'hijabs', 'muslim hijab', 'head scarf', 'headscarf'] },
+      { slug: 'burkha', label: 'Burkha', primary: 'burkha', aliases: ['burkha', 'burqa', 'burkha dress', 'muslim burkha'] },
+      { slug: 'abaya', label: 'Abaya', primary: 'abaya', aliases: ['abaya', 'abaya dress', 'muslim abaya'] },
+    ],
+  },
+  {
+    slug: 'shoes',
+    label: 'Shoes',
+    primary: 'shoes',
+    aliases: ['shoes', 'show', 'shoe', 'footwear', 'sneakers', 'boots', 'sandals', 'heels'],
+    subgroups: [
+      { slug: 'shoes-sneakers', label: 'Sneakers', primary: 'sneakers', aliases: ['sneakers', 'trainer', 'sports shoes', 'running shoes'] },
+      { slug: 'shoes-ladies', label: 'Ladies Shoes', primary: 'ladies shoes', aliases: ['ladies shoes', 'women shoes', 'girls shoes'] },
+      { slug: 'shoes-formal', label: 'Formal Shoes', primary: 'formal shoes', aliases: ['formal shoes', 'office shoes', 'dress shoes'] },
+      { slug: 'shoes-heels', label: 'High Heels', primary: 'high heels', aliases: ['high heels', 'heels', 'ladies heels'] },
+      { slug: 'shoes-sandals', label: 'Sandals', primary: 'sandals', aliases: ['sandals', 'slippers', 'flip flops'] },
+      { slug: 'shoes-boots', label: 'Boots', primary: 'boots', aliases: ['boots', 'ankle boots', 'winter boots'] },
+    ],
+  },
+  {
+    slug: 'watches',
+    label: 'Watches',
+    primary: 'watches',
+    aliases: ['watch', 'watches', 'wrist watch', 'wristwatch', 'timepiece', 'smart watch', 'smartwatch'],
+    subgroups: [
+      { slug: 'watches-men', label: 'Mens Watch', primary: 'mens watch', aliases: ['mens watch', "men's watch", 'male watch'] },
+      { slug: 'watches-women', label: 'Women Watch', primary: 'women watch', aliases: ['women watch', "women's watch", 'ladies watch'] },
+      { slug: 'watches-smart', label: 'Smart Watch', primary: 'smart watch', aliases: ['smart watch', 'smartwatch', 'fitness watch'] },
+      { slug: 'watches-strap', label: 'Watch Strap', primary: 'watch strap', aliases: ['watch strap', 'watch band', 'smart watch strap'] },
+    ],
+  },
+  {
+    slug: 'gadgets',
+    label: 'Gadgets',
+    primary: 'gadgets',
+    aliases: ['gadgets', 'gadget', 'tech gadgets', 'electronics gadgets', 'smart devices'],
+    subgroups: [
+      { slug: 'gadgets-phones', label: 'Phones', primary: 'smartphone', aliases: ['phone', 'phones', 'smartphone', 'mobile phone', 'iphone', 'android phone'] },
+      { slug: 'gadgets-earbuds', label: 'Earbuds', primary: 'earbuds', aliases: ['earbuds', 'wireless earbuds', 'bluetooth earbuds', 'earphones'] },
+      { slug: 'gadgets-speakers', label: 'Speakers', primary: 'speaker', aliases: ['speaker', 'speakers', 'bluetooth speaker'] },
+      { slug: 'gadgets-cameras', label: 'Cameras', primary: 'camera', aliases: ['camera', 'cameras', 'action camera', 'security camera'] },
+      { slug: 'gadgets-smart-home', label: 'Smart Home', primary: 'smart home device', aliases: ['smart home', 'smart home device', 'wifi camera', 'smart plug'] },
+      { slug: 'gadgets-gaming', label: 'Gaming Gadgets', primary: 'gaming accessories', aliases: ['gaming gadgets', 'gaming accessories', 'game controller', 'gaming headset'] },
+    ],
+  },
   {
     slug: 'baby',
     label: 'Baby Items',
@@ -647,8 +776,26 @@ export function buildShoppingSearchContext(keyword?: string, category?: string):
     pushUnique(matchedGroupSlugs, 'home');
     pushUnique(matchedSubgroupSlugs, 'decor');
   }
+  if (/\b(phone|mobile|cell)\s+(case|cover|back cover|protector)\b|\b(case|cover|back cover)\s+(for\s+)?(phone|mobile|iphone|xiaomi|oppo|huawei|huwawei|samsung|vivo|realme)\b/i.test(normalizedKeyword)) {
+    pushUnique(matchedGroupSlugs, 'phone-accessories');
+    pushUnique(matchedSubgroupSlugs, 'phone-cover');
+    pushUnique(matchedPhrases, 'phone case');
+    pushUnique(searchTerms, 'phone case');
+  }
+  if (/\b(phone|mobile|cell|screen)\s+(glass|tempered glass|protector|screen protector|film)\b|\btempered\s+glass\b/i.test(normalizedKeyword)) {
+    pushUnique(matchedGroupSlugs, 'phone-accessories');
+    pushUnique(matchedSubgroupSlugs, 'phone-glass');
+    pushUnique(matchedPhrases, 'phone tempered glass');
+    pushUnique(searchTerms, 'phone tempered glass');
+  }
+  if (/\b(phone|mobile|cell)\s+(charger|charging adapter|adapter|fast charger)\b|\b(charger|fast charger)\s+(for\s+)?(phone|mobile|iphone|xiaomi|oppo|huawei|samsung)\b/i.test(normalizedKeyword)) {
+    pushUnique(matchedGroupSlugs, 'phone-accessories');
+    pushUnique(matchedSubgroupSlugs, 'phone-charger');
+    pushUnique(matchedPhrases, 'phone charger');
+    pushUnique(searchTerms, 'phone charger');
+  }
   if (/\bshoe(s)?\b|\bshow\b/i.test(normalizedKeyword)) {
-    pushUnique(matchedGroupSlugs, 'clothing');
+    pushUnique(matchedGroupSlugs, 'shoes');
     pushUnique(matchedSubgroupSlugs, 'shoes');
   }
   if (/\bbaby\b|\binfant\b|\bnewborn\b/i.test(normalizedKeyword)) {
@@ -658,8 +805,16 @@ export function buildShoppingSearchContext(keyword?: string, category?: string):
     }
   }
   if (/\bwatch(es)?\b|\bwrist watch\b|\btimepiece\b/i.test(normalizedKeyword)) {
-    pushUnique(matchedGroupSlugs, 'electronics');
-    pushUnique(matchedSubgroupSlugs, 'wearables');
+    pushUnique(matchedGroupSlugs, 'watches');
+    pushUnique(matchedSubgroupSlugs, 'watches-smart');
+  }
+  if (/\bhijab\b/i.test(normalizedKeyword)) {
+    pushUnique(matchedGroupSlugs, 'women-wear');
+    pushUnique(matchedSubgroupSlugs, 'hijab');
+  }
+  if (/\bburkha\b|\bburqa\b/i.test(normalizedKeyword)) {
+    pushUnique(matchedGroupSlugs, 'women-wear');
+    pushUnique(matchedSubgroupSlugs, 'burkha');
   }
   if (/\bcnc\b|\bcnc machine\b|\bcnc router\b|\bcnc milling\b/i.test(normalizedKeyword)) {
     pushUnique(matchedGroupSlugs, 'industrial');
@@ -785,6 +940,24 @@ export function buildShoppingSearchCandidates(keyword?: string, category?: strin
     pushCandidate('kitchen items');
   }
 
+  if (context.matchedGroupSlugs.includes('phone-accessories')) {
+    if (context.matchedSubgroupSlugs.includes('phone-cover')) {
+      pushCandidate('phone case');
+      pushCandidate('phone cover');
+      pushCandidate('mobile phone case');
+    }
+    if (context.matchedSubgroupSlugs.includes('phone-glass')) {
+      pushCandidate('phone tempered glass');
+      pushCandidate('screen protector');
+      pushCandidate('mobile phone glass');
+    }
+    if (context.matchedSubgroupSlugs.includes('phone-charger')) {
+      pushCandidate('phone charger');
+      pushCandidate('fast charger');
+      pushCandidate('mobile charger');
+    }
+  }
+
   return candidates.slice(0, 10);
 }
 
@@ -802,7 +975,7 @@ export function buildChineseShoppingQuery(keyword?: string, category?: string): 
     context.matchedSubgroupSlugs.length > 0 ||
     context.buyerIntentTerms.length > 0 ||
     !!expansion ||
-    /(\bbaby\b|\binfant\b|\btoddler\b|\bkids?\b|\bchildren\b|\bmen'?s\b|\bmens\b|\bwomen'?s\b|\bwomens\b|\bhome[-\s]?kitchen\b|\bkitchen\b|\bdrill\b|\belectric drill\b|\bcordless drill\b|\bpower tools?\b|\blabubu\b|\bdoll(s)?\b|\btoy(s)?\b|\bpillow\b|\bneck[-\s]?pillow\b|\bnecpillow\b|\bpencil[-\s]?box\b|\bstationery\b)/i.test(normalizeShoppingText([keyword, category].filter(Boolean).join(' ')));
+    /(\bphone\b|\bmobile\b|\biphone\b|\bxiaomi\b|\boppo\b|\bhuawei\b|\bhuwawei\b|\bcase\b|\bcover\b|\btempered\s+glass\b|\bscreen protector\b|\bcharger\b|\bbaby\b|\binfant\b|\btoddler\b|\bkids?\b|\bchildren\b|\bmen'?s\b|\bmens\b|\bwomen'?s\b|\bwomens\b|\bhijab\b|\bburkha\b|\bburqa\b|\bhome[-\s]?kitchen\b|\bkitchen\b|\bdrill\b|\belectric drill\b|\bcordless drill\b|\bpower tools?\b|\blabubu\b|\bdoll(s)?\b|\btoy(s)?\b|\bpillow\b|\bneck[-\s]?pillow\b|\bnecpillow\b|\bpencil[-\s]?box\b|\bstationery\b)/i.test(normalizeShoppingText([keyword, category].filter(Boolean).join(' ')));
   if (!hasStrongShoppingSignal) return '';
   const parts: string[] = [];
   const addParts = (values?: string[]) => {
@@ -836,6 +1009,21 @@ export function buildChineseShoppingQuery(keyword?: string, category?: string): 
   }
   if (/\bwomen'?s\b|\bwomens\b|\bwoman\b/i.test(raw)) {
     addParts(['女士', '女装']);
+  }
+  if (/\b(phone|mobile|cell)\s+(case|cover|back cover)\b|\b(case|cover|back cover)\s+(for\s+)?(phone|mobile|iphone|xiaomi|oppo|huawei|huwawei|samsung|vivo|realme)\b/i.test(raw)) {
+    addParts(['手机壳', '手机保护壳', '手机套', '手机后盖']);
+  }
+  if (/\b(phone|mobile|cell|screen)\s+(glass|tempered glass|protector|screen protector|film)\b|\btempered\s+glass\b/i.test(raw)) {
+    addParts(['手机钢化膜', '手机膜', '屏幕保护膜']);
+  }
+  if (/\b(phone|mobile|cell)\s+(charger|charging adapter|adapter|fast charger)\b|\b(charger|fast charger)\s+(for\s+)?(phone|mobile|iphone|xiaomi|oppo|huawei|samsung)\b/i.test(raw)) {
+    addParts(['手机充电器', '快充充电器', '充电头']);
+  }
+  if (/\bhijab\b/i.test(raw)) {
+    addParts(['头巾', '穆斯林头巾']);
+  }
+  if (/\bburkha\b|\bburqa\b/i.test(raw)) {
+    addParts(['罩袍', '布卡', '穆斯林长袍']);
   }
   if (/\bhome[-\s]?kitchen\b|\bkitchen\b|\bhome\b/i.test(raw)) {
     addParts(['家居', '厨房', '厨具']);

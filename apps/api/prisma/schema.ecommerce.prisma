@@ -255,6 +255,25 @@ model HomepageOffer {
   @@map("homepage_offers")
 }
 
+model HomepageVisualMenuItem {
+  id                 String   @id @default(uuid())
+  section_key        String
+  section_label      String
+  section_sort_order Int      @default(0)
+  title              String
+  search_keyword     String
+  image_url          String
+  image_alt          String?
+  sort_order         Int      @default(0)
+  is_active          Boolean  @default(true)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  @@index([is_active, section_sort_order, sort_order])
+  @@index([section_key])
+  @@map("homepage_visual_menu_items")
+}
+
 model ProductCategory {
   id          String            @id @default(uuid())
   parent_id   String?

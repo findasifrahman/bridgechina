@@ -1241,6 +1241,77 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     return { message: 'Homepage offer deleted' };
   });
 
+  fastify.get('/homepage/visual-menu', { preHandler: auth }, async () => {
+    return prisma.homepageVisualMenuItem.findMany({
+      orderBy: [{ section_sort_order: 'asc' }, { sort_order: 'asc' }, { created_at: 'asc' }],
+    });
+  });
+
+  fastify.post('/homepage/visual-menu', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const body = z.object({
+      section_key: z.string().min(1),
+      section_label: z.string().min(1),
+      section_sort_order: z.number().int().optional(),
+      title: z.string().min(1),
+      search_keyword: z.string().min(1),
+      image_url: z.string().url(),
+      image_alt: z.string().optional(),
+      sort_order: z.number().int().optional(),
+      is_active: z.boolean().optional(),
+    }).parse(request.body);
+
+    const item = await prisma.homepageVisualMenuItem.create({
+      data: {
+        section_key: body.section_key,
+        section_label: body.section_label,
+        section_sort_order: body.section_sort_order ?? 0,
+        title: body.title,
+        search_keyword: body.search_keyword,
+        image_url: body.image_url,
+        image_alt: body.image_alt || null,
+        sort_order: body.sort_order ?? 0,
+        is_active: body.is_active ?? true,
+      },
+    });
+
+    return reply.status(201).send(item);
+  });
+
+  fastify.put('/homepage/visual-menu/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const existing = await prisma.homepageVisualMenuItem.findUnique({ where: { id } });
+    if (!existing) {
+      return reply.status(404).send({ error: 'Homepage visual menu item not found' });
+    }
+
+    const body = request.body as any;
+    return prisma.homepageVisualMenuItem.update({
+      where: { id },
+      data: {
+        section_key: body.section_key ?? undefined,
+        section_label: body.section_label ?? undefined,
+        section_sort_order: body.section_sort_order !== undefined ? Number(body.section_sort_order) : undefined,
+        title: body.title ?? undefined,
+        search_keyword: body.search_keyword ?? undefined,
+        image_url: body.image_url ?? undefined,
+        image_alt: body.image_alt ?? undefined,
+        sort_order: body.sort_order !== undefined ? Number(body.sort_order) : undefined,
+        is_active: body.is_active ?? undefined,
+      },
+    });
+  });
+
+  fastify.delete('/homepage/visual-menu/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const existing = await prisma.homepageVisualMenuItem.findUnique({ where: { id } });
+    if (!existing) {
+      return reply.status(404).send({ error: 'Homepage visual menu item not found' });
+    }
+
+    await prisma.homepageVisualMenuItem.delete({ where: { id } });
+    return { message: 'Homepage visual menu item deleted' };
+  });
+
   fastify.get('/roles', { preHandler: auth }, async () => {
     return prisma.role.findMany({
       orderBy: { name: 'asc' },

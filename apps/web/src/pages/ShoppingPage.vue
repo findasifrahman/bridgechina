@@ -250,6 +250,57 @@
           </div>
         </section>
 
+        <section v-if="homepageVisualMenuSections.length > 0" class="px-2 pt-4 sm:px-3 lg:px-0">
+          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)] sm:p-5">
+            <div class="flex items-start justify-between gap-4">
+
+            </div>
+
+            <div class="mt-4 space-y-5">
+              <div
+                v-for="section in homepageVisualMenuSections"
+                :key="section.sectionKey"
+                class="rounded-[22px] border border-slate-200 bg-slate-50/80 p-3"
+              >
+                <div class="flex items-center justify-between gap-3">
+                  <div>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.28em] text-rose-400">{{ section.sectionLabel }}</p>
+                    <p class="mt-1 text-[12px] font-semibold text-slate-700">Quick search tiles</p>
+                  </div>
+                  <span class="rounded-full bg-white px-3 py-1 text-[10px] font-semibold text-slate-500 shadow-sm">{{ section.items.length }} items</span>
+                </div>
+
+                <div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <button
+                    v-for="item in section.items"
+                    :key="item.id"
+                    type="button"
+                    class="overflow-hidden rounded-[18px] border border-slate-200 bg-white text-left shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-transform hover:-translate-y-0.5 hover:border-rose-200"
+                    @click="handleVisualMenuClick(item)"
+                  >
+                    <div class="aspect-[4/3] bg-slate-100">
+                      <img
+                        v-if="item.imageUrl"
+                        :src="proxyImageUrl(item.imageUrl)"
+                        :alt="item.imageAlt || item.title"
+                        class="h-full w-full object-cover"
+                      />
+                      <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
+                        <Package class="h-8 w-8" />
+                      </div>
+                    </div>
+                    <div class="p-3">
+                      <p class="line-clamp-1 text-[12px] font-semibold text-slate-900">{{ item.title }}</p>
+                      <p class="mt-1 line-clamp-1 text-[11px] text-slate-500">{{ item.searchKeyword }}</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!--
         <section class="px-2 pt-4 sm:px-3 lg:px-0">
           <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)] sm:p-5">
             <div class="flex items-center justify-between gap-4">
@@ -292,6 +343,7 @@
             </div>
           </div>
         </section>
+        -->
 
         <section class="px-2 pt-4 sm:px-3 lg:px-0">
           <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)] sm:p-5">
@@ -711,6 +763,7 @@ const selectedCurrency = ref<'BDT' | 'CNY' | 'USD'>('BDT');
 const recentSearches = ref<string[]>([]);
 const premiumProducts = ref<any[]>([]);
 const curatedSections = ref<Array<{ slug: string; label: string; items: any[] }>>([]);
+const homepageVisualMenuSections = ref<Array<{ sectionKey: string; sectionLabel: string; items: any[] }>>([]);
 const showBannerModal = ref(false);
 const selectedBanner = ref<any>(null);
 const shoppingSettings = ref<any>({});
@@ -901,11 +954,11 @@ function clearSearchResults() {
 
 function selectAllCategories() {
   selectedCategory.value = '';
-  router.push({ name: 'shopping-browse' });
+  router.push({ name: 'shopping-browse', query: { language: selectedLanguage.value } });
 }
 
 function handleCategorySelect(slug: string) {
-  router.push({ name: 'shopping-browse', query: { category: slug } });
+  router.push({ name: 'shopping-browse', query: { category: slug, language: selectedLanguage.value } });
 }
 
 function toggleSidebarCategory(slug: string) {
@@ -923,6 +976,7 @@ async function handleUnifiedSearch() {
   const keyword = searchQuery.value.trim();
   if (keyword) query.q = keyword;
   if (selectedCategory.value) query.category = selectedCategory.value;
+  query.language = selectedLanguage.value;
   if (selectedImage.value) {
     const key = `shopping-image-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const previewUrl = imagePreview.value || '';
@@ -1037,6 +1091,16 @@ async function loadCuratedSections() {
   }
 }
 
+async function loadHomepageVisualMenu() {
+  try {
+    const response = await axios.get('/api/public/shopping/home-visual-menu');
+    homepageVisualMenuSections.value = Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    console.error('[ShoppingPage] Failed to load homepage visual menu:', error);
+    homepageVisualMenuSections.value = [];
+  }
+}
+
 async function loadOffers() {
   try {
     const response = await axios.get('/api/public/offers');
@@ -1095,6 +1159,15 @@ async function loadConversionRates() {
   conversionRates.value = { CNY_TO_BDT: 15, CNY_TO_USD: 0.14 };
 }
 
+function handleVisualMenuClick(item: any) {
+  const keyword = String(item?.searchKeyword || item?.search_keyword || item?.title || '').trim();
+  if (!keyword) return;
+  router.push({
+    path: '/shopping/browse',
+    query: { q: keyword, language: 'en' },
+  });
+}
+
 onMounted(() => {
   heroTimer = window.setInterval(() => {
     const count = carouselItems.value.length || heroSlides.length || 1;
@@ -1106,6 +1179,7 @@ onMounted(() => {
   loadOffers();
   loadHomepageBanners();
   loadPremiumProducts();
+  loadHomepageVisualMenu();
   loadCuratedSections();
   loadShopSettings();
   loadRecentSearches();

@@ -16,8 +16,6 @@ const TMAPI_TOKEN = process.env.TMAPI_API_16688_TOKEN;
 console.log('[TMAPI Client] Initialized:', {
   baseURL: TMAPI_BASE_URL,
   hasToken: !!TMAPI_TOKEN,
-  tokenLength: TMAPI_TOKEN?.length || 0,
-  tokenPrefix: TMAPI_TOKEN ? TMAPI_TOKEN.substring(0, 10) + '...' : 'MISSING',
 });
 
 if (!TMAPI_TOKEN) {
@@ -270,6 +268,8 @@ class TMAPIClient {
       page?: number;
       pageSize?: number;
       sort?: string;
+      minPrice?: number;
+      maxPrice?: number;
     }
   ): Promise<any> {
     try {
@@ -281,7 +281,9 @@ class TMAPIClient {
       if (opts?.page) params.page = opts.page;
       if (opts?.pageSize) params.page_size = opts.pageSize;
       params.sort = this.normalizeSort(opts?.sort || 'sales'); // Default to sales
-      if (opts?.category) params.category = opts.category;
+      if (opts?.category && /^\d+$/.test(String(opts.category))) params.cat_id = opts.category;
+      if (opts?.minPrice !== undefined) params.price_start = String(opts.minPrice);
+      if (opts?.maxPrice !== undefined) params.price_end = String(opts.maxPrice);
 
       console.log('[TMAPI Client] searchByKeyword request:', {
         baseURL: this.client.defaults.baseURL,
@@ -420,6 +422,64 @@ class TMAPIClient {
         data: error.response?.data,
       });
       throw new Error(`Failed to get item detail: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get all products from a 1688 shop by seller member ID
+   * Based on TMAPI docs: GET /1688/shop/items
+   */
+  async getShopItemsByMemberId(
+    memberId: string,
+    opts?: {
+      page?: number;
+      pageSize?: number;
+      sort?: string;
+      keyword?: string;
+    }
+  ): Promise<any> {
+    try {
+      const params: any = {
+        apiToken: this.apiToken,
+        member_id: memberId,
+      };
+
+      if (opts?.page) params.page = opts.page;
+      if (opts?.pageSize) params.page_size = opts.pageSize;
+      params.sort = this.normalizeSort(opts?.sort || 'sales');
+
+      const response = await this.client.get('/1688/shop/items', { params });
+      return response.data;
+    } catch (error: any) {
+      console.error('[TMAPI Client] getShopItemsByMemberId error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      throw new Error(`Failed to get shop items: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get 1688 shop information by member ID.
+   * Based on TMAPI docs: GET /1688/shop/shop_info
+   */
+  async getShopInfo(memberId: string): Promise<any> {
+    try {
+      const response = await this.client.get('/1688/shop/shop_info', {
+        params: {
+          apiToken: this.apiToken,
+          member_id: memberId,
+        },
+      });
+      return response.data;
+    } catch (error: any) {
+      console.error('[TMAPI Client] getShopInfo error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+      });
+      throw new Error(`Failed to get shop info: ${error.message}`);
     }
   }
 
@@ -693,6 +753,8 @@ class TMAPIClient {
       page?: number;
       pageSize?: number;
       sort?: string;
+      minPrice?: number;
+      maxPrice?: number;
     }
   ): Promise<any> {
     try {
@@ -705,7 +767,9 @@ class TMAPIClient {
       if (opts?.page) params.page = opts.page;
       if (opts?.pageSize) params.page_size = opts.pageSize;
       params.sort = this.normalizeSort(opts?.sort || 'sales'); // Default to sales
-      if (opts?.category) params.category = opts.category;
+      if (opts?.category && /^\d+$/.test(String(opts.category))) params.cat_id = opts.category;
+      if (opts?.minPrice !== undefined) params.price_start = String(opts.minPrice);
+      if (opts?.maxPrice !== undefined) params.price_end = String(opts.maxPrice);
 
       console.log('[TMAPI Client] searchByKeywordMultilingual request:', {
         baseURL: this.client.defaults.baseURL,

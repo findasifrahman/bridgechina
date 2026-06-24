@@ -13,6 +13,8 @@
     "db:push": "prisma db push --schema=prisma/schema.ecommerce.prisma",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:roles": "tsx scripts/seed-roles.ts",
+    "sync:shopping-taxonomy": "tsx scripts/sync-shopping-taxonomy.ts",
+    "verify:shopping-search": "tsx scripts/verify-shopping-search.ts",
     "db:studio": "prisma studio --schema=prisma/schema.ecommerce.prisma",
     "db:generate": "prisma generate --schema=prisma/schema.ecommerce.prisma"
   },

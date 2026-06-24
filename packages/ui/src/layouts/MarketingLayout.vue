@@ -195,7 +195,7 @@
                 </button>
                 <div v-if="expandedCategorySlug === cat.slug" class="border-t border-slate-200 bg-white px-2 py-2">
                   <button
-                    v-for="sub in cat.children || []"
+                    v-for="sub in regularChildren(cat)"
                     :key="sub.slug"
                     type="button"
                     class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] text-slate-600 hover:bg-rose-50 hover:text-rose-700"
@@ -204,6 +204,18 @@
                     <span>{{ sub.name }}</span>
                     <span class="text-[10px] text-slate-400">{{ sub.products?.length || '' }}</span>
                   </button>
+                  <div v-if="brandChildren(cat).length > 0" class="mt-2 border-t border-slate-100 pt-2">
+                    <div class="px-3 pb-1 text-[9px] font-bold uppercase tracking-[0.24em] text-slate-400">Brand selection</div>
+                    <button
+                      v-for="sub in brandChildren(cat)"
+                      :key="sub.slug"
+                      type="button"
+                      class="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] text-slate-600 hover:bg-rose-50 hover:text-rose-700"
+                      @click="openCategory(sub.slug); mobileMenuOpen = false"
+                    >
+                      <span>{{ sub.name }}</span>
+                    </button>
+                  </div>
                   <button
                     type="button"
                     class="mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] font-medium text-rose-700 hover:bg-rose-50"
@@ -261,7 +273,7 @@
 
                 <div v-if="expandedCategorySlug === cat.slug" class="mt-1 space-y-1 border-l border-dashed border-slate-200 pl-3">
                   <button
-                    v-for="sub in cat.children || []"
+                    v-for="sub in regularChildren(cat)"
                     :key="sub.slug"
                     type="button"
                     @click="openCategory(sub.slug)"
@@ -278,6 +290,27 @@
                     </span>
                     <span class="min-w-0 flex-1 truncate">{{ sub.name }}</span>
                   </button>
+                  <div v-if="brandChildren(cat).length > 0" class="mt-2 border-t border-slate-100 pt-2">
+                    <div class="px-2.5 pb-1 text-[9px] font-bold uppercase tracking-[0.22em] text-slate-400">Brand selection</div>
+                    <button
+                      v-for="sub in brandChildren(cat)"
+                      :key="sub.slug"
+                      type="button"
+                      @click="openCategory(sub.slug)"
+                      class="group/sub flex w-full items-center gap-2.5 rounded-[14px] px-2.5 py-2 text-left text-[11px] text-slate-600 transition-colors hover:bg-rose-50 hover:text-rose-700"
+                    >
+                      <span class="flex items-center gap-3">
+                        <span class="h-px w-2.5 rounded-full bg-slate-200 transition-colors group-hover/sub:bg-rose-300" />
+                        <span
+                          class="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-[9px] font-bold"
+                          :style="subcategoryBadgeStyle(cat.slug, sub.slug)"
+                        >
+                          {{ sub.name.slice(0, 1).toUpperCase() }}
+                        </span>
+                      </span>
+                      <span class="min-w-0 flex-1 truncate">{{ sub.name }}</span>
+                    </button>
+                  </div>
                   <button
                     type="button"
                     class="flex w-full items-center justify-between rounded-[14px] px-2.5 py-2 text-left text-[11px] font-semibold text-rose-700 transition-colors hover:bg-rose-50"
@@ -539,6 +572,14 @@ const socialChips = [
 
 function categoryIcon(icon?: string) {
   return iconMap[String(icon || '').toLowerCase()] || Package;
+}
+
+function regularChildren(category: any) {
+  return (Array.isArray(category?.children) ? category.children : []).filter((child: any) => child?.description !== 'brand-selection');
+}
+
+function brandChildren(category: any) {
+  return (Array.isArray(category?.children) ? category.children : []).filter((child: any) => child?.description === 'brand-selection');
 }
 
 function submitSearch() {

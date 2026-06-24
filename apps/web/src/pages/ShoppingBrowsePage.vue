@@ -265,6 +265,7 @@ const totalPages = ref(1);
 const totalCount = ref(0);
 const searchTrace = ref<any>(null);
 const selectedCurrency = ref<'BDT' | 'CNY' | 'USD'>('BDT');
+const selectedLanguage = ref<'en' | 'zh'>(String(route.query.language || 'en') === 'zh' ? 'zh' : 'en');
 const conversionRates = ref({ CNY_TO_BDT: 15, CNY_TO_USD: 0.14 });
 const localItems = ref<any[]>([]);
 const otapiItems = ref<any[]>([]);
@@ -306,7 +307,7 @@ const selectedShop = computed(() => topShops.value.find((shop) => shop.vendorId 
 function handleProductClick(product: any) {
   router.push({
     path: `/shopping/item/${product.externalId}`,
-    query: { language: 'en' },
+    query: { language: selectedLanguage.value },
   });
 }
 
@@ -318,7 +319,7 @@ async function openShop(shop: { vendorId?: string }) {
     query: {
       q: searchQuery.value || undefined,
       category: selectedCategory.value || undefined,
-      language: 'en',
+      language: selectedLanguage.value,
     },
   });
 }
@@ -344,7 +345,7 @@ async function runSearch() {
         vendorId: selectedVendorId.value || undefined,
         page: currentPage.value,
         pageSize: pageSize.value,
-        language: 'en',
+        language: selectedLanguage.value,
         sort: 'sales',
       },
     });
@@ -388,7 +389,7 @@ async function runImageSearch() {
       category: selectedCategory.value || undefined,
       page: currentPage.value,
       pageSize: pageSize.value,
-      language: 'en',
+      language: selectedLanguage.value,
       sort: 'sales',
     });
     if (requestId !== searchRequestId) return;
@@ -423,7 +424,7 @@ function clearSearch() {
   imageSearchKey.value = '';
   selectedVendorId.value = '';
   searchTrace.value = null;
-  router.replace({ name: 'shopping-browse', query: {} });
+  router.replace({ name: 'shopping-browse', query: { language: selectedLanguage.value } });
   runSearch();
 }
 
@@ -437,6 +438,7 @@ async function goToPage(page: number) {
       category: selectedCategory.value || undefined,
       imageSearchKey: imageSearchKey.value || undefined,
       vendorId: selectedVendorId.value || undefined,
+      language: selectedLanguage.value,
       page: String(page),
     },
   });
@@ -444,13 +446,14 @@ async function goToPage(page: number) {
 }
 
 watch(
-  () => [route.query.q, route.query.category, route.query.imageSearchKey, route.query.vendorId, route.query.page].join('|'),
+  () => [route.query.q, route.query.category, route.query.imageSearchKey, route.query.vendorId, route.query.page, route.query.language].join('|'),
   () => {
     const routeQuery = route.query as Record<string, string | undefined>;
     searchQuery.value = String(routeQuery.q || '');
     selectedCategory.value = String(routeQuery.category || '');
     imageSearchKey.value = String(routeQuery.imageSearchKey || '');
     selectedVendorId.value = String(routeQuery.vendorId || '');
+    selectedLanguage.value = String(routeQuery.language || 'en') === 'zh' ? 'zh' : 'en';
     currentPage.value = Math.max(1, Number(routeQuery.page || 1));
     runSearch();
   },

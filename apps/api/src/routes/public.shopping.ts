@@ -141,6 +141,39 @@ function buildCategoryTree(rows: any[]) {
   return sortNodes(roots);
 }
 
+function buildHomepageVisualMenuSections(rows: any[]) {
+  const sections = new Map<string, any>();
+  for (const row of rows) {
+    const sectionKey = String(row.section_key || '').trim();
+    if (!sectionKey) continue;
+    if (!sections.has(sectionKey)) {
+      sections.set(sectionKey, {
+        sectionKey,
+        sectionLabel: row.section_label || sectionKey,
+        sectionSortOrder: row.section_sort_order ?? 0,
+        items: [],
+      });
+    }
+    sections.get(sectionKey).items.push({
+      id: row.id,
+      title: row.title,
+      searchKeyword: row.search_keyword,
+      imageUrl: row.image_url,
+      imageAlt: row.image_alt || row.title,
+      sortOrder: row.sort_order ?? 0,
+    });
+  }
+
+  return Array.from(sections.values())
+    .sort((a, b) => a.sectionSortOrder - b.sectionSortOrder || String(a.sectionLabel).localeCompare(String(b.sectionLabel)))
+    .map((section) => ({
+      ...section,
+      items: section.items
+        .sort((a: any, b: any) => a.sortOrder - b.sortOrder || String(a.title).localeCompare(String(b.title)))
+        .slice(0, 4),
+    }));
+}
+
 function hasDisplayablePrice(card: { priceMin?: number | null; priceMax?: number | null }): boolean {
   const values = [card.priceMin, card.priceMax].filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
   return values.some((value) => value > 0);
@@ -288,6 +321,14 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
       orderBy: [{ sort_order: 'asc' }, { name: 'asc' }],
     });
     return buildCategoryTree(categories);
+  });
+
+  fastify.get('/shopping/home-visual-menu', async () => {
+    const items = await prisma.homepageVisualMenuItem.findMany({
+      where: { is_active: true },
+      orderBy: [{ section_sort_order: 'asc' }, { sort_order: 'asc' }, { created_at: 'asc' }],
+    });
+    return buildHomepageVisualMenuSections(items);
   });
 
   fastify.get('/shopping/hot', async (request: FastifyRequest, reply: FastifyReply) => {

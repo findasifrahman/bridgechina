@@ -1,0 +1,3182 @@
+# 1688 API - Get the products of a 1688 shop(By ID)
+
+## API Overview
+
+- Get all products from 1688 shop by shop ID
+- Support sorting and filtering
+- See More
+
+## API URL
+
+`GET http://api.tmapi.top/1688/shop/items`
+
+## Request Parameters
+
+### Query
+
+| Field | Type | Explanation | Required |
+| --- | --- | --- | --- |
+| member_id | string | Seller member ID | true |
+| page | integer | Page number<br/>Default value: 1 | false |
+| page_size | integer | Number of items per page<br/>Default value: 20 | false |
+| sort | string | Optional values: `default`, `sales`, `price_up`, `price_down`, `time_up`, `time_down`<br/>Default value: default | false |
+| shop_cat_id | string | Shop category ID | false |
+| price_start | string | Filter: Minimum value of price range | false |
+| price_end | string | Filter: Maximum value of price range | false |
+
+## Security Auth
+
+> Please go to [Console-Account Center](https://console.tmapi.io/account/center) to get your apiToken.
+
+> Add your apiToken to the request parameters. Please refer to the examples below.
+
+## Request Example
+
+```bash
+
+curl --request GET 'http://api.tmapi.top/1688/shop/items?apiToken=xxxxxx&member_id=jane727&page=1&page_size=20&sort=default'
+
+```
+
+## Response Example
+
+```json
+
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "page": 1,
+    "page_size": 3,
+    "total_count": "2465",
+    "shop_cat_id": "",
+    "keyword": "",
+    "price_start": "",
+    "price_end": "",
+    "sort": "default",
+    "items": [
+      {
+        "item_id": "693334796781",
+        "title": "欧美跨境饰品抽拉可调节蜡线choker项饰简约个性大爱心吊坠项链",
+        "img": "https://cbu01.alicdn.com/img/ibank/O1CN01oEsmfk1E96nrFROVF_!!988240308-0-cib.jpg",
+        "main_imgs": [
+          "https://cbu01.alicdn.com/img/ibank/O1CN01oEsmfk1E96nrFROVF_!!988240308-0-cib.jpg",
+          "https://cbu01.alicdn.com/img/ibank/O1CN01Ro1oLD1E96oGpFdKq_!!988240308-0-cib.jpg",
+          "https://cbu01.alicdn.com/img/ibank/O1CN01ddJ26m1E96oJNrgr9_!!988240308-0-cib.jpg"
+        ],
+        "video_id": "",
+        "category_path": [
+          "70763664",
+          "178655228",
+          "174572394",
+          "15481365",
+          "174572396",
+          "178655226",
+          "87574327"
+        ],
+        "category_name": "项链",
+        "price": "3.90",
+        "price_info": {
+          "drop_ship_price": "7.90",
+          "wholesale_price": "3.90",
+          "origin_price": "3.9",
+          "agent_price": "3.9"
+        },
+        "quantity_begin": "2",
+        "new_product": false,
+        "sale_info": {
+          "gmv_30days": "17724.33",
+          "gmv_90days": "56251.1",
+          "sale_quantity_30days": "3728",
+          "sale_quantity_90days": "12942",
+          "orders_count_30days": "222"
+        },
+        "primary_rank_score": "0",
+        "type": "SALE",
+        "unit": "PCS",
+        "created_time": "2022-11-28T11:26:00+0800",
+        "status": "published"
+      },
+      {
+        "item_id": "669092103946",
+        "title": "欧美跨境饰品夸张朋克多层链条叠戴项饰气质小众几何圆球个性项链",
+        "img": "https://cbu01.alicdn.com/img/ibank/O1CN01IE4rlU1E96itGHZac_!!988240308-0-cib.jpg",
+        "main_imgs": [
+          "https://cbu01.alicdn.com/img/ibank/O1CN01IE4rlU1E96itGHZac_!!988240308-0-cib.jpg",
+          "https://cbu01.alicdn.com/img/ibank/O1CN01p2LS2k1E96pwVKao3_!!988240308-0-cib.jpg",
+          "https://cbu01.alicdn.com/img/ibank/O1CN01S06PAD1E96oT4tAKW_!!988240308-0-cib.jpg"
+        ],
+        "video_id": "347500941890",
+        "category_path": [
+          "70763664",
+          "15481366",
+          "15481365",
+          "176712394",
+          "87574327",
+          "176712396"
+        ],
+        "category_name": "项链",
+        "price": "4.80",
+        "price_info": {
+          "drop_ship_price": "4.80",
+          "wholesale_price": "4.80",
+          "origin_price": "4.8",
+          "agent_price": "4.8"
+        },
+        "quantity_begin": "2",
+        "new_product": false,
+        "sale_info": {
+          "gmv_30days": "16983.61",
+          "gmv_90days": "62355.08",
+          "sale_quantity_30days": "2378",
+          "sale_quantity_90days": "9206",
+          "orders_count_30days": "166"
+        },
+        "primary_rank_score": "0",
+        "type": "SALE",
+        "unit": "条",
+        "created_time": "2022-02-14T08:21:00+0800",
+        "status": "published"
+      },
+      {
+        "item_id": "709534091263",
+        "title": "欧美跨境饰品甜酷休闲水钻沙滩leg chain 弹力带仿珍珠性感腿链女",
+        "img": "https://cbu01.alicdn.com/img/ibank/O1CN01JZRIWr1E96ofBdLmZ_!!988240308-0-cib.jpg",
+        "main_imgs": [
+          "https://cbu01.alicdn.com/img/ibank/O1CN01JZRIWr1E96ofBdLmZ_!!988240308-0-cib.jpg",
+          "https://cbu01.alicdn.com/img/ibank/O1CN012krdgR1E96odt2jh0_!!988240308-0-cib.jpg",
+          "https://cbu01.alicdn.com/img/ibank/O1CN01i0AjM91E96oUoYAMB_!!988240308-0-cib.jpg"
+        ],
+        "video_id": "402951614754",
+        "category_path": [
+          "87574327",
+          "15481371",
+          "178655229",
+          "178655230"
+        ],
+        "category_name": "脚饰",
+        "price": "3.90",
+        "price_info": {
+          "drop_ship_price": "7.90",
+          "wholesale_price": "3.90",
+          "origin_price": "3.9",
+          "agent_price": "3.9"
+        },
+        "quantity_begin": "2",
+        "new_product": false,
+        "sale_info": {
+          "gmv_30days": "14439.33",
+          "gmv_90days": "36875.57",
+          "sale_quantity_30days": "2317",
+          "sale_quantity_90days": "5986",
+          "orders_count_30days": "298"
+        },
+        "primary_rank_score": "0",
+        "type": "SALE",
+        "unit": "PCS",
+        "created_time": "2023-03-23T16:36:00+0800",
+        "status": "published"
+      }
+    ]
+  }
+}
+
+```
+
+# 1688 API - Get the products of a 1688 shop(By shop URL)
+
+## API Overview
+
+- Get all products from 1688 shop by shop URL
+- Support sorting
+- See More
+
+## API URL
+
+`GET http://api.tmapi.top/1688/shop/items/v2`
+
+## Request Parameters
+
+### Query
+
+| Field | Type | Explanation | Required |
+| --- | --- | --- | --- |
+| shop_url | string | Shop home page link | true |
+| page | integer | Page number<br/>Default value: 1 | false |
+| page_size | integer | Number of items per page<br/>Default value: 20 | false |
+| sort | string | Optional values: `default`, `sales`, `price_up`, `price_down`, `time_up`, `time_down`<br/>Default value: default | false |
+| cat | string | Category ID | false |
+| cat_type | string | Optional values: `0`, `1` | false |
+
+## Security Auth
+
+> Please go to [Console-Account Center](https://console.tmapi.io/account/center) to get your apiToken.
+
+> Add your apiToken to the request parameters. Please refer to the examples below.
+
+## Request Example
+
+```bash
+
+curl --request GET 'http://api.tmapi.top/1688/shop/items/v2?apiToken=xxxxxx&shop_url=https%3A%2F%2Fxldjjg.1688.com%2F&page=1&page_size=20&sort=default'
+
+```
+
+## Response Example
+
+```json
+
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "page": 1,
+    "page_size": 3,
+    "total_count": 162,
+    "cat_id": "",
+    "sort": "default",
+    "items": [
+      {
+        "item_id": "765000043412",
+        "title": "左手理发牙剪 CNC牙剪打薄剪 左手剪刀专业理发美发牙剪 理发店",
+        "img": "https:////cbu01.alicdn.com/img/ibank/O1CN01LwXIfD1F0EqsmPKl9_!!1000960424-0-cib.jpg",
+        "category_path": [],
+        "category_name": "",
+        "price": "298.00",
+        "quantity": null,
+        "sale_info": {
+          "sale_quantity": 1,
+          "sale_amount": 0
+        }
+      },
+      {
+        "item_id": "609958065284",
+        "title": "彩色双尾宠物美容剪刀6.5寸狗狗修毛剪宠物小弯剪直剪精修剪工厂",
+        "img": "https:////cbu01.alicdn.com/img/ibank/2020/070/565/15608565070_756644553.jpg",
+        "category_path": [],
+        "category_name": "",
+        "price": "155.00",
+        "quantity": null,
+        "sale_info": {
+          "sale_quantity": 7,
+          "sale_amount": 0
+        }
+      },
+      {
+        "item_id": "662615039902",
+        "title": "6寸 平剪无痕牙剪专业发型师用美发剪刀理发店剪发套装 厂家直销",
+        "img": "https:////cbu01.alicdn.com/img/ibank/O1CN01LCVGxy1F0EelJM1c6_!!1000960424-0-cib.jpg",
+        "category_path": [],
+        "category_name": "",
+        "price": "105.00",
+        "quantity": null,
+        "sale_info": {
+          "sale_quantity": 58,
+          "sale_amount": 0
+        }
+      }
+    ]
+  }
+}
+
+```
+
+# 1688 API - Get 1688 shop information
+
+## API Overview
+
+- Get 1688 shop information by shop_url or member_id
+- Includes company name, shop name, shop ratings, company address, contact information, etc.
+- See More
+
+## API URL
+
+`GET http://api.tmapi.top/1688/shop/shop_info`
+
+## Request Parameters
+
+### Query
+
+| Field | Type | Explanation | Required |
+| --- | --- | --- | --- |
+| shop_url | string | Shop home page link | false |
+| member_id | string | Seller member ID | false |
+
+> At least one of [object Object] or [object Object] is required.
+
+## Security Auth
+
+> Please go to [Console-Account Center](https://console.tmapi.io/account/center) to get your apiToken.
+
+> Add your apiToken to the request parameters. Please refer to the examples below.
+
+## Request Example
+
+```bash
+
+curl --request GET 'http://api.tmapi.top/1688/shop/shop_info?apiToken=xxxxxx&shop_url=https%3A%2F%2Fshop1467738698115.1688.com&member_id=b2b-2211444284979bbec9'
+
+```
+
+## Response Example
+
+```json
+
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "member_id": "b2b-2911575494fcf92",
+    "seller_id": 2911575494,
+    "company_id": 36473948,
+    "company_name": "深圳市XXXX有限公司",
+    "contact_phone": "18200673435",
+    "shop_url": "https://shop1467738698115.1688.com",
+    "shop_logo": "https://cbu01.alicdn.com/img/ibank/2017/917/597/7754795719_544760956.jpg",
+    "shop_name": "深圳市XXXX有限公司",
+    "chat_url": "https://air.1688.com/app/ocms-fusion-components-1688/def_cbu_web_im/index.html?touid=cnalichn%E8%AE%B8%E4%B8%96%E5%AE%811688&siteid=cnalichn&status=1",
+    "location_str": "中国 广东 深圳 龙华区民治街道新牛社区布龙路1010号智慧谷创新园422",
+    "is_industry_brand": true,
+    "is_factory": false,
+    "is_super_factory": false,
+    "is_flagship_shop": true,
+    "is_tp": true,
+    "tp_year": 9,
+    "favorite_count": 730,
+    "shop_ratings": [
+      {
+        "title": "退换体验",
+        "type": "return_exchange_experience",
+        "score": "4.7"
+      },
+      {
+        "title": "品质体验",
+        "type": "goods_quality_experience",
+        "score": "5.0"
+      },
+      {
+        "title": "物流时效",
+        "type": "logistics",
+        "score": "3.5"
+      },
+      {
+        "title": "纠纷解决",
+        "type": "dispute_resolution",
+        "score": "5.0"
+      },
+      {
+        "title": "采购咨询",
+        "type": "purchase_consultation",
+        "score": "5.0"
+      },
+      {
+        "title": "综合服务",
+        "type": "comprehensive",
+        "score": "5.0"
+      }
+    ]
+  }
+}
+
+```
+
+# 1688 API - Get 1688 shop categories
+
+## API Overview
+
+- Get all categories of 1688 shop
+- See More
+
+## API URL
+
+`GET http://api.tmapi.top/1688/shop/category`
+
+## Request Parameters
+
+### Query
+
+| Field | Type | Explanation | Required |
+| --- | --- | --- | --- |
+| shop_url | string | Shop home page link | false |
+| member_id | string | Seller member ID | false |
+
+> At least one of [object Object] or [object Object] is required.
+
+## Security Auth
+
+> Please go to [Console-Account Center](https://console.tmapi.io/account/center) to get your apiToken.
+
+> Add your apiToken to the request parameters. Please refer to the examples below.
+
+## Request Example
+
+```bash
+
+curl --request GET 'http://api.tmapi.top/1688/shop/category?apiToken=xxxxxx&shop_url=https%3A%2F%2Fxldjjg.1688.com%2F&member_id=b2b-2214704521180a4258'
+
+```
+
+## Response Example
+
+```json
+
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "member_id": "babyyy100",
+    "is_custom": true,
+    "list": [
+      {
+        "id": "165497439",
+        "name": "店长推荐",
+        "full_name": "店长推荐",
+        "count": 4,
+        "children": []
+      },
+      {
+        "id": "4829184",
+        "name": "新品上架",
+        "full_name": "新品上架",
+        "count": 20,
+        "children": []
+      },
+      {
+        "id": "172915179",
+        "name": "训练裤/学习裤系列",
+        "full_name": "训练裤/学习裤系列",
+        "count": 7,
+        "children": []
+      },
+      {
+        "id": "13791802",
+        "name": "阳光菊产品系列",
+        "full_name": "阳光菊产品系列",
+        "count": 93,
+        "children": [
+          {
+            "id": "13791844",
+            "name": "奶瓶",
+            "full_name": "奶瓶",
+            "count": 0,
+            "children": []
+          },
+          {
+            "id": "13791845",
+            "name": "收腹带",
+            "full_name": "收腹带",
+            "count": 18,
+            "children": []
+          },
+          {
+            "id": "13791846",
+            "name": "尿布/尿垫/尿裤",
+            "full_name": "尿布/尿垫/尿裤",
+            "count": 28,
+            "children": []
+          }
+        ]
+      }
+    ]
+  }
+}
+
+```
+# 1688 API - Get 1688 category info
+
+## API Overview
+
+- Get category information/subcategories/category path by category ID
+- Returns all first-level categories when category ID is not provided
+
+## API URL
+
+`GET http://api.tmapi.top/1688/category/info`
+
+## Request Parameters
+
+### Query
+
+| Field | Type | Explanation | Required |
+| --- | --- | --- | --- |
+| cat_id | integer | Category ID | false |
+
+> If the category ID is not passed, all first-level categories will be returned by default
+
+## Security Auth
+
+> Please go to [Console-Account Center](https://console.tmapi.io/account/center) to get your apiToken.
+
+> Add your apiToken to the request parameters. Please refer to the examples below.
+
+## Request Example
+
+```bash
+
+curl --request GET 'http://api.tmapi.top/1688/category/info?apiToken=xxxxxx'
+
+```
+
+## Response Example
+
+```json
+
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "id": "201149004",
+    "name": "儿童饰品",
+    "name_en": "Children's Jewelry",
+    "level": 1,
+    "children": [
+      {
+        "id": "201545016",
+        "name": "儿童脚饰",
+        "name_en": "Children's Anklets / Foot Jewelry",
+        "level": 2,
+        "has_children": false
+      },
+      {
+        "id": "201151506",
+        "name": "儿童手饰",
+        "name_en": "Children's Bracelets / Rings",
+        "level": 2,
+        "has_children": false
+      },
+      {
+        "id": "201151804",
+        "name": "儿童耳饰",
+        "name_en": "Children's Earrings",
+        "level": 2,
+        "has_children": false
+      },
+      {
+        "id": "201230202",
+        "name": "儿童发饰",
+        "name_en": "Children's Hair Accessories",
+        "level": 2,
+        "has_children": false
+      },
+      {
+        "id": "201148002",
+        "name": "儿童项饰",
+        "name_en": "Children's Necklaces",
+        "level": 2,
+        "has_children": false
+      },
+      {
+        "id": "201229606",
+        "name": "其他儿童饰品及配件",
+        "name_en": "Other Children's Jewelry & Accessories",
+        "level": 2,
+        "has_children": false
+      }
+    ],
+    "parent_id": "54",
+    "has_children": true,
+    "path": [
+      {
+        "id": "54",
+        "name": "服饰配件、饰品",
+        "name_en": "Apparel Accessories & Jewelry"
+      },
+      {
+        "id": "201149004",
+        "name": "儿童饰品",
+        "name_en": "Children's Jewelry"
+      }
+    ]
+  }
+}
+
+```
+# 1688 API - Get category products
+
+## API Overview
+
+- Retrieve 1688 products by category ID
+
+## API URL
+
+`GET http://api.tmapi.top/1688/category/items`
+
+## Request Parameters
+
+### Query
+
+| Field | Type | Explanation | Required |
+| --- | --- | --- | --- |
+| page | integer | Page number<br/>Default value: 1 | false |
+| cat_id | integer | Category ID | true |
+| super_factory | boolean | Filter: Super factory | false |
+| support_dropshipping | boolean | Filter: Supports dropshipping | false |
+| free_shipping | boolean | Filter: Free shipping | false |
+
+## Security Auth
+
+> Please go to [Console-Account Center](https://console.tmapi.io/account/center) to get your apiToken.
+
+> Add your apiToken to the request parameters. Please refer to the examples below.
+
+## Request Example
+
+```bash
+
+curl --request GET 'http://api.tmapi.top/1688/category/items?apiToken=xxxxxx&page=1&cat_id=1031910'
+
+```
+
+## Response Example
+
+```json
+
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "page": 1,
+    "page_size": 2,
+    "has_next_page": true,
+    "filters": {},
+    "items": [
+      {
+        "item_id": 884674536008,
+        "product_url": "https://detail.1688.com/offer/884674536008.html",
+        "title": "2025夏季新款温柔碎花法式连衣裙女高级感广州十三行蓬蓬裙子女装",
+        "img": "https://cbu01.alicdn.com/img/ibank/O1CN01n7ZpIr1zyfRRHlyvV_!!2215924096783-0-cib.jpg",
+        "price": "",
+        "price_info": {
+          "sale_price": "4.59",
+          "show_price": "4.59",
+          "origin_price": "5.40"
+        },
+        "quantity_begin": 200,
+        "sales_count": "180100",
+        "sale_info": {
+          "sale_quantity_int": 180100,
+          "buyer_count": 89750
+        },
+        "shop_info": {
+          "login_id": "衣耘服装厂",
+          "shop_url": "https://yiyunfuzhuang888.1688.com",
+          "company_name": "广州衣耘服装厂",
+          "is_super_factory": false,
+          "shop_repurchase_rate": "38.46"
+        }
+      },
+      {
+        "item_id": 769734131977,
+        "product_url": "https://detail.1688.com/offer/769734131977.html",
+        "title": "欧美跨境度假风蕾丝沙滩裙V领镂空开叉连体设计感连衣裙",
+        "img": "https://cbu01.alicdn.com/img/ibank/O1CN01Zq7l8S2EzKFQjexo0_!!1022268815-0-cib.jpg",
+        "price": "",
+        "price_info": {
+          "sale_price": "44.00",
+          "show_price": "44.00",
+          "origin_price": "44.00"
+        },
+        "quantity_begin": 3,
+        "sales_count": "60627",
+        "sale_info": {
+          "sale_quantity_int": 60627,
+          "buyer_count": 60044
+        },
+        "shop_info": {
+          "login_id": "xiangtongdz",
+          "shop_url": "https://xiangtongdz.1688.com",
+          "company_name": "广州市昀晟电子科技有限公司",
+          "is_super_factory": false,
+          "shop_repurchase_rate": "18.18"
+        }
+      }
+    ]
+  }
+}
+
+```
+# 1688 API - Get category products V2
+
+## API Overview
+
+- Retrieve 1688 products by category ID
+- Support multilingual output
+- Support sorting and filtering
+
+## API URL
+
+`GET http://api.tmapi.top/1688/category/items/v2`
+
+## Request Parameters
+
+### Query
+
+| Field | Type | Explanation | Required |
+| --- | --- | --- | --- |
+| language | string | Optional values: `en`, `zh`, `ru`, `vi`, `ja`, `ko`<br/>Default value: en | false |
+| cat_id | integer | Category ID | true |
+| page | integer | Page number<br/>Default value: 1 | false |
+| page_size | integer | Number of items per page<br/>Default value: 20 | false |
+| sort | string | Optional values: `default`, `sales`, `price_up`, `price_down`<br/>Default value: default | false |
+| price_start | string | Filter: Minimum value of price range | false |
+| price_end | string | Filter: Maximum value of price range | false |
+| new_arrival | boolean | Filter: New product | false |
+| support_dropshipping | boolean | Filter: Supports dropshipping | false |
+| free_shipping | boolean | Filter: Free shipping | false |
+| is_super_factory | boolean |  | false |
+
+## Security Auth
+
+> Please go to [Console-Account Center](https://console.tmapi.io/account/center) to get your apiToken.
+
+> Add your apiToken to the request parameters. Please refer to the examples below.
+
+## Request Example
+
+```bash
+
+curl --request GET 'http://api.tmapi.top/1688/category/items/v2?apiToken=xxxxxx&language=en&cat_id=&page=1&page_size=20&sort=default'
+
+```
+
+## Response Example
+
+```json
+
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "page": 1,
+    "page_size": 20,
+    "total_count": 2000,
+    "keyword": "",
+    "sort": "default",
+    "cat_id": 1031922,
+    "filters": {},
+    "items": [
+      {
+        "item_id": 991188728585,
+        "product_url": "https://detail.1688.com/offer/991188728585.html",
+        "title": "2817桃心太阳镜爱心太阳眼镜果冻色无框心型连体眼镜炫目色彩眼镜",
+        "img": "https://cbu01.alicdn.com/img/ibank/O1CN01l1LMMu23dNfRuPnh4_!!2219960167278-0-cib.jpg",
+        "category_path": [
+          "54",
+          "80"
+        ],
+        "price": "0.60",
+        "price_info": {
+          "price": "0.60",
+          "sale_price": "0.60",
+          "origin_price": ""
+        },
+        "currency": "CNY",
+        "moq": "1",
+        "quantity_begin": "1",
+        "sale_info": {
+          "sale_quantity_90days": "100000+"
+        },
+        "delivery_info": {
+          "area_from": [
+            "浙江",
+            "台州市"
+          ],
+          "free_shipping": false,
+          "ship_in_48h": false
+        },
+        "shop_info": {
+          "company_name": "台州市路桥喜字电子商务商行",
+          "is_powerful_seller": false,
+          "is_super_factory": false,
+          "shop_years": 1,
+          "score_info": {
+            "composite_score": "4.0"
+          }
+        },
+        "item_repurchase_rate": "60%",
+        "low_refund_rate": false,
+        "ship_in_48h": false,
+        "one_piece_min_order": false
+      },
+      {
+        "item_id": 740842253828,
+        "product_url": "https://detail.1688.com/offer/740842253828.html",
+        "title": "2817桃心太阳镜爱心太阳眼镜果冻色无框心型连体眼镜炫目色彩眼镜",
+        "img": "https://cbu01.alicdn.com/img/ibank/O1CN01ngamtu20DmPVLrYzO_!!3961706816-0-cib.jpg",
+        "category_path": [
+          "54",
+          "80"
+        ],
+        "price": "0.60",
+        "price_info": {
+          "price": "0.60",
+          "sale_price": "0.60",
+          "origin_price": ""
+        },
+        "currency": "CNY",
+        "moq": "2",
+        "quantity_begin": "2",
+        "sale_info": {
+          "sale_quantity_90days": "100000+"
+        },
+        "delivery_info": {
+          "area_from": [
+            "浙江",
+            "台州市"
+          ],
+          "free_shipping": false,
+          "ship_in_48h": false
+        },
+        "shop_info": {
+          "company_name": "临海市泉森眼镜有限公司",
+          "is_powerful_seller": false,
+          "is_super_factory": false,
+          "shop_years": 3,
+          "score_info": {
+            "composite_score": "4.5"
+          }
+        },
+        "item_repurchase_rate": "57%",
+        "low_refund_rate": false,
+        "ship_in_48h": false,
+        "one_piece_min_order": false
+      },
+      {
+        "item_id": 819097915075,
+        "product_url": "https://detail.1688.com/offer/819097915075.html",
+        "title": "心型眼镜工厂爱心眼镜糖果果冻色无框心型连体眼镜 炫目色彩眼镜",
+        "img": "https://cbu01.alicdn.com/img/ibank/O1CN01F6AaZL2FUveROQEw9_!!2218247818884-0-cib.jpg",
+        "category_path": [
+          "54",
+          "80"
+        ],
+        "price": "0.65",
+        "price_info": {
+          "price": "0.65",
+          "sale_price": "0.65",
+          "origin_price": ""
+        },
+        "currency": "CNY",
+        "moq": "2",
+        "quantity_begin": "2",
+        "sale_info": {
+          "sale_quantity_90days": "100000+"
+        },
+        "delivery_info": {
+          "area_from": [
+            "浙江",
+            "台州市"
+          ],
+          "free_shipping": false,
+          "ship_in_48h": false
+        },
+        "shop_info": {
+          "company_name": "台州市爱昌眼镜有限公司",
+          "is_powerful_seller": false,
+          "is_super_factory": false,
+          "shop_years": 2,
+          "score_info": {
+            "composite_score": "4.5"
+          }
+        },
+        "item_repurchase_rate": "49%",
+        "low_refund_rate": false,
+        "ship_in_48h": false,
+        "one_piece_min_order": false
+      }
+    ],
+    "has_next_page": true
+  }
+}
+
+```
+
+# 1688 API - Search for 1688 products by image(Multilingual version)
+
+## API Overview
+
+- Search for 1688 products by image
+- Support multiple languages
+
+## API URL
+
+`GET http://api.tmapi.top/1688/global/search/image`
+
+## Request Parameters
+
+### Query
+
+| Field | Type | Explanation | Required |
+| --- | --- | --- | --- |
+| img_url | string | Image URL<br/>**Only images from Alibaba-affiliated platforms can be identified.**<br/>Non-Ali image needs to be converted using [Image URL conversion API](/docs/ali/tool-apis/image-url-convert.md) first, and then use the converted image URL to call this API. | true |
+| page | integer | Page number<br/>Default value: 1 | false |
+| page_size | integer | Number of items per page<br/>Default value: 20<br/>Max: 20. | false |
+| language | string | Optional values: `en`, `zh`<br/>Default value: en | false |
+| sort | string | Optional values: `default`, `sales`, `price_up`, `price_down`<br/>Default value: default | false |
+| support_dropshipping | boolean | Filter: Supports dropshipping | false |
+| is_factory | boolean | Filter: Is factory | false |
+| verified_supplier | boolean | Filter: Verified supplier | false |
+| free_shipping | boolean | Filter: Free shipping | false |
+| new_arrival | boolean | Filter: New product | false |
+
+## Security Auth
+
+> Please go to [Console-Account Center](https://console.tmapi.io/account/center) to get your apiToken.
+
+> Add your apiToken to the request parameters. Please refer to the examples below.
+
+## Request Example
+
+```bash
+
+curl --request GET 'http://api.tmapi.top/1688/global/search/image?apiToken=xxxxxx&img_url=https%3A%2F%2Fcbu01.alicdn.com%2Fimg%2Fibank%2FO1CN01Lnbnos2LkORtHhOVp_%21%213367999730-0-cib.jpg&page=1&page_size=20&language=en&sort=default'
+
+```
+
+## Response Example
+
+```json
+
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "page": 1,
+    "page_size": 2,
+    "total_count": 666,
+    "sort": "default",
+    "filters": {},
+    "items": [
+      {
+        "item_id": 865835426638,
+        "product_url": "https://detail.1688.com/offer/865835426638.html",
+        "title": "Applicable to Huawei Folding Novaflip Bell N3 Bracelet Mix Phone Case P50pocket2 Protective Case Vflip",
+        "title_origin": "适用华为折叠Novaflip铃铛N3手绳Mix手机壳P50Pocket2保护套VFlip",
+        "img": "https://cbu01.alicdn.com/O1CN01MJvUUV26UATGC9C8o_!!2407317664-0-cib.jpg",
+        "category_path": [
+          "1042207",
+          "50911",
+          "7"
+        ],
+        "price": "19.00",
+        "price_info": {
+          "drop_ship_price": "19.00",
+          "wholesale_price": "19.00",
+          "origin_price": "19.00"
+        },
+        "brand": "yot",
+        "title_tags": [
+          "1688严选"
+        ],
+        "quantity_begin": 1,
+        "quantity_prices": [
+          {
+            "begin_num": "1",
+            "end_num": "",
+            "price": "19.00"
+          }
+        ],
+        "sale_info": {
+          "gmv_fuzzy": "50+",
+          "gmv_30days": 0,
+          "gmv_30days_cb": 0,
+          "sale_quantity": 27,
+          "sale_quantity_month": 3,
+          "sale_quantity_90days": 12,
+          "sale_quantity_360days": 27,
+          "orders_count": 13
+        },
+        "type": "normal",
+        "delivery_info": {
+          "area_from": [
+            "Guangdong",
+            "Futian District, Shenzhen"
+          ],
+          "weight": 0,
+          "suttle_weight": 0,
+          "free_postage": false
+        },
+        "item_repurchase_rate": "0.0",
+        "goods_score": 2,
+        "image_dsm_score": 0,
+        "primary_rank_score": 0,
+        "super_new_product": false,
+        "shop_info": {
+          "login_id": null,
+          "member_id": "b2b-2407317664",
+          "company_name": "xxxxxx",
+          "shop_url": "http://880755.1688.com",
+          "biz_type": "生产加工",
+          "is_factory": true,
+          "is_super_factory": false,
+          "is_gold_supplier": false,
+          "location": [
+            "Guangdong",
+            "Futian District, Shenzhen"
+          ],
+          "service_tags": [
+            "7×24H响应",
+            "先采后付"
+          ],
+          "tp_member": true,
+          "tp_year": 11,
+          "factory_inspection": false,
+          "shop_repurchase_rate": "11.2%"
+        }
+      },
+      {
+        "item_id": 866011508042,
+        "product_url": "https://detail.1688.com/offer/866011508042.html",
+        "title": "Applicable to Huawei P50pocket Mobile Phone Shell Folding Screen Pocket2 Red Polka Dot Bow Bracelet Protective Cover",
+        "title_origin": "适用华为P50Pocket手机壳折叠屏Pocket2红色波点蝴蝶结手链保护套",
+        "img": "https://cbu01.alicdn.com/O1CN01yNpkgG1BxXm6UG4jT_!!2923750012-0-cib.jpg",
+        "category_path": [
+          "1042207",
+          "50911",
+          "7"
+        ],
+        "price": "20.00",
+        "price_info": {
+          "drop_ship_price": "12.00",
+          "wholesale_price": "20.00",
+          "origin_price": "20.00"
+        },
+        "brand": "中性",
+        "title_tags": [],
+        "quantity_begin": 2,
+        "quantity_prices": [],
+        "sale_info": {
+          "gmv_fuzzy": "40+",
+          "gmv_30days": 0,
+          "gmv_30days_cb": 0,
+          "sale_quantity": 18,
+          "sale_quantity_month": 2,
+          "sale_quantity_90days": 14,
+          "sale_quantity_360days": 18,
+          "orders_count": 5
+        },
+        "type": "normal",
+        "delivery_info": {
+          "area_from": [
+            "Guangdong",
+            "Bao'an District, Shenzhen City"
+          ],
+          "weight": 0,
+          "suttle_weight": 0,
+          "free_postage": false
+        },
+        "item_repurchase_rate": "0.5",
+        "goods_score": 2,
+        "image_dsm_score": 0,
+        "primary_rank_score": 0,
+        "super_new_product": false,
+        "shop_info": {
+          "login_id": null,
+          "member_id": "b2b-2923750012d6f68",
+          "company_name": "xxxxxx",
+          "shop_url": "http://keshentai.1688.com",
+          "biz_type": "生产加工",
+          "is_factory": false,
+          "is_super_factory": false,
+          "is_gold_supplier": false,
+          "location": [
+            "Guangdong",
+            "Bao'an District, Shenzhen City"
+          ],
+          "service_tags": [],
+          "tp_member": true,
+          "tp_year": 9,
+          "factory_inspection": false,
+          "shop_repurchase_rate": "29.2%"
+        }
+      }
+    ]
+  }
+}
+
+```
+# 1688 API - Search for 1688 products by image V2(Multilingual version)
+
+## API Overview
+
+- Search for 1688 products by image
+- Supports more languages compared to V1
+- Support sorting and filtering
+- See More
+
+## API URL
+
+`GET http://api.tmapi.top/1688/global/search/image/v2`
+
+## Request Parameters
+
+### Query
+
+| Field | Type | Explanation | Required |
+| --- | --- | --- | --- |
+| language | string | Optional values: `en`, `zh`, `ru`, `vi`, `ja`, `ko`<br/>Default value: en | false |
+| img_url | string | Image URL | true |
+| page | integer | Page number<br/>Default value: 1 | false |
+| page_size | integer | Number of items per page<br/>Default value: 20 | false |
+| sort | string | Optional values: `default`, `sales`, `price_up`, `price_down`<br/>Default value: default | false |
+| price_start | string | Filter: Minimum value of price range | false |
+| price_end | string | Filter: Maximum value of price range | false |
+| support_dropshipping | boolean | Filter: Supports dropshipping | false |
+| is_factory | boolean | Filter: Is factory | false |
+| verified_supplier | boolean | Filter: Verified supplier | false |
+| free_shipping | boolean | Filter: Free shipping | false |
+| new_arrival | boolean | Filter: New product | false |
+
+## Security Auth
+
+> Please go to [Console-Account Center](https://console.tmapi.io/account/center) to get your apiToken.
+
+> Add your apiToken to the request parameters. Please refer to the examples below.
+
+## Request Example
+
+```bash
+
+curl --request GET 'http://api.tmapi.top/1688/global/search/image/v2?apiToken=xxxxxx&language=en&img_url=%2Fsearch%2Fimgextra5%2F1589508648580602236.jpg&page=1&page_size=20&sort=default'
+
+```
+
+## Response Example
+
+```json
+
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "page": 1,
+    "page_size": 10,
+    "total_count": 688,
+    "keyword": "",
+    "sort": "default",
+    "cat_id": null,
+    "filters": {
+      "price_start": "2"
+    },
+    "items": [
+      {
+        "item_id": 908305897124,
+        "product_url": "https://detail.1688.com/offer/908305897124.html",
+        "title": "2024 New Yinxing Classmate Red Lotus Seed Glutinous Jianning Old Variety Red Lotus Seed Core White Lotus Seed 500g",
+        "title_origin": "2024年新印兴同学红花莲子糯建宁老品种红花莲子通芯白莲子500g",
+        "img": "https://cbu01.alicdn.com/O1CN01OfUGyD2ILFvHYpyMS_!!3264309269-0-cib.jpg",
+        "category_path": [
+          "130822002",
+          "104"
+        ],
+        "price": "60.00",
+        "price_info": {
+          "price": "60.00",
+          "sale_price": "60.00",
+          "origin_price": ""
+        },
+        "currency": "CNY",
+        "moq": null,
+        "sale_info": {
+          "sale_quantity_90days": "0"
+        },
+        "delivery_info": {
+          "area_from": [
+            "福建",
+            "三明市"
+          ],
+          "free_shipping": false,
+          "ship_in_48h": false
+        },
+        "shop_info": {
+          "company_name": "三明市润德电子商务有限公司",
+          "is_powerful_seller": false,
+          "is_super_factory": false,
+          "shop_years": 9,
+          "score_info": {
+            "composite_score": "4.0"
+          }
+        },
+        "item_repurchase_rate": "0%",
+        "low_refund_rate": false,
+        "ship_in_48h": false,
+        "one_piece_min_order": false
+      },
+      {
+        "item_id": 819919675160,
+        "product_url": "https://detail.1688.com/offer/819919675160.html",
+        "title": "Factory Fresh Lotus Seeds Cored White Lotus Dry Goods 500g Customized Wholesale Bagged Bulk Sulfur-Free White Lotus Seeds",
+        "title_origin": "工厂新鲜莲子去芯通芯白莲 干货500克定制批发袋装散装无硫白莲子",
+        "img": "https://cbu01.alicdn.com/O1CN01o6YOrC2N1Aoq4PiO9_!!2216045399902-0-cib.jpg",
+        "category_path": [
+          "130822002",
+          "10020"
+        ],
+        "price": "40.80",
+        "price_info": {
+          "price": "40.80",
+          "sale_price": "40.80",
+          "origin_price": ""
+        },
+        "currency": "CNY",
+        "moq": null,
+        "sale_info": {
+          "sale_quantity_90days": "3"
+        },
+        "delivery_info": {
+          "area_from": [
+            "湖南",
+            "湘潭市"
+          ],
+          "free_shipping": false,
+          "ship_in_48h": false
+        },
+        "shop_info": {
+          "company_name": "湘潭荣欣食品有限公司",
+          "is_powerful_seller": true,
+          "is_super_factory": false,
+          "shop_years": 3,
+          "score_info": {
+            "composite_score": "4.0"
+          }
+        },
+        "item_repurchase_rate": "0%",
+        "low_refund_rate": false,
+        "ship_in_48h": false,
+        "one_piece_min_order": false
+      },
+      {
+        "item_id": 923701239315,
+        "product_url": "https://detail.1688.com/offer/923701239315.html",
+        "title": "Jianning Lotus Seeds 250g Peeled White Lotus Seeds Sulfur-Free Natural Color Four Treasure Porridge Hehe Herbal Free Shipping",
+        "title_origin": "建宁莲子250克去皮心白莲建莲子无硫本色四宝粥禾和本草包邮",
+        "img": "https://cbu01.alicdn.com/O1CN0189swY92JcUB9T4N4g_!!649399442.jpg",
+        "category_path": [
+          "2",
+          "201164002"
+        ],
+        "price": "54.69",
+        "price_info": {
+          "price": "54.69",
+          "sale_price": "54.69",
+          "origin_price": ""
+        },
+        "currency": "CNY",
+        "moq": null,
+        "sale_info": {
+          "sale_quantity_90days": "0"
+        },
+        "delivery_info": {
+          "area_from": [
+            "河北",
+            "邢台市"
+          ],
+          "free_shipping": false,
+          "ship_in_48h": true
+        },
+        "shop_info": {
+          "company_name": "清河县怀驰贸易行",
+          "is_powerful_seller": false,
+          "is_super_factory": false,
+          "shop_years": 1,
+          "score_info": {
+            "composite_score": "3.5"
+          }
+        },
+        "item_repurchase_rate": "0%",
+        "low_refund_rate": false,
+        "ship_in_48h": true,
+        "one_piece_min_order": false
+      }
+    ],
+    "has_next_page": true
+  }
+}
+
+```
+# 1688 API - Search for 1688 products by keywords(Multilingual version)
+
+## API Overview
+
+- Search for 1688 products by keywords
+- Support multiple languages
+- See More
+
+## API URL
+
+`GET http://api.tmapi.top/1688/global/search/items`
+
+## Request Parameters
+
+### Query
+
+| Field | Type | Explanation | Required |
+| --- | --- | --- | --- |
+| page | integer | Page number<br/>Default value: 1 | false |
+| page_size | integer | Number of items per page<br/>Default value: 20 | false |
+| keyword | string | Search keywords | false |
+| language | string | Optional values: `en`, `zh`, `ru`, `vi`, `ja`, `ko`<br/>Default value: en | false |
+| sort | string | Optional values: `default`, `sales`, `price_up`, `price_down`<br/>Default value: default | false |
+| price_start | string | Filter: Minimum value of price range | false |
+| price_end | string | Filter: Maximum value of price range | false |
+| cat_id | integer | Category ID | false |
+| new_arrival | boolean | Filter: New product | false |
+| support_dropshipping | boolean | Filter: Supports dropshipping | false |
+| free_shipping | boolean | Filter: Free shipping | false |
+| is_super_factory | boolean |  | false |
+
+> At least one of [object Object] or [object Object] is required.
+
+## Security Auth
+
+> Please go to [Console-Account Center](https://console.tmapi.io/account/center) to get your apiToken.
+
+> Add your apiToken to the request parameters. Please refer to the examples below.
+
+## Request Example
+
+```bash
+
+curl --request GET 'http://api.tmapi.top/1688/global/search/items?apiToken=xxxxxx&page=1&page_size=20&keyword=%E9%A9%AC%E5%85%8B%E6%9D%AF&language=en&sort=default'
+
+```
+
+## Response Example
+
+```json
+
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "page": 1,
+    "page_size": 2,
+    "has_next_page": true,
+    "sort": "price_up",
+    "filters": {},
+    "items": [
+      {
+        "item_id": "850588705676",
+        "product_url": "https://detail.1688.com/offer/850588705676.html",
+        "title": "Cross Border DuPont Paper Jelly Bag Tote Bag Large Capacity PVC Waterproof Tote Bag Commuter Mommy Shoulder Bag",
+        "title_origin": "跨境杜邦纸果冻包 托特包 大容量PVC防水手提袋 通勤妈咪单肩包包",
+        "img": "https://cbu01-overseas.1688.com/img/ibank/O1CN01gcU0Tq1f5tqLKLfHI_!!2216856833956-0-cib.jpg",
+        "price": "35.0",
+        "price_info": {
+          "price": "35.0",
+          "price_min": "35.0",
+          "price_max": "35.0"
+        },
+        "currency": "CNY",
+        "quantity_begin": "1",
+        "sale_info": {
+          "sale_quantity_90days": "2880"
+        },
+        "goods_score": "5.0",
+        "shop_info": {
+          "is_gold_manufacturer": false,
+          "is_verified": false
+        },
+        "is_free_shipping": false,
+        "is_new_item": false,
+        "is_hot_item": false
+      },
+      {
+        "item_id": "811949286969",
+        "product_url": "https://detail.1688.com/offer/811949286969.html",
+        "title": "70th Anniversary Dragon Bag Nylon Dumpling Bag Large Capacity Women's Bag Canvas Tote Bag Single Shoulder Handbag Dragon Bag",
+        "title_origin": "70周年龙骧包尼龙饺子包大容量女包包帆布托特包单肩手提包龙骧包",
+        "img": "https://cbu01-overseas.1688.com/img/ibank/O1CN01O5qYiF1q5P7aAs7gm_!!2217496155444-0-cib.jpg",
+        "price": "54.0",
+        "price_info": {
+          "price": "54.0",
+          "price_min": "54.0",
+          "price_max": "54.0"
+        },
+        "currency": "CNY",
+        "quantity_begin": "1",
+        "sale_info": {
+          "sale_quantity_90days": "2235"
+        },
+        "goods_score": "4.9",
+        "shop_info": {
+          "is_gold_manufacturer": false,
+          "is_verified": false
+        },
+        "is_free_shipping": false,
+        "is_new_item": false,
+        "is_hot_item": false
+      }
+    ]
+  }
+}
+
+```
+# 1688 API-Image URL conversion
+
+## API Overview
+
+- Convert image URL into a recognizable format for image search API
+- See More
+
+## API URL
+
+`POST http://api.tmapi.top/1688/tools/image/convert_url`
+
+## Request Parameters
+
+### Body
+
+> Content-Type: application/json
+
+| Field | Type | Explanation | Required |
+| --- | --- | --- | --- |
+| url | string | Image URL to be converted | true |
+| search_api_endpoint | string | API endpoint for image search. Default: /search/image. Supported endpoints: [/search/image](/docs/ali/search/search-items-by-image-url.md), [/global/search/image](/docs/ali/cross-border/search-items-by-image-url.md), [/global/search/image/v2](/docs/ali/cross-border/search-items-by-image-url-v2.md)<br/>Default value: /search/image | false |
+
+> The converted result is typically in image path format and can be directly used as a parameter for image search API
+
+## Security Auth
+
+> Please go to [Console-Account Center](https://console.tmapi.io/account/center) to get your apiToken.
+
+> Add your apiToken to the request parameters. Please refer to the examples below.
+
+## Request Example
+
+```bash
+
+curl --request POST 'http://api.tmapi.top/1688/tools/image/convert_url?apiToken=xxxxxx' \
++  --header 'Content-Type: application/json' \
++  --data-raw '{
+  "url": "",
+  "search_api_endpoint": "/search/image"
+}'
+
+```
+
+## Response Example
+
+```json
+
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "image_url": "/search/imgextra/1692942898123_q7ftzxs9.jpg"
+  }
+}
+
+```
+# 1688 API - Get 1688 product details(By ID)
+
+## API Overview
+
+- Get 1688 product details by product ID
+- Includes title, images, shop, SKU, price, inventory and other information
+- Support multilingual output
+
+## API URL
+
+`GET http://api.tmapi.top/1688/item_detail`
+
+## Request Parameters
+
+### Query
+
+| Field | Type | Explanation | Required |
+| --- | --- | --- | --- |
+| item_id | integer | Product ID | true |
+| scene | string | Optional values: `drop_shipping` | false |
+| optimize_title | boolean | Filter out non-core words from the title. This is more friendly to the translator. Only Chinese titles are supported for optimization.<br/>Default value: false | false |
+| language | string | Optional values: `en`, `zh`, `ru`, `th`, `pt`, `es`, `tr`, `vi`, `ja`, `ko`<br/>Default value: zh | false |
+
+## Security Auth
+
+> Please go to [Console-Account Center](https://console.tmapi.io/account/center) to get your apiToken.
+
+> Add your apiToken to the request parameters. Please refer to the examples below.
+
+## Request Example
+
+```bash
+
+curl --request GET 'http://api.tmapi.top/1688/item_detail?apiToken=xxxxxx&item_id=652702302959&language=zh'
+
+```
+
+## Response Example
+
+```json
+
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "item_id": 859086919394,
+    "product_url": "https://detail.1688.com/offer/859086919394.html",
+    "title": "跨境速卖通女式长款睡衣家居服豹纹款开衫法式浴袍长袖秋冬睡袍",
+    "category_id": 1037924,
+    "root_category_id": 312,
+    "currency": "CNY",
+    "offer_unit": "件",
+    "product_props": [
+      {
+        "产品类别": "睡衣"
+      },
+      {
+        "面料名称": "网纱"
+      },
+      {
+        "款式": "开衫"
+      },
+      {
+        "主面料成分": "聚酯纤维（涤纶）"
+      },
+      {
+        "厚薄": "中等"
+      },
+      {
+        "面料厚薄（克重）": "适中(141-160克/平米)"
+      },
+      {
+        "领型": "V字领"
+      },
+      {
+        "袖长": "九分袖"
+      },
+      {
+        "功能": "休闲,透气,情趣,居家,舒适"
+      },
+      {
+        "上市时间": "2024年冬季"
+      },
+      {
+        "适合季节": "夏季,冬季,春季,秋季,四季通用"
+      },
+      {
+        "适用人群类别": "青年女性"
+      },
+      {
+        "适用场景": "户外,居家"
+      },
+      {
+        "颜色": "黄色豹纹,白色豹纹,肤色豹纹"
+      },
+      {
+        "尺码": "S,M,L"
+      },
+      {
+        "品牌": "其他"
+      },
+      {
+        "产地": "灌云"
+      },
+      {
+        "货号": "Y5106"
+      },
+      {
+        "是否跨境出口专供货源": "是"
+      },
+      {
+        "主面料成分含量": "30%（含）-50%（不含）"
+      },
+      {
+        "风格": "欧美风"
+      }
+    ],
+    "main_imgs": [
+      "https://cbu01.alicdn.com/img/ibank/O1CN01gEiAAA1tfzhab0NhS_!!2214636595930-0-cib.jpg",
+      "https://cbu01.alicdn.com/img/ibank/O1CN01zbvscc1tfzgUMxRU9_!!2214636595930-0-cib.jpg",
+      "https://cbu01.alicdn.com/img/ibank/O1CN01U64N8h1tfzgajTOqp_!!2214636595930-0-cib.jpg",
+      "https://cbu01.alicdn.com/img/ibank/O1CN01OWDvGr1tfzgZTutIr_!!2214636595930-0-cib.jpg",
+      "https://cbu01.alicdn.com/img/ibank/O1CN01pc1OQP1tfzgaYrxTZ_!!2214636595930-0-cib.jpg",
+      "https://cbu01.alicdn.com/img/ibank/O1CN01zTDmhr1tfzgairTNV_!!2214636595930-0-cib.jpg",
+      "https://cbu01.alicdn.com/img/ibank/O1CN01sYHVBG1tfzgatNoUe_!!2214636595930-0-cib.jpg",
+      "https://cbu01.alicdn.com/img/ibank/O1CN01RA4Ktf1tfzgcrZotc_!!2214636595930-0-cib.jpg"
+    ],
+    "video_url": "https://cloud.video.taobao.com/play/u/2214636595930/p/2/e/6/t/1/506402967489.mp4",
+    "detail_url": "https://itemcdn.tmall.com/1688offer/icoss598189538ad1d6828b1d4e2a8",
+    "sale_count": "175",
+    "sale_info": {
+      "sale_quantity_90days": 175
+    },
+    "price_info": {
+      "price": "25.90",
+      "price_min": "25.90",
+      "price_max": "29.89",
+      "origin_price_min": null,
+      "origin_price_max": null,
+      "discount_price": ""
+    },
+    "tiered_price_info": {
+      "begin_num": 1,
+      "prices": [
+        {
+          "beginAmount": "1",
+          "price": "29.89"
+        },
+        {
+          "beginAmount": "100",
+          "price": "27.60"
+        },
+        {
+          "beginAmount": "300",
+          "price": "25.90"
+        }
+      ]
+    },
+    "mixed_batch": {
+      "mix_amount": 10000,
+      "mix_begin": 0,
+      "mix_num": 1000,
+      "shop_mix_num": 2147483647
+    },
+    "shop_info": {
+      "shop_name": "灌云县伊山镇春霞服装厂",
+      "shop_url": "https://winport.m.1688.com/page/index.html?memberId=b2b-22146365959302bc20",
+      "seller_login_id": "灌云县伊山镇春霞服装厂",
+      "seller_user_id": "2214636595930",
+      "seller_member_id": "b2b-22146365959302bc20"
+    },
+    "delivery_info": {
+      "location": "江苏省连云港市",
+      "location_code": "34323526",
+      "delivery_fee": 4,
+      "unit_weight": 0,
+      "template_id": "16519567"
+    },
+    "service_tags": [
+      "7天无理由退货",
+      "晚发必赔"
+    ],
+    "sku_price_scale": "25.90-29.89",
+    "sku_price_scale_original": "null",
+    "sku_price_range": {
+      "begin_num": 1,
+      "stock": 44732,
+      "sku_param": [
+        {
+          "beginAmount": "1",
+          "price": "29.89"
+        },
+        {
+          "beginAmount": "100",
+          "price": "27.60"
+        },
+        {
+          "beginAmount": "300",
+          "price": "25.90"
+        }
+      ],
+      "mix_param": {
+        "mixNum": 1000,
+        "mixAmount": 10000,
+        "shopMixNum": 2147483647,
+        "mixBegin": 0,
+        "supportMix": true
+      }
+    },
+    "sku_props": [
+      {
+        "pid": "0",
+        "prop_name": "颜色",
+        "values": [
+          {
+            "vid": "0",
+            "name": "黄色豹纹",
+            "imageUrl": "https://cbu01.alicdn.com/img/ibank/O1CN01RA4Ktf1tfzgcrZotc_!!2214636595930-0-cib.jpg"
+          },
+          {
+            "vid": "1",
+            "name": "白色豹纹",
+            "imageUrl": "https://cbu01.alicdn.com/img/ibank/O1CN01zTDmhr1tfzgairTNV_!!2214636595930-0-cib.jpg"
+          },
+          {
+            "vid": "2",
+            "name": "肤色豹纹",
+            "imageUrl": "https://cbu01.alicdn.com/img/ibank/O1CN01sYHVBG1tfzgatNoUe_!!2214636595930-0-cib.jpg"
+          }
+        ]
+      },
+      {
+        "pid": "1",
+        "prop_name": "尺码",
+        "values": [
+          {
+            "vid": "0",
+            "name": "S",
+            "imageUrl": ""
+          },
+          {
+            "vid": "1",
+            "name": "M",
+            "imageUrl": ""
+          },
+          {
+            "vid": "2",
+            "name": "L",
+            "imageUrl": ""
+          }
+        ]
+      }
+    ],
+    "skus": [
+      {
+        "skuid": "5674557541674",
+        "specid": "6f5320c016c03d575ad1034b79869a28",
+        "sale_price": "29.89",
+        "origin_price": null,
+        "stock": 4975,
+        "props_ids": "0:1;1:2",
+        "props_names": "颜色:白色豹纹;尺码:L",
+        "sale_count": 0,
+        "package_info": {
+          "weight": 0.12,
+          "length": 0,
+          "width": 0,
+          "height": 0,
+          "volume": 0
+        }
+      },
+      {
+        "skuid": "5674557541667",
+        "specid": "bdcae134f48c5b5edfdffb3e79612418",
+        "sale_price": "29.89",
+        "origin_price": null,
+        "stock": 4996,
+        "props_ids": "0:2;1:0",
+        "props_names": "颜色:肤色豹纹;尺码:S",
+        "sale_count": 0,
+        "package_info": {
+          "weight": 0.12,
+          "length": 0,
+          "width": 0,
+          "height": 0,
+          "volume": 0
+        }
+      },
+      {
+        "skuid": "5674557541669",
+        "specid": "c36b443e8f1551db7843a489cc62ca1f",
+        "sale_price": "29.89",
+        "origin_price": null,
+        "stock": 4966,
+        "props_ids": "0:0;1:0",
+        "props_names": "颜色:黄色豹纹;尺码:S",
+        "sale_count": 0,
+        "package_info": {
+          "weight": 0.12,
+          "length": 0,
+          "width": 0,
+          "height": 0,
+          "volume": 0
+        }
+      },
+      {
+        "skuid": "5674557541671",
+        "specid": "67fabdabdec80a01cb571951061d314f",
+        "sale_price": "29.89",
+        "origin_price": null,
+        "stock": 4991,
+        "props_ids": "0:1;1:1",
+        "props_names": "颜色:白色豹纹;尺码:M",
+        "sale_count": 0,
+        "package_info": {
+          "weight": 0.12,
+          "length": 0,
+          "width": 0,
+          "height": 0,
+          "volume": 0
+        }
+      },
+      {
+        "skuid": "5674557541675",
+        "specid": "2e4af15b48d5e0426c9fb9b30311e944",
+        "sale_price": "29.89",
+        "origin_price": null,
+        "stock": 4872,
+        "props_ids": "0:0;1:2",
+        "props_names": "颜色:黄色豹纹;尺码:L",
+        "sale_count": 0,
+        "package_info": {
+          "weight": 0.12,
+          "length": 0,
+          "width": 0,
+          "height": 0,
+          "volume": 0
+        }
+      },
+      {
+        "skuid": "5674557541672",
+        "specid": "19e11750558f8465d67e7da1fbda7afe",
+        "sale_price": "29.89",
+        "origin_price": null,
+        "stock": 4948,
+        "props_ids": "0:0;1:1",
+        "props_names": "颜色:黄色豹纹;尺码:M",
+        "sale_count": 0,
+        "package_info": {
+          "weight": 0.12,
+          "length": 0,
+          "width": 0,
+          "height": 0,
+          "volume": 0
+        }
+      },
+      {
+        "skuid": "5674557541668",
+        "specid": "ddc44276e54d3bce6c16f7e9dd785b38",
+        "sale_price": "29.89",
+        "origin_price": null,
+        "stock": 4997,
+        "props_ids": "0:1;1:0",
+        "props_names": "颜色:白色豹纹;尺码:S",
+        "sale_count": 0,
+        "package_info": {
+          "weight": 0.12,
+          "length": 0,
+          "width": 0,
+          "height": 0,
+          "volume": 0
+        }
+      },
+      {
+        "skuid": "5674557541673",
+        "specid": "592510a700d02b945eb5f96e6b3e55fd",
+        "sale_price": "29.89",
+        "origin_price": null,
+        "stock": 4992,
+        "props_ids": "0:2;1:2",
+        "props_names": "颜色:肤色豹纹;尺码:L",
+        "sale_count": 0,
+        "package_info": {
+          "weight": 0.12,
+          "length": 0,
+          "width": 0,
+          "height": 0,
+          "volume": 0
+        }
+      },
+      {
+        "skuid": "5674557541670",
+        "specid": "96c1c66eeb4dcead3fc716bfabb1d236",
+        "sale_price": "29.89",
+        "origin_price": null,
+        "stock": 4995,
+        "props_ids": "0:2;1:1",
+        "props_names": "颜色:肤色豹纹;尺码:M",
+        "sale_count": 0,
+        "package_info": {
+          "weight": 0.12,
+          "length": 0,
+          "width": 0,
+          "height": 0,
+          "volume": 0
+        }
+      }
+    ],
+    "is_sold_out": false,
+    "stock": 44732,
+    "promotions": []
+  }
+}
+
+```
+# 1688 API - Get 1688 product details(By URL)
+
+## API Overview
+
+- Get 1688 product details by product URL
+- Includes title, images, shop, SKU, price, inventory and other information
+- Support multilingual output
+
+## API URL
+
+`POST http://api.tmapi.top/1688/item_detail_by_url`
+
+## Request Parameters
+
+### Body
+
+> Content-Type: application/json
+
+| Field | Type | Explanation | Required |
+| --- | --- | --- | --- |
+| url | string | item url | true |
+| scene |  | price type | false |
+| optimize_title | boolean | Filter out non-core words from the title. This is more friendly to the translator. Only Chinese titles are supported for optimization.<br/>Default value: false | false |
+| language |  | Default value: zh | false |
+
+## Security Auth
+
+> Please go to [Console-Account Center](https://console.tmapi.io/account/center) to get your apiToken.
+
+> Add your apiToken to the request parameters. Please refer to the examples below.
+
+## Request Example
+
+```bash
+
+curl --request POST 'http://api.tmapi.top/1688/item_detail_by_url?apiToken=xxxxxx' \
++  --header 'Content-Type: application/json' \
++  --data-raw '{
+  "url": "https://detail.1688.com/offer/652702302959.html",
+  "language": "zh"
+}'
+
+```
+
+## Response Example
+
+```json
+
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "item_id": 859086919394,
+    "product_url": "https://detail.1688.com/offer/859086919394.html",
+    "title": "跨境速卖通女式长款睡衣家居服豹纹款开衫法式浴袍长袖秋冬睡袍",
+    "category_id": 1037924,
+    "root_category_id": 312,
+    "currency": "CNY",
+    "offer_unit": "件",
+    "product_props": [
+      {
+        "产品类别": "睡衣"
+      },
+      {
+        "面料名称": "网纱"
+      },
+      {
+        "款式": "开衫"
+      },
+      {
+        "主面料成分": "聚酯纤维（涤纶）"
+      },
+      {
+        "厚薄": "中等"
+      },
+      {
+        "面料厚薄（克重）": "适中(141-160克/平米)"
+      },
+      {
+        "领型": "V字领"
+      },
+      {
+        "袖长": "九分袖"
+      },
+      {
+        "功能": "休闲,透气,情趣,居家,舒适"
+      },
+      {
+        "上市时间": "2024年冬季"
+      },
+      {
+        "适合季节": "夏季,冬季,春季,秋季,四季通用"
+      },
+      {
+        "适用人群类别": "青年女性"
+      },
+      {
+        "适用场景": "户外,居家"
+      },
+      {
+        "颜色": "黄色豹纹,白色豹纹,肤色豹纹"
+      },
+      {
+        "尺码": "S,M,L"
+      },
+      {
+        "品牌": "其他"
+      },
+      {
+        "产地": "灌云"
+      },
+      {
+        "货号": "Y5106"
+      },
+      {
+        "是否跨境出口专供货源": "是"
+      },
+      {
+        "主面料成分含量": "30%（含）-50%（不含）"
+      },
+      {
+        "风格": "欧美风"
+      }
+    ],
+    "main_imgs": [
+      "https://cbu01.alicdn.com/img/ibank/O1CN01gEiAAA1tfzhab0NhS_!!2214636595930-0-cib.jpg",
+      "https://cbu01.alicdn.com/img/ibank/O1CN01zbvscc1tfzgUMxRU9_!!2214636595930-0-cib.jpg",
+      "https://cbu01.alicdn.com/img/ibank/O1CN01U64N8h1tfzgajTOqp_!!2214636595930-0-cib.jpg",
+      "https://cbu01.alicdn.com/img/ibank/O1CN01OWDvGr1tfzgZTutIr_!!2214636595930-0-cib.jpg",
+      "https://cbu01.alicdn.com/img/ibank/O1CN01pc1OQP1tfzgaYrxTZ_!!2214636595930-0-cib.jpg",
+      "https://cbu01.alicdn.com/img/ibank/O1CN01zTDmhr1tfzgairTNV_!!2214636595930-0-cib.jpg",
+      "https://cbu01.alicdn.com/img/ibank/O1CN01sYHVBG1tfzgatNoUe_!!2214636595930-0-cib.jpg",
+      "https://cbu01.alicdn.com/img/ibank/O1CN01RA4Ktf1tfzgcrZotc_!!2214636595930-0-cib.jpg"
+    ],
+    "video_url": "https://cloud.video.taobao.com/play/u/2214636595930/p/2/e/6/t/1/506402967489.mp4",
+    "detail_url": "https://itemcdn.tmall.com/1688offer/icoss598189538ad1d6828b1d4e2a8",
+    "sale_count": "175",
+    "sale_info": {
+      "sale_quantity_90days": 175
+    },
+    "price_info": {
+      "price": "25.90",
+      "price_min": "25.90",
+      "price_max": "29.89",
+      "origin_price_min": null,
+      "origin_price_max": null,
+      "discount_price": ""
+    },
+    "tiered_price_info": {
+      "begin_num": 1,
+      "prices": [
+        {
+          "beginAmount": "1",
+          "price": "29.89"
+        },
+        {
+          "beginAmount": "100",
+          "price": "27.60"
+        },
+        {
+          "beginAmount": "300",
+          "price": "25.90"
+        }
+      ]
+    },
+    "mixed_batch": {
+      "mix_amount": 10000,
+      "mix_begin": 0,
+      "mix_num": 1000,
+      "shop_mix_num": 2147483647
+    },
+    "shop_info": {
+      "shop_name": "灌云县伊山镇春霞服装厂",
+      "shop_url": "https://winport.m.1688.com/page/index.html?memberId=b2b-22146365959302bc20",
+      "seller_login_id": "灌云县伊山镇春霞服装厂",
+      "seller_user_id": "2214636595930",
+      "seller_member_id": "b2b-22146365959302bc20"
+    },
+    "delivery_info": {
+      "location": "江苏省连云港市",
+      "location_code": "34323526",
+      "delivery_fee": 4,
+      "unit_weight": 0,
+      "template_id": "16519567"
+    },
+    "service_tags": [
+      "7天无理由退货",
+      "晚发必赔"
+    ],
+    "sku_price_scale": "25.90-29.89",
+    "sku_price_scale_original": "null",
+    "sku_price_range": {
+      "begin_num": 1,
+      "stock": 44732,
+      "sku_param": [
+        {
+          "beginAmount": "1",
+          "price": "29.89"
+        },
+        {
+          "beginAmount": "100",
+          "price": "27.60"
+        },
+        {
+          "beginAmount": "300",
+          "price": "25.90"
+        }
+      ],
+      "mix_param": {
+        "mixNum": 1000,
+        "mixAmount": 10000,
+        "shopMixNum": 2147483647,
+        "mixBegin": 0,
+        "supportMix": true
+      }
+    },
+    "sku_props": [
+      {
+        "pid": "0",
+        "prop_name": "颜色",
+        "values": [
+          {
+            "vid": "0",
+            "name": "黄色豹纹",
+            "imageUrl": "https://cbu01.alicdn.com/img/ibank/O1CN01RA4Ktf1tfzgcrZotc_!!2214636595930-0-cib.jpg"
+          },
+          {
+            "vid": "1",
+            "name": "白色豹纹",
+            "imageUrl": "https://cbu01.alicdn.com/img/ibank/O1CN01zTDmhr1tfzgairTNV_!!2214636595930-0-cib.jpg"
+          },
+          {
+            "vid": "2",
+            "name": "肤色豹纹",
+            "imageUrl": "https://cbu01.alicdn.com/img/ibank/O1CN01sYHVBG1tfzgatNoUe_!!2214636595930-0-cib.jpg"
+          }
+        ]
+      },
+      {
+        "pid": "1",
+        "prop_name": "尺码",
+        "values": [
+          {
+            "vid": "0",
+            "name": "S",
+            "imageUrl": ""
+          },
+          {
+            "vid": "1",
+            "name": "M",
+            "imageUrl": ""
+          },
+          {
+            "vid": "2",
+            "name": "L",
+            "imageUrl": ""
+          }
+        ]
+      }
+    ],
+    "skus": [
+      {
+        "skuid": "5674557541674",
+        "specid": "6f5320c016c03d575ad1034b79869a28",
+        "sale_price": "29.89",
+        "origin_price": null,
+        "stock": 4975,
+        "props_ids": "0:1;1:2",
+        "props_names": "颜色:白色豹纹;尺码:L",
+        "sale_count": 0,
+        "package_info": {
+          "weight": 0.12,
+          "length": 0,
+          "width": 0,
+          "height": 0,
+          "volume": 0
+        }
+      },
+      {
+        "skuid": "5674557541667",
+        "specid": "bdcae134f48c5b5edfdffb3e79612418",
+        "sale_price": "29.89",
+        "origin_price": null,
+        "stock": 4996,
+        "props_ids": "0:2;1:0",
+        "props_names": "颜色:肤色豹纹;尺码:S",
+        "sale_count": 0,
+        "package_info": {
+          "weight": 0.12,
+          "length": 0,
+          "width": 0,
+          "height": 0,
+          "volume": 0
+        }
+      },
+      {
+        "skuid": "5674557541669",
+        "specid": "c36b443e8f1551db7843a489cc62ca1f",
+        "sale_price": "29.89",
+        "origin_price": null,
+        "stock": 4966,
+        "props_ids": "0:0;1:0",
+        "props_names": "颜色:黄色豹纹;尺码:S",
+        "sale_count": 0,
+        "package_info": {
+          "weight": 0.12,
+          "length": 0,
+          "width": 0,
+          "height": 0,
+          "volume": 0
+        }
+      },
+      {
+        "skuid": "5674557541671",
+        "specid": "67fabdabdec80a01cb571951061d314f",
+        "sale_price": "29.89",
+        "origin_price": null,
+        "stock": 4991,
+        "props_ids": "0:1;1:1",
+        "props_names": "颜色:白色豹纹;尺码:M",
+        "sale_count": 0,
+        "package_info": {
+          "weight": 0.12,
+          "length": 0,
+          "width": 0,
+          "height": 0,
+          "volume": 0
+        }
+      },
+      {
+        "skuid": "5674557541675",
+        "specid": "2e4af15b48d5e0426c9fb9b30311e944",
+        "sale_price": "29.89",
+        "origin_price": null,
+        "stock": 4872,
+        "props_ids": "0:0;1:2",
+        "props_names": "颜色:黄色豹纹;尺码:L",
+        "sale_count": 0,
+        "package_info": {
+          "weight": 0.12,
+          "length": 0,
+          "width": 0,
+          "height": 0,
+          "volume": 0
+        }
+      },
+      {
+        "skuid": "5674557541672",
+        "specid": "19e11750558f8465d67e7da1fbda7afe",
+        "sale_price": "29.89",
+        "origin_price": null,
+        "stock": 4948,
+        "props_ids": "0:0;1:1",
+        "props_names": "颜色:黄色豹纹;尺码:M",
+        "sale_count": 0,
+        "package_info": {
+          "weight": 0.12,
+          "length": 0,
+          "width": 0,
+          "height": 0,
+          "volume": 0
+        }
+      },
+      {
+        "skuid": "5674557541668",
+        "specid": "ddc44276e54d3bce6c16f7e9dd785b38",
+        "sale_price": "29.89",
+        "origin_price": null,
+        "stock": 4997,
+        "props_ids": "0:1;1:0",
+        "props_names": "颜色:白色豹纹;尺码:S",
+        "sale_count": 0,
+        "package_info": {
+          "weight": 0.12,
+          "length": 0,
+          "width": 0,
+          "height": 0,
+          "volume": 0
+        }
+      },
+      {
+        "skuid": "5674557541673",
+        "specid": "592510a700d02b945eb5f96e6b3e55fd",
+        "sale_price": "29.89",
+        "origin_price": null,
+        "stock": 4992,
+        "props_ids": "0:2;1:2",
+        "props_names": "颜色:肤色豹纹;尺码:L",
+        "sale_count": 0,
+        "package_info": {
+          "weight": 0.12,
+          "length": 0,
+          "width": 0,
+          "height": 0,
+          "volume": 0
+        }
+      },
+      {
+        "skuid": "5674557541670",
+        "specid": "96c1c66eeb4dcead3fc716bfabb1d236",
+        "sale_price": "29.89",
+        "origin_price": null,
+        "stock": 4995,
+        "props_ids": "0:2;1:1",
+        "props_names": "颜色:肤色豹纹;尺码:M",
+        "sale_count": 0,
+        "package_info": {
+          "weight": 0.12,
+          "length": 0,
+          "width": 0,
+          "height": 0,
+          "volume": 0
+        }
+      }
+    ],
+    "is_sold_out": false,
+    "stock": 44732,
+    "promotions": []
+  }
+}
+
+```
+# 1688 API - Get 1688 product description pictures
+
+## API Overview
+
+- Get 1688 product description images by product ID
+
+## API URL
+
+`GET http://api.tmapi.top/1688/item_desc`
+
+## Request Parameters
+
+### Query
+
+| Field | Type | Explanation | Required |
+| --- | --- | --- | --- |
+| item_id | integer | Product ID | true |
+
+## Security Auth
+
+> Please go to [Console-Account Center](https://console.tmapi.io/account/center) to get your apiToken.
+
+> Add your apiToken to the request parameters. Please refer to the examples below.
+
+## Request Example
+
+```bash
+
+curl --request GET 'http://api.tmapi.top/1688/item_desc?apiToken=xxxxxx&item_id=652702302959'
+
+```
+
+## Response Example
+
+```json
+
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "item_id": 622619146604,
+    "detail_imgs": [
+      "https://cbu01.alicdn.com/img/ibank/2020/452/402/17709204254_1283248032.jpg",
+      "https://cbu01.alicdn.com/img/ibank/2020/901/478/17766874109_1283248032.jpg",
+      "https://cbu01.alicdn.com/img/ibank/2020/672/568/17766865276_1283248032.jpg",
+      "https://cbu01.alicdn.com/img/ibank/2020/470/088/17766880074_1283248032.jpg",
+      "https://cbu01.alicdn.com/img/ibank/2020/769/861/17709168967_1283248032.jpg",
+      "https://cbu01.alicdn.com/img/ibank/2020/398/771/17709177893_1283248032.jpg",
+      "https://cbu01.alicdn.com/img/ibank/2020/821/702/17709207128_1283248032.jpg",
+      "https://cbu01.alicdn.com/img/ibank/2020/460/848/17838848064_1283248032.jpg",
+      "https://cbu01.alicdn.com/img/ibank/2020/894/291/17709192498_1283248032.jpg",
+      "https://cbu01.alicdn.com/img/ibank/2020/084/891/17709198480_1283248032.jpg",
+      "https://cbu01.alicdn.com/img/ibank/2020/255/868/17766868552_1283248032.jpg",
+      "https://cbu01.alicdn.com/img/ibank/2020/121/758/17838857121_1283248032.jpg",
+      "https://cbu01.alicdn.com/img/ibank/2020/172/312/17709213271_1283248032.jpg",
+      "https://cbu01.alicdn.com/img/ibank/2020/330/598/17766895033_1283248032.jpg",
+      "https://cbu01.alicdn.com/img/ibank/2019/259/150/11419051952_1283248032.jpg"
+    ],
+    "detail_html": "<img src=\"https://cbu01.alicdn.com/img/ibank/2020/452/402/17709204254_1283248032.jpg\"/><img src=\"https://cbu01.alicdn.com/img/ibank/2020/901/478/17766874109_1283248032.jpg\"/><img src=\"https://cbu01.alicdn.com/img/ibank/2020/672/568/17766865276_1283248032.jpg\"/><img src=\"https://cbu01.alicdn.com/img/ibank/2020/470/088/17766880074_1283248032.jpg\"/><img src=\"https://cbu01.alicdn.com/img/ibank/2020/769/861/17709168967_1283248032.jpg\"/><img src=\"https://cbu01.alicdn.com/img/ibank/2020/398/771/17709177893_1283248032.jpg\"/><img src=\"https://cbu01.alicdn.com/img/ibank/2020/821/702/17709207128_1283248032.jpg\"/><img src=\"https://cbu01.alicdn.com/img/ibank/2020/460/848/17838848064_1283248032.jpg\"/><img src=\"https://cbu01.alicdn.com/img/ibank/2020/894/291/17709192498_1283248032.jpg\"/><img src=\"https://cbu01.alicdn.com/img/ibank/2020/084/891/17709198480_1283248032.jpg\"/><img src=\"https://cbu01.alicdn.com/img/ibank/2020/255/868/17766868552_1283248032.jpg\"/><img src=\"https://cbu01.alicdn.com/img/ibank/2020/121/758/17838857121_1283248032.jpg\"/><img src=\"https://cbu01.alicdn.com/img/ibank/2020/172/312/17709213271_1283248032.jpg\"/><img src=\"https://cbu01.alicdn.com/img/ibank/2020/330/598/17766895033_1283248032.jpg\"/><img src=\"https://cbu01.alicdn.com/img/ibank/2019/259/150/11419051952_1283248032.jpg\"/>"
+  }
+}
+
+```
+# 1688 API - Get 1688 product review list
+
+## API Overview
+
+- Get 1688 product review list
+- Includes review content/time/rating/SKU, etc.
+
+## API URL
+
+`GET http://api.tmapi.top/1688/item/rating`
+
+## Request Parameters
+
+### Query
+
+| Field | Type | Explanation | Required |
+| --- | --- | --- | --- |
+| item_id | integer | Product ID | true |
+| page | integer | Page number<br/>Default value: 1 | false |
+| sort_type | string | Optional values: `default`, `latest`<br/>Default value: default | false |
+
+## Security Auth
+
+> Please go to [Console-Account Center](https://console.tmapi.io/account/center) to get your apiToken.
+
+> Add your apiToken to the request parameters. Please refer to the examples below.
+
+## Request Example
+
+```bash
+
+curl --request GET 'http://api.tmapi.top/1688/item/rating?apiToken=xxxxxx&item_id=652702302959&page=1&sort_type=default'
+
+```
+
+## Response Example
+
+```json
+
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "item_id": 634161824877,
+    "page": 1,
+    "page_size": 10,
+    "sort_type": "default",
+    "list": [
+      {
+        "id": 33545064566,
+        "feedback": "该用户觉得商品非常赞，给出了五星好评",
+        "feedback_date": "2024-06-26T01:17:51.000+00:00",
+        "rate_star": 5,
+        "sku_map": "颜色:白色;尺码:XL#7C颜色:白色;尺码:XXL#7C颜色:白色;尺码:XXXL",
+        "user_nick": "t**3"
+      },
+      {
+        "id": 28660705669,
+        "feedback": "不错",
+        "feedback_date": "2023-09-04T03:16:29.000+00:00",
+        "rate_star": 5,
+        "sku_map": "颜色:黑色;尺码:XXXL",
+        "user_nick": "t**8"
+      },
+      {
+        "id": 28536007399,
+        "feedback": "不错",
+        "feedback_date": "2023-08-25T02:49:58.000+00:00",
+        "rate_star": 5,
+        "sku_map": "颜色:红色;尺码:L#7C颜色:黑色;尺码:L",
+        "user_nick": "t**8"
+      },
+      {
+        "id": 28530103008,
+        "feedback": "还行",
+        "feedback_date": "2023-08-24T11:00:55.000+00:00",
+        "rate_star": 5,
+        "sku_map": "颜色:白色;尺码:XXXL",
+        "user_nick": "m**v"
+      },
+      {
+        "id": 29030148736,
+        "feedback": "满意!",
+        "feedback_date": "2023-09-27T07:09:48.000+00:00",
+        "rate_star": 5,
+        "sku_map": "颜色:黑色;尺码:XXL",
+        "user_nick": "t**8"
+      },
+      {
+        "id": 28522515066,
+        "feedback": "满意!",
+        "feedback_date": "2023-08-24T06:15:43.000+00:00",
+        "rate_star": 5,
+        "sku_map": "颜色:黑色;尺码:XXL",
+        "user_nick": "t**8"
+      },
+      {
+        "id": 33762481342,
+        "feedback": "评价方未及时做出评价,系统默认好评!",
+        "feedback_date": "2024-07-07T09:22:39.000+00:00",
+        "rate_star": 5,
+        "sku_map": "颜色:黑色;尺码:M",
+        "user_nick": "s**8"
+      },
+      {
+        "id": 21653352008,
+        "feedback": "评价方未及时做出评价,系统默认好评!",
+        "feedback_date": "2022-06-17T07:27:51.000+00:00",
+        "rate_star": 5,
+        "sku_map": "颜色:黑色;尺码:XXL",
+        "user_nick": "劲**司"
+      },
+      {
+        "id": 22210092073,
+        "feedback": "评价方未及时做出评价,系统默认好评!",
+        "feedback_date": "2022-07-24T07:34:05.000+00:00",
+        "rate_star": 5,
+        "sku_map": "颜色:黑色;尺码:XXL#7C颜色:白色;尺码:XXL",
+        "user_nick": "劲**司"
+      },
+      {
+        "id": 22203155518,
+        "feedback": "评价方未及时做出评价,系统默认好评!",
+        "feedback_date": "2022-07-15T07:04:07.000+00:00",
+        "rate_star": 5,
+        "sku_map": "颜色:白色;尺码:L",
+        "user_nick": "t**1"
+      }
+    ]
+  }
+}
+
+```
+# 1688 API - Get 1688 product shipping fee
+
+## API Overview
+
+- Get shipping template based on province
+- Get total shipping cost based on total quantity and weight
+
+## API URL
+
+`GET http://api.tmapi.top/1688/item/shipping`
+
+## Request Parameters
+
+### Query
+
+| Field | Type | Explanation | Required |
+| --- | --- | --- | --- |
+| item_id | int | Product ID | true |
+| province | str | Chinese province name, e.g., "广东","广东省","gd","Guangdong" | true |
+| total_quantity | int | Total quantity of the product to be shipped<br/>Default value: 1 | false |
+| total_weight | float | Total weight of the product to be shipped (in kg). You can calculate it by the weight information in the product detail API, If there is no weight information, just ignore this parameter. | false |
+
+## Security Auth
+
+> Please go to [Console-Account Center](https://console.tmapi.io/account/center) to get your apiToken.
+
+> Add your apiToken to the request parameters. Please refer to the examples below.
+
+## Request Example
+
+```bash
+
+curl --request GET 'http://api.tmapi.top/1688/item/shipping?apiToken=xxxxxx&item_id=652702302959&province=&total_quantity=1'
+
+```
+
+## Response Example
+
+```json
+
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "shipping_to": "内蒙古",
+    "unit": "kg",
+    "first_unit": 1,
+    "first_unit_fee": 9,
+    "next_unit": 1,
+    "next_unit_fee": 7,
+    "total_quantity": 1,
+    "total_weight": 2,
+    "total_fee": 16
+  }
+}
+
+```
+# 1688 API - Search for 1688 products by keywords
+
+## API Overview
+
+- Search for 1688 products by keywords
+- Support sorting and filtering
+- See More
+
+## API URL
+
+`GET http://api.tmapi.top/1688/search/items`
+
+## Request Parameters
+
+### Query
+
+| Field | Type | Explanation | Required |
+| --- | --- | --- | --- |
+| page | integer | Page number<br/>Default value: 1 | false |
+| page_size | integer | Number of items per page<br/>Default value: 20<br/>Max: 20. | false |
+| keyword | string | Search keywords | true |
+| sort | string | Optional values: `default`, `sales`, `price_up`, `price_down`<br/>Default value: default | false |
+| moq | integer |  | false |
+| price_start | string | Filter: Minimum value of price range | false |
+| price_end | string | Filter: Maximum value of price range | false |
+| new_arrival | boolean | Filter: New product | false |
+| support_dropshipping | boolean | Filter: Supports dropshipping | false |
+| free_shipping | boolean | Filter: Free shipping | false |
+| is_super_factory | boolean |  | false |
+
+## Security Auth
+
+> Please go to [Console-Account Center](https://console.tmapi.io/account/center) to get your apiToken.
+
+> Add your apiToken to the request parameters. Please refer to the examples below.
+
+## Request Example
+
+```bash
+
+curl --request GET 'http://api.tmapi.top/1688/search/items?apiToken=xxxxxx&page=1&page_size=20&keyword=%E9%A9%AC%E5%85%8B%E6%9D%AF&sort=default'
+
+```
+
+## Response Example
+
+```json
+
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "page": 1,
+    "page_size": 20,
+    "total_count": 2000,
+    "keyword": "男士T恤",
+    "sort": "default",
+    "cat_id": null,
+    "filters": {},
+    "items": [
+      {
+        "item_id": 973927556856,
+        "product_url": "https://detail.1688.com/offer/973927556856.html",
+        "title": "【高端系列】双面液氨丝光&80高支莱赛尔长袖T恤男士纯色高端上衣",
+        "img": "https://cbu01.alicdn.com/img/ibank/O1CN01BJ7AAS1YRF4K6UTS4_!!2209657723055-0-cib.jpg",
+        "category_path": [
+          "315",
+          "10165"
+        ],
+        "price": "56",
+        "price_info": {
+          "sale_price": "56",
+          "origin_price": null
+        },
+        "moq": 2,
+        "quantity_prices": [
+          {
+            "begin_num": 2,
+            "end_num": 199,
+            "price": "56.00"
+          },
+          {
+            "begin_num": 200,
+            "end_num": 499,
+            "price": "55.00"
+          },
+          {
+            "begin_num": 500,
+            "end_num": null,
+            "price": "54.00"
+          }
+        ],
+        "sale_info": {
+          "sale_quantity": "已售300+件",
+          "sale_quantity_int": 300,
+          "orders_count": 271
+        },
+        "delivery_info": {
+          "area_from": [
+            "广东",
+            "广州市"
+          ]
+        },
+        "item_repurchase_rate": "12%",
+        "rating_star": "3.0",
+        "shop_info": {
+          "login_id": "广州淘圣男装有限公司",
+          "member_id": "b2b-2209657723055e41d3",
+          "company_name": "广州淘圣制衣有限公司",
+          "shop_url": "http://shop5o52040l89801.1688.com",
+          "biz_type": "生产加工",
+          "is_factory": true,
+          "is_super_factory": false,
+          "location": [
+            "广东",
+            "广州市"
+          ],
+          "service_tags": [
+            "深度验厂"
+          ],
+          "shop_years": 6,
+          "factory_inspection": true,
+          "score_info": {
+            "composite_score": "4.0",
+            "consultation_score": "4.0",
+            "dispute_score": "4.0",
+            "logistics_score": "4.0",
+            "return_score": "3.33"
+          }
+        },
+        "is_ad": false
+      },
+      {
+        "item_id": 915310259717,
+        "product_url": "https://detail.1688.com/offer/915310259717.html",
+        "title": "夏季短袖T恤男士新款纯色圆领半袖上衣青年休闲百搭打底潮牌体恤",
+        "img": "https://cbu01.alicdn.com/img/ibank/O1CN01BjeeDf1ulmL44FKMD_!!2219543586078-0-cib.jpg",
+        "category_path": [
+          "315",
+          "10165"
+        ],
+        "price": "8.9",
+        "price_info": {
+          "sale_price": "8.9",
+          "origin_price": null
+        },
+        "moq": 1,
+        "quantity_prices": [
+          {
+            "begin_num": 1,
+            "end_num": 999,
+            "price": "8.90"
+          },
+          {
+            "begin_num": 1000,
+            "end_num": 9999,
+            "price": "8.40"
+          },
+          {
+            "begin_num": 10000,
+            "end_num": null,
+            "price": "7.90"
+          }
+        ],
+        "sale_info": {
+          "sale_quantity": "已售200+件",
+          "sale_quantity_int": 200,
+          "orders_count": 133
+        },
+        "delivery_info": {
+          "area_from": [
+            "广东",
+            "揭阳市"
+          ]
+        },
+        "item_repurchase_rate": "9%",
+        "rating_star": "2.33",
+        "shop_info": {
+          "login_id": "悦装服装实业有限公司",
+          "member_id": "b2b-221954358607802711",
+          "company_name": "揭阳市悦装服装实业有限公司",
+          "shop_url": "http://shop511x48z085525.1688.com",
+          "biz_type": "生产加工",
+          "is_factory": true,
+          "is_super_factory": true,
+          "location": [
+            "广东",
+            "揭阳市"
+          ],
+          "service_tags": [
+            "深度验厂"
+          ],
+          "shop_years": 1,
+          "factory_inspection": true,
+          "score_info": {
+            "composite_score": "4.0",
+            "consultation_score": "2.0",
+            "dispute_score": "4.0",
+            "logistics_score": "3.43",
+            "return_score": "4.67"
+          }
+        },
+        "is_ad": false
+      },
+      {
+        "item_id": 807891725157,
+        "product_url": "https://detail.1688.com/offer/807891725157.html",
+        "title": "男士短袖t恤冰丝短袖男T恤衫夏季圆领打底衫休闲百搭帅气短t恤男",
+        "img": "https://cbu01.alicdn.com/img/ibank/O1CN01hRRR7b29pBJfx3iGE_!!2213001588116-0-cib.jpg",
+        "category_path": [
+          "315",
+          "10165"
+        ],
+        "price": "6",
+        "price_info": {
+          "sale_price": "6",
+          "origin_price": null
+        },
+        "moq": null,
+        "quantity_prices": [],
+        "sale_info": {
+          "sale_quantity": "全网4.1万+件",
+          "sale_quantity_int": 41000,
+          "orders_count": 2043
+        },
+        "delivery_info": {
+          "area_from": [
+            "广东",
+            "揭阳市"
+          ]
+        },
+        "item_repurchase_rate": "8%",
+        "rating_star": "2.67",
+        "shop_info": {
+          "login_id": "天勤服装厂",
+          "member_id": "b2b-2213001588116f72ee",
+          "company_name": "揭阳市巨牛服饰有限公司",
+          "shop_url": "http://shop522427252cui2.1688.com",
+          "biz_type": "生产加工",
+          "is_factory": true,
+          "is_super_factory": true,
+          "location": [
+            "广东",
+            "揭阳市"
+          ],
+          "service_tags": [
+            "深度验厂"
+          ],
+          "shop_years": 5,
+          "factory_inspection": true,
+          "score_info": {
+            "composite_score": "4.5",
+            "consultation_score": "4.0",
+            "dispute_score": "4.0",
+            "logistics_score": "3.43",
+            "return_score": "4.67"
+          }
+        },
+        "is_ad": false
+      }
+    ],
+    "has_next_page": true
+  }
+}
+
+```
+# 1688 API - Search for 1688 products by image
+
+## API Overview
+
+- Search for 1688 products by image URL
+- Support sorting and filtering
+- See More
+
+## API URL
+
+`GET http://api.tmapi.top/1688/search/image`
+
+## Request Parameters
+
+### Query
+
+| Field | Type | Explanation | Required |
+| --- | --- | --- | --- |
+| img_url | string | Image URL<br/>**Only images from Alibaba-affiliated platforms can be identified.**<br/>Non-Ali image needs to be converted using [Image URL conversion API](/docs/ali/tool-apis/image-url-convert.md) first, and then use the converted image URL to call this API. | true |
+| page | integer | Page number<br/>Default value: 1 | false |
+| page_size | integer | Number of items per page<br/>Default value: 20<br/>Max: 20. | false |
+| sort | string | Optional values: `default`, `sales`, `price_up`, `price_down`<br/>Default value: default | false |
+| price_start | string | Filter: Minimum value of price range | false |
+| price_end | string | Filter: Maximum value of price range | false |
+| support_dropshipping | boolean | Filter: Supports dropshipping | false |
+| is_factory | boolean | Filter: Is factory | false |
+| verified_supplier | boolean | Filter: Verified supplier | false |
+| free_shipping | boolean | Filter: Free shipping | false |
+| new_arrival | boolean | Filter: New product | false |
+
+## Security Auth
+
+> Please go to [Console-Account Center](https://console.tmapi.io/account/center) to get your apiToken.
+
+> Add your apiToken to the request parameters. Please refer to the examples below.
+
+## Request Example
+
+```bash
+
+curl --request GET 'http://api.tmapi.top/1688/search/image?apiToken=xxxxxx&img_url=https%3A%2F%2Fcbu01.alicdn.com%2Fimg%2Fibank%2FO1CN01Lnbnos2LkORtHhOVp_%21%213367999730-0-cib.jpg&page=1&page_size=20&sort=default'
+
+```
+
+## Response Example
+
+```json
+
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "page": 1,
+    "page_size": 20,
+    "total_count": 680,
+    "keyword": "",
+    "sort": "default",
+    "cat_id": null,
+    "filters": {},
+    "items": [
+      {
+        "item_id": 983093623752,
+        "product_url": "https://detail.1688.com/offer/983093623752.html",
+        "title": "跨境外贸lulu男士同款运动长袖户外健身速干T恤弹力休闲上衣",
+        "img": "https://cbu01.alicdn.com/img/ibank/O1CN01vGCPtN22CzDpG7RBW_!!2210992147085-0-cib.jpg",
+        "category_path": [
+          "1031887",
+          "127890013",
+          "18"
+        ],
+        "price": "27.00",
+        "price_info": {
+          "sale_price": "27.00",
+          "origin_price": "27.00"
+        },
+        "moq": 1,
+        "quantity_prices": [],
+        "sale_info": {
+          "sale_quantity": "5160",
+          "sale_quantity_int": 5160,
+          "orders_count": 111
+        },
+        "delivery_info": {
+          "area_from": [
+            "广东",
+            "东莞市"
+          ]
+        },
+        "item_repurchase_rate": "54%",
+        "rating_star": null,
+        "shop_info": {
+          "login_id": "瑜佃工厂",
+          "member_id": "b2b-2210992147085de3df",
+          "company_name": "广东瑜佃供应链管理有限公司",
+          "shop_url": "http://gdytgc.1688.com?tracelog=p4p",
+          "biz_type": "生产加工",
+          "is_factory": true,
+          "is_super_factory": false,
+          "location": [
+            "广东",
+            "东莞市"
+          ],
+          "service_tags": null,
+          "shop_years": 5,
+          "factory_inspection": true,
+          "score_info": {
+            "composite_score": "4.5"
+          }
+        },
+        "is_ad": true
+      },
+      {
+        "item_id": 969462626480,
+        "product_url": "https://detail.1688.com/offer/969462626480.html",
+        "title": "专业外贸工厂跨境定制亚欧美码简约棉涤休闲插肩袖圆领秋冬男卫衣",
+        "img": "https://cbu01.alicdn.com/O1CN01mlPQyb1rrmigLQq2W_!!2219127385685-0-cib.jpg",
+        "category_path": [
+          "1036995",
+          "10165"
+        ],
+        "price": "80.00",
+        "price_info": {
+          "sale_price": "80.00",
+          "origin_price": "80.00"
+        },
+        "moq": 1,
+        "quantity_prices": [],
+        "sale_info": {
+          "sale_quantity": "0",
+          "sale_quantity_int": 0,
+          "orders_count": 0
+        },
+        "delivery_info": {
+          "area_from": [
+            "广东",
+            "广州市"
+          ]
+        },
+        "item_repurchase_rate": "42%",
+        "rating_star": null,
+        "shop_info": {
+          "login_id": "广州牛恤服饰有限公司",
+          "member_id": "b2b-22191273856859f6d3",
+          "company_name": "广州牛恤服饰有限公司",
+          "shop_url": "http://shop179343015u765.1688.com",
+          "biz_type": "生产加工",
+          "is_factory": true,
+          "is_super_factory": false,
+          "location": [
+            "广东",
+            "广州市"
+          ],
+          "service_tags": null,
+          "shop_years": 1,
+          "factory_inspection": false,
+          "score_info": {
+            "composite_score": "4.5"
+          }
+        },
+        "is_ad": false
+      },
+      {
+        "item_id": 964901961900,
+        "product_url": "https://detail.1688.com/offer/964901961900.html",
+        "title": "明格|美式潮牌百搭拼接圆领卫衣男士秋季新款宽松休闲长袖上衣男",
+        "img": "https://cbu01.alicdn.com/O1CN01cAb4CX1N4puhfi8ut_!!2216055311517-0-cib.jpg",
+        "category_path": [
+          "1036995",
+          "10165"
+        ],
+        "price": "51.00",
+        "price_info": {
+          "sale_price": "51.00",
+          "origin_price": "51.00"
+        },
+        "moq": 1,
+        "quantity_prices": [],
+        "sale_info": {
+          "sale_quantity": "88",
+          "sale_quantity_int": 88,
+          "orders_count": 79
+        },
+        "delivery_info": {
+          "area_from": [
+            "广东",
+            "广州市"
+          ]
+        },
+        "item_repurchase_rate": "46%",
+        "rating_star": null,
+        "shop_info": {
+          "login_id": "广州明格服装",
+          "member_id": "b2b-221605531151756a4e",
+          "company_name": "广州市明格服装有限公司",
+          "shop_url": "http://shop6c79789c1c537.1688.com",
+          "biz_type": "生产加工",
+          "is_factory": true,
+          "is_super_factory": false,
+          "location": [
+            "广东",
+            "广州市"
+          ],
+          "service_tags": null,
+          "shop_years": 3,
+          "factory_inspection": false,
+          "score_info": {
+            "composite_score": "5.0"
+          }
+        },
+        "is_ad": false
+      }
+    ],
+    "has_next_page": true
+  }
+}
+
+```
+# 1688 API - Search for 1688 factories by keywords
+
+## API Overview
+
+- Search for 1688 factories by keywords
+- Support sorting and filtering
+- See More
+
+## API URL
+
+`GET http://api.tmapi.top/1688/search/factories`
+
+## Request Parameters
+
+### Query
+
+| Field | Type | Explanation | Required |
+| --- | --- | --- | --- |
+| page | integer | Page number<br/>Default value: 1 | false |
+| page_size | integer | Number of items per page<br/>Default value: 20 | false |
+| keywords | string | Search keywords | true |
+| sort | string | Optional values: `default`, `repurchase_rate`<br/>Default value: default | false |
+
+## Security Auth
+
+> Please go to [Console-Account Center](https://console.tmapi.io/account/center) to get your apiToken.
+
+> Add your apiToken to the request parameters. Please refer to the examples below.
+
+## Request Example
+
+```bash
+
+curl --request GET 'http://api.tmapi.top/1688/search/factories?apiToken=xxxxxx&page=1&page_size=20&keywords=%E7%8E%A9%E5%85%B7%E5%8E%82&sort=default'
+
+```
+
+## Response Example
+
+```json
+
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "page": 2,
+    "page_size": 3,
+    "total_count": 2000,
+    "keywords": "玩具厂",
+    "sort": "default",
+    "items": [
+      {
+        "login_id": "嘉玩玩具厂",
+        "member_id": "b2b-2208087470531de12c",
+        "userid": "b2b-2208087470531de12c",
+        "company_name": "汕头市澄海区嘉玩玩具厂",
+        "factory_url": "https://sale.1688.com/factory/card.html?__existtitle__=1&__removesafearea__=1&memberId=b2b-2208087470531de12c&aHdkaW5n_isCentral=true&aHdkaW5n_isGrayed=false&aHdkaW5n_isUseGray=true&tracelog=p4p&_p_isad=1&cbu_ad_adgroup_id=1012175526&cbu_ad_sessionid=8abf6de67a4f84a1ae99f562f3f5162e",
+        "factory_level": null,
+        "factory_area_size": "1000",
+        "location": {
+          "city": "汕头"
+        },
+        "service_tags": [
+          "AA诚信等级",
+          "塑料/塑胶",
+          "注塑",
+          "清加工",
+          "汕头玩具"
+        ],
+        "product_tags": "泡泡玩具;玩具枪",
+        "invoice_available": false,
+        "tp_member": true,
+        "tp_year": 4,
+        "is_factory": true,
+        "super_factory": false,
+        "shop_repurchase_rate": "0.3",
+        "response_rate": "0.44"
+      },
+      {
+        "login_id": "精精玩具168",
+        "member_id": "b2b-22092767183650cbd8",
+        "userid": "b2b-22092767183650cbd8",
+        "company_name": "汕头市澄海区精精玩具厂",
+        "factory_url": "https://sale.1688.com/factory/card.html?__existtitle__=1&__removesafearea__=1&memberId=b2b-22092767183650cbd8&aHdkaW5n_isCentral=true&aHdkaW5n_isGrayed=false&aHdkaW5n_isUseGray=true",
+        "factory_level": "无牌工厂",
+        "factory_area_size": "3000",
+        "location": {
+          "city": "汕头"
+        },
+        "service_tags": [
+          "AAA诚信等级",
+          "CCC认证",
+          "abs",
+          "清加工",
+          "世界玩具之都"
+        ],
+        "product_tags": "积木类;玩具枪;惯性回力玩具",
+        "invoice_available": true,
+        "tp_member": true,
+        "tp_year": 3,
+        "is_factory": true,
+        "super_factory": false,
+        "shop_repurchase_rate": "0.42",
+        "response_rate": "0.66"
+      },
+      {
+        "login_id": "梦高玩具",
+        "member_id": "b2b-22118516378099ae41",
+        "userid": "b2b-22118516378099ae41",
+        "company_name": "汕头市梦高玩具实业有限公司",
+        "factory_url": "https://sale.1688.com/factory/card.html?__existtitle__=1&__removesafearea__=1&memberId=b2b-22118516378099ae41&aHdkaW5n_isCentral=true&aHdkaW5n_isGrayed=false&aHdkaW5n_isUseGray=true",
+        "factory_level": "金牌制造",
+        "factory_area_size": "12000",
+        "location": {
+          "city": "汕头"
+        },
+        "service_tags": [
+          "厂长在线",
+          "深度验厂",
+          "响应及时",
+          "支持外贸订单",
+          "abs",
+          "包工包料",
+          "世界玩具之都"
+        ],
+        "product_tags": "积木类;大颗粒积木;玩具枪",
+        "invoice_available": true,
+        "tp_member": true,
+        "tp_year": 3,
+        "is_factory": true,
+        "super_factory": true,
+        "shop_repurchase_rate": "0.51",
+        "response_rate": "0.87"
+      }
+    ]
+  }
+}
+
+```

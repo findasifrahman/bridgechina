@@ -166,3 +166,5 @@ pnpm --filter @bridgechina/web dev
 - Manual product creation is supported from the admin panel.
 - Blog and homepage banners/offers are included in the ecommerce schema.
 - The category sidebar and top search experience are shared across public shopping pages.
+- Advanced shopping provider, TMAPI, taxonomy, and search verification notes are in `ADVANCED_README.md`.
+- Homepage visual menu tiles live in the new `homepage_visual_menu_items` table and can be edited from the admin panel.
