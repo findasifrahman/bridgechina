@@ -2,179 +2,112 @@
   <div class="min-h-screen bg-[#eef3f9] text-[12px] text-slate-700">
     <div :class="layoutClass" class="grid min-h-screen">
       <main class="min-w-0">
-        <section class="relative overflow-hidden border-b border-slate-200 bg-white">
+        <!-- Currency & language strip (right-aligned) -->
+        <div class="flex items-center justify-end gap-1.5 border-b border-slate-200/70 bg-white/60 px-4 py-1.5 backdrop-blur-sm">
+          <button
+            v-for="curr in ['BDT', 'CNY', 'USD'] as const"
+            :key="curr"
+            type="button"
+            @click="selectedCurrency = curr"
+            :class="[
+              'rounded-full border px-3 py-1 text-[10px] font-semibold transition-all',
+              selectedCurrency === curr
+                ? 'border-rose-600 bg-rose-600 text-white'
+                : 'border-slate-200 bg-white text-slate-700 hover:border-rose-200 hover:text-rose-600'
+            ]"
+          >{{ curr }}</button>
+          <span class="mx-1 h-3.5 w-px bg-slate-300" />
+          <button
+            type="button"
+            @click="selectedLanguage = 'zh'"
+            :class="[
+              'rounded-full border px-3 py-1 text-[10px] font-semibold transition-all',
+              selectedLanguage === 'zh'
+                ? 'border-rose-600 bg-rose-600 text-white'
+                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+            ]"
+          >中文</button>
+          <button
+            type="button"
+            @click="selectedLanguage = 'en'"
+            :class="[
+              'rounded-full border px-3 py-1 text-[10px] font-semibold transition-all',
+              selectedLanguage === 'en'
+                ? 'border-rose-600 bg-rose-600 text-white'
+                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+            ]"
+          >EN</button>
+        </div>
 
-          <div class="relative grid items-start lg:grid-cols-[minmax(0,1.22fr)_minmax(0,0.88fr)]">
-            <div class="px-4 py-3 sm:px-5 lg:px-6 lg:py-3">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-semibold text-rose-600">Premium shopping</span>
-                <span class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold text-slate-600">Factory direct</span>
-                <span class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold text-slate-600">Bangladesh support</span>
-              </div>
+        <!-- Full-width hero carousel -->
+        <section class="group relative overflow-hidden bg-slate-900">
+          <!-- Slide image -->
+          <div class="relative h-[200px] sm:h-[260px] md:h-[320px] lg:h-[360px]">
+            <img
+              :key="currentHeroSlide.key"
+              :src="currentHeroSlide.image"
+              :alt="currentHeroSlide.title"
+              class="h-full w-full object-cover transition-opacity duration-500"
+            />
+            <!-- Gradient overlay -->
+            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
-              <div class="mt-3 max-w-3xl">
-                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-600">ChinaBuyBD Marketplace</p>
-                <p class="mt-2 max-w-5xl text-[12px] leading-5 text-slate-600 sm:text-[13px]">
-                  Search by product name or image, compare price, add cart and shipping address , upload payment document, Recieve product and pay shipment fee once reached to your destination.
-                </p>
-              </div>
-
-              <div class="mt-4">
-                <div class="flex flex-col gap-3 xl:flex-row xl:items-center">
-                  <div class="flex-1">
-                    <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="handleFileSelect" />
-
-                    <div class="flex h-12 items-center rounded-full border border-slate-200 bg-white/96 shadow-[0_10px_24px_rgba(15,23,42,0.06)] transition-shadow focus-within:border-teal-300 focus-within:shadow-[0_12px_30px_rgba(13,148,136,0.14)]">
-                      <span class="pl-4 text-slate-400">
-                        <Search class="h-4 w-4" />
-                      </span>
-                      <input
-                        v-model="searchQuery"
-                        :placeholder="selectedImage ? 'Image selected - press Search' : 'Search products, factories, or keywords...'"
-                        class="w-full bg-transparent px-3 text-[12px] font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none"
-                        :disabled="!!selectedImage"
-                        @keyup.enter="handleUnifiedSearch"
-                      />
-                      <button
-                        type="button"
-                        @click.stop="fileInput?.click()"
-                        class="mr-1 inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-700"
-                        :title="selectedImage ? 'Change image' : 'Search by image'"
-                      >
-                        <Camera class="h-4 w-4" />
-                      </button>
-                    </div>
-
-              <div v-if="selectedImage" class="mt-3 flex items-center gap-3 rounded-2xl border border-rose-100 bg-rose-50/70 px-3 py-2">
-                      <img :src="imagePreview" alt="Preview" class="h-11 w-11 rounded-xl object-cover" />
-                      <div class="min-w-0 flex-1">
-                        <p class="truncate text-[12px] font-semibold text-slate-900">{{ selectedImage.name }}</p>
-                        <p class="text-[10px] text-slate-500">Image search ready</p>
-                      </div>
-                      <button type="button" class="rounded-full p-2 text-slate-500 hover:bg-white hover:text-rose-600" @click="clearImage">
-                        <X class="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div class="flex items-center gap-2">
-                    <button
-                      type="button"
-                      class="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-rose-600 px-5 text-[12px] font-semibold text-white shadow-[0_12px_30px_rgba(225,29,72,0.2)] transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-                      @click="handleUnifiedSearch"
-                      :disabled="!searchQuery.trim() && !selectedImage"
-                    >
-                      <Search class="h-4 w-4" />
-                      Search
-                    </button>
-                    <button
-                      type="button"
-                      class="inline-flex h-12 items-center justify-center rounded-full border border-slate-200 bg-white px-5 text-[12px] font-semibold text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50"
-                      @click="clearSearch"
-                    >
-                      Clear
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="mt-4 flex flex-wrap items-center gap-2">
-                <button
-                  v-for="curr in ['BDT', 'CNY', 'USD'] as const"
-                  :key="curr"
-                  type="button"
-                  @click="selectedCurrency = curr"
-                  :class="[
-                    'rounded-full border px-4 py-2 text-[11px] font-semibold transition-all',
-                    selectedCurrency === curr
-                      ? 'border-rose-600 bg-rose-600 text-white shadow-[0_8px_22px_rgba(225,29,72,0.18)]'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-rose-200 hover:text-rose-700'
-                  ]"
-                >
-                  {{ curr }}
-                </button>
-                <button
-                  type="button"
-                  @click="selectedLanguage = 'zh'"
-                  :class="[
-                    'rounded-full border px-4 py-2 text-[11px] font-semibold transition-all',
-                    selectedLanguage === 'zh'
-                      ? 'border-rose-600 bg-rose-600 text-white'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                  ]"
-                >
-                  中文
-                </button>
-                <button
-                  type="button"
-                  @click="selectedLanguage = 'en'"
-                  :class="[
-                    'rounded-full border px-4 py-2 text-[11px] font-semibold transition-all',
-                    selectedLanguage === 'en'
-                      ? 'border-rose-600 bg-rose-600 text-white'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                  ]"
-                >
-                  English
-                </button>
-                <span class="ml-1 rounded-full bg-slate-50 px-3 py-2 text-[11px] text-slate-500">Fast quoting</span>
-                <span class="rounded-full bg-slate-50 px-3 py-2 text-[11px] text-slate-500">Safe sourcing</span>
-                <span class="rounded-full bg-slate-50 px-3 py-2 text-[11px] text-slate-500">Agent assisted</span>
-              </div>
-
+            <!-- Text overlay (bottom-left) -->
+            <div class="absolute bottom-0 left-0 right-0 px-5 pb-5 pt-10 sm:px-8 sm:pb-7">
+              <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-300">ChinaBuyBD</p>
+              <h2 class="mt-1 text-[20px] font-black tracking-tight text-white sm:text-[26px]">{{ currentHeroSlide.title }}</h2>
+              <p v-if="currentHeroSlide.subtitle" class="mt-1 line-clamp-1 text-[12px] text-white/70">{{ currentHeroSlide.subtitle }}</p>
+              <button
+                type="button"
+                class="mt-3 inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-4 py-2 text-[12px] font-semibold text-white shadow-[0_8px_22px_rgba(225,29,72,0.30)] transition-colors hover:bg-rose-700"
+                @click="openBannerModal(currentHeroSlide)"
+              >
+                {{ currentHeroSlide.ctaText || 'View details' }}
+                <ArrowRight class="h-3.5 w-3.5" />
+              </button>
             </div>
 
-            <div class="relative hidden overflow-hidden border-l border-slate-100 px-5 py-3 lg:block">
-              <div class="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(13,148,136,0.12),transparent_32%),radial-gradient(circle_at_85%_18%,rgba(15,23,42,0.08),transparent_28%),radial-gradient(circle_at_80%_80%,rgba(34,197,94,0.08),transparent_26%)]" />
-              <div class="relative flex flex-col gap-4">
-                <div
-                  class="rounded-[30px] border border-white/80 bg-white/78 p-4 shadow-[0_16px_36px_rgba(15,23,42,0.08)] backdrop-blur"
-                  role="button"
-                  tabindex="0"
-                  @click="openBannerModal(currentHeroSlide)"
-                  @keyup.enter="openBannerModal(currentHeroSlide)"
-                >
-                  <img :src="currentHeroSlide.image" :alt="currentHeroSlide.title" class="h-32 w-full rounded-[24px] object-cover opacity-90" />
-                  <div class="mt-3 flex items-center justify-between">
-                    <div>
-                      <p class="mt-1 text-[14px] font-black tracking-tight text-slate-900">{{ currentHeroSlide.title }}</p>
-                      <p v-if="currentHeroSlide.subtitle" class="mt-1 line-clamp-2 text-[11px] text-slate-500">{{ currentHeroSlide.subtitle }}</p>
-                    </div>
-                    <div class="flex flex-col items-end gap-2">
-                      <button
-                        type="button"
-                class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] font-semibold text-slate-600 hover:border-rose-200 hover:text-rose-700"
-                        @click.stop="openBannerModal(currentHeroSlide)"
-                      >
-                        View details
-                      </button>
-                      <button
-                        v-for="(slide, index) in carouselItems"
-                        :key="slide.key"
-                        type="button"
-                        class="h-2.5 rounded-full transition-all"
-                        :class="currentHeroSlideIndex === index ? 'w-8 bg-rose-600' : 'w-2.5 bg-slate-300'"
-                        @click.stop="currentHeroSlideIndex = index"
-                        :aria-label="`Show hero slide ${index + 1}`"
-                      />
-                    </div>
-                  </div>
-                </div>
+            <!-- Prev / Next arrows -->
+            <button
+              type="button"
+              class="absolute left-3 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white opacity-0 transition-all hover:bg-black/55 group-hover:opacity-100"
+              @click="prevSlide"
+              aria-label="Previous slide"
+            >
+              <ChevronLeft class="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              class="absolute right-3 top-1/2 -translate-y-1/2 flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white opacity-0 transition-all hover:bg-black/55 group-hover:opacity-100"
+              @click="nextSlide"
+              aria-label="Next slide"
+            >
+              <ChevronRight class="h-5 w-5" />
+            </button>
 
- 
-              </div>
+            <!-- Dots -->
+            <div class="absolute bottom-4 right-5 flex gap-1.5">
+              <button
+                v-for="(slide, index) in carouselItems"
+                :key="slide.key"
+                type="button"
+                class="rounded-full transition-all"
+                :class="currentHeroSlideIndex === index ? 'h-2.5 w-8 bg-rose-500' : 'h-2.5 w-2.5 bg-white/45 hover:bg-white/70'"
+                @click="currentHeroSlideIndex = index"
+                :aria-label="`Slide ${index + 1}`"
+              />
             </div>
           </div>
         </section>
 
-        <section class="px-2 pt-4 sm:px-3 lg:px-0 lg:py-0">
-              <div v-if="displayProducts.length > 0" class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)] mt-6 sm:p-5">
+        <section class="px-3 pt-4 sm:px-4">
+              <div v-if="displayProducts.length > 0" class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5">
                 <div class="flex items-center justify-between gap-3">
                   <div>
-                    <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-400">Product grid</p>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-600">Product grid</p>
                     <h3 class="mt-1 text-[15px] font-black tracking-tight text-slate-950">Hot products</h3>
                   </div>
-                  <span class="rounded-full bg-slate-50 px-3 py-1 text-[10px] font-semibold text-slate-600">
+                  <span class="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-semibold text-rose-700">
                     {{ hasSearchResults ? `${displayProducts.length} matched` : 'Live feed' }}
                   </span>
                 </div>
@@ -200,7 +133,7 @@
                     <div class="p-2.5">
                       <p class="line-clamp-2 text-[11px] font-semibold leading-4 text-slate-900">{{ item.title }}</p>
                       <div class="mt-1 flex items-center justify-between gap-2">
-                        <span class="text-[11px] font-black text-rose-500">{{ formatPrice(item.priceMin ?? item.priceMax ?? 0) }}</span>
+                        <span class="text-[11px] font-black text-rose-600">{{ formatPrice(item.priceMin ?? item.priceMax ?? 0) }}</span>
                 <span class="rounded-full bg-rose-50 px-2 py-0.5 text-[9px] font-semibold text-rose-600">MOQ {{ item.minimumOrderQty || shoppingSettings.moqRule?.minimum_product || 3 }}</span>
                       </div>
                     </div>
@@ -208,11 +141,11 @@
                 </div>
               </div>
           </section>
-        <section v-if="premiumProducts.length > 0" class="px-2 pt-4 sm:px-3 lg:px-0">
-          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)] sm:p-5">
+        <section v-if="premiumProducts.length > 0" class="px-3 pt-4 sm:px-4">
+          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5">
             <div class="flex items-start justify-between gap-4">
               <div>
-                <h2 class="mt-1 text-[17px] font-black tracking-tight text-rose-500">Premium factory products (ChinaBuyBD Commitment)</h2>
+                <h2 class="mt-1 text-[17px] font-black tracking-tight text-rose-700">Premium factory products (ChinaBuyBD Commitment)</h2>
               </div>
               <span class="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-semibold text-rose-600">Top 4 highlighted</span>
             </div>
@@ -239,7 +172,7 @@
                 <div class="p-3">
                   <p class="line-clamp-2 text-[12px] font-semibold leading-5 text-slate-900">{{ product.title }}</p>
                   <div class="mt-2 flex items-center justify-between gap-2">
-                    <span class="text-[13px] font-black text-rose-500">{{ formatPrice(product.priceMin ?? product.priceMax ?? 0) }}</span>
+                    <span class="text-[13px] font-black text-rose-600">{{ formatPrice(product.priceMin ?? product.priceMax ?? 0) }}</span>
                 <span class="rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-600">
                       MOQ {{ product.minimumOrderQty || shoppingSettings.moqRule?.minimum_product || 3 }}
                     </span>
@@ -250,8 +183,8 @@
           </div>
         </section>
 
-        <section v-if="homepageVisualMenuSections.length > 0" class="px-2 pt-4 sm:px-3 lg:px-0">
-          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)] sm:p-5">
+        <section v-if="homepageVisualMenuSections.length > 0" class="px-3 pt-4 sm:px-4">
+          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5">
             <div class="flex items-start justify-between gap-4">
 
             </div>
@@ -264,10 +197,10 @@
               >
                 <div class="flex items-center justify-between gap-3">
                   <div>
-                    <p class="text-[10px] font-bold uppercase tracking-[0.28em] text-rose-400">{{ section.sectionLabel }}</p>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.28em] text-rose-600">{{ section.sectionLabel }}</p>
                     <p class="mt-1 text-[12px] font-semibold text-slate-700">Quick search tiles</p>
                   </div>
-                  <span class="rounded-full bg-white px-3 py-1 text-[10px] font-semibold text-slate-500 shadow-sm">{{ section.items.length }} items</span>
+                  <span class="rounded-full bg-white px-3 py-1 text-[10px] font-semibold text-slate-700 shadow-sm">{{ section.items.length }} items</span>
                 </div>
 
                 <div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -291,7 +224,7 @@
                     </div>
                     <div class="p-3">
                       <p class="line-clamp-1 text-[12px] font-semibold text-slate-900">{{ item.title }}</p>
-                      <p class="mt-1 line-clamp-1 text-[11px] text-slate-500">{{ item.searchKeyword }}</p>
+                      <p class="mt-1 line-clamp-1 text-[11px] text-slate-600">{{ item.searchKeyword }}</p>
                     </div>
                   </button>
                 </div>
@@ -301,11 +234,11 @@
         </section>
 
         <!--
-        <section class="px-2 pt-4 sm:px-3 lg:px-0">
-          <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)] sm:p-5">
+        <section class="px-3 pt-4 sm:px-4">
+          <div class="rounded-[28px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5">
             <div class="flex items-center justify-between gap-4">
               <div>
-                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-400">How it works</p>
+                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-600">How it works</p>
                 <h2 class="mt-1 text-[17px] font-black tracking-tight text-rose-600">Four steps from search to shipment</h2>
               </div>
               <span class="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-semibold text-rose-600">B2B service from China</span>
@@ -345,11 +278,11 @@
         </section>
         -->
 
-        <section class="px-2 pt-4 sm:px-3 lg:px-0">
-          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)] sm:p-5">
+        <section class="px-3 pt-4 sm:px-4">
+          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5">
             <div class="flex items-start justify-between gap-4">
               <div>
-                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-400">Curated categories</p>
+                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-600">Curated categories</p>
                 <h2 class="mt-1 text-[17px] font-black tracking-tight text-rose-600">iPhone, bags, jewelry, and kitchenware</h2>
               </div>
               <button
@@ -370,7 +303,7 @@
               >
                 <div class="flex items-center justify-between gap-3">
                   <div>
-                    <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-rose-400">{{ section.label }}</p>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-rose-600">{{ section.label }}</p>
                     <p class="mt-1 text-[12px] font-semibold text-rose-700">Premium Items</p>
                   </div>
                   <span class="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-semibold text-rose-600">Platform backed</span>
@@ -398,30 +331,30 @@
                     <div class="p-2.5">
                       <p class="line-clamp-2 text-[11px] font-semibold leading-4 text-slate-900">{{ item.title }}</p>
                       <div class="mt-1 flex items-center justify-between gap-2">
-                        <span class="text-[11px] font-black text-rose-500">{{ formatPrice(item.priceMin ?? item.priceMax ?? 0) }}</span>
+                        <span class="text-[11px] font-black text-rose-600">{{ formatPrice(item.priceMin ?? item.priceMax ?? 0) }}</span>
                 <span class="rounded-full bg-rose-50 px-2 py-0.5 text-[9px] font-semibold text-rose-600">ID</span>
                       </div>
                     </div>
                   </button>
 
-                  <div v-if="section.items.length === 0" class="col-span-2 rounded-[18px] border border-dashed border-slate-200 bg-slate-50 p-4 text-[11px] text-slate-500">
+                  <div v-if="section.items.length === 0" class="col-span-2 rounded-[18px] border border-dashed border-slate-200 bg-slate-50 p-4 text-[11px] text-slate-600">
                     Search one of these categories to populate the saved picks: {{ section.label }}.
                   </div>
                 </div>
               </div>
             </div>
 
-            <div v-if="curatedSections.length === 0" class="mt-4 rounded-[22px] border border-slate-200 bg-slate-50 p-4 text-slate-500">
+            <div v-if="curatedSections.length === 0" class="mt-4 rounded-[22px] border border-slate-200 bg-slate-50 p-4 text-slate-600">
               We will show saved category picks once  search results are stored in the database.
             </div>
           </div>
         </section>
 
-        <section v-if="recentSearches.length > 0" class="px-2 pt-4 sm:px-3 lg:px-0">
-          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)] sm:p-5">
+        <section v-if="recentSearches.length > 0" class="px-3 pt-4 sm:px-4">
+          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5">
             <div class="flex items-center justify-between gap-3">
               <div>
-                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-400">Recent searches</p>
+                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-600">Recent searches</p>
                 <h2 class="mt-1 text-[16px] font-black tracking-tight text-rose-600">Pick up where you left off</h2>
               </div>
               <button
@@ -447,14 +380,14 @@
         </section>
       </main>
 
-      <aside class="hidden border-l border-slate-200/60 bg-[#eef3f9] lg:flex lg:flex-col">
-        <div class="no-scrollbar sticky top-[4.5rem] flex max-h-[calc(100vh-4.5rem)] flex-col gap-3 overflow-y-auto p-3">
+      <aside class="hidden h-full self-stretch border-l border-slate-200/60 bg-[#eef3f9] lg:flex lg:flex-col">
+        <div class="no-scrollbar sticky top-14 flex max-h-[calc(100vh-3.5rem)] flex-col gap-3 overflow-y-auto px-3 pb-3 pt-0">
 
           <!-- Featured deals -->
-          <div class="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
+          <div class="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_4px_16px_rgba(15,23,42,0.08)]">
             <div class="flex items-center justify-between">
               <div>
-                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-400">Offers</p>
+                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-600">Offers</p>
                 <h3 class="mt-0.5 text-[13px] font-black text-slate-950">Featured deals</h3>
               </div>
               <span class="rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-600">
@@ -462,7 +395,7 @@
               </span>
             </div>
 
-            <div v-if="displayOffers.length === 0" class="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-center text-[11px] text-slate-500">
+            <div v-if="displayOffers.length === 0" class="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-center text-[11px] text-slate-600">
               No live offers yet.
             </div>
 
@@ -486,34 +419,34 @@
                 </div>
                 <div class="px-2.5 py-2">
                   <p class="truncate text-[11px] font-semibold text-slate-900">{{ offer.title || 'Special offer' }}</p>
-                  <p class="mt-0.5 line-clamp-1 text-[10px] text-slate-500">{{ offer.description || 'Tap to view details.' }}</p>
+                  <p class="mt-0.5 line-clamp-1 text-[10px] text-slate-600">{{ offer.description || 'Tap to view details.' }}</p>
                 </div>
               </button>
             </div>
           </div>
 
           <!-- Shipping rates -->
-          <div class="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
-            <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-400">Shipping rates</p>
+          <div class="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_4px_16px_rgba(15,23,42,0.08)]">
+            <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-600">Shipping rates</p>
             <div class="mt-2.5 space-y-2">
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
                 <div class="flex items-center justify-between">
-                  <span class="text-[11px] font-semibold text-rose-500">Air shipping</span>
-                  <span class="text-[10px] text-slate-500">12–14 days</span>
+                  <span class="text-[11px] font-semibold text-rose-700">Air shipping</span>
+                  <span class="text-[10px] font-semibold text-slate-700">12–14 days</span>
                 </div>
                 <p class="mt-1 text-[10px] text-slate-600">{{ shippingRateItems.air }}</p>
               </div>
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
                 <div class="flex items-center justify-between">
-                  <span class="text-[11px] font-semibold text-rose-500">Sea shipping</span>
-                  <span class="text-[10px] text-slate-500">30–45 days</span>
+                  <span class="text-[11px] font-semibold text-rose-700">Sea shipping</span>
+                  <span class="text-[10px] font-semibold text-slate-700">30–45 days</span>
                 </div>
                 <p class="mt-1 text-[10px] text-slate-600">{{ shippingRateItems.sea }}</p>
               </div>
               <div class="rounded-xl border border-dashed border-amber-200 bg-amber-50/70 p-2.5">
                 <div class="flex items-center justify-between">
                   <span class="text-[11px] font-semibold text-slate-900">MOQ rule</span>
-                  <span class="text-[10px] text-slate-500">{{ shoppingSettings.moqRule?.minimum_product || 1 }} pcs</span>
+                  <span class="text-[10px] font-semibold text-slate-700">{{ shoppingSettings.moqRule?.minimum_product || 1 }} pcs</span>
                 </div>
                 <p class="mt-1 text-[10px] text-slate-600">
                   Min value {{ shoppingSettings.moqRule?.currency || 'BDT' }} {{ Number(shoppingSettings.moqRule?.minimum_price_threshold || 0).toLocaleString() }}
@@ -523,42 +456,42 @@
           </div>
 
           <!-- Order process -->
-          <div class="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
-            <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-500">Order process</p>
+          <div class="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_4px_16px_rgba(15,23,42,0.08)]">
+            <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-600">Order process</p>
             <div class="mt-2.5 space-y-1.5">
               <div class="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
-                <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-rose-100 text-[9px] font-black text-rose-700">1</span>
+                <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-rose-600 text-[9px] font-black text-white">1</span>
                 <div>
                   <p class="text-[11px] font-semibold text-rose-600">Choose product</p>
-                  <p class="text-[10px] text-slate-500">Search by keyword or image</p>
+                  <p class="text-[10px] text-slate-600">Search by keyword or image</p>
                 </div>
               </div>
               <div class="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
-                <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-rose-100 text-[9px] font-black text-rose-700">2</span>
+                <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-rose-600 text-[9px] font-black text-white">2</span>
                 <div>
                   <p class="text-[11px] font-semibold text-rose-600">Add to cart</p>
-                  <p class="text-[10px] text-slate-500">Select MOQ and quantity</p>
+                  <p class="text-[10px] text-slate-600">Select MOQ and quantity</p>
                 </div>
               </div>
               <div class="flex items-start gap-2 rounded-xl border border-dashed border-amber-200 bg-amber-50/70 p-2.5">
-                <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 text-[9px] font-black text-amber-700">3</span>
+                <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-white">3</span>
                 <div>
                   <p class="text-[11px] font-semibold text-slate-800">Shipping address</p>
-                  <p class="text-[10px] text-slate-500">From profile or add new</p>
+                  <p class="text-[10px] text-slate-600">From profile or add new</p>
                 </div>
               </div>
               <div class="flex items-start gap-2 rounded-xl border border-dashed border-amber-200 bg-amber-50/70 p-2.5">
-                <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 text-[9px] font-black text-amber-700">4</span>
+                <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-white">4</span>
                 <div>
                   <p class="text-[11px] font-semibold text-rose-600">Upload payment proof</p>
-                  <p class="text-[10px] text-slate-500">Bkash · Rocket · Nagad · Bank</p>
+                  <p class="text-[10px] text-slate-600">Bkash · Rocket · Nagad · Bank</p>
                 </div>
               </div>
               <div class="flex items-start gap-2 rounded-xl border border-dashed border-amber-200 bg-amber-50/70 p-2.5">
-                <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 text-[9px] font-black text-amber-700">5</span>
+                <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-white">5</span>
                 <div>
                   <p class="text-[11px] font-semibold text-rose-600">Receive in 12–14 days</p>
-                  <p class="text-[10px] text-slate-500">Air shipping, door delivery</p>
+                  <p class="text-[10px] text-slate-600">Air shipping, door delivery</p>
                 </div>
               </div>
             </div>
@@ -591,7 +524,7 @@
           />
         </div>
         <div class="space-y-2">
-          <p class="text-[10px] font-bold uppercase tracking-[0.28em] text-slate-400">Homepage banner</p>
+          <p class="text-[10px] font-bold uppercase tracking-[0.28em] text-slate-600">Homepage banner</p>
           <h3 class="text-[18px] font-black tracking-tight text-slate-950">{{ selectedBanner.title }}</h3>
           <p v-if="selectedBanner.subtitle" class="text-[12px] leading-6 text-slate-600">{{ selectedBanner.subtitle }}</p>
           <div v-if="selectedBanner.link" class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
@@ -1036,6 +969,16 @@ function handleOfferClick(offer: any) {
     return;
   }
   router.push(link);
+}
+
+function prevSlide() {
+  const count = carouselItems.value.length || heroSlides.length || 1;
+  heroSlideIndex.value = (heroSlideIndex.value - 1 + count) % count;
+}
+
+function nextSlide() {
+  const count = carouselItems.value.length || heroSlides.length || 1;
+  heroSlideIndex.value = (heroSlideIndex.value + 1) % count;
 }
 
 function openBannerModal(banner: CarouselItem | null | undefined) {
