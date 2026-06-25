@@ -7,6 +7,7 @@ import sharp from 'sharp';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 const MAX_FILE_SIZE = 3.5 * 1024 * 1024; // 3.5MB in bytes
+const TMAPI_IMAGE_MAX_BYTES = 500 * 1024;
 const THUMBNAIL_WIDTH = 300;
 const THUMBNAIL_HEIGHT = 300;
 const THUMBNAIL_QUALITY = 80;
@@ -68,6 +69,72 @@ export async function getImageDimensions(imageBuffer: Buffer): Promise<{ width: 
   return {
     width: metadata.width || 0,
     height: metadata.height || 0,
+  };
+}
+
+export async function optimizeImageForTmapiSearch(
+  imageBuffer: Buffer,
+  contentType: string,
+  maxBytes: number = TMAPI_IMAGE_MAX_BYTES,
+): Promise<{ buffer: Buffer; contentType: string }> {
+  if (imageBuffer.length <= maxBytes) {
+    return { buffer: imageBuffer, contentType };
+  }
+
+  const baseImage = sharp(imageBuffer, { failOnError: false }).rotate();
+  const metadata = await baseImage.metadata();
+  const maxOriginalDimension = Math.max(metadata.width || 0, metadata.height || 0);
+  const targetFormats: Array<'jpeg' | 'webp'> = ['jpeg', 'webp'];
+  const maxDimensions = [
+    Math.min(maxOriginalDimension || 1600, 1600),
+    1400,
+    1200,
+    1000,
+    800,
+    640,
+    480,
+  ].filter((value, index, list) => value > 0 && list.indexOf(value) === index);
+  const qualities = [82, 74, 66, 58, 50, 42, 36];
+
+  let smallestBuffer = imageBuffer;
+  let smallestType = contentType;
+
+  for (const dimension of maxDimensions) {
+    for (const quality of qualities) {
+      for (const format of targetFormats) {
+        let pipeline = sharp(imageBuffer, { failOnError: false })
+          .rotate()
+          .resize({
+            width: dimension,
+            height: dimension,
+            fit: 'inside',
+            withoutEnlargement: true,
+          });
+
+        if (format === 'jpeg') {
+          pipeline = pipeline.jpeg({ quality, mozjpeg: true });
+        } else {
+          pipeline = pipeline.webp({ quality });
+        }
+
+        const candidate = await pipeline.toBuffer();
+        if (candidate.length < smallestBuffer.length) {
+          smallestBuffer = candidate;
+          smallestType = format === 'jpeg' ? 'image/jpeg' : 'image/webp';
+        }
+        if (candidate.length <= maxBytes) {
+          return {
+            buffer: candidate,
+            contentType: format === 'jpeg' ? 'image/jpeg' : 'image/webp',
+          };
+        }
+      }
+    }
+  }
+
+  return {
+    buffer: smallestBuffer,
+    contentType: smallestType,
   };
 }
 

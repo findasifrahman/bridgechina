@@ -219,6 +219,7 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
     async (request: FastifyRequest, reply: FastifyReply) => {
       try {
         const { uploadToR2, getPublicUrl } = await import('../utils/r2.js');
+        const { optimizeImageForTmapiSearch } = await import('../utils/image-processor.js');
         const data = await request.file();
 
         if (!data) {
@@ -231,15 +232,50 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
           return;
         }
 
-        const buffer = await data.toBuffer();
-        const sanitizedFilename = data.filename?.replace(/[^a-zA-Z0-9.-]/g, '_') || 'image';
-        const key = `shopping/search/${Date.now()}-${sanitizedFilename}`;
+        const originalBuffer = await data.toBuffer();
+        const optimized = await optimizeImageForTmapiSearch(originalBuffer, data.mimetype);
+        if (optimized.buffer.length > 500 * 1024) {
+          reply.status(422).send({
+            error: 'Image is still too large after optimization. Please choose a smaller image.',
+            details: {
+              originalBytes: originalBuffer.length,
+              optimizedBytes: optimized.buffer.length,
+              maxBytes: 500 * 1024,
+            },
+          });
+          return;
+        }
 
-        await uploadToR2(key, buffer, data.mimetype);
+        const sanitizedFilename = data.filename?.replace(/[^a-zA-Z0-9.-]/g, '_') || 'image';
+        const extension = optimized.contentType === 'image/webp'
+          ? 'webp'
+          : optimized.contentType === 'image/jpeg'
+            ? 'jpg'
+            : sanitizedFilename.split('.').pop() || 'img';
+        const baseFilename = sanitizedFilename.replace(/\.[^.]+$/, '');
+        const key = `shopping/search/${Date.now()}-${baseFilename}.${extension}`;
+
+        fastify.log.info(
+          {
+            originalBytes: originalBuffer.length,
+            optimizedBytes: optimized.buffer.length,
+            originalType: data.mimetype,
+            optimizedType: optimized.contentType,
+            key,
+          },
+          '[Public Shopping Route] optimized shopping image upload',
+        );
+
+        await uploadToR2(key, optimized.buffer, optimized.contentType);
 
         return {
           key,
           publicUrl: getPublicUrl(key),
+          optimized: {
+            originalBytes: originalBuffer.length,
+            optimizedBytes: optimized.buffer.length,
+            contentType: optimized.contentType,
+          },
         };
       } catch (error: any) {
         fastify.log.error({ error, stack: error.stack }, '[Public Shopping Route] /shopping/upload-image error');

@@ -29,7 +29,7 @@
             variant="primary"
             size="sm"
             class="rounded-full border-0 bg-rose-600 px-3 text-[12px] font-semibold text-white shadow-lg hover:bg-rose-700"
-            @click.stop="$emit('add-to-cart', product)"
+            @click.stop="emitAddToCart"
           >
             <Plus class="mr-1 h-3.5 w-3.5" />
             Add
@@ -52,14 +52,14 @@
       </div>
       <div class="flex items-center justify-between gap-2">
         <span class="text-base font-black text-rose-600">
-          <span v-if="product.priceMin && product.priceMax">
-            {{ formatPrice(product.priceMin) }}{{ product.priceMin !== product.priceMax ? '–' + formatPrice(product.priceMax) : '' }}
+          <span v-if="product.priceMin !== undefined && product.priceMax !== undefined">
+            {{ formatPrice(product.priceMin) }}{{ product.priceMin !== product.priceMax ? ' - ' + formatPrice(product.priceMax) : '' }}
           </span>
-          <span v-else-if="product.priceMin">{{ formatPrice(product.priceMin) }}</span>
+          <span v-else-if="product.priceMin !== undefined">{{ formatPrice(product.priceMin) }}</span>
           <span v-else class="text-sm text-slate-500">Price on request</span>
         </span>
         <span v-if="product.vendorScore" class="rounded-full bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-700">
-          ★ {{ Number(product.vendorScore).toFixed(1) }}
+          * {{ Number(product.vendorScore).toFixed(1) }}
         </span>
       </div>
     </CardBody>
@@ -79,6 +79,12 @@ const props = defineProps<{
     priceMin?: number;
     priceMax?: number;
     currency?: string;
+    sourceCurrency?: string;
+    displayCurrency?: 'CNY' | 'BDT' | 'USD';
+    sourcePriceMin?: number;
+    sourcePriceMax?: number;
+    displayPriceMin?: number;
+    displayPriceMax?: number;
     imageUrl?: string;
     images?: string[];
     sellerName?: string;
@@ -94,9 +100,9 @@ const props = defineProps<{
     CNY_TO_BDT?: number;
     CNY_TO_USD?: number;
   };
-  }>();
+}>();
 
-defineEmits<{
+const emit = defineEmits<{
   click: [product: any];
   'request-buy': [product: any];
   'add-to-cart': [product: any];
@@ -187,6 +193,50 @@ watch(imageSrc, () => {
   imageFailed.value = false;
 });
 
+function convertPrice(price: number): number {
+  const currency = props.selectedCurrency || 'CNY';
+
+  if (currency === 'BDT') {
+    const rate = props.conversionRates?.CNY_TO_BDT || 15;
+    return price * rate;
+  }
+
+  if (currency === 'USD') {
+    const rate = props.conversionRates?.CNY_TO_USD || 0.14;
+    return price * rate;
+  }
+
+  return price;
+}
+
+function buildCartProduct(product: any) {
+  const sourcePriceMin = product?.priceMin;
+  const sourcePriceMax = product?.priceMax;
+  const displayCurrency = props.selectedCurrency || 'CNY';
+
+  const displayPriceMin = typeof sourcePriceMin === 'number' ? convertPrice(sourcePriceMin) : undefined;
+  const displayPriceMax = typeof sourcePriceMax === 'number' ? convertPrice(sourcePriceMax) : undefined;
+
+  return {
+    ...product,
+    currency: displayCurrency,
+    sourceCurrency: product?.currency || 'CNY',
+    sourcePriceMin,
+    sourcePriceMax,
+    displayCurrency,
+    displayPriceMin,
+    displayPriceMax,
+    priceMin: displayPriceMin ?? product?.priceMin,
+    priceMax: displayPriceMax ?? product?.priceMax,
+  };
+}
+
+function emitAddToCart() {
+  const payload = buildCartProduct(props.product);
+  emit('request-buy', payload);
+  emit('add-to-cart', payload);
+}
+
 function formatPrice(price: number): string {
   const currency = props.selectedCurrency || 'CNY';
 
@@ -219,3 +269,5 @@ function formatSales(count: number): string {
   return String(count);
 }
 </script>
+
+

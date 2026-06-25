@@ -10,6 +10,12 @@ export interface CartItem {
   title: string;
   priceMin?: number;
   priceMax?: number;
+  sourcePriceMin?: number;
+  sourcePriceMax?: number;
+  displayPriceMin?: number;
+  displayPriceMax?: number;
+  displayCurrency?: 'CNY' | 'BDT' | 'USD';
+  sourceCurrency?: string;
   imageUrl?: string;
   sourceUrl?: string;
   quantity: number;
@@ -26,12 +32,39 @@ export interface CartItem {
 const CART_STORAGE_KEY = 'bridgechina_shopping_cart';
 const cartItems = ref<CartItem[]>([]);
 
+function normalizeCartItem(item: any): CartItem {
+  const priceMin = typeof item?.priceMin === 'number' ? item.priceMin : undefined;
+  const priceMax = typeof item?.priceMax === 'number' ? item.priceMax : undefined;
+  const displayPriceMin = typeof item?.displayPriceMin === 'number' ? item.displayPriceMin : priceMin;
+  const displayPriceMax = typeof item?.displayPriceMax === 'number' ? item.displayPriceMax : priceMax;
+
+  return {
+    externalId: String(item?.externalId || ''),
+    title: String(item?.title || 'Product'),
+    priceMin,
+    priceMax,
+    sourcePriceMin: typeof item?.sourcePriceMin === 'number' ? item.sourcePriceMin : priceMin,
+    sourcePriceMax: typeof item?.sourcePriceMax === 'number' ? item.sourcePriceMax : priceMax,
+    displayPriceMin,
+    displayPriceMax,
+    displayCurrency: item?.displayCurrency,
+    sourceCurrency: item?.sourceCurrency,
+    imageUrl: item?.imageUrl,
+    sourceUrl: item?.sourceUrl,
+    quantity: Number(item?.quantity || 1),
+    minimumOrderQty: item?.minimumOrderQty,
+    skuDetails: Array.isArray(item?.skuDetails) ? item.skuDetails : undefined,
+    selectedShippingMethod: item?.selectedShippingMethod,
+    estimatedWeight: item?.estimatedWeight,
+  };
+}
+
 // Load cart from localStorage on init
 function loadCart() {
   try {
     const stored = localStorage.getItem(CART_STORAGE_KEY);
     if (stored) {
-      cartItems.value = JSON.parse(stored);
+      cartItems.value = JSON.parse(stored).map(normalizeCartItem);
     }
   } catch (error) {
     console.error('Failed to load cart from localStorage:', error);
@@ -63,20 +96,30 @@ export function useShoppingCart() {
     if (existingIndex >= 0) {
       // Update existing item
       cartItems.value[existingIndex].quantity += quantity;
+      cartItems.value[existingIndex].priceMin = typeof product.priceMin === 'number' ? product.priceMin : cartItems.value[existingIndex].priceMin;
+      cartItems.value[existingIndex].priceMax = typeof product.priceMax === 'number' ? product.priceMax : cartItems.value[existingIndex].priceMax;
+      cartItems.value[existingIndex].displayPriceMin = typeof product.displayPriceMin === 'number' ? product.displayPriceMin : cartItems.value[existingIndex].displayPriceMin;
+      cartItems.value[existingIndex].displayPriceMax = typeof product.displayPriceMax === 'number' ? product.displayPriceMax : cartItems.value[existingIndex].displayPriceMax;
+      cartItems.value[existingIndex].sourcePriceMin = typeof product.sourcePriceMin === 'number' ? product.sourcePriceMin : cartItems.value[existingIndex].sourcePriceMin;
+      cartItems.value[existingIndex].sourcePriceMax = typeof product.sourcePriceMax === 'number' ? product.sourcePriceMax : cartItems.value[existingIndex].sourcePriceMax;
+      cartItems.value[existingIndex].displayCurrency = product.displayCurrency || cartItems.value[existingIndex].displayCurrency;
+      cartItems.value[existingIndex].sourceCurrency = product.sourceCurrency || cartItems.value[existingIndex].sourceCurrency;
+      if (product.imageUrl) cartItems.value[existingIndex].imageUrl = product.imageUrl;
+      if (product.sourceUrl) cartItems.value[existingIndex].sourceUrl = product.sourceUrl;
       if (skuDetails) {
         cartItems.value[existingIndex].skuDetails = skuDetails;
       }
     } else {
+      const normalizedProduct = normalizeCartItem({
+        ...product,
+        quantity,
+        skuDetails,
+      });
+
       // Add new item
       cartItems.value.push({
-        externalId: product.externalId,
-        title: product.title,
-        priceMin: product.priceMin,
-        priceMax: product.priceMax,
-        imageUrl: product.imageUrl,
-        sourceUrl: product.sourceUrl,
+        ...normalizedProduct,
         quantity,
-        minimumOrderQty: product.minimumOrderQty,
         skuDetails,
       });
     }
@@ -118,7 +161,7 @@ export function useShoppingCart() {
 
   const totalPrice = computed(() => {
     return cartItems.value.reduce((sum, item) => {
-      const itemPrice = item.priceMin || 0;
+      const itemPrice = item.displayPriceMin ?? item.priceMin ?? 0;
       return sum + (itemPrice * item.quantity);
     }, 0);
   });

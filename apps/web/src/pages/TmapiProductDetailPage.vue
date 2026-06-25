@@ -1635,6 +1635,45 @@ function formatTotalAmount(): string {
   return formatPrice(getUnitPrice() * totalQuantity.value);
 }
 
+function getDisplayedUnitPrice(): number {
+  const rawPrice = getUnitPrice();
+  const curr = selectedCurrency.value;
+  if (curr === 'BDT') {
+    const rate = conversionRates.value.CNY_TO_BDT || 15;
+    return rawPrice * rate;
+  }
+  if (curr === 'USD') {
+    const rate = conversionRates.value.CNY_TO_USD || 0.14;
+    return rawPrice * rate;
+  }
+  return rawPrice;
+}
+
+function buildCartProductPayload() {
+  const sourcePriceMin = getUnitPrice();
+  const sourcePriceMax = typeof product.value?.priceMax === 'number' ? product.value.priceMax : sourcePriceMin;
+  const displayPriceMin = getDisplayedUnitPrice();
+  const displayCurrency = selectedCurrency.value;
+  const displayPriceMax = displayCurrency === 'CNY'
+    ? sourcePriceMax
+    : displayCurrency === 'BDT'
+      ? sourcePriceMax * (conversionRates.value.CNY_TO_BDT || 15)
+      : sourcePriceMax * (conversionRates.value.CNY_TO_USD || 0.14);
+
+  return {
+    ...product.value,
+    currency: displayCurrency,
+    sourceCurrency: product.value?.currency || 'CNY',
+    sourcePriceMin,
+    sourcePriceMax,
+    displayCurrency,
+    displayPriceMin,
+    displayPriceMax,
+    priceMin: displayPriceMin,
+    priceMax: displayPriceMax,
+  };
+}
+
 function selectImage(img: string) {
   selectedImage.value = proxyImageUrl(img);
   videoMode.value = 'none';
@@ -1802,7 +1841,7 @@ function buyNow() {
     }
 
     const skuDetails = buildSkuDetails();
-    addToCartComposable(product.value, totalQuantity.value, skuDetails);
+    addToCartComposable(buildCartProductPayload(), totalQuantity.value, skuDetails);
     toast.success('Added to cart');
     router.push('/shopping/cart');
   } catch (error) {
@@ -1826,7 +1865,7 @@ function addToCart() {
     }
   }
 
-  addToCartComposable(product.value, totalQuantity.value, skuDetails && skuDetails.length > 0 ? skuDetails : undefined);
+  addToCartComposable(buildCartProductPayload(), totalQuantity.value, skuDetails && skuDetails.length > 0 ? skuDetails : undefined);
   toast.success('Added to cart');
 }
 

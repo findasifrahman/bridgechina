@@ -81,10 +81,10 @@
                     <div class="min-w-0">
                       <h3 class="line-clamp-2 text-base font-bold text-slate-900">{{ item.title }}</h3>
                       <p class="mt-1 text-sm text-slate-500">
-                        <span v-if="item.priceMin && item.priceMax && item.priceMin !== item.priceMax">
-                          {{ formatPrice(item.priceMin) }} - {{ formatPrice(item.priceMax) }}
+                        <span v-if="getDisplayPriceMin(item) !== undefined && getDisplayPriceMax(item) !== undefined && getDisplayPriceMin(item) !== getDisplayPriceMax(item)">
+                          {{ formatPrice(getDisplayPriceMin(item) || 0) }} - {{ formatPrice(getDisplayPriceMax(item) || 0) }}
                         </span>
-                        <span v-else-if="item.priceMin">{{ formatPrice(item.priceMin) }}</span>
+                        <span v-else-if="getDisplayPriceMin(item) !== undefined">{{ formatPrice(getDisplayPriceMin(item) || 0) }}</span>
                         <span v-else>Price on request</span>
                       </p>
                     </div>
@@ -130,7 +130,7 @@
                     </div>
                     <div class="ml-auto text-right">
                       <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Line total</p>
-                      <p class="text-lg font-black text-teal-700">{{ formatPrice((item.priceMin || 0) * item.quantity) }}</p>
+                      <p class="text-lg font-black text-teal-700">{{ formatPrice((getDisplayPriceMin(item) || 0) * item.quantity) }}</p>
                     </div>
                   </div>
                 </div>
@@ -210,6 +210,9 @@
                 min="0"
                 step="0.01"
               />
+              <p class="rounded-2xl bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
+                The product weight is approximate. The final shipping cost will be calculated in front of the user by measuring the weight when the product arrives.
+              </p>
               <Input v-model="notes" label="Order notes" placeholder="Special instructions" />
             </div>
 
@@ -219,11 +222,11 @@
                 <span class="font-bold text-slate-900">{{ totalItems }}</span>
               </div>
               <div class="flex items-center justify-between text-sm">
-                <span class="text-slate-600">Subtotal</span>
+                <span class="text-slate-600">Product total</span>
                 <span class="font-bold text-slate-900">{{ formatPrice(subtotal) }}</span>
               </div>
               <div class="flex items-center justify-between text-sm">
-                <span class="text-slate-600">Shipping</span>
+                <span class="text-slate-600">Estimated shipping</span>
                 <span class="font-bold text-slate-900">{{ formatPrice(shippingFee || 0) }}</span>
               </div>
               <div class="border-t border-slate-200 pt-3 text-sm font-semibold text-slate-900">
@@ -379,8 +382,19 @@ const addressForm = ref({
   is_default: false,
 });
 
+function getDisplayPriceMin(item: any): number | undefined {
+  const value = item?.displayPriceMin ?? item?.priceMin ?? item?.sourcePriceMin;
+  return typeof value === 'number' ? value : undefined;
+}
+
+function getDisplayPriceMax(item: any): number | undefined {
+  const fallback = getDisplayPriceMin(item);
+  const value = item?.displayPriceMax ?? item?.priceMax ?? item?.sourcePriceMax ?? fallback;
+  return typeof value === 'number' ? value : undefined;
+}
+
 const subtotal = computed(() => {
-  return cartItems.value.reduce((sum, item) => sum + ((item.priceMin || 0) * item.quantity), 0);
+  return cartItems.value.reduce((sum, item) => sum + ((getDisplayPriceMin(item) || 0) * item.quantity), 0);
 });
 
 const orderWarnings = computed(() => {
@@ -579,8 +593,11 @@ async function submitCheckout() {
         externalId: item.externalId,
         title: item.title,
         qty: item.quantity,
-        priceMin: item.priceMin,
-        priceMax: item.priceMax,
+        priceMin: getDisplayPriceMin(item),
+        priceMax: getDisplayPriceMax(item),
+        sourcePriceMin: item.sourcePriceMin,
+        sourcePriceMax: item.sourcePriceMax,
+        displayCurrency: item.displayCurrency || 'BDT',
         imageUrl: item.imageUrl,
         sourceUrl: item.sourceUrl,
       })),
