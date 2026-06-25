@@ -250,6 +250,12 @@ import ProductCard from '@/components/shopping/ProductCard.vue';
 import { Search } from 'lucide-vue-next';
 import { useShoppingCart } from '@/composables/useShoppingCart';
 import { aggregateTopShops, formatShopSubtitle, splitSearchResultsByFocus } from '@/utils/shop';
+import {
+  cacheProductCards,
+  recordCategoryIntent,
+  recordProductIntent,
+  recordSearchIntent,
+} from '@/utils/shopping-personalization';
 
 const router = useRouter();
 const route = useRoute();
@@ -307,6 +313,7 @@ const heading = computed(() => {
 const selectedShop = computed(() => topShops.value.find((shop) => shop.vendorId && shop.vendorId === selectedVendorId.value) || null);
 
 function handleProductClick(product: any) {
+  recordProductIntent(product);
   router.push({
     path: `/shopping/item/${product.externalId}`,
     query: { language: selectedLanguage.value },
@@ -315,6 +322,7 @@ function handleProductClick(product: any) {
 
 async function openShop(shop: { vendorId?: string }) {
   if (!shop.vendorId) return;
+  recordCategoryIntent(shop.vendorId, selectedShop.value?.name || shop.vendorId, allItems.value);
   await router.push({
     name: 'shopping-shop',
     params: { vendorId: shop.vendorId },
@@ -354,6 +362,13 @@ async function runSearch() {
     if (requestId !== searchRequestId) return;
     localItems.value = Array.isArray(response.data?.localItems) ? response.data.localItems : [];
     otapiItems.value = Array.isArray(response.data?.otapiItems) ? response.data.otapiItems : [];
+    cacheProductCards(allItems.value);
+    if (searchQuery.value.trim()) {
+      recordSearchIntent(searchQuery.value.trim(), allItems.value);
+    }
+    if (selectedCategory.value) {
+      recordCategoryIntent(selectedCategory.value, selectedCategory.value, allItems.value);
+    }
     searchTrace.value = response.data?.searchTrace || null;
     totalPages.value = Number(response.data?.totalPages || response.data?.pageSize ? Math.ceil(Number(response.data?.totalCount || otapiItems.value.length || 0) / pageSize.value) : 1) || 1;
     totalCount.value = Number(response.data?.totalCount || localItems.value.length + otapiItems.value.length || 0);

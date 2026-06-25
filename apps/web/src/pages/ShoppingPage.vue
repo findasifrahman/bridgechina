@@ -143,6 +143,36 @@
                 </div>
               </div>
           </section>
+        <section v-if="youMayLikeProducts.length > 0" class="px-3 pt-4 sm:px-4">
+          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h2 class="text-[17px] font-black tracking-tight text-slate-900">You may like</h2>
+              </div>
+              <span class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">Based on your recent choices</span>
+            </div>
+            <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+              <button
+                v-for="item in youMayLikeProducts.slice(0, 12)"
+                :key="`like-${item.externalId}`"
+                type="button"
+                class="overflow-hidden rounded-[18px] border border-slate-200 bg-white text-left shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-transform hover:-translate-y-0.5"
+                @click="handleProductClick(item)"
+              >
+                <div class="aspect-square bg-slate-100">
+                  <img v-if="item.imageUrl" :src="proxyImageUrl(item.imageUrl)" :alt="item.title" class="h-full w-full object-cover" />
+                  <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
+                    <Package class="h-6 w-6" />
+                  </div>
+                </div>
+                <div class="p-2.5">
+                  <p class="line-clamp-2 text-[11px] font-semibold leading-4 text-slate-900">{{ item.title }}</p>
+                  <p class="mt-1 text-[11px] font-black text-rose-600">{{ formatPrice(item.priceMin ?? item.priceMax ?? 0) }}</p>
+                </div>
+              </button>
+            </div>
+          </div>
+        </section>
         <section v-if="premiumProducts.length > 0" class="px-3 pt-4 sm:px-4">
           <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5">
             <div class="flex items-start justify-between gap-4">
@@ -659,6 +689,14 @@ import {
 } from 'lucide-vue-next';
 import { EmptyState } from '@bridgechina/ui';
 import ProductCard from '@/components/shopping/ProductCard.vue';
+import {
+  cacheProductCards,
+  getYouMayLikeProducts,
+  recordCategoryIntent,
+  recordMenuIntent,
+  recordProductIntent,
+  recordSearchIntent,
+} from '@/utils/shopping-personalization';
 
 type HeroSlide = {
   key: string;
@@ -755,6 +793,7 @@ const recentSearches = ref<string[]>([]);
 const premiumProducts = ref<any[]>([]);
 const curatedSections = ref<Array<{ slug: string; label: string; items: any[] }>>([]);
 const homepageVisualMenuSections = ref<Array<{ sectionKey: string; sectionLabel: string; items: any[] }>>([]);
+const youMayLikeProducts = ref<any[]>([]);
 const showBannerModal = ref(false);
 const selectedBanner = ref<any>(null);
 const shoppingSettings = ref<any>({});
@@ -971,6 +1010,8 @@ function selectAllCategories() {
 }
 
 function handleCategorySelect(slug: string) {
+  recordCategoryIntent(slug);
+  refreshYouMayLike();
   router.push({ name: 'shopping-browse', query: { category: slug, language: selectedLanguage.value } });
 }
 
@@ -981,6 +1022,8 @@ function toggleSidebarCategory(slug: string) {
 function handleRecentSearchClick(keyword: string) {
   searchQuery.value = keyword;
   currentPage.value = 1;
+  recordSearchIntent(keyword);
+  refreshYouMayLike();
   handleKeywordSearch();
 }
 
@@ -989,6 +1032,9 @@ async function handleUnifiedSearch() {
   const keyword = searchQuery.value.trim();
   if (keyword) query.q = keyword;
   if (selectedCategory.value) query.category = selectedCategory.value;
+  if (keyword) recordSearchIntent(keyword, displayProducts.value);
+  if (selectedCategory.value) recordCategoryIntent(selectedCategory.value, selectedCategory.value, displayProducts.value);
+  refreshYouMayLike();
   query.language = selectedLanguage.value;
   if (selectedImage.value) {
     const key = `shopping-image-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -1032,6 +1078,8 @@ function clearSearch() {
 function handleProductClick(product: any) {
   const externalId = product.externalId || product.external_id || product.id;
   if (!externalId) return;
+  recordProductIntent(product);
+  refreshYouMayLike();
   router.push({
     path: `/shopping/item/${externalId}`,
     query: { language: selectedLanguage.value },
@@ -1093,6 +1141,8 @@ async function loadHotItems() {
     if (selectedCategory.value) params.category = selectedCategory.value;
     const response = await axios.get('/api/public/shopping/hot', { params });
     hotItems.value = Array.isArray(response.data) ? response.data : [];
+    cacheProductCards(hotItems.value);
+    refreshYouMayLike();
   } catch (error) {
     console.error('[ShoppingPage] Failed to load hot items:', error);
     hotItems.value = [];
@@ -1105,6 +1155,8 @@ async function loadCuratedSections() {
   try {
     const response = await axios.get('/api/public/shopping/home-curated');
     curatedSections.value = Array.isArray(response.data) ? response.data : [];
+    cacheProductCards(curatedSections.value.flatMap((section) => section.items || []));
+    refreshYouMayLike();
   } catch (error) {
     console.error('[ShoppingPage] Failed to load curated sections:', error);
     curatedSections.value = [];
@@ -1147,6 +1199,8 @@ async function loadPremiumProducts() {
       params: { limit: 4 },
     });
     premiumProducts.value = Array.isArray(response.data) ? response.data.slice(0, 4) : [];
+    cacheProductCards(premiumProducts.value);
+    refreshYouMayLike();
   } catch (error) {
     console.error('Failed to load premium products:', error);
     premiumProducts.value = [];
@@ -1182,10 +1236,16 @@ async function loadConversionRates() {
 function handleVisualMenuClick(item: any) {
   const keyword = String(item?.searchKeyword || item?.search_keyword || item?.title || '').trim();
   if (!keyword) return;
+  recordMenuIntent(keyword, item?.title || keyword);
+  refreshYouMayLike();
   router.push({
     path: '/shopping/browse',
     query: { q: keyword, language: 'en' },
   });
+}
+
+function refreshYouMayLike() {
+  youMayLikeProducts.value = getYouMayLikeProducts(12);
 }
 
 onMounted(() => {
@@ -1204,6 +1264,7 @@ onMounted(() => {
   loadShopSettings();
   loadRecentSearches();
   loadConversionRates();
+  refreshYouMayLike();
 });
 
 onBeforeUnmount(() => {

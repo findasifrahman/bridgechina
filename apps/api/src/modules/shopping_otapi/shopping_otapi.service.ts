@@ -1372,7 +1372,14 @@ export async function getItemDetail(externalId: string, language: string = 'en')
     .catch(() => null);
 
   if (cached?.raw_json) {
-    const normalized = await applyMarkupToDetail(normalizeOTAPIProductDetail(cached.raw_json as any));
+    const cachedRaw = cached.raw_json as any;
+    if (cachedRaw?.__detailCacheVersion && cachedRaw?.normalized) {
+      const normalized = await applyMarkupToDetail(cachedRaw.normalized as any);
+      if (isUsableDetail(normalized)) {
+        return normalized;
+      }
+    }
+    const normalized = await applyMarkupToDetail(normalizeOTAPIProductDetail(cachedRaw?.itemData || cachedRaw, cachedRaw?.descriptionData));
     if (isUsableDetail(normalized)) {
       return normalized;
     }
@@ -1458,7 +1465,12 @@ export async function getItemDetail(externalId: string, language: string = 'en')
       priceMax: merged.priceMax,
       images: merged.images,
       sourceUrl: merged.sourceUrl,
-      rawJson: itemData as any,
+      rawJson: {
+        __detailCacheVersion: 1,
+        itemData,
+        descriptionData,
+        normalized: merged,
+      } as any,
     });
   }
 

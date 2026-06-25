@@ -408,6 +408,7 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
 
   fastify.get('/shopping/search', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
+      reply.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=1800');
       const query = searchByKeywordSchema.parse(request.query);
       const searchContext = buildShoppingSearchContext(query.keyword, query.category);
       let categoryKeyword: string | undefined;
@@ -642,6 +643,7 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get('/shopping/item/:externalId', async (request: FastifyRequest, reply: FastifyReply) => {
+    reply.header('Cache-Control', 'public, max-age=900, stale-while-revalidate=86400');
     const { externalId } = request.params as { externalId: string };
     const query = request.query as { language?: string };
     const language = query.language === 'en' ? 'en' : 'zh';

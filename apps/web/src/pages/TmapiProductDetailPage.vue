@@ -1015,6 +1015,12 @@ import { useWhatsApp } from '@/composables/useWhatsApp';
 import { useShoppingCart } from '@/composables/useShoppingCart';
 import ShippingCard from '@/components/shopping/ShippingCard.vue';
 import { extractShopIdentity } from '@/utils/shop';
+import {
+  cacheProductCards,
+  readCachedProductDetail,
+  recordProductIntent,
+  writeCachedProductDetail,
+} from '@/utils/shopping-personalization';
 
 const route = useRoute();
 const router = useRouter();
@@ -1758,6 +1764,7 @@ function markBrokenImage(img: string | null | undefined) {
 }
 
 function handleProductClick(item: any) {
+  recordProductIntent(item);
   router.push({ path: `/shopping/item/${item.externalId}`, query: { language: selectedLanguage.value } });
 }
 
@@ -1794,12 +1801,14 @@ async function loadSimilarProducts() {
           ? response.data.items
           : [];
       similarProducts.value = products.filter((p: any) => p.externalId !== product.value?.externalId).slice(0, 8);
+      cacheProductCards(similarProducts.value);
       return;
     }
 
     const response = await axios.get('/api/public/shopping/hot', { params: { page: 1, pageSize: 5 } });
     const products = Array.isArray(response.data) ? response.data : [];
     similarProducts.value = products.filter((p: any) => p.externalId !== product.value?.externalId).slice(0, 8);
+    cacheProductCards(similarProducts.value);
   } catch (error) {
     console.error('Failed to load similar products:', error);
     similarProducts.value = [];
@@ -1828,8 +1837,18 @@ async function loadProduct() {
     activeTab.value = 'description';
     videoMode.value = 'none';
     selectedImage.value = null;
-    const response = await axios.get(`/api/public/shopping/item/${externalId}`, { params: { language } });
-    product.value = response.data;
+    const cachedDetail = readCachedProductDetail(externalId, language);
+    if (cachedDetail) {
+      product.value = cachedDetail;
+      recordProductIntent(cachedDetail);
+      loading.value = false;
+    }
+    const response = cachedDetail ? null : await axios.get(`/api/public/shopping/item/${externalId}`, { params: { language } });
+    if (response) {
+      product.value = response.data;
+      writeCachedProductDetail(externalId, language, response.data);
+      recordProductIntent(response.data);
+    }
     brokenGalleryImages.value = [];
     await nextTick();
 
