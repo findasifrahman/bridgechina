@@ -29,6 +29,16 @@ import {
 } from './search.synonyms.js';
 const SOURCE = 'tmapi_1688';
 const MENU_CACHE_TTL_MINUTES = 60 * 24 * 7;
+
+// Singleflight: collapse concurrent identical TMAPI requests into one
+const _inFlight = new Map<string, Promise<any>>();
+function singleflight<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const existing = _inFlight.get(key);
+  if (existing) return existing as Promise<T>;
+  const promise = fn().finally(() => _inFlight.delete(key));
+  _inFlight.set(key, promise);
+  return promise;
+}
 const CURATED_CATEGORY_DEFS = [
   { slug: 'phone-accessories', label: 'Mobile accessories', keywords: ['mobile accessories', 'phone accessories', 'phone cover', 'phone charger', 'phone glass', 'power bank'] },
   { slug: 'bags', label: 'Bags', keywords: ['bag', 'bags', 'handbag', 'backpack', 'tote', 'wallet', 'suitcase'] },
@@ -821,6 +831,8 @@ function normalizeTmapiShopInfo(raw: any, vendorId: string) {
   };
 }
 
+const VENDOR_CACHE_TTL_MINUTES = 60 * 24; // 24 hours for vendor info
+
 export async function searchByVendorId(
   vendorId: string,
   opts?: {
@@ -841,70 +853,80 @@ export async function searchByVendorId(
     return { items: [], totalCount: 0, page, pageSize, totalPages: 0, hasNextPage: false };
   }
 
-  try {
-    const response = await tmapiClient.getShopItemsByMemberId(safeVendorId, {
-      page,
-      pageSize,
-      sort,
-    });
-    const rawItems = response.data?.items || response.items || [];
-    let normalized = normalizeProductCards(rawItems);
-
-    if (keyword) {
-      normalized = normalized.filter((item) => {
-        const haystack = [
-          item.title,
-          item.titleOrigin,
-          item.sellerName,
-          item.shopName,
-        ].join(' ').toLowerCase();
-        return haystack.includes(keyword);
-      });
-    }
-
-    const totalCount = keyword ? normalized.length : Number(response.data?.total_count || normalized.length);
-    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-    return {
-      items: normalized,
-      totalCount,
-      page,
-      pageSize,
-      totalPages,
-      hasNextPage: Boolean(response.data?.has_next_page ?? page < totalPages),
-    };
-  } catch (error: any) {
-    console.warn('[Shopping Service] TMAPI vendor search failed, returning empty results:', {
-      vendorId: safeVendorId,
-      page,
-      pageSize,
-      sort,
-      message: error.message,
-    });
-    return { items: [], totalCount: 0, page, pageSize, totalPages: 0, hasNextPage: false };
+  // Check search cache for vendor product listings
+  const vendorCacheKey = generateCacheKey('vendor_products', { vendorId: safeVendorId, page, pageSize, sort, keyword });
+  const cachedVendorSearch = await getCachedSearch(SOURCE, vendorCacheKey);
+  if (cachedVendorSearch) {
+    return cachedVendorSearch as SearchResult;
   }
+
+  return singleflight(`vendor:${safeVendorId}:${page}:${sort}`, async () => {
+    try {
+      const response = await tmapiClient.getShopItemsByMemberId(safeVendorId, { page, pageSize, sort });
+      const rawItems = response.data?.items || response.items || [];
+      let normalized = normalizeProductCards(rawItems);
+
+      if (keyword) {
+        normalized = normalized.filter((item) => {
+          const haystack = [item.title, item.titleOrigin, item.sellerName, item.shopName].join(' ').toLowerCase();
+          return haystack.includes(keyword);
+        });
+      }
+
+      const totalCount = keyword ? normalized.length : Number(response.data?.total_count || normalized.length);
+      const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+      const result: SearchResult = {
+        items: normalized,
+        totalCount,
+        page,
+        pageSize,
+        totalPages,
+        hasNextPage: Boolean(response.data?.has_next_page ?? page < totalPages),
+      };
+      // Cache vendor product listings for 24h
+      setCachedSearch(SOURCE, vendorCacheKey, { vendorId: safeVendorId, page, pageSize, sort, keyword }, result, VENDOR_CACHE_TTL_MINUTES).catch(() => {});
+      return result;
+    } catch (error: any) {
+      console.warn('[Shopping Service] TMAPI vendor search failed, returning empty results:', {
+        vendorId: safeVendorId, page, pageSize, sort, message: error.message,
+      });
+      return { items: [], totalCount: 0, page, pageSize, totalPages: 0, hasNextPage: false };
+    }
+  });
 }
 
 export async function getVendorInfo(vendorId: string, language: string = 'zh'): Promise<any> {
   const safeVendorId = String(vendorId || '').trim();
   if (!safeVendorId) return null;
 
-  try {
-    const response = await tmapiClient.getShopInfo(safeVendorId);
-    return normalizeTmapiShopInfo(response, safeVendorId);
-  } catch (error: any) {
-    console.warn('[Shopping Service] TMAPI shop info failed, returning minimal vendor info:', {
-      vendorId: safeVendorId,
-      language,
-      message: error.message,
-    });
-    return normalizeTmapiShopInfo({ data: { member_id: safeVendorId, shop_name: safeVendorId } }, safeVendorId);
-  }
+  // Check cache for vendor info
+  const vendorInfoCacheKey = generateCacheKey('vendor_info', { vendorId: safeVendorId });
+  const cachedInfo = await getCachedSearch(SOURCE, vendorInfoCacheKey);
+  if (cachedInfo) return cachedInfo;
+
+  return singleflight(`vendor_info:${safeVendorId}`, async () => {
+    try {
+      const response = await tmapiClient.getShopInfo(safeVendorId);
+      const info = normalizeTmapiShopInfo(response, safeVendorId);
+      setCachedSearch(SOURCE, vendorInfoCacheKey, { vendorId: safeVendorId }, info, VENDOR_CACHE_TTL_MINUTES).catch(() => {});
+      return info;
+    } catch (error: any) {
+      console.warn('[Shopping Service] TMAPI shop info failed, returning minimal vendor info:', {
+        vendorId: safeVendorId, language, message: error.message,
+      });
+      return normalizeTmapiShopInfo({ data: { member_id: safeVendorId, shop_name: safeVendorId } }, safeVendorId);
+    }
+  });
 }
 
 /**
  * Get item detail with caching - saves to ExternalCatalogItem
  */
-export async function getItemDetail(externalId: string, language: string = 'zh'): Promise<ProductDetail | null> {
+export function getItemDetail(externalId: string, language: string = 'zh'): Promise<ProductDetail | null> {
+  return singleflight(`item:${externalId}:${language}`, () => _getItemDetail(externalId, language));
+}
+
+async function _getItemDetail(externalId: string, language: string = 'zh'): Promise<ProductDetail | null> {
   // Check DB cache (ExternalCatalogItem)
   let cached;
   try {
@@ -934,60 +956,23 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
   const cachedFallback = cached ? buildCachedDetailFallback(cached) : null;
 
   if (cached && cached.raw_json && cached.expires_at > new Date()) {
-    // Try to fetch additional data for cached items
-    let description: any = null;
-    let ratings: any = null;
-    let shipping: any = null;
-    
-    try {
-      const descResponse = await tmapiClient.getItemDescription(externalId);
-      description = descResponse.data?.data || descResponse.data || null;
-    } catch (error) {
-      console.warn('[Shopping Service] Failed to fetch description for cached item:', error);
-    }
-    
-    try {
-      const ratingsResponse = await tmapiClient.getItemRatings(externalId, 1);
-      ratings = ratingsResponse.data?.data || ratingsResponse.data || null;
-    } catch (error) {
-      console.warn('[Shopping Service] Failed to fetch ratings for cached item:', error);
-    }
-    
-    try {
-      // Always include province to avoid 422 error
-      const shippingResponse = await tmapiClient.getItemShipping(externalId, {
-        province: process.env.TMAPI_DEFAULT_PROVINCE || '广东',
-      });
-      shipping = shippingResponse.data?.data || shippingResponse.data || null;
-    } catch (error: any) {
-      // Log once but don't crash - shipping is optional
-      console.warn('[Shopping Service] Failed to fetch shipping for cached item (non-critical):', {
-        message: error.message,
-        status: error.response?.status,
-      });
-    }
-    
-    const normalized = normalizeProductDetail(cached.raw_json as any, description);
-    // Use English title if available
+    // Serve description and ratings from what was stored at cache-fill time — zero TMAPI calls
+    const rawJson = cached.raw_json as any;
+    const description = rawJson._bc_description ?? null;
+    const ratings = rawJson._bc_ratings ?? null;
+
+    const normalized = normalizeProductDetail(rawJson, description);
     if (cached.title_en) {
       normalized.title = cached.title_en;
     }
-    
-    // Enhance with ratings if available
+
     if (ratings && ratings.list && ratings.list.length > 0) {
-      // Calculate average rating from reviews
       const ratingsList = ratings.list;
       const avgRating = ratingsList.reduce((sum: number, r: any) => sum + (r.rate_star || 0), 0) / ratingsList.length;
-      if (!normalized.rating && !isNaN(avgRating)) {
-        normalized.rating = avgRating;
-      }
-      if (!normalized.ratingCount && ratingsList.length) {
-        normalized.ratingCount = ratingsList.length;
-      }
+      if (!normalized.rating && !isNaN(avgRating)) normalized.rating = avgRating;
+      if (!normalized.ratingCount && ratingsList.length) normalized.ratingCount = ratingsList.length;
     }
 
-    // Add BridgeChina shipping information
-    // Rates are in CNY (RMB)
     normalized.bridgechinaShipping = {
       currency: 'CNY',
       moq_billable_kg: 3,
@@ -1068,54 +1053,28 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
     throw error;
   }
   
-  // Fetch additional data: description, ratings, shipping
-  let description: any = null;
-  let ratings: any = null;
-  let shipping: any = null;
-  
-  try {
-    const descResponse = await tmapiClient.getItemDescription(externalId);
-    description = descResponse.data?.data || descResponse.data || null;
-  } catch (error) {
-    console.warn('[Shopping Service] Failed to fetch item description:', error);
-  }
-  
-  try {
-    const ratingsResponse = await tmapiClient.getItemRatings(externalId, 1);
-    ratings = ratingsResponse.data?.data || ratingsResponse.data || null;
-  } catch (error) {
-    console.warn('[Shopping Service] Failed to fetch item ratings:', error);
-  }
-  
-  try {
-    // Always include province to avoid 422 error
-    const shippingResponse = await tmapiClient.getItemShipping(externalId, {
-      province: process.env.TMAPI_DEFAULT_PROVINCE || '广东',
-    });
-    shipping = shippingResponse.data?.data || shippingResponse.data || null;
-  } catch (error: any) {
-    // Log once but don't crash - shipping is optional
-    console.warn('[Shopping Service] Failed to fetch item shipping (non-critical):', {
-      message: error.message,
-      status: error.response?.status,
-    });
-    // Continue without shipping data
-  }
+  // Fetch description and ratings in parallel (3 calls → 2 parallel calls; shipping skipped — BridgeChina uses its own rates)
+  const [descResult, ratingsResult] = await Promise.allSettled([
+    tmapiClient.getItemDescription(externalId),
+    tmapiClient.getItemRatings(externalId, 1),
+  ]);
+
+  const description = descResult.status === 'fulfilled'
+    ? (descResult.value.data?.data || descResult.value.data || null)
+    : null;
+  const ratings = ratingsResult.status === 'fulfilled'
+    ? (ratingsResult.value.data?.data || ratingsResult.value.data || null)
+    : null;
 
   // Normalize to extract data (pass description if fetched)
   const normalized = normalizeProductDetail(itemData, description);
-  
+
   // Enhance with ratings if available
   if (ratings && ratings.list && ratings.list.length > 0) {
-    // Calculate average rating from reviews
     const ratingsList = ratings.list;
     const avgRating = ratingsList.reduce((sum: number, r: any) => sum + (r.rate_star || 0), 0) / ratingsList.length;
-    if (!normalized.rating && !isNaN(avgRating)) {
-      normalized.rating = avgRating;
-    }
-    if (!normalized.ratingCount && ratingsList.length) {
-      normalized.ratingCount = ratingsList.length;
-    }
+    if (!normalized.rating && !isNaN(avgRating)) normalized.rating = avgRating;
+    if (!normalized.ratingCount && ratingsList.length) normalized.ratingCount = ratingsList.length;
   }
 
   // Add BridgeChina shipping information (CNY / RMB)
@@ -1167,7 +1126,8 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
     ],
   };
 
-  // Save to ExternalCatalogItem cache
+  // Save to ExternalCatalogItem cache — embed description & ratings so cache-hits need zero TMAPI calls
+  const rawJsonToCache = { ...itemData, _bc_description: description ?? null, _bc_ratings: ratings ?? null };
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 1); // 24 hour TTL
 
@@ -1182,13 +1142,13 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
       create: {
         source: SOURCE,
         external_id: externalId,
-        title: normalized.title, // Chinese title
+        title: normalized.title,
         price_min: normalized.priceMin,
         price_max: normalized.priceMax,
         currency: normalized.currency,
         main_images: normalized.images ? JSON.parse(JSON.stringify(normalized.images)) : null,
         source_url: normalized.sourceUrl,
-        raw_json: itemData as any,
+        raw_json: rawJsonToCache as any,
         expires_at: expiresAt,
       },
       update: {
@@ -1197,7 +1157,7 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
         price_max: normalized.priceMax,
         main_images: normalized.images ? JSON.parse(JSON.stringify(normalized.images)) : null,
         source_url: normalized.sourceUrl,
-        raw_json: itemData as any,
+        raw_json: rawJsonToCache as any,
         expires_at: expiresAt,
         last_synced_at: new Date(),
       },
@@ -1230,7 +1190,7 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
               price_max: normalized.priceMax,
               main_images: normalized.images ? JSON.parse(JSON.stringify(normalized.images)) : null,
               source_url: normalized.sourceUrl,
-              raw_json: itemData as any,
+              raw_json: rawJsonToCache as any,
               expires_at: expiresAt,
               last_synced_at: new Date(),
             },
@@ -1246,7 +1206,7 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
               currency: normalized.currency,
               main_images: normalized.images ? JSON.parse(JSON.stringify(normalized.images)) : null,
               source_url: normalized.sourceUrl,
-              raw_json: itemData as any,
+              raw_json: rawJsonToCache as any,
               expires_at: expiresAt,
             },
           });
@@ -1274,18 +1234,18 @@ export async function getItemDetail(externalId: string, language: string = 'zh')
                 WHERE id = $10
               `, normalized.title, normalized.priceMin, normalized.priceMax,
                  normalized.images ? JSON.stringify(normalized.images) : null,
-                 normalized.sourceUrl, itemData ? JSON.stringify(itemData) : null,
+                 normalized.sourceUrl, JSON.stringify(rawJsonToCache),
                  expiresAt, new Date(), now, existingItem.id);
             } else {
               await prisma.$executeRawUnsafe(`
-                INSERT INTO external_catalog_items 
-                (id, source, external_id, title, price_min, price_max, currency, 
+                INSERT INTO external_catalog_items
+                (id, source, external_id, title, price_min, price_max, currency,
                  main_images, source_url, raw_json, expires_at, created_at, updated_at)
                 VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
               `, SOURCE, externalId, normalized.title, normalized.priceMin, normalized.priceMax,
                  normalized.currency || 'CNY',
                  normalized.images ? JSON.stringify(normalized.images) : null,
-                 normalized.sourceUrl, itemData ? JSON.stringify(itemData) : null,
+                 normalized.sourceUrl, JSON.stringify(rawJsonToCache),
                  expiresAt, now, now);
             }
           } catch (rawError: any) {

@@ -284,7 +284,9 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
     }
   );
 
-  fastify.get('/image-proxy', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/image-proxy', {
+    config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { url: urlParam } = request.query as { url?: string };
 
     if (!urlParam) {
@@ -307,7 +309,7 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
       const hostname = imageUrl.hostname.toLowerCase();
       const isAllowed = allowedDomains.some((domain) => {
         const normalized = domain.toLowerCase();
-        return hostname === normalized || hostname.endsWith(`.${normalized}`) || hostname.includes(normalized);
+        return hostname === normalized || hostname.endsWith(`.${normalized}`);
       });
 
       if (!isAllowed) {
@@ -384,7 +386,20 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
       if (typeof getCuratedHomeSections !== 'function') {
         return [];
       }
-      return await getCuratedHomeSections();
+      // Cache the entire curated response for 6 hours to avoid firing 6-18 TMAPI search calls per request
+      const CURATED_CACHE_KEY = 'system::home-curated-v1';
+      const cached = await prisma.externalSearchCache.findUnique({ where: { cache_key: CURATED_CACHE_KEY } });
+      if (cached && cached.expires_at > new Date()) {
+        return cached.results_json;
+      }
+      const result = await getCuratedHomeSections();
+      const expiresAt = new Date(Date.now() + 6 * 60 * 60 * 1000); // 6 hours
+      await prisma.externalSearchCache.upsert({
+        where: { cache_key: CURATED_CACHE_KEY },
+        create: { source: 'system', cache_key: CURATED_CACHE_KEY, query_json: {}, results_json: result as any, expires_at: expiresAt },
+        update: { results_json: result as any, expires_at: expiresAt },
+      }).catch(() => { /* non-critical */ });
+      return result;
     } catch (error: any) {
       fastify.log.error({ error, stack: error.stack, query: request.query }, '[Public Shopping Route] /shopping/home-curated error');
       reply.status(400).send({ error: error.message || 'Invalid query parameters' });

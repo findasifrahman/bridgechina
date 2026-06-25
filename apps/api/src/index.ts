@@ -9,6 +9,7 @@ import dotenv from 'dotenv';
 
 import { prisma } from './lib/prisma.js';
 import { authenticate } from './middleware/auth.js';
+import { cleanupExpiredCache } from './modules/shopping/cache.js';
 import publicRoutes from './routes/public.shopping.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/user.js';
@@ -97,6 +98,11 @@ const start = async () => {
     const port = Number(process.env.PORT) || 3000;
     await fastify.listen({ port, host: '0.0.0.0' });
     console.log(`Server listening on port ${port}`);
+
+    // Purge expired search cache rows every hour so the table doesn't grow unbounded
+    setInterval(() => {
+      cleanupExpiredCache().catch((err) => fastify.log.error({ err }, '[Cache] Cleanup failed'));
+    }, 60 * 60 * 1000);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

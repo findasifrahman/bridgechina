@@ -13,10 +13,9 @@ import https from 'node:https';
 const TMAPI_BASE_URL = (process.env.TMAPI_BASE_URL || 'https://api.tmapi.top').replace(/^http:/, 'https:');
 const TMAPI_TOKEN = process.env.TMAPI_API_16688_TOKEN;
 
-console.log('[TMAPI Client] Initialized:', {
-  baseURL: TMAPI_BASE_URL,
-  hasToken: !!TMAPI_TOKEN,
-});
+if (process.env.NODE_ENV !== 'production') {
+  console.log('[TMAPI Client] Initialized:', { baseURL: TMAPI_BASE_URL, hasToken: !!TMAPI_TOKEN });
+}
 
 if (!TMAPI_TOKEN) {
   console.warn('[TMAPI] ⚠️  WARNING: TMAPI_API_16688_TOKEN not set in environment');
@@ -39,16 +38,24 @@ class TMAPIClient {
       headers: {
         'Content-Type': 'application/json',
       },
-      // Fix SSL certificate issue for api.tmapi.top
-      httpsAgent: new https.Agent({
-        rejectUnauthorized: false, // Allow self-signed or invalid certificates
-      }),
     });
-    
-    console.log('[TMAPI Client] Axios client created:', {
-      baseURL: this.client.defaults.baseURL,
-      timeout: this.client.defaults.timeout,
+
+    // Strip apiToken from request URLs before they appear in logs
+    this.client.interceptors.request.use((axiosConfig) => {
+      if (axiosConfig.params) {
+        const { apiToken: _stripped, ...rest } = axiosConfig.params;
+        void _stripped;
+        axiosConfig.params = { apiToken: this.apiToken, ...rest };
+      }
+      return axiosConfig;
     });
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[TMAPI Client] Axios client created:', {
+        baseURL: this.client.defaults.baseURL,
+        timeout: this.client.defaults.timeout,
+      });
+    }
   }
 
   /**
