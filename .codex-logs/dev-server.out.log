@@ -6208,3 +6208,9 @@
 [WEB] [2m6:15:33 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
 [WEB] [2m6:15:57 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
 [WEB] [2m6:16:11 AM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[API] 6:40:30 AM [tsx] change in ./src\modules\shopping\shopping.service.ts Rerunning...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782348031695,"pid":32816,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
