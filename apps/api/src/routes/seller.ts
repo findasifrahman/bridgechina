@@ -86,6 +86,102 @@ export default async function sellerRoutes(fastify: FastifyInstance) {
     return { items, approved, rejected, pendingProofs, weeklySales, monthlySales };
   });
 
+  fastify.get('/potential-leads', { preHandler: auth }, async (request: FastifyRequest) => {
+    const req = request as any;
+    const query = request.query as { search?: string; page?: string; limit?: string };
+    const page = Math.max(1, parseInt(query.page || '1', 10));
+    const limit = Math.max(1, Math.min(100, parseInt(query.limit || '25', 10)));
+    const skip = (page - 1) * limit;
+    const search = query.search?.trim();
+    const searchPattern = search ? `%${search}%` : null;
+
+    const searchSql = searchPattern
+      ? Prisma.sql`
+          AND (
+            u.email ILIKE ${searchPattern}
+            OR u.phone ILIKE ${searchPattern}
+            OR cp.full_name ILIKE ${searchPattern}
+            OR ci.title_snapshot ILIKE ${searchPattern}
+          )
+        `
+      : Prisma.empty;
+
+    const baseSql = Prisma.sql`
+      WITH aggregated AS (
+        SELECT
+          c.id AS cart_id,
+          u.id AS user_id,
+          u.email,
+          u.phone,
+          cp.full_name,
+          MIN(ci.created_at) AS first_cart_item_at,
+          MAX(ci.created_at) AS last_cart_item_at,
+          COUNT(ci.id)::int AS item_count,
+          COALESCE(SUM(ci.qty), 0)::int AS total_qty,
+          COALESCE(SUM(ci.qty * ci.price_snapshot), 0)::float AS cart_value,
+          COALESCE(MAX(ci.currency_snapshot), 'BDT') AS currency,
+          jsonb_agg(
+            jsonb_build_object(
+              'id', ci.id,
+              'title', COALESCE(ci.title_snapshot, p.title),
+              'qty', ci.qty,
+              'price', ci.price_snapshot,
+              'currency', ci.currency_snapshot,
+              'imageUrl', COALESCE(ci.image_url_snapshot, ma.public_url),
+              'createdAt', ci.created_at
+            )
+            ORDER BY ci.created_at DESC
+          ) AS items
+        FROM carts c
+        JOIN users u ON u.id = c.user_id
+        JOIN cart_items ci ON ci.cart_id = c.id
+        LEFT JOIN products p ON p.id = ci.product_id
+        LEFT JOIN media_assets ma ON ma.id = p.cover_asset_id
+        LEFT JOIN customer_profiles cp ON cp.user_id = u.id
+        WHERE ci.seller_id = ${req.user.id}
+          AND ci.created_at >= NOW() - INTERVAL '1 month'
+        ${searchSql}
+        GROUP BY c.id, u.id, u.email, u.phone, cp.full_name
+      ),
+      leads AS (
+        SELECT *
+        FROM aggregated a
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM orders o
+          JOIN order_items oi ON oi.order_id = o.id
+          WHERE o.user_id = a.user_id
+            AND oi.seller_id = ${req.user.id}
+            AND o.created_at >= a.first_cart_item_at
+        )
+      )
+    `;
+
+    const [countRows, leads] = await Promise.all([
+      prisma.$queryRaw(Prisma.sql`
+        ${baseSql}
+        SELECT COUNT(*)::int AS total FROM leads
+      `) as Promise<Array<{ total: number }>>,
+      prisma.$queryRaw(Prisma.sql`
+        ${baseSql}
+        SELECT *
+        FROM leads
+        ORDER BY last_cart_item_at DESC
+        LIMIT ${limit}
+        OFFSET ${skip}
+      `) as Promise<any[]>,
+    ]);
+
+    const total = countRows[0]?.total || 0;
+    return {
+      leads,
+      total,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    };
+  });
+
   fastify.get('/orders', { preHandler: auth }, async (request: FastifyRequest) => {
     const req = request as any;
     const query = request.query as {

@@ -26,6 +26,16 @@
           <span>Orders</span>
         </router-link>
         <router-link
+          to="/seller/potential-leads"
+          class="flex items-center space-x-3 px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors"
+          active-class="bg-teal-100 text-teal-700 font-semibold border-l-4 border-teal-600 shadow-sm"
+        >
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-5.33-3.77M9 20H4v-2a4 4 0 015.33-3.77M12 12a4 4 0 100-8 4 4 0 000 8zm0 0c2.67 0 5 1.34 5 3v1H7v-1c0-1.66 2.33-3 5-3z" />
+          </svg>
+          <span>Potential Lead</span>
+        </router-link>
+        <router-link
           to="/seller/products"
           class="flex items-center space-x-3 px-3 py-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors"
           active-class="bg-teal-100 text-teal-700 font-semibold border-l-4 border-teal-600 shadow-sm"

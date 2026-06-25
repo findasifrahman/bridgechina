@@ -172,6 +172,11 @@ const router = createRouter({
           component: () => import('@/pages/admin/PaymentsPage.vue'),
         },
         {
+          path: 'potential-leads',
+          name: 'admin-potential-leads',
+          component: () => import('@/pages/admin/PotentialLeadsPage.vue'),
+        },
+        {
           path: 'products',
           redirect: '/admin/shopping',
         },
@@ -250,6 +255,11 @@ const router = createRouter({
           path: 'orders',
           name: 'seller-orders',
           component: () => import('@/pages/seller/OrdersPage.vue'),
+        },
+        {
+          path: 'potential-leads',
+          name: 'seller-potential-leads',
+          component: () => import('@/pages/seller/PotentialLeadsPage.vue'),
         },
       ],
     },
