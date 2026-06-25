@@ -3,8 +3,17 @@ import { prisma } from '../lib/prisma.js';
 import argon2 from 'argon2';
 import { registerSchema, loginSchema } from '@bridgechina/shared';
 
+const authRateLimit = {
+  max: 5,
+  timeWindow: '1 minute',
+};
+
 export default async function authRoutes(fastify: FastifyInstance) {
-  fastify.post('/register', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/register', {
+    config: {
+      rateLimit: authRateLimit,
+    },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
     const body = registerSchema.parse(request.body);
     const passwordHash = await argon2.hash(body.password);
 
@@ -71,7 +80,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
     };
   });
 
-  fastify.post('/login', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/login', {
+    config: {
+      rateLimit: authRateLimit,
+    },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
     const body = loginSchema.parse(request.body);
 
     const where = body.email

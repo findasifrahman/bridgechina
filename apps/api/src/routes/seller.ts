@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
+import { randomUUID } from 'crypto';
 
 const auth = [async (request: FastifyRequest, reply: FastifyReply) => {
   const fastify = request.server as FastifyInstance & { authenticate?: any };
@@ -16,6 +17,30 @@ const auth = [async (request: FastifyRequest, reply: FastifyReply) => {
     reply.status(403).send({ error: 'Forbidden' });
   }
 }];
+
+const slugifySku = (value: string) => value
+  .toLowerCase()
+  .trim()
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-+|-+$/g, '')
+  .slice(0, 40);
+
+async function generateUniqueProductSku(preferredSku: string | null | undefined, title: string) {
+  const base = slugifySku(preferredSku?.trim() || title || 'product') || 'product';
+  let candidate = base;
+  let attempt = 0;
+
+  while (await prisma.product.findFirst({ where: { sku: candidate }, select: { id: true } })) {
+    attempt += 1;
+    candidate = `${base}-${attempt + 1}`;
+  }
+
+  if (!candidate || candidate.length < 3) {
+    return `prod-${randomUUID().slice(0, 8)}`;
+  }
+
+  return candidate;
+}
 
 export default async function sellerRoutes(fastify: FastifyInstance) {
   fastify.get('/dashboard', { preHandler: auth }, async (request: FastifyRequest) => {
@@ -176,14 +201,11 @@ export default async function sellerRoutes(fastify: FastifyInstance) {
           ? 'pending_purchase'
           : order.status;
 
-        const nextPaymentStatus = order.payment_status === 'unsubmitted' ? 'approved' : order.payment_status;
-
-        if (nextStatus !== order.status || nextPaymentStatus !== order.payment_status) {
+        if (nextStatus !== order.status) {
           await tx.order.update({
             where: { id: order.id },
             data: {
               status: nextStatus,
-              payment_status: nextPaymentStatus,
             },
           });
         }
@@ -283,6 +305,8 @@ export default async function sellerRoutes(fastify: FastifyInstance) {
       weight_kg: z.number().optional(),
     }).parse(request.body);
 
+    const sku = await generateUniqueProductSku(body.sku, body.title);
+
     const product = await prisma.product.create({
       data: {
         seller_id: req.user.id,
@@ -292,7 +316,7 @@ export default async function sellerRoutes(fastify: FastifyInstance) {
         price: body.price,
         currency: body.currency || 'BDT',
         stock_qty: body.stock_qty ?? 0,
-        sku: body.sku || null,
+        sku,
         brand: body.brand || null,
         source_kind: 'manual',
         source_url: body.source_url || null,

@@ -265,11 +265,7 @@ const router = createRouter({
   ],
 });
 
-console.log('[Router] Router created, routes:', router.getRoutes().length);
-
 router.beforeEach(async (to, from, next) => {
-  console.log('[Router] Navigating to:', to.path, 'from:', from.path);
-  console.log('[Router] Route meta:', to.meta);
   const authStore = useAuthStore();
 
   // Check if this is a public route - check both the route and matched routes
@@ -281,7 +277,6 @@ router.beforeEach(async (to, from, next) => {
     ['login', 'register', 'forgot-password', 'contact', 'blog', 'terms', 'shopping', 'shopping-browse', 'shopping-shop', 'product-detail', 'shopping-cart', 'shopping-checkout'].includes(to.name as string);
   
   if (isPublicRoute) {
-    console.log('[Router] Public route, allowing navigation');
     next();
     return;
   }
@@ -289,11 +284,9 @@ router.beforeEach(async (to, from, next) => {
   // Only fetch user if route requires auth - don't block public routes
   if (to.meta.requiresAuth || to.meta.requiresRole) {
     if (authStore.accessToken && !authStore.user) {
-      console.log('[Router] Fetching user...');
       try {
         await authStore.fetchUser();
       } catch (error) {
-        console.log('[Router] Failed to fetch user, clearing auth');
         // Don't block navigation, just clear invalid token
         authStore.accessToken = null;
         authStore.user = null;
@@ -302,7 +295,6 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    console.log('[Router] Auth required, redirecting to login');
     next({ name: 'login', query: { redirect: to.fullPath } });
     return;
   }
@@ -313,13 +305,11 @@ router.beforeEach(async (to, from, next) => {
     const hasRole = requiredRoles.some((role) => userRoles.includes(role));
 
     if (!hasRole) {
-      console.log('[Router] Role required, redirecting to home');
       next({ name: 'home' });
       return;
     }
   }
 
-  console.log('[Router] Allowing navigation');
   next();
 });
 

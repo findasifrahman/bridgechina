@@ -61,8 +61,6 @@ const password = ref('');
 const loading = ref(false);
 
 onMounted(() => {
-  console.log('[LoginPage] Component mounted, route:', route.path);
-  console.log('[LoginPage] Component is rendering');
   // Pre-fill email/phone if provided in query
   if (route.query.email) {
     emailOrPhone.value = route.query.email as string;

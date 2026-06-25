@@ -9,6 +9,8 @@
     "lint": "pnpm --recursive lint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,vue,json,md}\"",
     "db:generate": "pnpm --filter @bridgechina/api db:generate",
+    "db:deploy": "pnpm --filter @bridgechina/api db:deploy",
+    "db:patch:snapshots": "pnpm --filter @bridgechina/api db:patch:snapshots",
     "db:migrate": "pnpm --filter @bridgechina/api db:migrate",
     "db:seed": "pnpm --filter @bridgechina/api db:seed",
     "db:studio": "pnpm --filter @bridgechina/api db:studio"

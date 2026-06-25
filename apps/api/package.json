@@ -10,6 +10,8 @@
     "postinstall": "prisma generate --schema=prisma/schema.ecommerce.prisma",
     "db:migrate": "prisma db push --schema=prisma/schema.ecommerce.prisma --force-reset",
     "db:migrate:dev": "prisma db push --schema=prisma/schema.ecommerce.prisma --force-reset",
+    "db:deploy": "prisma migrate deploy --schema=prisma/schema.ecommerce.prisma",
+    "db:patch:snapshots": "prisma db execute --schema=prisma/schema.ecommerce.prisma --file prisma/migrations/20260625121000_add_cart_order_item_snapshots/migration.sql",
     "db:push": "prisma db push --schema=prisma/schema.ecommerce.prisma",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:roles": "tsx scripts/seed-roles.ts",

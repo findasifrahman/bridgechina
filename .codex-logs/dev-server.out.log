@@ -7938,3 +7938,63 @@
 [WEB]  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @bridgechina/web@1.0.0 dev: `vite`
 [WEB] Exit status 1
 [WEB] pnpm --filter @bridgechina/web dev exited with code 1
+[API] 5:57:50 PM [tsx] change in ./src\routes\seller.ts Rerunning...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782388671788,"pid":24472,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 5:57:54 PM [tsx] change in ./src\routes\seller.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782388675921,"pid":27980,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 5:58:17 PM [tsx] change in ./src\routes\admin.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782388698490,"pid":23732,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 5:58:28 PM [tsx] change in ./src\routes\admin.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782388710222,"pid":27352,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 5:58:36 PM [tsx] change in ./src\routes\auth.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782388717375,"pid":21692,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 5:59:21 PM [tsx] change in ./src\routes\admin.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782388762448,"pid":8912,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 6:13:05 PM [tsx] unlink in ./..\..\node_modules\.pnpm\@prisma+client@5.22.0_prisma@5.22.0\node_modules\.prisma\client\default.js Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782389587443,"pid":33300,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 6:13:37 PM [tsx] unlink in ./..\..\node_modules\.pnpm\@prisma+client@5.22.0_prisma@5.22.0\node_modules\.prisma\client\default.js Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782389618351,"pid":12912,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 6:14:00 PM [tsx] unlink in ./..\..\node_modules\.pnpm\@prisma+client@5.22.0_prisma@5.22.0\node_modules\.prisma\client\index.js Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782389641489,"pid":24836,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 6:15:17 PM [tsx] unlink in ./..\..\node_modules\.pnpm\@prisma+client@5.22.0_prisma@5.22.0\node_modules\.prisma\client\index.js Rerunning...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782389718532,"pid":25092,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000

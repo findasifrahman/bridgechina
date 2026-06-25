@@ -209,51 +209,91 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       ];
     }
 
-    const [total, orders] = await Promise.all([
-      prisma.order.count({ where }),
-      prisma.order.findMany({
-        where,
+    const orderInclude = {
+      items: {
         include: {
-          items: {
-            include: {
-              product: true,
-              seller: {
-                include: { sellerProfile: true },
-              },
-            },
-          },
-          shippingAddress: true,
-          shippingUpdates: true,
-          statusEvents: true,
-          paymentProofs: {
-            include: {
-              asset: true,
-              reviewer: true,
-            },
-          },
-          user: {
-            include: {
-              customerProfile: true,
-            },
+          product: true,
+          seller: {
+            include: { sellerProfile: true },
           },
         },
+      },
+      shippingAddress: true,
+      shippingUpdates: true,
+      statusEvents: true,
+      paymentProofs: {
+        include: {
+          asset: true,
+          reviewer: true,
+        },
+      },
+      user: {
+        include: {
+          customerProfile: true,
+        },
+      },
+    };
+
+    const total = await prisma.order.count({ where });
+    let orders: any[] = [];
+    if (pendingFirst) {
+      const clauses: any[] = [];
+      if (query.status) clauses.push(Prisma.sql`o.status = ${query.status}`);
+      if (query.payment_status) clauses.push(Prisma.sql`o.payment_status = ${query.payment_status}`);
+      if (query.from) clauses.push(Prisma.sql`o.created_at >= ${new Date(query.from)}`);
+      if (query.to) clauses.push(Prisma.sql`o.created_at <= ${new Date(query.to)}`);
+      if (search) {
+        const searchPattern = `%${search}%`;
+        clauses.push(Prisma.sql`(
+          o.order_number ILIKE ${searchPattern}
+          OR o.notes ILIKE ${searchPattern}
+          OR u.email ILIKE ${searchPattern}
+          OR u.phone ILIKE ${searchPattern}
+          OR a.name ILIKE ${searchPattern}
+          OR a.city ILIKE ${searchPattern}
+        )`);
+      }
+
+      const whereSql = clauses.length
+        ? Prisma.sql`WHERE ${Prisma.join(clauses, ' AND ')}`
+        : Prisma.empty;
+      const rows = await prisma.$queryRaw(Prisma.sql`
+        SELECT o.id
+        FROM orders o
+        LEFT JOIN users u ON u.id = o.user_id
+        LEFT JOIN addresses a ON a.id = o.shipping_address_id
+        ${whereSql}
+        ORDER BY
+          CASE WHEN EXISTS (
+            SELECT 1
+            FROM order_items oi
+            WHERE oi.order_id = o.id AND oi.seller_status = 'pending_review'
+          ) THEN 0 ELSE 1 END ASC,
+          o.created_at DESC
+        OFFSET ${(page - 1) * limit}
+        LIMIT ${limit}
+      `) as Array<{ id: string }>;
+      const ids = rows.map((row) => row.id);
+      if (ids.length > 0) {
+        const fetched = await prisma.order.findMany({
+          where: { id: { in: ids } },
+          include: orderInclude,
+        });
+        const byId = new Map(fetched.map((order) => [order.id, order]));
+        orders = ids.map((id) => byId.get(id)).filter(Boolean);
+      }
+    } else {
+      orders = await prisma.order.findMany({
+        where,
+        include: orderInclude,
         orderBy: { created_at: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
-      }),
-    ]);
-
-    const sortedOrders = pendingFirst
-      ? [...orders].sort((a, b) => {
-          const aPending = a.items?.some((item: any) => item.seller_status === 'pending_review') ? 1 : 0;
-          const bPending = b.items?.some((item: any) => item.seller_status === 'pending_review') ? 1 : 0;
-          if (aPending !== bPending) return aPending - bPending;
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        })
-      : orders;
+      });
+    }
 
     return {
-      orders: sortedOrders,
+      orders,
       page,
       limit,
       total,
@@ -393,14 +433,40 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       return reply.status(409).send({ error: 'Approved payment proof cannot be rejected' });
     }
 
-    return prisma.paymentProof.update({
-      where: { id },
-      data: {
-        status: 'rejected',
-        reviewed_by: req.user.id,
-        reviewed_at: new Date(),
-        notes: body.note || proof.notes,
-      },
+    return prisma.$transaction(async (tx) => {
+      const updatedProof = await tx.paymentProof.update({
+        where: { id },
+        data: {
+          status: 'rejected',
+          reviewed_by: req.user.id,
+          reviewed_at: new Date(),
+          notes: body.note || proof.notes,
+        },
+      });
+
+      const approvedProof = await tx.paymentProof.findFirst({
+        where: {
+          order_id: proof.order_id,
+          status: 'approved',
+        },
+        select: { id: true },
+      });
+
+      if (!approvedProof) {
+        const submittedProof = await tx.paymentProof.findFirst({
+          where: {
+            order_id: proof.order_id,
+            status: 'submitted',
+          },
+          select: { id: true },
+        });
+        await tx.order.update({
+          where: { id: proof.order_id },
+          data: { payment_status: submittedProof ? 'submitted' : 'rejected' },
+        });
+      }
+
+      return updatedProof;
     });
   });
 

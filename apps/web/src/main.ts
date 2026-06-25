@@ -19,7 +19,5 @@ authStore.init().catch(() => {
   // Silently fail - user might not be logged in
 });
 
-console.log('[App] Mounting Vue app...');
 app.mount('#app');
-console.log('[App] Vue app mounted');
 

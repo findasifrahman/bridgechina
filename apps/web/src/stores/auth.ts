@@ -72,12 +72,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Initialize auth state - call this from main.ts or App.vue
   async function init() {
-    console.log('[Auth] Initializing auth store...');
     if (accessToken.value) {
-      console.log('[Auth] Token found, fetching user...');
       await fetchUser();
-    } else {
-      console.log('[Auth] No token found');
     }
   }
 
