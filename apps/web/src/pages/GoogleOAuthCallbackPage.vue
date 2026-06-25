@@ -12,6 +12,7 @@ import { onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from '@bridgechina/ui';
 import { useAuthStore } from '@/stores/auth';
+import { getApiBaseUrl } from '@/utils/api-url';
 
 const route = useRoute();
 const router = useRouter();
@@ -19,6 +20,15 @@ const toast = useToast();
 const authStore = useAuthStore();
 
 onMounted(async () => {
+  const apiBase = getApiBaseUrl();
+  const isMisroutedApiCallback = window.location.pathname.includes('/api/auth/google/callback');
+  const hasGoogleCallbackCode = new URLSearchParams(window.location.search).has('code');
+
+  if (isMisroutedApiCallback && hasGoogleCallbackCode && apiBase && apiBase !== window.location.origin) {
+    window.location.replace(`${apiBase}/api/auth/google/callback${window.location.search}`);
+    return;
+  }
+
   const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
   const token = params.get('accessToken') || String(route.query.accessToken || '');
   const redirect = params.get('redirect') || String(route.query.redirect || '/user');

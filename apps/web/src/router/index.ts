@@ -70,6 +70,12 @@ const router = createRouter({
           meta: { requiresAuth: false },
         },
         {
+          path: 'api/auth/google/callback',
+          name: 'google-oauth-callback-forward',
+          component: () => import('@/pages/GoogleOAuthCallbackPage.vue'),
+          meta: { requiresAuth: false },
+        },
+        {
           path: 'contact',
           name: 'contact',
           component: () => import('@/pages/ContactPage.vue'),
@@ -280,7 +286,7 @@ router.beforeEach(async (to, from, next) => {
     to.matched.some((record) => record.meta.requiresAuth === false) ||
     to.name === 'home' ||
     to.path === '/' ||
-    ['login', 'register', 'forgot-password', 'google-oauth-callback', 'contact', 'blog', 'terms', 'shopping', 'shopping-browse', 'shopping-shop', 'product-detail', 'shopping-cart', 'shopping-checkout'].includes(to.name as string);
+    ['login', 'register', 'forgot-password', 'google-oauth-callback', 'google-oauth-callback-forward', 'contact', 'blog', 'terms', 'shopping', 'shopping-browse', 'shopping-shop', 'product-detail', 'shopping-cart', 'shopping-checkout'].includes(to.name as string);
   
   if (isPublicRoute) {
     next();
