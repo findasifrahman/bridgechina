@@ -40,8 +40,33 @@ const passwordResetConfirmSchema = z.object({
   password: passwordSchema,
 });
 
+type GoogleProfile = {
+  sub: string;
+  email?: string;
+  email_verified?: boolean;
+  name?: string;
+};
+
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
+}
+
+function webAppBaseUrl() {
+  return (process.env.WEB_APP_URL || process.env.APP_BASE_URL || 'http://localhost:5173').replace(/\/+$/, '');
+}
+
+function apiBaseUrl(request: FastifyRequest) {
+  return (process.env.API_BASE_URL || `${request.protocol}://${request.hostname}`).replace(/\/+$/, '');
+}
+
+function googleRedirectUri(request: FastifyRequest) {
+  return process.env.GOOGLE_REDIRECT_URI || `${apiBaseUrl(request)}/api/auth/google/callback`;
+}
+
+function sanitizeRedirectPath(value: unknown) {
+  const redirect = typeof value === 'string' ? value : '/user';
+  if (!redirect.startsWith('/') || redirect.startsWith('//')) return '/user';
+  return redirect;
 }
 
 function createOtpCode() {
@@ -134,7 +159,172 @@ async function consumeValidOtp(email: string, purpose: 'auth' | 'password_reset'
   return true;
 }
 
+async function fetchGoogleProfile(request: FastifyRequest, code: string) {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    throw new Error('Google OAuth is not configured');
+  }
+
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      code,
+      grant_type: 'authorization_code',
+      redirect_uri: googleRedirectUri(request),
+    }),
+  });
+
+  if (!tokenResponse.ok) {
+    throw new Error('Failed to verify Google login');
+  }
+
+  const tokenJson = await tokenResponse.json() as { access_token?: string };
+  if (!tokenJson.access_token) {
+    throw new Error('Google login did not return an access token');
+  }
+
+  const profileResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    headers: { Authorization: `Bearer ${tokenJson.access_token}` },
+  });
+  if (!profileResponse.ok) {
+    throw new Error('Failed to read Google profile');
+  }
+
+  return profileResponse.json() as Promise<GoogleProfile>;
+}
+
+async function findOrCreateGoogleUser(profile: GoogleProfile) {
+  if (!profile.sub || !profile.email || profile.email_verified === false) {
+    throw new Error('Google account email is not verified');
+  }
+
+  const email = normalizeEmail(profile.email);
+  const oauthRows = await prisma.$queryRaw`
+    SELECT user_id
+    FROM oauth_accounts
+    WHERE provider = 'google' AND provider_account_id = ${profile.sub}
+    LIMIT 1
+  ` as Array<{ user_id: string }>;
+
+  if (oauthRows[0]?.user_id) {
+    const existing = await prisma.user.findUnique({
+      where: { id: oauthRows[0].user_id },
+      include: { roles: { include: { role: true } } },
+    });
+    if (existing) return existing;
+  }
+
+  let user = await prisma.user.findUnique({
+    where: { email },
+    include: { roles: { include: { role: true } } },
+  });
+
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        email,
+        phone: null,
+        password_hash: await argon2.hash(randomUUID()),
+        status: 'active',
+        roles: {
+          create: {
+            role: {
+              connect: { name: 'CUSTOMER' },
+            },
+          },
+        },
+        customerProfile: {
+          create: {
+            full_name: profile.name || null,
+            preferred_currency: 'BDT',
+          },
+        },
+      },
+      include: { roles: { include: { role: true } } },
+    });
+  }
+
+  await prisma.$executeRaw`
+    INSERT INTO oauth_accounts (id, user_id, provider, provider_account_id)
+    VALUES (${randomUUID()}, ${user.id}, 'google', ${profile.sub})
+    ON CONFLICT (provider, provider_account_id) DO NOTHING
+  `;
+
+  return user;
+}
+
 export default async function authRoutes(fastify: FastifyInstance) {
+  fastify.get('/google/start', {
+    config: {
+      rateLimit: authRateLimit,
+    },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      return reply.status(500).send({ error: 'Google OAuth is not configured' });
+    }
+
+    const query = request.query as { redirect?: string };
+    const state = randomUUID();
+    const redirectPath = sanitizeRedirectPath(query.redirect);
+    reply.setCookie('googleOAuthState', JSON.stringify({ state, redirectPath }), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 10 * 60,
+      path: '/api/auth/google',
+    });
+
+    const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    url.searchParams.set('client_id', process.env.GOOGLE_CLIENT_ID);
+    url.searchParams.set('redirect_uri', googleRedirectUri(request));
+    url.searchParams.set('response_type', 'code');
+    url.searchParams.set('scope', 'openid email profile');
+    url.searchParams.set('state', state);
+    url.searchParams.set('prompt', 'select_account');
+    return reply.redirect(url.toString());
+  });
+
+  fastify.get('/google/callback', async (request: FastifyRequest, reply: FastifyReply) => {
+    const query = request.query as { code?: string; state?: string; error?: string };
+    const fallback = `${webAppBaseUrl()}/login?oauth=failed`;
+    if (query.error || !query.code || !query.state) {
+      return reply.redirect(fallback);
+    }
+
+    let stored: { state?: string; redirectPath?: string } = {};
+    try {
+      stored = JSON.parse(request.cookies.googleOAuthState || '{}');
+    } catch {
+      stored = {};
+    }
+
+    if (!stored.state || stored.state !== query.state) {
+      return reply.redirect(fallback);
+    }
+
+    try {
+      const profile = await fetchGoogleProfile(request, query.code);
+      const user = await findOrCreateGoogleUser(profile);
+      if (user.status !== 'active') {
+        return reply.redirect(`${webAppBaseUrl()}/login?oauth=blocked`);
+      }
+
+      const auth = await createAuthResponse(fastify, reply, user);
+      reply.clearCookie('googleOAuthState', { path: '/api/auth/google' });
+      const callbackUrl = new URL(`${webAppBaseUrl()}/auth/google/callback`);
+      callbackUrl.hash = new URLSearchParams({
+        accessToken: auth.accessToken,
+        redirect: sanitizeRedirectPath(stored.redirectPath),
+      }).toString();
+      return reply.redirect(callbackUrl.toString());
+    } catch (error: any) {
+      request.log.error({ err: error }, '[Auth] Google OAuth failed');
+      return reply.redirect(fallback);
+    }
+  });
+
   fastify.post('/register', {
     config: {
       rateLimit: authRateLimit,

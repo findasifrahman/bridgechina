@@ -56,6 +56,13 @@ export const useAuthStore = defineStore('auth', () => {
     axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`;
   }
 
+  async function acceptOAuthAccessToken(token: string) {
+    accessToken.value = token;
+    localStorage.setItem('accessToken', token);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    await fetchUser();
+  }
+
   async function logout() {
     await axios.post('/api/auth/logout');
     user.value = null;
@@ -106,6 +113,7 @@ export const useAuthStore = defineStore('auth', () => {
     requestEmailCode,
     verifyEmailCode,
     resetPasswordWithCode,
+    acceptOAuthAccessToken,
     logout,
     fetchUser,
     refreshToken,

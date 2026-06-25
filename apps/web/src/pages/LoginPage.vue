@@ -6,6 +6,10 @@
         <h2 class="text-2xl font-bold text-center">Sign In</h2>
       </CardHeader>
       <CardBody>
+        <Button type="button" variant="ghost" full-width class="mb-4 border border-slate-200 bg-white" @click="startGoogleLogin">
+          Continue with Google
+        </Button>
+
         <div class="mb-4 grid grid-cols-2 rounded-xl border border-slate-200 bg-slate-50 p-1 text-sm font-semibold">
           <button
             type="button"
@@ -96,6 +100,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useToast } from '@bridgechina/ui';
 import { Card, CardHeader, CardBody, Input, Button } from '@bridgechina/ui';
+import { buildApiUrl } from '@/utils/api-url';
 
 const router = useRouter();
 const route = useRoute();
@@ -151,6 +156,11 @@ async function handleLogin() {
   } finally {
     loading.value = false;
   }
+}
+
+function startGoogleLogin() {
+  const redirect = String(route.query.redirect || '/user');
+  window.location.href = buildApiUrl(`/api/auth/google/start?redirect=${encodeURIComponent(redirect)}`);
 }
 
 function redirectAfterAuth() {

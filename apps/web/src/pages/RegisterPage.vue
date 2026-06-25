@@ -6,6 +6,10 @@
         <p class="text-sm text-slate-600 text-center mt-2">Sign up to get started</p>
       </CardHeader>
       <CardBody>
+        <Button type="button" variant="ghost" full-width class="mb-4 border border-slate-200 bg-white" @click="startGoogleSignup">
+          Continue with Google
+        </Button>
+
         <form @submit.prevent="handleRegister" class="space-y-4">
           <div>
             <Input
@@ -115,6 +119,7 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useToast } from '@bridgechina/ui';
 import { Card, CardHeader, CardBody, Input, Button } from '@bridgechina/ui';
+import { buildApiUrl } from '@/utils/api-url';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -165,6 +170,10 @@ const emailSignup = ref({
   email: '',
   code: '',
 });
+
+function startGoogleSignup() {
+  window.location.href = buildApiUrl('/api/auth/google/start?redirect=/user');
+}
 
 function validateEmail() {
   if (!form.value.email) {
