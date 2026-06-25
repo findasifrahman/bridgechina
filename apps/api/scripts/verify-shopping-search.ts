@@ -1,4 +1,5 @@
 import { SHOPPING_CATEGORY_TREE, type ShoppingCategorySeed } from '../src/modules/shopping/category-taxonomy.js';
+import { HOMEPAGE_VISUAL_MENU_SECTIONS } from '../src/modules/shopping/homepage-visual-menu.js';
 import {
   buildChineseShoppingQuery,
   buildShoppingSearchCandidates,
@@ -54,6 +55,17 @@ const COMMON_SEARCH_CASES: CheckCase[] = [
 
 function flattenCategories(categories: ShoppingCategorySeed[]): ShoppingCategorySeed[] {
   return categories.flatMap((category) => [category, ...flattenCategories(category.children || [])]);
+}
+
+function flattenHomepageVisualMenuSections() {
+  return HOMEPAGE_VISUAL_MENU_SECTIONS.flatMap((section) =>
+    section.items.map((item) => ({
+      sectionKey: section.section_key,
+      sectionLabel: section.section_label,
+      sectionSortOrder: section.section_sort_order,
+      ...item,
+    }))
+  );
 }
 
 function includesAny(values: string[], expected: string[]) {
@@ -146,9 +158,20 @@ async function main() {
   }
   console.log(`Checked ${categoryCases.length} menu entries from SHOPPING_CATEGORY_TREE.`);
 
+  console.log('Checking homepage visual menu patterns...');
+  const homepageVisualMenuCases = flattenHomepageVisualMenuSections().map((item) => ({
+    label: `Homepage tile: ${item.sectionLabel} / ${item.title}`,
+    keyword: item.search_keyword,
+    expectedCandidates: [item.search_keyword, item.title],
+  }));
+  for (const testCase of homepageVisualMenuCases) {
+    failures.push(...verifyDeterministicCase(testCase));
+  }
+  console.log(`Checked ${homepageVisualMenuCases.length} homepage visual menu tiles.`);
+
   if (live) {
     console.log(`Running live checks against ${baseUrl}...`);
-    const liveCases = allLiveMenuItems ? [...COMMON_SEARCH_CASES, ...categoryCases] : COMMON_SEARCH_CASES;
+    const liveCases = allLiveMenuItems ? [...COMMON_SEARCH_CASES, ...categoryCases, ...homepageVisualMenuCases] : COMMON_SEARCH_CASES;
     for (const testCase of liveCases) {
       failures.push(...await verifyLiveCase(testCase, baseUrl));
     }

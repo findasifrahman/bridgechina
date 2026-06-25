@@ -150,6 +150,7 @@ pnpm --filter @bridgechina/api verify:shopping-search -- --live --all-live-menu
 ```
 
 When adding a new menu item, the script automatically includes it in deterministic checks as long as it is added to `SHOPPING_CATEGORY_TREE`.
+Homepage visual menu tiles are also validated from the shared homepage tile seed, so new tiles can be checked the same way once they are added to the shared list.
 
 ## Homepage Visual Menu
 
@@ -173,7 +174,16 @@ The tile records store:
 - `sort_order`
 - `is_active`
 
-The homepage view renders each section as a 4-column grid on desktop and routes tile clicks into shopping search.
+The homepage view renders each section as a 6-slot grid on desktop with 4 live tiles and 2 empty placeholders, and routes tile clicks into shopping search.
+Each starter section now seeds 4 tiles by default. The current homepage set covers:
+
+- Mobile accessories
+- Jewellery
+- Bags
+- Furniture
+
+The shared seed list lives in `apps/api/src/modules/shopping/homepage-visual-menu.ts` and is reused by both the database seed and the shopping search verifier.
+Sidebar category searches are cached in the database for 7 days when they come from menu clicks, so repeated visits avoid a fresh TMAPI/OTAPI request while the cache is still warm.
 
 ## Public Shopping Endpoints
 

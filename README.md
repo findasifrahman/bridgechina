@@ -168,4 +168,6 @@ pnpm --filter @bridgechina/web dev
 - The category sidebar and top search experience are shared across public shopping pages.
 - Advanced shopping provider, TMAPI, taxonomy, and search verification notes are in `ADVANCED_README.md`.
 - Homepage visual menu tiles live in the new `homepage_visual_menu_items` table and can be edited from the admin panel.
+- The starter homepage tile set now includes 4 tiles each for Mobile accessories, Jewellery, Bags, and Furniture, with two empty grid slots kept for layout balance.
+- Menu-driven searches are cached in the database for 7 days so repeated clicks on the same sidebar submenu avoid hitting TMAPI or OTAPI when the data is still fresh.
 - In production, set `VITE_API_URL` to the backend origin, for example `https://bridgechina-production.up.railway.app`, so proxied 1688 images resolve correctly outside local dev.

@@ -23,11 +23,14 @@ import {
 } from '../shopping/search.synonyms.js';
 
 const SOURCE = 'shopping_otapi';
+const MENU_CACHE_TTL_MINUTES = 60 * 24 * 7;
 const CURATED_CATEGORY_DEFS = [
-  { slug: 'iphone', label: 'iPhone', keywords: ['iphone', 'phone', 'mobile', 'smartphone'] },
+  { slug: 'phone-accessories', label: 'Mobile accessories', keywords: ['mobile accessories', 'phone accessories', 'phone cover', 'phone charger', 'phone glass', 'power bank'] },
   { slug: 'bags', label: 'Bags', keywords: ['bag', 'bags', 'handbag', 'backpack', 'tote', 'wallet', 'suitcase'] },
-  { slug: 'jewelry', label: 'Jewelry', keywords: ['jewelry', 'jewellery', 'jwellary', 'necklace', 'ring', 'bracelet', 'earring'] },
-  { slug: 'kitchenware', label: 'Kitchenware', keywords: ['kitchenware', 'kitchen', 'cookware', 'tableware', 'utensil', 'pan', 'pot'] },
+  { slug: 'jewelry', label: 'Jewellery', keywords: ['jewelry', 'jewellery', 'jwellary', 'necklace', 'ring', 'bracelet', 'earring'] },
+  { slug: 'furniture', label: 'Furniture', keywords: ['furniture', 'sofa', 'chair', 'table', 'wardrobe', 'bookshelf', 'cabinet'] },
+  { slug: 'kitchenware', label: 'Kitchen items', keywords: ['kitchen items', 'kitchenware', 'kitchen', 'cookware', 'tableware', 'utensil', 'pot', 'pan', 'kitchen utensil', 'dish brush', 'sponge', 'loofah', 'sink rack', 'cleaning cloth'] },
+  { slug: 'watches', label: 'Kids and mens watch', keywords: ['watch', 'watches', 'kids watch', 'kid watch', 'mens watch', 'men watch', 'smart watch', 'wrist watch', 'boys watch', 'digital watch', 'sport watch', 'analog watch'] },
 ] as const;
 
 const DEBUG_OTAPI = process.env.DEBUG_OTAPI === '1' || process.env.DEBUG_OTAPI === 'true';
@@ -85,7 +88,7 @@ function resolveCuratedCategorySlug(keyword?: string, category?: string): string
 }
 
 async function persistCuratedHotItems(categorySlug: string, cards: ProductCardOTAPI[]): Promise<void> {
-  const normalized = cards.filter((card) => card?.externalId).slice(0, 2);
+  const normalized = cards.filter((card) => card?.externalId).slice(0, 6);
   if (normalized.length === 0) return;
 
   const ids = normalized.map((card) => card.externalId);
@@ -771,6 +774,38 @@ function extractSearchItems(response: any): any[] {
   return [];
 }
 
+function normalizeSearchCacheSignature(entry: any): string {
+  const queryJson = entry?.query_json;
+  let queryValue: any = queryJson;
+  if (typeof queryJson === 'string') {
+    try {
+      queryValue = JSON.parse(queryJson);
+    } catch {
+      queryValue = {};
+    }
+  }
+
+  const keyword = String(queryValue?.keyword || queryValue?.keywords || queryValue?.q || '').trim().toLowerCase();
+  const category = String(queryValue?.category || '').trim().toLowerCase();
+  return `${category || 'no-category'}::${keyword || 'no-keyword'}`;
+}
+
+function buildSearchCacheBuckets(entries: any[]): Array<{ entry: any; items: any[] }> {
+  const seen = new Set<string>();
+  const buckets: Array<{ entry: any; items: any[] }> = [];
+
+  for (const entry of entries) {
+    const signature = normalizeSearchCacheSignature(entry);
+    if (seen.has(signature)) continue;
+    const items = extractSearchItems(entry.results_json);
+    if (!Array.isArray(items) || items.length === 0) continue;
+    seen.add(signature);
+    buckets.push({ entry, items });
+  }
+
+  return buckets;
+}
+
 function extractTotalCount(response: any): number | undefined {
   const total =
     response?.Result?.Items?.Items?.TotalCount ||
@@ -1067,7 +1102,13 @@ export async function searchByKeyword(
   const paged = ranked.slice(framePosition, framePosition + pageSize);
   const curatedCategorySlug = resolveCuratedCategorySlug(searchKeyword, opts?.category);
 
-  await setCachedSearch(SOURCE, cacheKey, { keyword: searchKeyword, ...opts }, buildCachedSearchResponse(ranked));
+  await setCachedSearch(
+    SOURCE,
+    cacheKey,
+    { keyword: searchKeyword, ...opts },
+    buildCachedSearchResponse(ranked),
+    opts?.category ? MENU_CACHE_TTL_MINUTES : undefined,
+  );
 
   if (DEBUG_OTAPI) {
     console.log('[OTAPI Service] searchByKeyword response summary:', {
@@ -1284,7 +1325,13 @@ export async function searchByImage(
     return { items: [], totalCount: 0, page, pageSize, totalPages: 0, hasNextPage: false };
   }
 
-  await setCachedSearch(SOURCE, cacheKey, { imgUrl: r2PublicUrl, ...opts }, response);
+  await setCachedSearch(
+    SOURCE,
+    cacheKey,
+    { imgUrl: r2PublicUrl, ...opts },
+    response,
+    opts?.category ? MENU_CACHE_TTL_MINUTES : undefined,
+  );
 
   const items = extractSearchItems(response);
   const normalized = await applyMarkupToCards(normalizeOTAPIProductCards(items));
@@ -1585,20 +1632,27 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
         expires_at: { gt: new Date() },
       },
       orderBy: { created_at: 'desc' },
-      take: 20,
+      take: 18,
     });
 
-    for (const entry of cachedSearches) {
-      const cachedItems = extractSearchItems(entry.results_json);
-      if (!Array.isArray(cachedItems) || cachedItems.length === 0) continue;
-      const normalized = await applyMarkupToCards(normalizeOTAPIProductCards(cachedItems));
-      for (const card of normalized) {
-        if (existingIds.has(card.externalId)) continue;
+    const buckets = await Promise.all(buildSearchCacheBuckets(cachedSearches.slice(0, 6)).map(async (bucket) => ({
+      entry: bucket.entry,
+      items: await applyMarkupToCards(normalizeOTAPIProductCards(bucket.items)),
+    })));
+
+    let round = 0;
+    while (items.length < targetCount) {
+      let added = false;
+      for (const bucket of buckets) {
+        const card = bucket.items[round];
+        if (!card || existingIds.has(card.externalId)) continue;
         items.push(card);
         existingIds.add(card.externalId);
+        added = true;
         if (items.length >= targetCount) break;
       }
-      if (items.length >= targetCount) break;
+      if (!added) break;
+      round += 1;
     }
   }
 
@@ -1607,14 +1661,17 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
 }
 
 export async function getCuratedHomeSections(): Promise<Array<{ slug: string; label: string; items: ProductCardOTAPI[] }>> {
-  const sections = await Promise.all(CURATED_CATEGORY_DEFS.map(async (def) => {
+  const loadSectionCards = async (def: (typeof CURATED_CATEGORY_DEFS)[number]): Promise<ProductCardOTAPI[]> => {
+    const cards: ProductCardOTAPI[] = [];
+    const searchQueries = Array.from(new Set([def.label, ...def.keywords].map((value) => String(value || '').trim()).filter(Boolean)));
+
     const pinned = await prisma.externalHotItem.findMany({
       where: {
         source: SOURCE,
         category_slug: def.slug,
       },
       orderBy: [{ pinned_rank: 'asc' }, { created_at: 'desc' }],
-      take: 2,
+      take: 6,
     });
 
     const ids = pinned.map((item) => item.external_id);
@@ -1629,47 +1686,57 @@ export async function getCuratedHomeSections(): Promise<Array<{ slug: string; la
       : [];
     const catalogById = new Map(catalogItems.map((item) => [item.external_id, item]));
 
-    const cards: ProductCardOTAPI[] = [];
     for (const item of pinned) {
       const catalog = catalogById.get(item.external_id);
       if (catalog?.raw_json) {
         const normalized = await applyMarkupToDetail(normalizeOTAPIProductDetail(catalog.raw_json as any));
-        cards.push(normalized);
+        if (!cards.some((existing) => existing.externalId === normalized.externalId)) {
+          cards.push(normalized);
+        }
       } else {
         const fallbackCard = buildFallbackCardFromCatalogItem(catalog);
         if (fallbackCard) {
           const normalized = await applyMarkupToCards([fallbackCard]).then((result) => result[0]);
-          if (normalized) cards.push(normalized);
+          if (normalized && !cards.some((existing) => existing.externalId === normalized.externalId)) {
+            cards.push(normalized);
+          }
         }
       }
-      if (cards.length >= 2) break;
+      if (cards.length >= 6) break;
     }
 
-    if (cards.length < 2) {
+    if (cards.length < 6) {
       try {
-        const searchResult = await searchByKeyword(def.label, {
-          page: 1,
-          pageSize: 2,
-          sort: 'sales',
-          language: 'en',
-          debugContext: `home-curated:${def.slug}`,
-        });
-        for (const card of searchResult.items || []) {
-          if (cards.some((existing) => existing.externalId === card.externalId)) continue;
-          cards.push(card);
-          if (cards.length >= 2) break;
+        for (const query of searchQueries) {
+          const searchResult = await searchByKeyword(query, {
+            page: 1,
+            pageSize: 12,
+            sort: 'sales',
+            language: 'en',
+            debugContext: `home-curated:${def.slug}:${query}`,
+          });
+          for (const card of searchResult.items || []) {
+            if (cards.some((existing) => existing.externalId === card.externalId)) continue;
+            cards.push(card);
+            if (cards.length >= 6) break;
+          }
+          if (cards.length >= 6) break;
         }
       } catch {
         // ignore fallback search failures
       }
     }
 
-    return {
+    return filterPricedCards(cards).slice(0, 6);
+  };
+
+  const sections = await Promise.all(
+    CURATED_CATEGORY_DEFS.map(async (def) => ({
       slug: def.slug,
       label: def.label,
-      items: filterPricedCards(cards).slice(0, 2),
-    };
-  }));
+      items: await loadSectionCards(def),
+    }))
+  );
 
   return sections;
 }

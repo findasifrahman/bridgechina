@@ -60,10 +60,11 @@ export async function setCachedSearch(
   source: string,
   cacheKey: string,
   queryJson: any,
-  resultsJson: any
+  resultsJson: any,
+  ttlMinutes: number = SEARCH_CACHE_TTL_MINUTES
 ): Promise<void> {
   const expiresAt = new Date();
-  expiresAt.setMinutes(expiresAt.getMinutes() + SEARCH_CACHE_TTL_MINUTES);
+  expiresAt.setMinutes(expiresAt.getMinutes() + ttlMinutes);
 
   try {
     // Try upsert first (if unique constraint exists)

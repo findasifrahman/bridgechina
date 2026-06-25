@@ -164,13 +164,13 @@ function buildHomepageVisualMenuSections(rows: any[]) {
     });
   }
 
-  return Array.from(sections.values())
+    return Array.from(sections.values())
     .sort((a, b) => a.sectionSortOrder - b.sectionSortOrder || String(a.sectionLabel).localeCompare(String(b.sectionLabel)))
     .map((section) => ({
       ...section,
       items: section.items
         .sort((a: any, b: any) => a.sortOrder - b.sortOrder || String(a.title).localeCompare(String(b.title)))
-        .slice(0, 4),
+        .slice(0, 5),
     }));
 }
 

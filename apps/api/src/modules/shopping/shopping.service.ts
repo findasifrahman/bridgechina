@@ -28,6 +28,15 @@ import {
   type ShoppingSearchContext,
 } from './search.synonyms.js';
 const SOURCE = 'tmapi_1688';
+const MENU_CACHE_TTL_MINUTES = 60 * 24 * 7;
+const CURATED_CATEGORY_DEFS = [
+  { slug: 'phone-accessories', label: 'Mobile accessories', keywords: ['mobile accessories', 'phone accessories', 'phone cover', 'phone charger', 'phone glass', 'power bank'] },
+  { slug: 'bags', label: 'Bags', keywords: ['bag', 'bags', 'handbag', 'backpack', 'tote', 'wallet', 'suitcase'] },
+  { slug: 'jewelry', label: 'Jewellery', keywords: ['jewelry', 'jewellery', 'jwellary', 'necklace', 'ring', 'bracelet', 'earring'] },
+  { slug: 'furniture', label: 'Furniture', keywords: ['furniture', 'sofa', 'chair', 'table', 'wardrobe', 'bookshelf', 'cabinet'] },
+  { slug: 'kitchenware', label: 'Kitchen items', keywords: ['kitchen items', 'kitchenware', 'kitchen', 'cookware', 'tableware', 'utensil', 'pot', 'pan', 'kitchen utensil', 'dish brush', 'sponge', 'loofah', 'sink rack', 'cleaning cloth'] },
+  { slug: 'watches', label: 'Kids and mens watch', keywords: ['watch', 'watches', 'kids watch', 'kid watch', 'mens watch', 'men watch', 'smart watch', 'wrist watch', 'boys watch', 'digital watch', 'sport watch', 'analog watch'] },
+] as const;
 
 function isDatabaseUnavailable(error: any): boolean {
   const message = String(error?.message || '');
@@ -37,6 +46,76 @@ function isDatabaseUnavailable(error: any): boolean {
     message.includes('P1001') ||
     message.includes('P1017')
   );
+}
+
+function normalizeSearchCacheSignature(entry: any): string {
+  const queryJson = entry?.query_json;
+  let queryValue: any = queryJson;
+  if (typeof queryJson === 'string') {
+    try {
+      queryValue = JSON.parse(queryJson);
+    } catch {
+      queryValue = {};
+    }
+  }
+
+  const keyword = String(queryValue?.keyword || queryValue?.keywords || queryValue?.q || '').trim().toLowerCase();
+  const category = String(queryValue?.category || '').trim().toLowerCase();
+  return `${category || 'no-category'}::${keyword || 'no-keyword'}`;
+}
+
+function extractSearchCacheItems(entry: any): any[] {
+  const resultsJson = entry?.results_json as any;
+  return resultsJson?.data?.items || resultsJson?.items || [];
+}
+
+function buildSearchCacheBuckets(entries: any[]): Array<{ entry: any; items: any[] }> {
+  const seen = new Set<string>();
+  const buckets: Array<{ entry: any; items: any[] }> = [];
+
+  for (const entry of entries) {
+    const signature = normalizeSearchCacheSignature(entry);
+    if (seen.has(signature)) continue;
+    const items = extractSearchCacheItems(entry);
+    if (!Array.isArray(items) || items.length === 0) continue;
+    seen.add(signature);
+    buckets.push({ entry, items });
+  }
+
+  return buckets;
+}
+
+function hasDisplayablePrice(card: Pick<ProductCard, 'priceMin' | 'priceMax'>): boolean {
+  const candidates = [card.priceMin, card.priceMax].filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+  return candidates.some((value) => value > 0);
+}
+
+function filterPricedCards(cards: ProductCard[]): ProductCard[] {
+  return cards.filter((card) => hasDisplayablePrice(card));
+}
+
+function buildFallbackCardFromCatalogItem(c: any): ProductCard | null {
+  if (!c?.external_id) return null;
+  const mainImages = Array.isArray(c.main_images) ? c.main_images.filter((img): img is string => typeof img === 'string' && img.trim().length > 0) : [];
+  return {
+    source: SOURCE,
+    externalId: c.external_id,
+    title: c.title_en || c.title || c.external_id,
+    priceMin: c.price_min ?? undefined,
+    priceMax: c.price_max ?? undefined,
+    currency: (c.currency || 'CNY') as 'CNY',
+    imageUrl: mainImages[0] ? getProxiedImageUrl(mainImages[0]) : undefined,
+    images: mainImages.length > 0 ? mainImages.map(getProxiedImageUrl) : undefined,
+    sourceUrl: c.source_url || undefined,
+    raw: {
+      title: c.title_en || c.title || c.external_id,
+      externalId: c.external_id,
+      priceMin: c.price_min,
+      priceMax: c.price_max,
+      imageUrl: mainImages[0],
+      images: mainImages,
+    },
+  };
 }
 
 // Shopping categories with subcategories
@@ -264,7 +343,13 @@ export async function searchByKeyword(
     });
 
     // Cache search results
-    await setCachedSearch(SOURCE, cacheKey, { keyword: searchKeyword, ...opts }, response);
+    await setCachedSearch(
+      SOURCE,
+      cacheKey,
+      { keyword: searchKeyword, ...opts },
+      response,
+      opts?.category ? MENU_CACHE_TTL_MINUTES : undefined,
+    );
 
     // Extract items - TMAPI response structure: { code: 200, msg: "success", data: { items: [...] } }
     // The client returns response.data (the full TMAPI response), so response is already { code, msg, data }
@@ -673,7 +758,13 @@ export async function searchByImage(
   });
 
   // Step 4: Cache results
-  await setCachedSearch(SOURCE, cacheKey, { imgUrl: convertedUrl, sort, page, pageSize, category: opts?.category }, response);
+  await setCachedSearch(
+    SOURCE,
+    cacheKey,
+    { imgUrl: convertedUrl, sort, page, pageSize, category: opts?.category },
+    response,
+    opts?.category ? MENU_CACHE_TTL_MINUTES : undefined,
+  );
 
   // Step 5: Normalize and return
   // TMAPI response structure: { code: 200, msg: "success", data: { items: [...] } }
@@ -1288,109 +1379,44 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
     }
   }
 
-    // If we don't have enough items, load from recent search cache (ExternalSearchCache)
-    // This shows products from recent searches, which is more relevant for homepage
+    // If we don't have enough items, sample across the last few distinct searches
     if (items.length < pageSize) {
-      const needed = pageSize - items.length;
-    
-    // Get recent search cache entries (most recent searches first)
-    // Try ordering by created_at, fallback to id if created_at doesn't exist
-    let recentSearches: any[] = [];
-    try {
-      // First, try without expires_at filter to see all entries
-      const allSearches = await prisma.externalSearchCache.findMany({
-        where: {
-          source: SOURCE,
-        },
-        take: 20, // Get more to check expiration
-      });
-      
-      console.log(`[Shopping Service] Found ${allSearches.length} total search cache entries`);
-      
-      // Filter non-expired and sort by created_at
-      const now = new Date();
-      recentSearches = allSearches
-        .filter(s => new Date(s.expires_at) > now)
-        .sort((a, b) => {
-          // Sort by created_at if available, otherwise by id
-          try {
-            const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
-            const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
-            return bTime - aTime; // Descending
-          } catch {
-            return 0;
-          }
-        })
-        .slice(0, 10); // Take top 10
-      
-      console.log(`[Shopping Service] ${recentSearches.length} non-expired entries after filtering`);
-      
-      if (recentSearches.length === 0 && allSearches.length > 0) {
-        console.warn('[Shopping Service] All cache entries are expired! Using expired entries anyway...');
-        // Use expired entries if no non-expired ones found
-        recentSearches = allSearches
-          .sort((a, b) => {
-            try {
-              const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
-              const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
-              return bTime - aTime;
-            } catch {
-              return 0;
-            }
-          })
-          .slice(0, 10);
-      }
-    } catch (error: any) {
-      console.error('[Shopping Service] Error fetching search cache:', error);
-      recentSearches = [];
-    }
-
-    console.log(`[Shopping Service] Found ${recentSearches.length} recent search cache entries`);
-    console.log(`[Shopping Service] Current items count: ${items.length}, needed: ${needed}`);
-
-    // Extract items from search cache results_json
-    for (const searchCache of recentSearches) {
-      if (items.length >= pageSize) break;
-
+      let recentSearches: any[] = [];
       try {
-        const resultsJson = searchCache.results_json as any;
-        console.log(`[Shopping Service] Processing search cache ${searchCache.id}:`, {
-          hasResultsJson: !!resultsJson,
-          hasData: !!resultsJson?.data,
-          hasItems: !!resultsJson?.data?.items,
-          itemsCount: Array.isArray(resultsJson?.data?.items) ? resultsJson.data.items.length : 0,
+        const allSearches = await prisma.externalSearchCache.findMany({
+          where: { source: SOURCE },
+          orderBy: { created_at: 'desc' },
+          take: 18,
         });
-        
-        // Extract items from TMAPI response structure: { code: 200, msg: "success", data: { items: [...] } }
-        const searchItems = resultsJson?.data?.items || resultsJson?.items || [];
-        
-        if (Array.isArray(searchItems) && searchItems.length > 0) {
-          console.log(`[Shopping Service] Found ${searchItems.length} items in search cache ${searchCache.id}`);
-          // Normalize items from search cache
-          const normalized = normalizeProductCards(searchItems);
-          console.log(`[Shopping Service] Normalized ${normalized.length} items`);
-          
-          for (const item of normalized) {
-            if (existingIds.has(item.externalId)) {
-              continue; // Skip duplicates
-            }
-            
-            items.push(item);
-            existingIds.add(item.externalId);
-            console.log(`[Shopping Service] Added item ${item.externalId}, total: ${items.length}`);
-            
-            if (items.length >= pageSize) break;
-          }
-        } else {
-          console.log(`[Shopping Service] No items found in search cache ${searchCache.id}`);
+        const now = new Date();
+        recentSearches = allSearches.filter((s) => !s.expires_at || new Date(s.expires_at) > now).slice(0, 6);
+        if (recentSearches.length === 0 && allSearches.length > 0) {
+          recentSearches = allSearches.slice(0, 6);
         }
-      } catch (error) {
-        console.error(`[Shopping] Failed to extract items from search cache ${searchCache.id}:`, error);
+      } catch (error: any) {
+        console.error('[Shopping Service] Error fetching search cache:', error);
+      }
+
+      const buckets = buildSearchCacheBuckets(recentSearches).map((bucket) => ({
+        entry: bucket.entry,
+        items: normalizeProductCards(bucket.items),
+      }));
+
+      let round = 0;
+      while (items.length < pageSize) {
+        let added = false;
+        for (const bucket of buckets) {
+          const card = bucket.items[round];
+          if (!card || existingIds.has(card.externalId)) continue;
+          items.push(card);
+          existingIds.add(card.externalId);
+          added = true;
+          if (items.length >= pageSize) break;
+        }
+        if (!added) break;
+        round += 1;
       }
     }
-    
-    console.log(`[Shopping Service] After processing search cache, items count: ${items.length}`);
-  }
 
     // Final fallback: If still not enough, try ExternalCatalogItem
     if (items.length < pageSize) {
@@ -1468,5 +1494,82 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
     }
     throw error;
   }
+}
+
+export async function getCuratedHomeSections(): Promise<Array<{ slug: string; label: string; items: ProductCard[] }>> {
+  const loadSectionCards = async (def: (typeof CURATED_CATEGORY_DEFS)[number]): Promise<ProductCard[]> => {
+    const cards: ProductCard[] = [];
+    const searchQueries = Array.from(new Set([def.label, ...def.keywords].map((value) => String(value || '').trim()).filter(Boolean)));
+
+    const pinned = await prisma.externalHotItem.findMany({
+      where: {
+        source: SOURCE,
+        category_slug: def.slug,
+      },
+      orderBy: [{ pinned_rank: 'asc' }, { created_at: 'desc' }],
+      take: 6,
+    });
+
+    const ids = pinned.map((item) => item.external_id);
+    const catalogItems: any[] = ids.length > 0
+      ? await prisma.externalCatalogItem.findMany({
+          where: {
+            source: SOURCE,
+            external_id: { in: ids },
+            expires_at: { gt: new Date() },
+          },
+        })
+      : [];
+    const catalogById = new Map(catalogItems.map((item) => [item.external_id, item]));
+
+    for (const item of pinned) {
+      const catalog = catalogById.get(item.external_id);
+      if (catalog?.raw_json) {
+        const normalized = normalizeProductDetail(catalog.raw_json as any);
+        if (!cards.some((existing) => existing.externalId === normalized.externalId)) {
+          cards.push(normalized);
+        }
+      } else {
+        const fallbackCard = buildFallbackCardFromCatalogItem(catalog);
+        if (fallbackCard && !cards.some((existing) => existing.externalId === fallbackCard.externalId)) {
+          cards.push(fallbackCard);
+        }
+      }
+      if (cards.length >= 6) break;
+    }
+
+    if (cards.length < 6) {
+      try {
+        for (const query of searchQueries) {
+          const searchResult = await searchByKeyword(query, {
+            page: 1,
+            pageSize: 12,
+            sort: 'sales',
+            language: 'en',
+          });
+          for (const card of searchResult.items || []) {
+            if (cards.some((existing) => existing.externalId === card.externalId)) continue;
+            cards.push(card);
+            if (cards.length >= 6) break;
+          }
+          if (cards.length >= 6) break;
+        }
+      } catch {
+        // Ignore fallback search failures.
+      }
+    }
+
+    return filterPricedCards(cards).slice(0, 6);
+  };
+
+  const sections = await Promise.all(
+    CURATED_CATEGORY_DEFS.map(async (def) => ({
+      slug: def.slug,
+      label: def.label,
+      items: await loadSectionCards(def),
+    }))
+  );
+
+  return sections;
 }
 

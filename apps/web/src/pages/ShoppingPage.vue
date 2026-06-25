@@ -185,49 +185,67 @@
 
         <section v-if="homepageVisualMenuSections.length > 0" class="px-3 pt-4 sm:px-4">
           <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5">
-            <div class="flex items-start justify-between gap-4">
-
+            <div class="mb-5">
+              <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-600">Quick search tiles</p>
+              <h2 class="mt-1 text-[17px] font-black tracking-tight text-slate-900">Browse by category</h2>
             </div>
 
-            <div class="mt-4 space-y-5">
-              <div
-                v-for="section in homepageVisualMenuSections"
-                :key="section.sectionKey"
-                class="rounded-[22px] border border-slate-200 bg-slate-50/80 p-3"
-              >
-                <div class="flex items-center justify-between gap-3">
-                  <div>
-                    <p class="text-[10px] font-bold uppercase tracking-[0.28em] text-rose-600">{{ section.sectionLabel }}</p>
-                    <p class="mt-1 text-[12px] font-semibold text-slate-700">Quick search tiles</p>
-                  </div>
-                  <span class="rounded-full bg-white px-3 py-1 text-[10px] font-semibold text-slate-700 shadow-sm">{{ section.items.length }} items</span>
-                </div>
+            <div class="grid grid-cols-2 gap-x-5 gap-y-6 md:grid-cols-4">
+              <div v-for="section in homepageVisualMenuSections" :key="section.sectionKey" class="flex flex-col">
+                <h3 class="text-[13px] font-bold text-slate-900">{{ section.sectionLabel }}</h3>
 
-                <div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <!-- Hero: first item full width -->
+                <button
+                  v-if="section.items[0]"
+                  type="button"
+                  class="mt-2 block w-full text-left transition-opacity hover:opacity-90"
+                  @click="handleVisualMenuClick(section.items[0])"
+                >
+                  <div class="aspect-[4/3] w-full overflow-hidden rounded-xl bg-slate-100">
+                    <img
+                      v-if="section.items[0].imageUrl"
+                      :src="proxyImageUrl(section.items[0].imageUrl)"
+                      :alt="section.items[0].imageAlt || section.items[0].title"
+                      class="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                    />
+                    <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
+                      <Package class="h-8 w-8" />
+                    </div>
+                  </div>
+                  <p class="mt-1.5 text-[11px] text-slate-600">{{ section.items[0].title }}</p>
+                </button>
+
+                <!-- Sub-items 2×2 -->
+                <div class="mt-2.5 grid grid-cols-2 gap-2">
                   <button
-                    v-for="item in section.items"
+                    v-for="item in section.items.slice(1, 5)"
                     :key="item.id"
                     type="button"
-                    class="overflow-hidden rounded-[18px] border border-slate-200 bg-white text-left shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-transform hover:-translate-y-0.5 hover:border-rose-200"
+                    class="text-left transition-opacity hover:opacity-90"
                     @click="handleVisualMenuClick(item)"
                   >
-                    <div class="aspect-[4/3] bg-slate-100">
+                    <div class="aspect-square w-full overflow-hidden rounded-lg bg-slate-100">
                       <img
                         v-if="item.imageUrl"
                         :src="proxyImageUrl(item.imageUrl)"
                         :alt="item.imageAlt || item.title"
-                        class="h-full w-full object-cover"
+                        class="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
                       />
                       <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
-                        <Package class="h-8 w-8" />
+                        <Package class="h-5 w-5" />
                       </div>
                     </div>
-                    <div class="p-3">
-                      <p class="line-clamp-1 text-[12px] font-semibold text-slate-900">{{ item.title }}</p>
-                      <p class="mt-1 line-clamp-1 text-[11px] text-slate-600">{{ item.searchKeyword }}</p>
-                    </div>
+                    <p class="mt-1 line-clamp-2 text-[10px] leading-[1.3] text-slate-600">{{ item.title }}</p>
                   </button>
                 </div>
+
+                <button
+                  type="button"
+                  class="mt-3 text-left text-[11px] font-semibold text-rose-600 hover:text-rose-700"
+                  @click="handleRecentSearchClick(section.sectionLabel)"
+                >
+                  Explore {{ section.sectionLabel }} →
+                </button>
               </div>
             </div>
           </div>
@@ -280,14 +298,14 @@
 
         <section class="px-3 pt-4 sm:px-4">
           <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5">
-            <div class="flex items-start justify-between gap-4">
+            <div class="mb-5 flex items-start justify-between gap-4">
               <div>
                 <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-600">Curated categories</p>
-                <h2 class="mt-1 text-[17px] font-black tracking-tight text-rose-600">iPhone, bags, jewelry, and kitchenware</h2>
+                <h2 class="mt-1 text-[17px] font-black tracking-tight text-rose-600">Mobile accessories, jewellery, bags, and women hijab</h2>
               </div>
               <button
                 type="button"
-                class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-semibold text-rose-700 transition-colors hover:border-rose-200 hover:text-rose-700"
+                class="inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[11px] font-semibold text-rose-700 transition-colors hover:border-rose-200 hover:text-rose-700"
                 @click="loadCuratedSections"
               >
                 <RefreshCw class="h-4 w-4" />
@@ -295,57 +313,94 @@
               </button>
             </div>
 
-            <div class="mt-4 grid gap-3 md:grid-cols-2">
-              <div
-                v-for="section in curatedSections"
-                :key="section.slug"
-                class="rounded-[22px] border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-white p-3"
-              >
-                <div class="flex items-center justify-between gap-3">
-                  <div>
-                    <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-rose-600">{{ section.label }}</p>
-                    <p class="mt-1 text-[12px] font-semibold text-rose-700">Premium Items</p>
-                  </div>
-                  <span class="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-semibold text-rose-600">Platform backed</span>
-                </div>
+            <div class="grid grid-cols-2 gap-x-5 gap-y-6 md:grid-cols-4">
+              <div v-for="section in primaryCuratedSections" :key="section.slug" class="flex flex-col">
+                <h3 class="text-[13px] font-bold text-slate-900">{{ section.label }}</h3>
+                <p class="text-[11px] font-semibold text-rose-600">Premium items</p>
 
-                <div class="mt-3 grid grid-cols-2 gap-2">
+                <!-- 2×2 product grid -->
+                <div class="mt-2 grid grid-cols-2 gap-2">
                   <button
-                    v-for="item in section.items.slice(0, 2)"
+                    v-for="item in section.items.slice(0, 4)"
                     :key="item.externalId"
                     type="button"
-                    class="overflow-hidden rounded-[18px] border border-slate-200 bg-white text-left shadow-[0_8px_22px_rgba(15,23,42,0.04)] transition-transform hover:-translate-y-0.5"
+                    class="text-left transition-opacity hover:opacity-90"
                     @click="handleProductClick(item)"
                   >
-                    <div class="aspect-[4/3] bg-slate-100">
+                    <div class="aspect-square w-full overflow-hidden rounded-lg bg-slate-100">
                       <img
                         v-if="collectImageCandidates(item.imageUrl).length > 0 || collectImageCandidates(item.images).length > 0"
                         :src="proxyImageUrl(collectImageCandidates(item.imageUrl)[0] || collectImageCandidates(item.images)[0])"
                         :alt="item.title"
-                        class="h-full w-full object-cover"
+                        class="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
                       />
                       <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
-                        <Package class="h-6 w-6" />
+                        <Package class="h-5 w-5" />
                       </div>
                     </div>
-                    <div class="p-2.5">
-                      <p class="line-clamp-2 text-[11px] font-semibold leading-4 text-slate-900">{{ item.title }}</p>
-                      <div class="mt-1 flex items-center justify-between gap-2">
-                        <span class="text-[11px] font-black text-rose-600">{{ formatPrice(item.priceMin ?? item.priceMax ?? 0) }}</span>
-                <span class="rounded-full bg-rose-50 px-2 py-0.5 text-[9px] font-semibold text-rose-600">ID</span>
-                      </div>
-                    </div>
+                    <p class="mt-1 line-clamp-2 text-[10px] leading-[1.3] text-slate-600">{{ item.title }}</p>
                   </button>
-
-                  <div v-if="section.items.length === 0" class="col-span-2 rounded-[18px] border border-dashed border-slate-200 bg-slate-50 p-4 text-[11px] text-slate-600">
-                    Search one of these categories to populate the saved picks: {{ section.label }}.
-                  </div>
                 </div>
+
+                <div v-if="section.items.length === 0" class="mt-2 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 text-[11px] text-slate-600">
+                  Search {{ section.label }} to populate.
+                </div>
+
+                <button
+                  type="button"
+                  class="mt-3 text-left text-[11px] font-semibold text-rose-600 hover:text-rose-700"
+                  @click="handleCategorySelect(section.slug)"
+                >
+                  Explore more →
+                </button>
+              </div>
+            </div>
+
+            <div v-for="section in wideCuratedSections" :key="`${section.slug}-wide`" class="mt-5 rounded-[24px] border border-slate-200 bg-slate-50/60 p-4">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <h3 class="text-[13px] font-bold text-slate-900">{{ section.label }}</h3>
+                  <p class="text-[11px] font-semibold text-rose-600">Premium items</p>
+                </div>
+                <button
+                  type="button"
+                  class="text-[11px] font-semibold text-rose-600 hover:text-rose-700"
+                  @click="handleCategorySelect(section.slug)"
+                >
+                  Explore more →
+                </button>
+              </div>
+
+              <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                <button
+                  v-for="item in section.items.slice(0, 6)"
+                  :key="item.externalId"
+                  type="button"
+                  class="text-left transition-opacity hover:opacity-90"
+                  @click="handleProductClick(item)"
+                >
+                  <div class="aspect-square w-full overflow-hidden rounded-lg bg-slate-100">
+                    <img
+                      v-if="collectImageCandidates(item.imageUrl).length > 0 || collectImageCandidates(item.images).length > 0"
+                      :src="proxyImageUrl(collectImageCandidates(item.imageUrl)[0] || collectImageCandidates(item.images)[0])"
+                      :alt="item.title"
+                      class="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                    />
+                    <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
+                      <Package class="h-5 w-5" />
+                    </div>
+                  </div>
+                  <p class="mt-1 line-clamp-2 text-[10px] leading-[1.3] text-slate-600">{{ item.title }}</p>
+                </button>
+              </div>
+
+              <div v-if="section.items.length === 0" class="mt-3 rounded-lg border border-dashed border-slate-200 bg-white p-4 text-[11px] text-slate-600">
+                Search {{ section.label }} to populate.
               </div>
             </div>
 
             <div v-if="curatedSections.length === 0" class="mt-4 rounded-[22px] border border-slate-200 bg-slate-50 p-4 text-slate-600">
-              We will show saved category picks once  search results are stored in the database.
+              We will show saved category picks once search results are stored in the database.
             </div>
           </div>
         </section>
@@ -775,6 +830,29 @@ const currentSubcategories = computed(() => {
   const cat = categories.value.find((item: any) => item.slug === selectedCategory.value);
   return Array.isArray(cat?.children) ? cat.children.slice(0, 10).map((child: any) => child.name) : [];
 });
+const primaryCuratedSections = computed(() => curatedSections.value.filter((section) => !isWideCuratedSection(section.slug)));
+const wideCuratedSections = computed(() => curatedSections.value.filter((section) => isWideCuratedSection(section.slug)));
+
+function isWideCuratedSection(sectionSlug: string): boolean {
+  return ['kitchenware', 'watches'].includes(String(sectionSlug || '').toLowerCase());
+}
+
+function buildSlotItems(items: any[], visibleCount = 4, slotCount = 6) {
+  const visible = Array.isArray(items) ? items.slice(0, visibleCount).map((item) => ({ type: 'item' as const, ...item })) : [];
+  const placeholders = Array.from({ length: Math.max(0, slotCount - visible.length) }, (_, index) => ({
+    type: 'empty' as const,
+    key: `placeholder-${index}`,
+  }));
+  return [...visible, ...placeholders];
+}
+
+function sectionSlots(items: any[]) {
+  return buildSlotItems(items, 4, 6);
+}
+
+function curatedSlots(items: any[]) {
+  return buildSlotItems(items, 4, 6);
+}
 
 const iconMap: Record<string, any> = {
   'shopping-bag': ShoppingBag,
