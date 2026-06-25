@@ -6235,3 +6235,9 @@
 [WEB] [2m2:46:45 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/layouts/MarketingLayout.vue, /src/style.css[22m
 [WEB] [2m2:47:17 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/TmapiProductDetailPage.vue, /src/style.css[22m
 [WEB] [2m3:04:31 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[API] 3:14:44 PM [tsx] change in ./src\routes\admin.ts Rerunning...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782378887512,"pid":22444,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000

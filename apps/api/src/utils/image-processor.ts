@@ -6,7 +6,7 @@
 import sharp from 'sharp';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
-const MAX_FILE_SIZE = 1024 * 1024; // 1MB in bytes
+const MAX_FILE_SIZE = 3.5 * 1024 * 1024; // 3.5MB in bytes
 const THUMBNAIL_WIDTH = 300;
 const THUMBNAIL_HEIGHT = 300;
 const THUMBNAIL_QUALITY = 80;
