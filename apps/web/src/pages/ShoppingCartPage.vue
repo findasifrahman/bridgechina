@@ -439,7 +439,7 @@ import axios from '@/utils/axios';
 const router = useRouter();
 const toast = useToast();
 const authStore = useAuthStore();
-const { cartItems, totalItems, isEmpty, updateQuantity, updateSkuDetails, removeFromCart, clearCart } = useShoppingCart();
+const { cartItems, totalItems, isEmpty, updateQuantity, updateSkuDetails, removeFromCart, clearCart, setCartItems } = useShoppingCart();
 
 const loading = ref(false);
 const submitting = ref(false);
@@ -458,6 +458,7 @@ const showAddressModal = ref(false);
 const authMode = ref<'login' | 'register'>('login');
 const authLoading = ref(false);
 const savingAddress = ref(false);
+const syncingCart = ref(false);
 const loginForm = ref({ identifier: '', password: '' });
 const registerForm = ref({
   email: '',
@@ -635,6 +636,69 @@ async function loadShoppingSettings() {
   }
 }
 
+function buildCheckoutItems() {
+  return cartItems.value.map((item) => {
+    const qty = getItemCheckoutQuantity(item);
+    const unitPrice = qty > 0 ? getItemLineTotal(item) / qty : 0;
+
+    return {
+      externalId: item.externalId,
+      title: item.title,
+      qty,
+      priceMin: unitPrice,
+      priceMax: unitPrice,
+      imageUrl: item.imageUrl,
+      sourceUrl: item.sourceUrl,
+      skuDetails: item.skuDetails,
+      selectedShippingMethod: shippingMethod.value,
+      estimatedWeight: item.estimatedWeight,
+    };
+  });
+}
+
+async function loadServerCart() {
+  if (!authStore.isAuthenticated || syncingCart.value) return;
+  try {
+    const response = await axios.get('/api/user/cart');
+    const serverItems = response.data?.items || [];
+    if (serverItems.length > 0 && cartItems.value.length === 0) {
+      setCartItems(serverItems);
+    }
+  } catch (error) {
+    console.error('Failed to load server cart', error);
+  }
+}
+
+async function syncLocalCartToServer() {
+  if (!authStore.isAuthenticated || cartItems.value.length === 0) return;
+  syncingCart.value = true;
+  try {
+    const response = await axios.post('/api/user/cart/sync', {
+      currency: 'BDT',
+      items: buildCheckoutItems(),
+    });
+    const serverItems = response.data?.items || [];
+    if (serverItems.length > 0) {
+      setCartItems(serverItems);
+    }
+  } finally {
+    syncingCart.value = false;
+  }
+}
+
+async function hydrateAuthenticatedCart() {
+  if (!authStore.isAuthenticated) return;
+  if (cartItems.value.length > 0) {
+    try {
+      await syncLocalCartToServer();
+      return;
+    } catch (error) {
+      console.error('Failed to sync local cart', error);
+    }
+  }
+  await loadServerCart();
+}
+
 function openAuthModal(mode: 'login' | 'register' = 'login') {
   authMode.value = mode;
   showAuthModal.value = true;
@@ -747,29 +811,12 @@ async function submitCheckout() {
 
   submitting.value = true;
   try {
+    await syncLocalCartToServer();
     await axios.post('/api/user/orders/checkout', {
       shipping_address_id: selectedAddressId.value,
       shipping_method: shippingMethod.value,
-      shipping_fee: Number(shippingFee.value || 0),
       currency: 'BDT',
       notes: notes.value || undefined,
-      items: cartItems.value.map((item) => {
-        const qty = getItemCheckoutQuantity(item);
-        const unitPrice = qty > 0 ? getItemLineTotal(item) / qty : 0;
-
-        return {
-          externalId: item.externalId,
-          title: item.title,
-          qty,
-          priceMin: unitPrice,
-          priceMax: unitPrice,
-          sourcePriceMin: item.sourcePriceMin,
-          sourcePriceMax: item.sourcePriceMax,
-          displayCurrency: item.displayCurrency || 'BDT',
-          imageUrl: item.imageUrl,
-          sourceUrl: item.sourceUrl,
-        };
-      }),
     });
 
     toast.success('Order placed successfully');
@@ -832,6 +879,7 @@ watch(
   (isAuthenticated) => {
     if (isAuthenticated) {
       loadAddresses();
+      hydrateAuthenticatedCart();
     } else {
       addresses.value = [];
       selectedAddressId.value = '';
@@ -842,6 +890,7 @@ watch(
 onMounted(() => {
   if (authStore.isAuthenticated) {
     loadAddresses();
+    hydrateAuthenticatedCart();
   }
 });
 onMounted(loadShoppingSettings);

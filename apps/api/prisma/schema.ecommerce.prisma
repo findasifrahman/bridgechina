@@ -357,6 +357,11 @@ model CartItem {
   price_snapshot    Float
   currency_snapshot String   @default("BDT")
   title_snapshot    String?
+  sku_details_snapshot Json?
+  image_url_snapshot String?
+  source_url_snapshot String?
+  selected_shipping_method String?
+  estimated_weight_kg Float?
   created_at        DateTime @default(now())
   cart              Cart     @relation(fields: [cart_id], references: [id], onDelete: Cascade)
   product           Product  @relation(fields: [product_id], references: [id], onDelete: Restrict)
@@ -409,6 +414,11 @@ model OrderItem {
   price_snapshot    Float
   currency_snapshot String    @default("BDT")
   title_snapshot    String?
+  sku_details_snapshot Json?
+  image_url_snapshot String?
+  source_url_snapshot String?
+  selected_shipping_method String?
+  estimated_weight_kg Float?
   seller_status     String    @default("pending_review")
   seller_note       String?
   reviewed_at       DateTime?

@@ -92,7 +92,17 @@
                     </div>
                   </td>
                   <td class="border-b border-slate-100 px-3 py-2 text-right">
-                    <div class="flex justify-end">
+                    <div class="flex justify-end gap-2">
+                      <Button
+                        v-if="canCancelOrder(order)"
+                        size="sm"
+                        variant="ghost"
+                        class="h-10 px-3 text-[11px] text-rose-600"
+                        :loading="cancellingOrderId === order.id"
+                        @click="cancelOrder(order)"
+                      >
+                        Cancel
+                      </Button>
                       <Button size="sm" variant="primary" class="h-10 px-3 text-[11px]" @click="openProofModal(order)">
                         {{ latestProof(order) ? 'Replace slip' : 'Upload payment slip' }}
                       </Button>
@@ -144,6 +154,7 @@ import { RefreshCw } from 'lucide-vue-next';
 const toast = useToast();
 const loading = ref(false);
 const submittingProof = ref(false);
+const cancellingOrderId = ref('');
 const orders = ref<any[]>([]);
 const page = ref(1);
 const totalPages = ref(1);
@@ -210,6 +221,10 @@ function latestProof(order: any) {
   return order?.paymentProofs?.[0] || null;
 }
 
+function canCancelOrder(order: any) {
+  return ['pending_payment', 'pending_review', 'pending_purchase'].includes(String(order?.status || ''));
+}
+
 async function loadOrders() {
   loading.value = true;
   try {
@@ -245,6 +260,23 @@ function openProofModal(order: any) {
   proofFile.value = null;
   proofForm.value = { amount: '', notes: '' };
   proofModalOpen.value = true;
+}
+
+async function cancelOrder(order: any) {
+  if (!canCancelOrder(order)) return;
+  const confirmed = window.confirm(`Cancel order #${order.order_number || order.id.slice(0, 8)}?`);
+  if (!confirmed) return;
+
+  cancellingOrderId.value = order.id;
+  try {
+    await axios.patch(`/api/user/orders/${order.id}/cancel`, {});
+    toast.success('Order cancelled');
+    await loadOrders();
+  } catch (error: any) {
+    toast.error(error.response?.data?.error || 'Failed to cancel order');
+  } finally {
+    cancellingOrderId.value = '';
+  }
 }
 
 function onFileChange(event: Event) {

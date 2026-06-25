@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
+import { randomUUID } from 'crypto';
 
 const authPreHandler = [async (request: FastifyRequest, reply: FastifyReply) => {
   const fastify = request.server as FastifyInstance & { authenticate?: any };
@@ -48,6 +49,106 @@ async function getActiveMoqRule() {
   return prisma.moqShoppingOtapiRule.findUnique({
     where: { scope: 'global' },
   });
+}
+
+const checkoutItemSchema = z.object({
+  externalId: z.string().min(1),
+  title: z.string().min(1),
+  qty: z.number().int().positive(),
+  priceMin: z.number().positive().optional(),
+  priceMax: z.number().positive().optional(),
+  imageUrl: z.string().optional(),
+  sourceUrl: z.string().optional(),
+  skuDetails: z.array(z.object({
+    specId: z.string().min(1),
+    qty: z.number().int().positive(),
+    sku: z.any().optional(),
+    label: z.string().optional(),
+    sourceUnitPrice: z.number().positive().optional(),
+    displayUnitPrice: z.number().positive().optional(),
+  })).optional(),
+  selectedShippingMethod: z.string().optional(),
+  estimatedWeight: z.number().min(0).optional(),
+});
+
+function sanitizeSkuDetails(value: z.infer<typeof checkoutItemSchema>['skuDetails']) {
+  if (!Array.isArray(value) || value.length === 0) return undefined;
+  return value
+    .map((row) => ({
+      specId: String(row.specId),
+      qty: Number(row.qty),
+      sku: row.sku ?? null,
+      label: row.label || null,
+      sourceUnitPrice: row.sourceUnitPrice ?? null,
+      displayUnitPrice: row.displayUnitPrice ?? null,
+    }))
+    .filter((row) => row.specId && row.qty > 0);
+}
+
+function resolveCheckoutUnitPrice(item: z.infer<typeof checkoutItemSchema>) {
+  const skuDetails = sanitizeSkuDetails(item.skuDetails);
+  if (skuDetails?.length) {
+    const totalQty = skuDetails.reduce((sum, row) => sum + row.qty, 0);
+    const totalAmount = skuDetails.reduce((sum, row) => {
+      const unitPrice = Number(row.displayUnitPrice ?? row.sourceUnitPrice ?? item.priceMin ?? item.priceMax ?? 0);
+      return sum + unitPrice * row.qty;
+    }, 0);
+    return totalQty > 0 ? totalAmount / totalQty : 0;
+  }
+
+  return Number(item.priceMin ?? item.priceMax ?? 0);
+}
+
+async function getDefaultSellerAndCategory() {
+  const [defaultSeller, defaultCategory] = await Promise.all([
+    prisma.user.findFirst({
+      where: {
+        roles: {
+          some: {
+            role: { name: 'SELLER' },
+          },
+        },
+      },
+    }),
+    prisma.productCategory.findFirst({
+      orderBy: [{ sort_order: 'asc' }, { name: 'asc' }],
+    }),
+  ]);
+
+  return { defaultSeller, defaultCategory };
+}
+
+async function generateOrderNumber() {
+  const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const candidate = `BC-${datePart}-${randomUUID().slice(0, 8).toUpperCase()}`;
+    const existing = await prisma.order.findUnique({
+      where: { order_number: candidate },
+      select: { id: true },
+    });
+    if (!existing) return candidate;
+  }
+
+  return `BC-${datePart}-${randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase()}`;
+}
+
+async function calculateServerShippingFee(method: string, items: Array<{ qty: number; estimated_weight_kg?: number | null }>) {
+  const totalWeight = items.reduce((sum, item) => {
+    const weight = Number(item.estimated_weight_kg || 0);
+    return sum + (weight > 0 ? weight * item.qty : 0);
+  }, 0);
+  if (totalWeight <= 0) return 0;
+
+  const rate = await prisma.shippingRateSetting.findFirst({
+    where: {
+      method,
+      currency: 'BDT',
+      is_active: true,
+    },
+  });
+
+  if (!rate) return 0;
+  return Math.round(totalWeight * rate.min_rate_per_kg);
 }
 
 export default async function userRoutes(fastify: FastifyInstance) {
@@ -290,6 +391,85 @@ export default async function userRoutes(fastify: FastifyInstance) {
     });
   });
 
+  fastify.post('/cart/sync', { preHandler: authPreHandler }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const req = request as any;
+    const body = z.object({
+      currency: z.string().optional(),
+      items: z.array(checkoutItemSchema).default([]),
+    }).parse(request.body);
+
+    const { defaultSeller, defaultCategory } = await getDefaultSellerAndCategory();
+    if (!defaultSeller || !defaultCategory) {
+      return reply.status(500).send({ error: 'Default seller or category is not configured' });
+    }
+
+    const cart = await prisma.cart.upsert({
+      where: { user_id: req.user.id },
+      update: {},
+      create: { user_id: req.user.id },
+    });
+
+    const itemsToSync = body.items.map((item) => ({
+      item,
+      unitPrice: resolveCheckoutUnitPrice(item),
+    }));
+    const invalidItem = itemsToSync.find((entry) => entry.unitPrice <= 0);
+    if (invalidItem) {
+      return reply.status(400).send({ error: `Valid price is required for ${invalidItem.item.title}.` });
+    }
+
+    await prisma.cartItem.deleteMany({ where: { cart_id: cart.id } });
+
+    for (const { item, unitPrice } of itemsToSync) {
+      let product = await prisma.product.findFirst({
+        where: {
+          OR: [
+            { external_id: item.externalId },
+            { id: item.externalId },
+          ],
+        },
+      });
+
+      if (!product) {
+        product = await prisma.product.create({
+          data: {
+            seller_id: defaultSeller.id,
+            category_id: defaultCategory.id,
+            title: item.title,
+            description: null,
+            price: unitPrice,
+            currency: body.currency || 'BDT',
+            stock_qty: 0,
+            minimum_order_qty: 1,
+            status: 'published',
+            source_kind: 'checkout',
+            source_url: item.sourceUrl || null,
+            external_id: item.externalId,
+          },
+        });
+      }
+
+      await prisma.cartItem.create({
+        data: {
+          cart_id: cart.id,
+          product_id: product.id,
+          seller_id: product.seller_id,
+          qty: item.qty,
+          price_snapshot: unitPrice,
+          currency_snapshot: body.currency || product.currency || 'BDT',
+          title_snapshot: item.title,
+          sku_details_snapshot: sanitizeSkuDetails(item.skuDetails) || undefined,
+          image_url_snapshot: item.imageUrl || null,
+          source_url_snapshot: item.sourceUrl || product.source_url || null,
+          selected_shipping_method: item.selectedShippingMethod || null,
+          estimated_weight_kg: item.estimatedWeight ?? null,
+        },
+      });
+    }
+
+    return getOrCreateCart(req.user.id);
+  });
+
   fastify.patch('/cart/items/:id', { preHandler: authPreHandler }, async (request: FastifyRequest, reply: FastifyReply) => {
     const req = request as any;
     const { id } = request.params as { id: string };
@@ -342,18 +522,9 @@ export default async function userRoutes(fastify: FastifyInstance) {
     const body = z.object({
       shipping_address_id: z.string().min(1),
       notes: z.string().optional(),
-      shipping_fee: z.number().optional(),
       shipping_method: z.string().optional(),
       currency: z.string().optional(),
-      items: z.array(z.object({
-        externalId: z.string().min(1),
-        title: z.string().min(1),
-        qty: z.number().int().positive(),
-        priceMin: z.number().optional(),
-        priceMax: z.number().optional(),
-        imageUrl: z.string().optional(),
-        sourceUrl: z.string().optional(),
-      })).optional(),
+      items: z.array(checkoutItemSchema).optional(),
     }).parse(request.body);
 
     const address = await prisma.address.findUnique({
@@ -368,8 +539,12 @@ export default async function userRoutes(fastify: FastifyInstance) {
           productId: item.externalId,
           title: item.title,
           qty: item.qty,
-          price: Number(item.priceMin ?? item.priceMax ?? 0),
+          price: resolveCheckoutUnitPrice(item),
           sourceUrl: item.sourceUrl,
+          imageUrl: item.imageUrl,
+          skuDetails: sanitizeSkuDetails(item.skuDetails),
+          selectedShippingMethod: item.selectedShippingMethod,
+          estimatedWeight: item.estimatedWeight,
         }))
       : null;
 
@@ -400,21 +575,13 @@ export default async function userRoutes(fastify: FastifyInstance) {
       qty: item.qty,
       price: item.price_snapshot,
       sourceUrl: item.product?.source_url || null,
+      imageUrl: item.image_url_snapshot || undefined,
+      skuDetails: Array.isArray(item.sku_details_snapshot) ? item.sku_details_snapshot : undefined,
+      selectedShippingMethod: item.selected_shipping_method || undefined,
+      estimatedWeight: item.estimated_weight_kg ?? undefined,
     }));
 
-    const defaultSeller = await prisma.user.findFirst({
-      where: {
-        roles: {
-          some: {
-            role: { name: 'SELLER' },
-          },
-        },
-      },
-    });
-
-    const defaultCategory = await prisma.productCategory.findFirst({
-      orderBy: [{ sort_order: 'asc' }, { name: 'asc' }],
-    });
+    const { defaultSeller, defaultCategory } = await getDefaultSellerAndCategory();
 
     if (!defaultSeller || !defaultCategory) {
       return reply.status(500).send({ error: 'Default seller or category is not configured' });
@@ -427,6 +594,11 @@ export default async function userRoutes(fastify: FastifyInstance) {
       price_snapshot: number;
       currency_snapshot: string;
       title_snapshot: string;
+      sku_details_snapshot?: any;
+      image_url_snapshot?: string | null;
+      source_url_snapshot?: string | null;
+      selected_shipping_method?: string | null;
+      estimated_weight_kg?: number | null;
     }> = [];
     for (const item of itemsToCheckout) {
       let product = await prisma.product.findFirst({
@@ -434,7 +606,6 @@ export default async function userRoutes(fastify: FastifyInstance) {
           OR: [
             { external_id: item.productId },
             { id: item.productId },
-            { title: item.title, seller_id: defaultSeller.id },
           ],
         },
       });
@@ -447,13 +618,17 @@ export default async function userRoutes(fastify: FastifyInstance) {
       }
 
       if (!product) {
+        if (item.price <= 0) {
+          return reply.status(400).send({ error: `Valid price is required for ${item.title}.` });
+        }
+
         product = await prisma.product.create({
           data: {
             seller_id: defaultSeller.id,
             category_id: defaultCategory.id,
             title: item.title,
             description: null,
-            price: item.price || 0,
+            price: item.price,
             currency: body.currency || 'BDT',
             stock_qty: 0,
             minimum_order_qty: minimumQtyThreshold,
@@ -469,9 +644,14 @@ export default async function userRoutes(fastify: FastifyInstance) {
         product_id: product.id,
         seller_id: product.seller_id,
         qty: item.qty,
-        price_snapshot: product.price,
+        price_snapshot: item.price > 0 ? item.price : product.price,
         currency_snapshot: body.currency || product.currency || 'BDT',
         title_snapshot: item.title,
+        sku_details_snapshot: item.skuDetails || undefined,
+        image_url_snapshot: item.imageUrl || null,
+        source_url_snapshot: item.sourceUrl || product.source_url || null,
+        selected_shipping_method: item.selectedShippingMethod || body.shipping_method || null,
+        estimated_weight_kg: item.estimatedWeight ?? product.weight_kg ?? null,
       });
     }
 
@@ -481,8 +661,9 @@ export default async function userRoutes(fastify: FastifyInstance) {
         error: `Minimum order amount is ${minimumPriceThreshold.toLocaleString('en-US')} ${body.currency || 'BDT'}.`,
       });
     }
-    const shippingFee = body.shipping_fee ?? 0;
-    const orderNumber = `BC-${Date.now()}`;
+    const shippingMethod = body.shipping_method || 'air';
+    const shippingFee = await calculateServerShippingFee(shippingMethod, resolvedItems);
+    const orderNumber = await generateOrderNumber();
 
     const order = await prisma.order.create({
       data: {
@@ -494,7 +675,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
         subtotal,
         shipping_fee: shippingFee,
         total: subtotal + shippingFee,
-        shipping_method: body.shipping_method || 'air',
+        shipping_method: shippingMethod,
         shipping_address_id: body.shipping_address_id,
         notes: body.notes || null,
         items: {
@@ -627,6 +808,42 @@ export default async function userRoutes(fastify: FastifyInstance) {
     return order;
   });
 
+  fastify.patch('/orders/:id/cancel', { preHandler: authPreHandler }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const req = request as any;
+    const { id } = request.params as { id: string };
+    const body = z.object({
+      note: z.string().optional(),
+    }).parse(request.body || {});
+
+    const order = await prisma.order.findUnique({ where: { id } });
+    if (!order || order.user_id !== req.user.id) {
+      return reply.status(404).send({ error: 'Order not found' });
+    }
+
+    if (!['pending_payment', 'pending_review', 'pending_purchase'].includes(order.status)) {
+      return reply.status(409).send({ error: 'This order can no longer be cancelled by the customer' });
+    }
+
+    const updated = await prisma.order.update({
+      where: { id },
+      data: {
+        status: 'cancelled',
+      },
+    });
+
+    await prisma.orderStatusEvent.create({
+      data: {
+        order_id: id,
+        status_from: order.status,
+        status_to: 'cancelled',
+        note: body.note || 'Cancelled by customer',
+        created_by: req.user.id,
+      },
+    });
+
+    return updated;
+  });
+
   fastify.post('/orders/:id/payment-proof', { preHandler: authPreHandler }, async (request: FastifyRequest, reply: FastifyReply) => {
     const req = request as any;
     const { id } = request.params as { id: string };
@@ -641,18 +858,29 @@ export default async function userRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: 'Order not found' });
     }
 
-    return prisma.paymentProof.create({
-      data: {
-        order_id: id,
-        asset_id: body.asset_id,
-        submitted_by: req.user.id,
-        amount: body.amount ?? null,
-        notes: body.notes ?? null,
-        status: 'submitted',
-      },
-      include: {
-        asset: true,
-      },
+    return prisma.$transaction(async (tx) => {
+      const proof = await tx.paymentProof.create({
+        data: {
+          order_id: id,
+          asset_id: body.asset_id,
+          submitted_by: req.user.id,
+          amount: body.amount ?? null,
+          notes: body.notes ?? null,
+          status: 'submitted',
+        },
+        include: {
+          asset: true,
+        },
+      });
+
+      if (order.payment_status !== 'approved') {
+        await tx.order.update({
+          where: { id },
+          data: { payment_status: 'submitted' },
+        });
+      }
+
+      return proof;
     });
   });
 

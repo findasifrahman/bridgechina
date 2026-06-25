@@ -62,29 +62,33 @@ function mergeSkuDetails(
 }
 
 function normalizeCartItem(item: any): CartItem {
-  const priceMin = typeof item?.priceMin === 'number' ? item.priceMin : undefined;
-  const priceMax = typeof item?.priceMax === 'number' ? item.priceMax : undefined;
+  const product = item?.product || {};
+  const priceMin = typeof item?.priceMin === 'number' ? item.priceMin : (typeof item?.price_snapshot === 'number' ? item.price_snapshot : product.price);
+  const priceMax = typeof item?.priceMax === 'number' ? item.priceMax : priceMin;
   const displayPriceMin = typeof item?.displayPriceMin === 'number' ? item.displayPriceMin : priceMin;
   const displayPriceMax = typeof item?.displayPriceMax === 'number' ? item.displayPriceMax : priceMax;
+  const skuDetails = Array.isArray(item?.skuDetails)
+    ? item.skuDetails
+    : (Array.isArray(item?.sku_details_snapshot) ? item.sku_details_snapshot : undefined);
 
   return {
-    externalId: String(item?.externalId || ''),
-    title: String(item?.title || 'Product'),
+    externalId: String(item?.externalId || item?.external_id || item?.product_id || product.external_id || product.id || ''),
+    title: String(item?.title || item?.title_snapshot || product.title || 'Product'),
     priceMin,
     priceMax,
     sourcePriceMin: typeof item?.sourcePriceMin === 'number' ? item.sourcePriceMin : priceMin,
     sourcePriceMax: typeof item?.sourcePriceMax === 'number' ? item.sourcePriceMax : priceMax,
     displayPriceMin,
     displayPriceMax,
-    displayCurrency: item?.displayCurrency,
-    sourceCurrency: item?.sourceCurrency,
-    imageUrl: item?.imageUrl,
-    sourceUrl: item?.sourceUrl,
-    quantity: Number(item?.quantity || 1),
-    minimumOrderQty: item?.minimumOrderQty,
-    skuDetails: Array.isArray(item?.skuDetails) ? item.skuDetails : undefined,
-    selectedShippingMethod: item?.selectedShippingMethod,
-    estimatedWeight: item?.estimatedWeight,
+    displayCurrency: item?.displayCurrency || item?.currency_snapshot || product.currency,
+    sourceCurrency: item?.sourceCurrency || product.currency,
+    imageUrl: item?.imageUrl || item?.image_url_snapshot || product.coverAsset?.public_url,
+    sourceUrl: item?.sourceUrl || item?.source_url_snapshot || product.source_url,
+    quantity: Number(item?.quantity || item?.qty || 1),
+    minimumOrderQty: item?.minimumOrderQty || product.minimum_order_qty,
+    skuDetails,
+    selectedShippingMethod: item?.selectedShippingMethod || item?.selected_shipping_method,
+    estimatedWeight: item?.estimatedWeight ?? item?.estimated_weight_kg ?? product.weight_kg,
   };
 }
 
@@ -197,6 +201,10 @@ export function useShoppingCart() {
     cartItems.value = [];
   };
 
+  const setCartItems = (items: any[]) => {
+    cartItems.value = Array.isArray(items) ? items.map(normalizeCartItem).filter((item) => item.externalId) : [];
+  };
+
   const getCartItem = (externalId: string) => {
     return cartItems.value.find(item => item.externalId === externalId);
   };
@@ -226,6 +234,7 @@ export function useShoppingCart() {
     updateQuantity,
     updateSkuDetails,
     clearCart,
+    setCartItems,
     getCartItem,
   };
 }
