@@ -150,7 +150,7 @@
       <div class="space-y-4">
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-2">
-            Select Image (Max 1MB)
+            Select Image (Max 3.5MB)
           </label>
           <input
             ref="fileInput"

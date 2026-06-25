@@ -19,6 +19,7 @@ dotenv.config();
 
 const fastify = Fastify({
   logger: true,
+  bodyLimit: 5 * 1024 * 1024,
 });
 
 fastify.decorate('authenticate', authenticate);
@@ -53,7 +54,7 @@ await fastify.register(formbody);
 
 await fastify.register(multipart, {
   limits: {
-    fileSize: 1024 * 1024,
+    fileSize: Math.floor(3.5 * 1024 * 1024),
   },
 });
 

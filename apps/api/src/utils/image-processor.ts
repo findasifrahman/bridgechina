@@ -45,7 +45,7 @@ function getS3Client(): S3Client {
 
 export function validateImageSize(size: number): void {
   if (size > MAX_FILE_SIZE) {
-    throw new Error(`Image size exceeds maximum of ${MAX_FILE_SIZE / 1024}KB (1MB). Current size: ${(size / 1024).toFixed(2)}KB`);
+    throw new Error(`Image size exceeds maximum of ${(MAX_FILE_SIZE / 1024 / 1024).toFixed(1)}MB. Current size: ${(size / 1024 / 1024).toFixed(2)}MB`);
   }
 }
 
