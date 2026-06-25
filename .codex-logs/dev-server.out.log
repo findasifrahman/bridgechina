@@ -6214,3 +6214,23 @@
 [API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
 [API] {"level":30,"time":1782348031695,"pid":32816,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
 [API] Server listening on port 3000
+[WEB] [2m2:04:01 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m2:07:28 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m2:08:57 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m2:09:18 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m2:09:59 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m2:12:00 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m2:15:50 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m2:16:28 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m2:17:07 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m2:17:53 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m2:18:36 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m2:30:05 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingBrowsePage.vue, /src/style.css[22m
+[WEB] [2m2:31:21 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingBrowsePage.vue, /src/style.css[22m
+[WEB] [2m2:32:08 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingBrowsePage.vue, /src/style.css[22m
+[WEB] [2m2:42:57 PM[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mindex.html[22m
+[WEB] [2m2:44:37 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m2:44:56 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/ShoppingPage.vue, /src/style.css[22m
+[WEB] [2m2:46:22 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/components/shopping/ProductCard.vue, /src/style.css[22m
+[WEB] [2m2:46:45 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/@fs/C:/Users/asif/Desktop/bridgechina/packages/ui/src/layouts/MarketingLayout.vue, /src/style.css[22m
+[WEB] [2m2:47:17 PM[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/pages/TmapiProductDetailPage.vue, /src/style.css[22m

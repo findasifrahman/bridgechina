@@ -104,8 +104,10 @@
               <div v-if="displayProducts.length > 0" class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5">
                 <div class="flex items-center justify-between gap-3">
                   <div>
-                    <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-600">Product grid</p>
-                    <h3 class="mt-1 text-[15px] font-black tracking-tight text-slate-950">Hot products</h3>
+                    <h3 class="mt-1 flex items-center gap-2 text-[18px] font-black tracking-tight text-slate-950">
+                      <Flame class="h-4 w-4 text-rose-500" />
+                      Hot products
+                    </h3>
                   </div>
                   <span class="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-semibold text-rose-700">
                     {{ hasSearchResults ? `${displayProducts.length} matched` : 'Live feed' }}
@@ -186,13 +188,12 @@
         <section v-if="homepageVisualMenuSections.length > 0" class="px-3 pt-4 sm:px-4">
           <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5">
             <div class="mb-5">
-              <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-600">Quick search tiles</p>
-              <h2 class="mt-1 text-[17px] font-black tracking-tight text-slate-900">Browse by category</h2>
+              <h2 class="mt-1 text-[17px] font-black tracking-tight text-slate-900">Top Categories</h2>
             </div>
 
             <div class="grid grid-cols-2 gap-x-5 gap-y-6 md:grid-cols-4">
               <div v-for="section in homepageVisualMenuSections" :key="section.sectionKey" class="flex flex-col">
-                <h3 class="text-[13px] font-bold text-slate-900">{{ section.sectionLabel }}</h3>
+                <h2 class="text-[16px] font-bold text-slate-900">{{ section.sectionLabel }}</h2>
 
                 <!-- Hero: first item full width -->
                 <button
@@ -212,13 +213,13 @@
                       <Package class="h-8 w-8" />
                     </div>
                   </div>
-                  <p class="mt-1.5 text-[11px] text-slate-600">{{ section.items[0].title }}</p>
+                  <p class="mt-1.5 text-[11px] text-slate-800">{{ section.items[0].title }}</p>
                 </button>
 
                 <!-- Sub-items 2×2 -->
                 <div class="mt-2.5 grid grid-cols-2 gap-2">
                   <button
-                    v-for="item in section.items.slice(1, 5)"
+                    v-for="item in section.items.slice(0, 4)"
                     :key="item.id"
                     type="button"
                     class="text-left transition-opacity hover:opacity-90"
@@ -235,7 +236,7 @@
                         <Package class="h-5 w-5" />
                       </div>
                     </div>
-                    <p class="mt-1 line-clamp-2 text-[10px] leading-[1.3] text-slate-600">{{ item.title }}</p>
+                    <p class="mt-1 line-clamp-2 text-[11px] leading-[1.3] text-slate-800">{{ item.title }}</p>
                   </button>
                 </div>
 
@@ -359,7 +360,7 @@
             <div v-for="section in wideCuratedSections" :key="`${section.slug}-wide`" class="mt-5 rounded-[24px] border border-slate-200 bg-slate-50/60 p-4">
               <div class="flex items-center justify-between gap-3">
                 <div>
-                  <h3 class="text-[13px] font-bold text-slate-900">{{ section.label }}</h3>
+                  <h3 class="text-[16px] font-bold text-slate-900">{{ section.label }}</h3>
                   <p class="text-[11px] font-semibold text-rose-600">Premium items</p>
                 </div>
                 <button
@@ -390,7 +391,7 @@
                       <Package class="h-5 w-5" />
                     </div>
                   </div>
-                  <p class="mt-1 line-clamp-2 text-[10px] leading-[1.3] text-slate-600">{{ item.title }}</p>
+                  <p class="mt-1 line-clamp-2 text-[12px] leading-[1.3] text-slate-800">{{ item.title }}</p>
                 </button>
               </div>
 
@@ -405,6 +406,7 @@
           </div>
         </section>
 
+        <!--
         <section v-if="recentSearches.length > 0" class="px-3 pt-4 sm:px-4">
           <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5">
             <div class="flex items-center justify-between gap-3">
@@ -433,6 +435,7 @@
             </div>
           </div>
         </section>
+        -->
       </main>
 
       <aside class="hidden h-full self-stretch border-l border-slate-200/60 bg-[#eef3f9] lg:flex lg:flex-col">
@@ -642,6 +645,7 @@ import {
   Home,
   Shirt,
   Sparkles,
+  Flame,
   Shield,
   ShoppingBag,
   ShoppingCart,

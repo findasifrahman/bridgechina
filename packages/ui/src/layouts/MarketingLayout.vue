@@ -555,9 +555,6 @@ async function loadCategories() {
     const response = await fetch(`${apiBaseUrl}/api/public/shopping/categories`);
     const data = await response.json();
     categories.value = Array.isArray(data) ? data : [];
-    if (!expandedCategorySlug.value) {
-      expandedCategorySlug.value = categories.value[0]?.slug || '';
-    }
   } catch (error) {
     console.error('Failed to load sidebar categories', error);
     categories.value = [];

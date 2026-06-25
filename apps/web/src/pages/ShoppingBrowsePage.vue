@@ -1,6 +1,7 @@
 <template>
   <div class="min-h-screen bg-[#eef3f9] text-[12px] text-slate-700">
     <main class="min-w-0">
+      <!--
       <div class="border-b border-slate-200 bg-white px-3 py-3 sm:px-4 lg:px-5">
         <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -36,6 +37,7 @@
           </form>
         </div>
       </div>
+    -->
 
       <div v-if="topShops.length > 0" class="border-b border-slate-200 bg-white px-3 pb-3 sm:px-4 lg:px-5">
         <div class="rounded-[24px] border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-white p-4 shadow-[0_14px_30px_rgba(15,23,42,0.04)]">

@@ -19,18 +19,19 @@
           <Button
             variant="primary"
             size="sm"
-            class="rounded-full bg-white/20 backdrop-blur-sm px-3 text-[12px] text-white shadow-lg border border-white/30 hover:bg-white/30"
+            class="rounded-full border border-white/30 bg-white/20 px-3 text-[12px] text-white shadow-lg backdrop-blur-sm hover:bg-white/30"
             @click.stop="$emit('click', product)"
           >
+            <Package class="mr-1 h-3.5 w-3.5" />
             View
           </Button>
           <Button
-            variant="secondary"
+            variant="primary"
             size="sm"
-            class="rounded-full bg-rose-600 px-3 text-[12px] text-white shadow-lg border-0 hover:bg-rose-700"
+            class="rounded-full border-0 bg-rose-600 px-3 text-[12px] font-semibold text-white shadow-lg hover:bg-rose-700"
             @click.stop="$emit('add-to-cart', product)"
           >
-            <ShoppingCart class="mr-1 h-3 w-3" />
+            <Plus class="mr-1 h-3.5 w-3.5" />
             Add
           </Button>
         </div>
@@ -68,7 +69,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { buildImageProxyUrl } from '@/utils/api-url';
-import { Package, ShoppingCart, Store } from 'lucide-vue-next';
+import { Package, Plus, Store } from 'lucide-vue-next';
 import { Card, CardBody, Button } from '@bridgechina/ui';
 
 const props = defineProps<{

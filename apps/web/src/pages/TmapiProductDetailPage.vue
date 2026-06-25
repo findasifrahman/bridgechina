@@ -1028,7 +1028,7 @@ const hasBattery = ref(false);
 const manualWeight = ref<number | null>(null);
 const fullscreenImage = ref<string | null>(null);
 const similarProducts = ref<any[]>([]);
-const activeTab = ref<'overview' | 'spec' | 'seller' | 'description'>('overview');
+const activeTab = ref<'overview' | 'spec' | 'seller' | 'description'>('description');
 const conversionRates = ref<{ CNY_TO_BDT?: number; CNY_TO_USD?: number }>({
   CNY_TO_BDT: 15,
   CNY_TO_USD: 0.14,
@@ -1747,6 +1747,7 @@ async function loadProduct() {
     selectedLanguage.value = language;
     quantity.value = 1;
     selectedSkus.value = {};
+    activeTab.value = 'description';
     videoMode.value = 'none';
     selectedImage.value = null;
     const response = await axios.get(`/api/public/shopping/item/${externalId}`, { params: { language } });
