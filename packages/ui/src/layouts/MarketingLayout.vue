@@ -68,7 +68,7 @@
         <button
           v-if="isAuthenticated"
           type="button"
-          class="mt-1 flex w-full items-center rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-[13px] font-semibold text-rose-200 hover:bg-rose-500/18"
+          class="mt-1 flex w-full items-center rounded-xl border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-[13px] font-semibold text-white-200 hover:bg-rose-500/18"
           @click="$emit('signOut'); closeDrawer()"
         >Sign out</button>
       </div>
@@ -237,7 +237,7 @@
               v-if="isAuthenticated"
               variant="ghost"
               size="sm"
-              class="ml-0.5 rounded-full border border-rose-400/35 bg-rose-500/12 px-3.5 py-2 text-[12px] font-semibold text-rose-100 hover:bg-rose-500/22 hover:border-rose-300/55"
+              class="ml-0.5 rounded-full border border-rose-400/35 bg-rose-500/12 px-3.5 py-2 text-[12px] font-semibold text-white-100 hover:bg-rose-500/22 hover:border-rose-300/55"
               @click="$emit('signOut')"
             >Sign out</Button>
           </div>
