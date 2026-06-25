@@ -40,6 +40,8 @@ const passwordResetConfirmSchema = z.object({
   password: passwordSchema,
 });
 
+type AuthIntent = 'login' | 'register';
+
 type GoogleProfile = {
   sub: string;
   email?: string;
@@ -47,8 +49,50 @@ type GoogleProfile = {
   name?: string;
 };
 
+class DuplicateAccountError extends Error {
+  constructor(public field: 'email' | 'phone') {
+    super(
+      field === 'email'
+        ? 'This email is already registered. Please sign in instead.'
+        : 'This phone number is already registered. Please sign in with your password.'
+    );
+  }
+}
+
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
+}
+
+function normalizeBangladeshPhone(phone: string) {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('8801') && digits.length === 13) return `+${digits}`;
+  if (digits.startsWith('01') && digits.length === 11) return `+88${digits}`;
+  if (digits.startsWith('1') && digits.length === 10) return `+880${digits}`;
+  return phone.trim();
+}
+
+function normalizeAuthIntent(value: unknown): AuthIntent {
+  return value === 'register' ? 'register' : 'login';
+}
+
+function isUniqueConstraintError(error: any) {
+  return error?.code === 'P2002';
+}
+
+async function findExistingAccountByEmailOrPhone(email?: string | null, phones: string[] = []) {
+  const or: Array<{ email?: string; phone?: string }> = [];
+  if (email) or.push({ email });
+  phones.forEach((phone) => or.push({ phone }));
+  if (or.length === 0) return null;
+  return prisma.user.findFirst({
+    where: { OR: or },
+    select: { id: true, email: true, phone: true },
+  });
+}
+
+function uniquePhoneCandidates(rawPhone?: string | null) {
+  if (!rawPhone) return [];
+  return Array.from(new Set([normalizeBangladeshPhone(rawPhone), rawPhone.trim()].filter(Boolean)));
 }
 
 function webAppBaseUrl() {
@@ -195,12 +239,23 @@ async function fetchGoogleProfile(request: FastifyRequest, code: string) {
   return profileResponse.json() as Promise<GoogleProfile>;
 }
 
-async function findOrCreateGoogleUser(profile: GoogleProfile) {
+async function findOrCreateGoogleUser(profile: GoogleProfile, intent: AuthIntent) {
   if (!profile.sub || !profile.email || profile.email_verified === false) {
     throw new Error('Google account email is not verified');
   }
 
   const email = normalizeEmail(profile.email);
+
+  if (intent === 'register') {
+    const registeredUser = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true },
+    });
+    if (registeredUser) {
+      throw new DuplicateAccountError('email');
+    }
+  }
+
   const oauthRows = await prisma.$queryRaw`
     SELECT user_id
     FROM oauth_accounts
@@ -265,10 +320,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ error: 'Google OAuth is not configured' });
     }
 
-    const query = request.query as { redirect?: string };
+    const query = request.query as { redirect?: string; intent?: string };
     const state = randomUUID();
     const redirectPath = sanitizeRedirectPath(query.redirect);
-    reply.setCookie('googleOAuthState', JSON.stringify({ state, redirectPath }), {
+    const intent = normalizeAuthIntent(query.intent);
+    reply.setCookie('googleOAuthState', JSON.stringify({ state, redirectPath, intent }), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -293,7 +349,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       return reply.redirect(fallback);
     }
 
-    let stored: { state?: string; redirectPath?: string } = {};
+    let stored: { state?: string; redirectPath?: string; intent?: string } = {};
     try {
       stored = JSON.parse(request.cookies.googleOAuthState || '{}');
     } catch {
@@ -306,7 +362,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
     try {
       const profile = await fetchGoogleProfile(request, query.code);
-      const user = await findOrCreateGoogleUser(profile);
+      const user = await findOrCreateGoogleUser(profile, normalizeAuthIntent(stored.intent));
       if (user.status !== 'active') {
         return reply.redirect(`${webAppBaseUrl()}/login?oauth=blocked`);
       }
@@ -320,6 +376,10 @@ export default async function authRoutes(fastify: FastifyInstance) {
       }).toString();
       return reply.redirect(callbackUrl.toString());
     } catch (error: any) {
+      if (error instanceof DuplicateAccountError) {
+        reply.clearCookie('googleOAuthState', { path: '/api/auth/google' });
+        return reply.redirect(`${webAppBaseUrl()}/login?oauth=already_registered&field=${error.field}`);
+      }
       request.log.error({ err: error }, '[Auth] Google OAuth failed');
       return reply.redirect(fallback);
     }
@@ -331,35 +391,54 @@ export default async function authRoutes(fastify: FastifyInstance) {
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const body = registerSchema.parse(request.body);
+    const email = body.email ? normalizeEmail(body.email) : null;
+    const phone = body.phone ? normalizeBangladeshPhone(body.phone) : null;
+    const phoneCandidates = uniquePhoneCandidates(body.phone);
+
+    const existing = await findExistingAccountByEmailOrPhone(email, phoneCandidates);
+    if (existing?.email && email && existing.email === email) {
+      return reply.status(409).send({ code: 'EMAIL_ALREADY_REGISTERED', error: 'This email is already registered. Please sign in instead.' });
+    }
+    if (existing?.phone && phoneCandidates.includes(existing.phone)) {
+      return reply.status(409).send({ code: 'PHONE_ALREADY_REGISTERED', error: 'This phone number is already registered. Please sign in with your password.' });
+    }
+
     const passwordHash = await argon2.hash(body.password);
 
-    const user = await prisma.user.create({
-      data: {
-        email: body.email || null,
-        phone: body.phone || null,
-        password_hash: passwordHash,
-        status: 'active',
-        roles: {
-          create: {
-            role: {
-              connect: { name: 'CUSTOMER' },
+    try {
+      const user = await prisma.user.create({
+        data: {
+          email,
+          phone,
+          password_hash: passwordHash,
+          status: 'active',
+          roles: {
+            create: {
+              role: {
+                connect: { name: 'CUSTOMER' },
+              },
+            },
+          },
+          customerProfile: {
+            create: {
+              preferred_currency: 'BDT',
             },
           },
         },
-        customerProfile: {
-          create: {
-            preferred_currency: 'BDT',
+        include: {
+          roles: {
+            include: { role: true },
           },
         },
-      },
-      include: {
-        roles: {
-          include: { role: true },
-        },
-      },
-    });
+      });
 
-    return createAuthResponse(fastify, reply, user);
+      return createAuthResponse(fastify, reply, user);
+    } catch (error: any) {
+      if (isUniqueConstraintError(error)) {
+        return reply.status(409).send({ code: 'ACCOUNT_ALREADY_REGISTERED', error: 'This email or phone number is already registered. Please sign in instead.' });
+      }
+      throw error;
+    }
   });
 
   fastify.post('/login', {
@@ -370,12 +449,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
     const body = loginSchema.parse(request.body);
 
     const where = body.email
-      ? { email: body.email }
+      ? { email: normalizeEmail(body.email) }
       : body.phone
-        ? { phone: body.phone }
+        ? { OR: uniquePhoneCandidates(body.phone).map((phone) => ({ phone })) }
         : null;
 
-    if (!where) {
+    if (!where || (body.phone && uniquePhoneCandidates(body.phone).length === 0)) {
       reply.status(400).send({ error: 'Email or phone is required' });
       return;
     }
@@ -408,8 +487,17 @@ export default async function authRoutes(fastify: FastifyInstance) {
       rateLimit: emailCodeRateLimit,
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const body = emailCodeRequestSchema.parse(request.body);
+    const body = emailCodeRequestSchema.extend({
+      intent: z.enum(['login', 'register']).default('login'),
+    }).parse(request.body);
     const email = normalizeEmail(body.email);
+
+    if (body.intent === 'register') {
+      const user = await prisma.user.findUnique({ where: { email } });
+      if (user) {
+        return reply.status(409).send({ code: 'EMAIL_ALREADY_REGISTERED', error: 'This email is already registered. Please sign in instead.' });
+      }
+    }
 
     if (body.purpose === 'password_reset') {
       const user = await prisma.user.findUnique({ where: { email } });
@@ -433,7 +521,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
       rateLimit: authRateLimit,
     },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const body = emailCodeVerifySchema.parse(request.body);
+    const body = emailCodeVerifySchema.extend({
+      intent: z.enum(['login', 'register']).default('login'),
+    }).parse(request.body);
     const email = normalizeEmail(body.email);
     const valid = await consumeValidOtp(email, 'auth', body.code);
     if (!valid) {
@@ -445,29 +535,51 @@ export default async function authRoutes(fastify: FastifyInstance) {
       include: { roles: { include: { role: true } } },
     });
 
+    if (body.intent === 'register' && user) {
+      return reply.status(409).send({ code: 'EMAIL_ALREADY_REGISTERED', error: 'This email is already registered. Please sign in instead.' });
+    }
+
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email,
-          phone: body.phone?.trim() || null,
-          password_hash: await argon2.hash(randomUUID()),
-          status: 'active',
-          roles: {
-            create: {
-              role: {
-                connect: { name: 'CUSTOMER' },
+      const phone = body.phone ? normalizeBangladeshPhone(body.phone) : null;
+      if (phone) {
+        const existingPhone = await prisma.user.findFirst({
+          where: { OR: uniquePhoneCandidates(body.phone).map((candidate) => ({ phone: candidate })) },
+          select: { id: true },
+        });
+        if (existingPhone) {
+          return reply.status(409).send({ code: 'PHONE_ALREADY_REGISTERED', error: 'This phone number is already registered. Please sign in with your password.' });
+        }
+      }
+
+      try {
+        user = await prisma.user.create({
+          data: {
+            email,
+            phone,
+            password_hash: await argon2.hash(randomUUID()),
+            status: 'active',
+            roles: {
+              create: {
+                role: {
+                  connect: { name: 'CUSTOMER' },
+                },
+              },
+            },
+            customerProfile: {
+              create: {
+                full_name: body.name || null,
+                preferred_currency: 'BDT',
               },
             },
           },
-          customerProfile: {
-            create: {
-              full_name: body.name || null,
-              preferred_currency: 'BDT',
-            },
-          },
-        },
-        include: { roles: { include: { role: true } } },
-      });
+          include: { roles: { include: { role: true } } },
+        });
+      } catch (error: any) {
+        if (isUniqueConstraintError(error)) {
+          return reply.status(409).send({ code: 'ACCOUNT_ALREADY_REGISTERED', error: 'This email or phone number is already registered. Please sign in instead.' });
+        }
+        throw error;
+      }
     }
 
     if (user.status !== 'active') {

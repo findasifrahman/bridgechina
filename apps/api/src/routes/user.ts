@@ -14,6 +14,19 @@ const authPreHandler = [async (request: FastifyRequest, reply: FastifyReply) => 
   await fastify.authenticate(request, reply);
 }];
 
+function normalizeBangladeshPhone(phone: string) {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('8801') && digits.length === 13) return `+${digits}`;
+  if (digits.startsWith('01') && digits.length === 11) return `+88${digits}`;
+  if (digits.startsWith('1') && digits.length === 10) return `+880${digits}`;
+  return phone.trim();
+}
+
+function uniquePhoneCandidates(rawPhone?: string | null) {
+  if (!rawPhone) return [];
+  return Array.from(new Set([normalizeBangladeshPhone(rawPhone), rawPhone.trim()].filter(Boolean)));
+}
+
 async function getOrCreateCart(userId: string) {
   return prisma.cart.upsert({
     where: { user_id: userId },
@@ -277,7 +290,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
     });
   });
 
-  fastify.patch('/profile', { preHandler: authPreHandler }, async (request: FastifyRequest) => {
+  fastify.patch('/profile', { preHandler: authPreHandler }, async (request: FastifyRequest, reply: FastifyReply) => {
     const req = request as any;
     const body = request.body as {
       phone?: string;
@@ -295,9 +308,23 @@ export default async function userRoutes(fastify: FastifyInstance) {
     };
 
     if (body.phone !== undefined) {
+      const phone = body.phone ? normalizeBangladeshPhone(body.phone) : null;
+      if (phone) {
+        const existingPhoneUser = await prisma.user.findFirst({
+          where: {
+            id: { not: req.user.id },
+            OR: uniquePhoneCandidates(body.phone).map((candidate) => ({ phone: candidate })),
+          },
+          select: { id: true },
+        });
+        if (existingPhoneUser) {
+          return reply.status(409).send({ code: 'PHONE_ALREADY_REGISTERED', error: 'This phone number is already registered. Please sign in with your password.' });
+        }
+      }
+
       await prisma.user.update({
         where: { id: req.user.id },
-        data: { phone: body.phone || null },
+        data: { phone },
       });
     }
 

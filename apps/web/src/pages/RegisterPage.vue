@@ -5,6 +5,7 @@
         title="Create account"
         subtitle="Enter your email to receive a verification code"
         :redirect-path="redirectPath"
+        mode="register"
         @authenticated="handleAuthenticated"
       />
       <p class="mt-4 text-center text-sm text-slate-600">

@@ -37,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AuthOtpPanel from '@/components/auth/AuthOtpPanel.vue';
 import { useAuthStore } from '@/stores/auth';
@@ -54,6 +54,12 @@ const showPasswordLogin = ref(false);
 const passwordLoading = ref(false);
 const emailOrPhone = ref('');
 const password = ref('');
+
+onMounted(() => {
+  if (route.query.oauth === 'already_registered') {
+    toast.info('This Google email is already registered. Please sign in instead.');
+  }
+});
 
 function handleAuthenticated() {
   const target = route.query.redirect

@@ -65,11 +65,13 @@ const props = withDefaults(defineProps<{
   subtitle?: string;
   redirectPath?: string;
   framed?: boolean;
+  mode?: 'login' | 'register';
 }>(), {
   title: 'Welcome',
   subtitle: 'Please enter your phone number / email',
   redirectPath: '/user',
   framed: true,
+  mode: 'login',
 });
 
 const emit = defineEmits<{
@@ -91,7 +93,11 @@ const isPhoneInput = computed(() => {
 });
 
 function startGoogle() {
-  window.location.href = buildApiUrl(`/api/auth/google/start?redirect=${encodeURIComponent(props.redirectPath)}`);
+  const params = new URLSearchParams({
+    redirect: props.redirectPath,
+    intent: props.mode,
+  });
+  window.location.href = buildApiUrl(`/api/auth/google/start?${params.toString()}`);
 }
 
 async function handleSubmit() {
@@ -112,11 +118,13 @@ async function handleSubmit() {
   if (!codeStep.value) {
     loading.value = true;
     try {
-      await authStore.requestEmailCode(value, 'auth');
+      await authStore.requestEmailCode(value, 'auth', props.mode);
       codeStep.value = true;
       toast.success('Verification code sent');
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to send code');
+      const message = error.response?.data?.error || 'Failed to send code';
+      identifierError.value = message;
+      toast.error(message);
     } finally {
       loading.value = false;
     }
@@ -130,11 +138,16 @@ async function handleSubmit() {
 
   loading.value = true;
   try {
-    await authStore.verifyEmailCode({ email: value, code: code.value.trim() });
+    await authStore.verifyEmailCode({ email: value, code: code.value.trim(), intent: props.mode });
     toast.success('Signed in successfully');
     emit('authenticated');
   } catch (error: any) {
-    toast.error(error.response?.data?.error || 'Verification failed');
+    const message = error.response?.data?.error || 'Verification failed';
+    if (error.response?.status === 409) {
+      identifierError.value = message;
+      codeStep.value = false;
+    }
+    toast.error(message);
   } finally {
     loading.value = false;
   }

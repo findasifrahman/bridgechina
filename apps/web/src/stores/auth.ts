@@ -36,11 +36,15 @@ export const useAuthStore = defineStore('auth', () => {
     axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`;
   }
 
-  async function requestEmailCode(email: string, purpose: 'auth' | 'password_reset' = 'auth') {
-    await axios.post('/api/auth/email-code/request', { email, purpose });
+  async function requestEmailCode(
+    email: string,
+    purpose: 'auth' | 'password_reset' = 'auth',
+    intent: 'login' | 'register' = 'login'
+  ) {
+    await axios.post('/api/auth/email-code/request', { email, purpose, intent });
   }
 
-  async function verifyEmailCode(data: { email: string; code: string; name?: string; phone?: string }) {
+  async function verifyEmailCode(data: { email: string; code: string; name?: string; phone?: string; intent?: 'login' | 'register' }) {
     const response = await axios.post('/api/auth/email-code/verify', data);
     accessToken.value = response.data.accessToken;
     user.value = response.data.user;
