@@ -78,6 +78,33 @@ async function generateUniqueProductSku(preferredSku: string | null | undefined,
   return candidate;
 }
 
+const normalizeCouponCode = (value: string) => value.trim().toUpperCase().replace(/\s+/g, '');
+
+const couponSchema = z.object({
+  code: z.string().min(2).max(64).transform(normalizeCouponCode),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  discount_type: z.enum(['percent', 'fixed']),
+  discount_value: z.number().positive(),
+  max_discount_amount: z.number().min(0).optional().nullable(),
+  min_order_amount: z.number().min(0).default(0),
+  currency: z.string().min(1).default('BDT'),
+  starts_at: z.string().optional().nullable(),
+  ends_at: z.string().optional().nullable(),
+  usage_limit: z.number().int().positive().optional().nullable(),
+  per_user_limit: z.number().int().positive().default(1),
+  is_active: z.boolean().default(true),
+});
+
+function parseCouponDate(value: string | null | undefined) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error('Invalid coupon date');
+  }
+  return date;
+}
+
 function buildCategoryTree(rows: any[]) {
   const nodes = rows.map((row) => ({ ...row, children: [] as any[] }));
   const byId = new Map(nodes.map((node) => [node.id, node]));
@@ -1180,6 +1207,110 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         updated_by: req.user.id,
       },
     });
+  });
+
+  fastify.get('/coupons', { preHandler: auth }, async (request: FastifyRequest) => {
+    const query = request.query as { search?: string; active?: string };
+    const filters: any[] = [];
+    const search = query.search?.trim();
+    if (search) {
+      filters.push(Prisma.sql`("code" ILIKE ${`%${search}%`} OR "title" ILIKE ${`%${search}%`})`);
+    }
+    if (query.active === '1') filters.push(Prisma.sql`"is_active" = true`);
+    if (query.active === '0') filters.push(Prisma.sql`"is_active" = false`);
+    const whereSql = filters.length ? Prisma.sql`WHERE ${Prisma.join(filters, ' AND ')}` : Prisma.empty;
+
+    return prisma.$queryRaw(Prisma.sql`
+      SELECT *
+      FROM "coupons"
+      ${whereSql}
+      ORDER BY "created_at" DESC
+      LIMIT 200
+    `);
+  });
+
+  fastify.post('/coupons', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const req = request as any;
+    const body = couponSchema.parse(request.body);
+    const startsAt = parseCouponDate(body.starts_at);
+    const endsAt = parseCouponDate(body.ends_at);
+    if (startsAt && endsAt && startsAt > endsAt) {
+      return reply.status(400).send({ error: 'Coupon start date must be before end date' });
+    }
+
+    try {
+      const [coupon] = await prisma.$queryRaw(Prisma.sql`
+        INSERT INTO "coupons" (
+          "id", "code", "title", "description", "discount_type", "discount_value",
+          "max_discount_amount", "min_order_amount", "currency", "starts_at", "ends_at",
+          "usage_limit", "per_user_limit", "is_active", "created_by"
+        )
+        VALUES (
+          ${randomUUID()}, ${body.code}, ${body.title || null}, ${body.description || null},
+          ${body.discount_type}, ${body.discount_value}, ${body.max_discount_amount ?? null},
+          ${body.min_order_amount}, ${body.currency}, ${startsAt}, ${endsAt},
+          ${body.usage_limit ?? null}, ${body.per_user_limit}, ${body.is_active}, ${req.user.id}
+        )
+        RETURNING *
+      `) as any[];
+      return reply.status(201).send(coupon);
+    } catch (error: any) {
+      if (String(error?.message || '').includes('coupons_code_key')) {
+        return reply.status(409).send({ error: 'Coupon code already exists' });
+      }
+      throw error;
+    }
+  });
+
+  fastify.put('/coupons/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const body = couponSchema.partial({ code: true }).parse(request.body);
+    const startsAt = parseCouponDate(body.starts_at);
+    const endsAt = parseCouponDate(body.ends_at);
+    if (startsAt && endsAt && startsAt > endsAt) {
+      return reply.status(400).send({ error: 'Coupon start date must be before end date' });
+    }
+
+    const [coupon] = await prisma.$queryRaw(Prisma.sql`
+      UPDATE "coupons"
+      SET
+        "code" = COALESCE(${body.code ?? null}, "code"),
+        "title" = ${body.title ?? null},
+        "description" = ${body.description ?? null},
+        "discount_type" = COALESCE(${body.discount_type ?? null}, "discount_type"),
+        "discount_value" = COALESCE(${body.discount_value ?? null}, "discount_value"),
+        "max_discount_amount" = ${body.max_discount_amount ?? null},
+        "min_order_amount" = COALESCE(${body.min_order_amount ?? null}, "min_order_amount"),
+        "currency" = COALESCE(${body.currency ?? null}, "currency"),
+        "starts_at" = ${startsAt},
+        "ends_at" = ${endsAt},
+        "usage_limit" = ${body.usage_limit ?? null},
+        "per_user_limit" = COALESCE(${body.per_user_limit ?? null}, "per_user_limit"),
+        "is_active" = COALESCE(${body.is_active ?? null}, "is_active"),
+        "updated_at" = NOW()
+      WHERE "id" = ${id}
+      RETURNING *
+    `) as any[];
+
+    if (!coupon) return reply.status(404).send({ error: 'Coupon not found' });
+    return coupon;
+  });
+
+  fastify.delete('/coupons/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const redemptions = await prisma.$queryRaw(Prisma.sql`
+      SELECT "id" FROM "coupon_redemptions" WHERE "coupon_id" = ${id} LIMIT 1
+    `) as any[];
+    if (redemptions.length > 0) {
+      const [coupon] = await prisma.$queryRaw(Prisma.sql`
+        UPDATE "coupons" SET "is_active" = false, "updated_at" = NOW() WHERE "id" = ${id} RETURNING *
+      `) as any[];
+      return coupon || reply.status(404).send({ error: 'Coupon not found' });
+    }
+
+    const deleted = await prisma.$executeRaw(Prisma.sql`DELETE FROM "coupons" WHERE "id" = ${id}`);
+    if (!deleted) return reply.status(404).send({ error: 'Coupon not found' });
+    return { message: 'Coupon deleted' };
   });
 
   fastify.get('/blog-posts', { preHandler: auth }, async () => {

@@ -146,12 +146,15 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, reactive } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
 import { Button, Card, CardBody, EmptyState, Input, Modal, PageHeader, Pagination, StatusChip, Badge } from '@bridgechina/ui';
 import { RefreshCw } from 'lucide-vue-next';
 
 const toast = useToast();
+const route = useRoute();
+const router = useRouter();
 const loading = ref(false);
 const submittingProof = ref(false);
 const cancellingOrderId = ref('');
@@ -238,6 +241,7 @@ async function loadOrders() {
     orders.value = response.data?.orders || [];
     total.value = response.data?.total || 0;
     totalPages.value = response.data?.totalPages || 1;
+    openRequestedUpload();
   } catch (error) {
     console.error('Failed to load orders', error);
   } finally {
@@ -260,6 +264,17 @@ function openProofModal(order: any) {
   proofFile.value = null;
   proofForm.value = { amount: '', notes: '' };
   proofModalOpen.value = true;
+}
+
+function openRequestedUpload() {
+  const uploadOrderId = String(route.query.upload || '');
+  if (!uploadOrderId) return;
+  const order = orders.value.find((item) => item.id === uploadOrderId);
+  if (!order) return;
+  openProofModal(order);
+  const nextQuery = { ...route.query };
+  delete nextQuery.upload;
+  router.replace({ path: route.path, query: nextQuery });
 }
 
 async function cancelOrder(order: any) {

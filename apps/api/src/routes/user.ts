@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
@@ -100,6 +101,64 @@ function resolveCheckoutUnitPrice(item: z.infer<typeof checkoutItemSchema>) {
   return Number(item.priceMin ?? item.priceMax ?? 0);
 }
 
+const normalizeCouponCode = (value: string) => value.trim().toUpperCase().replace(/\s+/g, '');
+
+async function evaluateCoupon(
+  db: typeof prisma,
+  params: { code: string; subtotal: number; currency: string; userId: string },
+) {
+  const code = normalizeCouponCode(params.code);
+  if (!code) return { coupon: null, discountAmount: 0, error: 'Enter a coupon code' };
+
+  const [coupon] = await db.$queryRaw(Prisma.sql`
+    SELECT *
+    FROM "coupons"
+    WHERE "code" = ${code}
+    LIMIT 1
+  `) as any[];
+
+  if (!coupon) return { coupon: null, discountAmount: 0, error: 'Coupon code not found' };
+  if (!coupon.is_active) return { coupon, discountAmount: 0, error: 'Coupon is not active' };
+  if (coupon.currency && coupon.currency !== params.currency) return { coupon, discountAmount: 0, error: `Coupon is only valid for ${coupon.currency}` };
+
+  const now = new Date();
+  if (coupon.starts_at && new Date(coupon.starts_at) > now) return { coupon, discountAmount: 0, error: 'Coupon is not active yet' };
+  if (coupon.ends_at && new Date(coupon.ends_at) < now) return { coupon, discountAmount: 0, error: 'Coupon has expired' };
+  if (coupon.usage_limit !== null && Number(coupon.usage_count || 0) >= Number(coupon.usage_limit)) {
+    return { coupon, discountAmount: 0, error: 'Coupon usage limit reached' };
+  }
+  if (params.subtotal < Number(coupon.min_order_amount || 0)) {
+    return {
+      coupon,
+      discountAmount: 0,
+      error: `Minimum order amount for this coupon is ${Number(coupon.min_order_amount || 0).toLocaleString('en-US')} ${coupon.currency || params.currency}`,
+    };
+  }
+
+  const [usage] = await db.$queryRaw(Prisma.sql`
+    SELECT COUNT(*)::int AS "count"
+    FROM "coupon_redemptions"
+    WHERE "coupon_id" = ${coupon.id} AND "user_id" = ${params.userId}
+  `) as any[];
+  if (Number(usage?.count || 0) >= Number(coupon.per_user_limit || 1)) {
+    return { coupon, discountAmount: 0, error: 'You have already used this coupon' };
+  }
+
+  let discountAmount = 0;
+  if (coupon.discount_type === 'percent') {
+    discountAmount = params.subtotal * (Number(coupon.discount_value) / 100);
+    if (coupon.max_discount_amount !== null) {
+      discountAmount = Math.min(discountAmount, Number(coupon.max_discount_amount));
+    }
+  } else {
+    discountAmount = Number(coupon.discount_value);
+  }
+
+  discountAmount = Math.max(0, Math.min(params.subtotal, Math.round(discountAmount)));
+  if (discountAmount <= 0) return { coupon, discountAmount: 0, error: 'Coupon discount is not available' };
+  return { coupon, discountAmount, error: null };
+}
+
 async function getDefaultSellerAndCategory() {
   const [defaultSeller, defaultCategory] = await Promise.all([
     prisma.user.findFirst({
@@ -169,6 +228,7 @@ async function sendOrderConfirmationEmail(order: any) {
       `Your order ${order.order_number} has been received.`,
       '',
       `Subtotal: ${order.currency} ${Number(order.subtotal || 0).toLocaleString('en-US')}`,
+      ...(Number(order.discount_amount || 0) > 0 ? [`Discount${order.coupon_code ? ` (${order.coupon_code})` : ''}: -${order.currency} ${Number(order.discount_amount || 0).toLocaleString('en-US')}`] : []),
       `Shipping: ${order.currency} ${Number(order.shipping_fee || 0).toLocaleString('en-US')}`,
       `Total: ${order.currency} ${Number(order.total || 0).toLocaleString('en-US')}`,
       '',
@@ -181,6 +241,7 @@ async function sendOrderConfirmationEmail(order: any) {
       <p>Your order <strong>${escapeHtml(order.order_number)}</strong> has been received.</p>
       <ul>${htmlItems}</ul>
       <p><strong>Subtotal:</strong> ${escapeHtml(order.currency)} ${Number(order.subtotal || 0).toLocaleString('en-US')}</p>
+      ${Number(order.discount_amount || 0) > 0 ? `<p><strong>Discount${order.coupon_code ? ` (${escapeHtml(order.coupon_code)})` : ''}:</strong> -${escapeHtml(order.currency)} ${Number(order.discount_amount || 0).toLocaleString('en-US')}</p>` : ''}
       <p><strong>Shipping:</strong> ${escapeHtml(order.currency)} ${Number(order.shipping_fee || 0).toLocaleString('en-US')}</p>
       <p><strong>Total:</strong> ${escapeHtml(order.currency)} ${Number(order.total || 0).toLocaleString('en-US')}</p>
       <p>Payment is not collected now. Upload your payment slip from your orders page.</p>
@@ -507,6 +568,34 @@ export default async function userRoutes(fastify: FastifyInstance) {
     return getOrCreateCart(req.user.id);
   });
 
+  fastify.post('/coupons/validate', { preHandler: authPreHandler }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const req = request as any;
+    const body = z.object({
+      code: z.string().min(1),
+      subtotal: z.number().min(0),
+      currency: z.string().min(1).default('BDT'),
+    }).parse(request.body);
+
+    const result = await evaluateCoupon(prisma, {
+      code: body.code,
+      subtotal: body.subtotal,
+      currency: body.currency,
+      userId: req.user.id,
+    });
+
+    if (result.error) {
+      return reply.status(400).send({ error: result.error });
+    }
+
+    return {
+      code: result.coupon.code,
+      discount_amount: result.discountAmount,
+      discount_type: result.coupon.discount_type,
+      discount_value: result.coupon.discount_value,
+      currency: result.coupon.currency,
+    };
+  });
+
   fastify.patch('/cart/items/:id', { preHandler: authPreHandler }, async (request: FastifyRequest, reply: FastifyReply) => {
     const req = request as any;
     const { id } = request.params as { id: string };
@@ -561,6 +650,7 @@ export default async function userRoutes(fastify: FastifyInstance) {
       notes: z.string().optional(),
       shipping_method: z.string().optional(),
       currency: z.string().optional(),
+      coupon_code: z.string().optional(),
       items: z.array(checkoutItemSchema).optional(),
     }).parse(request.body);
 
@@ -692,54 +782,122 @@ export default async function userRoutes(fastify: FastifyInstance) {
       });
     }
 
+    const currency = body.currency || 'BDT';
     const subtotal = resolvedItems.reduce((sum, item) => sum + item.price_snapshot * item.qty, 0);
     if (subtotal < minimumPriceThreshold) {
       return reply.status(400).send({
-        error: `Minimum order amount is ${minimumPriceThreshold.toLocaleString('en-US')} ${body.currency || 'BDT'}.`,
+        error: `Minimum order amount is ${minimumPriceThreshold.toLocaleString('en-US')} ${currency}.`,
       });
     }
     const shippingMethod = body.shipping_method || 'air';
     const shippingFee = await calculateServerShippingFee(shippingMethod, resolvedItems);
+    const couponResult = body.coupon_code
+      ? await evaluateCoupon(prisma, {
+          code: body.coupon_code,
+          subtotal,
+          currency,
+          userId: req.user.id,
+        })
+      : { coupon: null, discountAmount: 0, error: null };
+    if (couponResult.error) {
+      return reply.status(400).send({ error: couponResult.error });
+    }
+    const discountAmount = couponResult.discountAmount || 0;
     const orderNumber = await generateOrderNumber();
 
-    const order = await prisma.order.create({
-      data: {
-        order_number: orderNumber,
-        user_id: req.user.id,
-        status: 'pending_payment',
-        payment_status: 'unsubmitted',
-        currency: body.currency || 'BDT',
-        subtotal,
-        shipping_fee: shippingFee,
-        total: subtotal + shippingFee,
-        shipping_method: shippingMethod,
-        shipping_address_id: body.shipping_address_id,
-        notes: body.notes || null,
-        items: {
-          create: resolvedItems,
-        },
-      },
-      include: {
-        items: {
-          include: {
-            product: true,
-            seller: {
-              select: {
-                id: true,
-                email: true,
-                phone: true,
-                sellerProfile: true,
+    let order: any;
+    try {
+      order = await prisma.$transaction(async (tx) => {
+      let finalCoupon = couponResult.coupon;
+      let finalDiscountAmount = discountAmount;
+      if (body.coupon_code) {
+        const freshResult = await evaluateCoupon(tx as any, {
+          code: body.coupon_code,
+          subtotal,
+          currency,
+          userId: req.user.id,
+        });
+        if (freshResult.error) {
+          throw new Error(freshResult.error);
+        }
+        finalCoupon = freshResult.coupon;
+        finalDiscountAmount = freshResult.discountAmount;
+      }
+
+      const createdOrder = await tx.order.create({
+        data: {
+          order_number: orderNumber,
+          user_id: req.user.id,
+          status: 'pending_payment',
+          payment_status: 'unsubmitted',
+          currency,
+          subtotal,
+          discount_amount: finalDiscountAmount,
+          coupon_code: finalCoupon?.code || null,
+          coupon_id: finalCoupon?.id || null,
+          shipping_fee: shippingFee,
+          total: Math.max(0, subtotal - finalDiscountAmount) + shippingFee,
+          shipping_method: shippingMethod,
+          shipping_address_id: body.shipping_address_id,
+          notes: body.notes || null,
+          items: {
+            create: resolvedItems,
+          },
+        } as any,
+        include: {
+          items: {
+            include: {
+              product: true,
+              seller: {
+                select: {
+                  id: true,
+                  email: true,
+                  phone: true,
+                  sellerProfile: true,
+                },
               },
             },
           },
+          shippingAddress: true,
+          user: true,
         },
-        shippingAddress: true,
-        user: true,
-      },
-    });
+      });
 
-    if (cart) {
-      await prisma.cartItem.deleteMany({ where: { cart_id: cart.id } });
+      if (finalCoupon && finalDiscountAmount > 0) {
+        const updated = await tx.$queryRaw(Prisma.sql`
+          UPDATE "coupons"
+          SET "usage_count" = "usage_count" + 1, "updated_at" = NOW()
+          WHERE "id" = ${finalCoupon.id}
+            AND ("usage_limit" IS NULL OR "usage_count" < "usage_limit")
+          RETURNING "id"
+        `) as any[];
+        if (updated.length === 0) {
+          throw new Error('Coupon usage limit reached');
+        }
+
+        await tx.$executeRaw(Prisma.sql`
+          INSERT INTO "coupon_redemptions" (
+            "id", "coupon_id", "user_id", "order_id", "coupon_code", "discount_amount"
+          )
+          VALUES (
+            ${randomUUID()}, ${finalCoupon.id}, ${req.user.id}, ${createdOrder.id},
+            ${finalCoupon.code}, ${finalDiscountAmount}
+          )
+        `);
+      }
+
+      if (cart) {
+        await tx.cartItem.deleteMany({ where: { cart_id: cart.id } });
+      }
+
+        return createdOrder;
+      });
+    } catch (error: any) {
+      const message = error?.message || 'Failed to apply coupon';
+      if (message.toLowerCase().includes('coupon')) {
+        return reply.status(400).send({ error: message });
+      }
+      throw error;
     }
 
     sendOrderConfirmationEmail(order).catch((error) => {

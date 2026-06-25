@@ -394,6 +394,9 @@ model Order {
   payment_status      String             @default("unsubmitted")
   currency            String             @default("BDT")
   subtotal            Float
+  discount_amount     Float              @default(0)
+  coupon_code         String?
+  coupon_id           String?
   shipping_fee        Float              @default(0)
   total               Float
   shipping_method     String             @default("air")
@@ -411,8 +414,10 @@ model Order {
   shippingUpdates     ShippingUpdate[]
   statusEvents        OrderStatusEvent[]
   paymentProofs       PaymentProof[]
+  couponRedemption    CouponRedemption?
 
   @@index([user_id])
+  @@index([coupon_code])
   @@index([status])
   @@index([payment_status])
   @@index([created_at])
@@ -497,6 +502,51 @@ model PaymentProof {
   @@index([order_id])
   @@index([status])
   @@map("payment_proofs")
+}
+
+model Coupon {
+  id                  String             @id @default(uuid())
+  code                String             @unique
+  title               String?
+  description         String?
+  discount_type       String
+  discount_value      Float
+  max_discount_amount Float?
+  min_order_amount    Float              @default(0)
+  currency            String             @default("BDT")
+  starts_at           DateTime?
+  ends_at             DateTime?
+  usage_limit         Int?
+  usage_count         Int                @default(0)
+  per_user_limit      Int                @default(1)
+  is_active           Boolean            @default(true)
+  created_by          String?
+  created_at          DateTime           @default(now())
+  updated_at          DateTime           @updatedAt
+  redemptions         CouponRedemption[]
+
+  @@index([code])
+  @@index([is_active])
+  @@index([starts_at])
+  @@index([ends_at])
+  @@map("coupons")
+}
+
+model CouponRedemption {
+  id              String   @id @default(uuid())
+  coupon_id       String
+  user_id         String
+  order_id        String   @unique
+  coupon_code     String
+  discount_amount Float
+  created_at      DateTime @default(now())
+  coupon          Coupon   @relation(fields: [coupon_id], references: [id], onDelete: Restrict)
+  order           Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@index([coupon_id])
+  @@index([user_id])
+  @@index([coupon_code])
+  @@map("coupon_redemptions")
 }
 
 model Review {

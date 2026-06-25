@@ -1,320 +1,39 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50">
-    <Card class="w-full max-w-md">
-      <CardHeader>
-        <h2 class="text-2xl font-bold text-center">Create Account</h2>
-        <p class="text-sm text-slate-600 text-center mt-2">Sign up to get started</p>
-      </CardHeader>
-      <CardBody>
-        <Button type="button" variant="ghost" full-width class="mb-4 border border-slate-200 bg-white" @click="startGoogleSignup">
-          Continue with Google
-        </Button>
-
-        <form @submit.prevent="handleRegister" class="space-y-4">
-          <div>
-            <Input
-              v-model="form.email"
-              label="Email (Optional)"
-              type="email"
-              placeholder="your@email.com"
-              :error="errors.email"
-              @blur="validateEmail"
-            />
-            <p class="text-xs text-slate-500 mt-1">We'll use this for account recovery</p>
-          </div>
-
-          <div>
-            <Input
-              v-model="form.phone"
-              label="Phone Number"
-              type="tel"
-              placeholder="+86 123 4567 8900"
-              required
-              :error="errors.phone"
-              @blur="validatePhone"
-            />
-            <p class="text-xs text-slate-500 mt-1">Required for account verification</p>
-          </div>
-
-          <div>
-            <Input
-              v-model="form.password"
-              label="Password"
-              type="password"
-              required
-              :error="errors.password"
-              @blur="validatePassword"
-              @input="validatePassword"
-            />
-            <div v-if="form.password" class="mt-2 space-y-1">
-              <div class="flex items-center text-xs" :class="passwordChecks.length ? 'text-slate-600' : 'text-green-600'">
-                <span class="w-4">{{ passwordChecks.length ? '○' : '✓' }}</span>
-                <span>At least 8 characters</span>
-              </div>
-              <div class="flex items-center text-xs" :class="passwordChecks.uppercase ? 'text-slate-600' : 'text-green-600'">
-                <span class="w-4">{{ passwordChecks.uppercase ? '○' : '✓' }}</span>
-                <span>One uppercase letter</span>
-              </div>
-              <div class="flex items-center text-xs" :class="passwordChecks.lowercase ? 'text-slate-600' : 'text-green-600'">
-                <span class="w-4">{{ passwordChecks.lowercase ? '○' : '✓' }}</span>
-                <span>One lowercase letter</span>
-              </div>
-              <div class="flex items-center text-xs" :class="passwordChecks.number ? 'text-slate-600' : 'text-green-600'">
-                <span class="w-4">{{ passwordChecks.number ? '○' : '✓' }}</span>
-                <span>One number</span>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <Input
-              v-model="form.confirmPassword"
-              label="Confirm Password"
-              type="password"
-              required
-              :error="errors.confirmPassword"
-              @blur="validateConfirmPassword"
-              @input="validateConfirmPassword"
-            />
-          </div>
-
-          <Button type="submit" variant="primary" :loading="loading" full-width :disabled="!isFormValid">
-            Create Account
-          </Button>
-
-          <div class="text-center text-sm">
-            <router-link to="/login" class="text-teal-600 hover:text-teal-700 font-medium">
-              Already have an account? Sign In
-            </router-link>
-          </div>
-        </form>
-
-        <div class="my-6 flex items-center gap-3">
-          <div class="h-px flex-1 bg-slate-200"></div>
-          <span class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">or</span>
-          <div class="h-px flex-1 bg-slate-200"></div>
-        </div>
-
-        <form class="space-y-4" @submit.prevent="handleEmailSignup">
-          <Input v-model="emailSignup.name" label="Name" placeholder="Your name" />
-          <Input v-model="emailSignup.email" label="Gmail or email" type="email" placeholder="your@email.com" required />
-          <div class="flex gap-2">
-            <Input v-model="emailSignup.code" label="6-digit code" placeholder="123456" class="flex-1" />
-            <Button type="button" variant="ghost" class="self-end" :loading="sendingCode" @click="sendSignupCode">
-              Send code
-            </Button>
-          </div>
-          <Button type="submit" variant="primary" :loading="emailSignupLoading" full-width>
-            Create account with email
-          </Button>
-        </form>
-      </CardBody>
-    </Card>
+  <div class="grid min-h-screen place-items-center bg-slate-100 px-4 py-10">
+    <div class="w-full max-w-lg">
+      <AuthOtpPanel
+        title="Create account"
+        subtitle="Enter your email to receive a verification code"
+        :redirect-path="redirectPath"
+        @authenticated="handleAuthenticated"
+      />
+      <p class="mt-4 text-center text-sm text-slate-600">
+        Already have an account?
+        <RouterLink class="font-semibold text-teal-700 hover:text-teal-800" :to="{ name: 'login', query: { redirect: redirectPath } }">
+          Sign in
+        </RouterLink>
+      </p>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed } from 'vue';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
+import AuthOtpPanel from '@/components/auth/AuthOtpPanel.vue';
 import { useAuthStore } from '@/stores/auth';
-import { useToast } from '@bridgechina/ui';
-import { Card, CardHeader, CardBody, Input, Button } from '@bridgechina/ui';
-import { buildApiUrl } from '@/utils/api-url';
+import { resolveAuthRedirect } from '@/utils/auth-redirect';
 
+const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
-const toast = useToast();
 
-const form = ref({
-  email: '',
-  phone: '',
-  password: '',
-  confirmPassword: '',
-});
+const redirectPath = computed(() => String(route.query.redirect || '/user'));
 
-const errors = ref({
-  email: '',
-  phone: '',
-  password: '',
-  confirmPassword: '',
-});
-
-const passwordChecks = computed(() => {
-  const pwd = form.value.password;
-  return {
-    length: pwd.length < 8,
-    uppercase: !/[A-Z]/.test(pwd),
-    lowercase: !/[a-z]/.test(pwd),
-    number: !/[0-9]/.test(pwd),
-  };
-});
-
-const isFormValid = computed(() => {
-  return (
-    form.value.phone.length >= 10 &&
-    /^[\+]?[0-9\s\-\(\)]+$/.test(form.value.phone) &&
-    form.value.password.length >= 8 &&
-    /[A-Z]/.test(form.value.password) &&
-    /[a-z]/.test(form.value.password) &&
-    /[0-9]/.test(form.value.password) &&
-    form.value.password === form.value.confirmPassword &&
-    (!form.value.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email))
-  );
-});
-
-const loading = ref(false);
-const sendingCode = ref(false);
-const emailSignupLoading = ref(false);
-const emailSignup = ref({
-  name: '',
-  email: '',
-  code: '',
-});
-
-function startGoogleSignup() {
-  window.location.href = buildApiUrl('/api/auth/google/start?redirect=/user');
-}
-
-function validateEmail() {
-  if (!form.value.email) {
-    errors.value.email = '';
-    return;
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email)) {
-    errors.value.email = 'Please enter a valid email address';
-  } else {
-    errors.value.email = '';
-  }
-}
-
-function validatePhone() {
-  if (!form.value.phone) {
-    errors.value.phone = 'Phone number is required';
-    return;
-  }
-  if (form.value.phone.length < 10) {
-    errors.value.phone = 'Phone number must be at least 10 characters';
-  } else if (!/^[\+]?[0-9\s\-\(\)]+$/.test(form.value.phone)) {
-    errors.value.phone = 'Please enter a valid phone number';
-  } else {
-    errors.value.phone = '';
-  }
-}
-
-function validatePassword() {
-  const pwd = form.value.password;
-  if (!pwd) {
-    errors.value.password = 'Password is required';
-    return;
-  }
-  if (pwd.length < 8) {
-    errors.value.password = 'Password must be at least 8 characters';
-  } else if (!/[A-Z]/.test(pwd)) {
-    errors.value.password = 'Password must contain at least one uppercase letter';
-  } else if (!/[a-z]/.test(pwd)) {
-    errors.value.password = 'Password must contain at least one lowercase letter';
-  } else if (!/[0-9]/.test(pwd)) {
-    errors.value.password = 'Password must contain at least one number';
-  } else {
-    errors.value.password = '';
-  }
-}
-
-function validateConfirmPassword() {
-  if (!form.value.confirmPassword) {
-    errors.value.confirmPassword = 'Please confirm your password';
-    return;
-  }
-  if (form.value.password !== form.value.confirmPassword) {
-    errors.value.confirmPassword = 'Passwords do not match';
-  } else {
-    errors.value.confirmPassword = '';
-  }
-}
-
-async function handleRegister() {
-  // Validate all fields
-  validatePhone();
-  validatePassword();
-  validateConfirmPassword();
-  validateEmail();
-
-  if (!isFormValid.value) {
-    toast.error('Please fix the errors in the form');
-    return;
-  }
-
-  if (!form.value.phone) {
-    toast.error('Phone number is required');
-    return;
-  }
-
-  loading.value = true;
-  try {
-    await authStore.register({
-      email: form.value.email || undefined,
-      phone: form.value.phone,
-      password: form.value.password,
-    });
-    
-    // Determine redirect based on user role
-    const userRoles = authStore.user?.roles || [];
-    if (userRoles.some((role: string) => ['ADMIN', 'OPS', 'EDITOR'].includes(role))) {
-      router.push('/admin');
-    } else if (userRoles.includes('SELLER')) {
-      router.push('/seller');
-    } else {
-      router.push('/user');
-    }
-    toast.success('Account created successfully!');
-  } catch (error: any) {
-    const errorMessage = error.response?.data?.error || 'Registration failed';
-    toast.error(errorMessage);
-    
-    // Set field-specific errors if provided by backend
-    if (error.response?.data?.field) {
-      errors.value[error.response.data.field as keyof typeof errors.value] = errorMessage;
-    }
-  } finally {
-    loading.value = false;
-  }
-}
-
-async function sendSignupCode() {
-  if (!emailSignup.value.email.trim()) {
-    toast.error('Enter your email first');
-    return;
-  }
-  sendingCode.value = true;
-  try {
-    await authStore.requestEmailCode(emailSignup.value.email.trim(), 'auth');
-    toast.success('Verification code sent');
-  } catch (error: any) {
-    toast.error(error.response?.data?.error || 'Failed to send code');
-  } finally {
-    sendingCode.value = false;
-  }
-}
-
-async function handleEmailSignup() {
-  if (!emailSignup.value.email.trim() || !emailSignup.value.code.trim()) {
-    toast.error('Enter your email and code');
-    return;
-  }
-  emailSignupLoading.value = true;
-  try {
-    await authStore.verifyEmailCode({
-      email: emailSignup.value.email.trim(),
-      code: emailSignup.value.code.trim(),
-      name: emailSignup.value.name.trim() || undefined,
-    });
-    const userRoles = authStore.user?.roles || [];
-    router.push(userRoles.includes('SELLER') ? '/seller' : userRoles.includes('ADMIN') ? '/admin' : '/user');
-    toast.success('Account created successfully!');
-  } catch (error: any) {
-    toast.error(error.response?.data?.error || 'Email verification failed');
-  } finally {
-    emailSignupLoading.value = false;
-  }
+function handleAuthenticated() {
+  const target = route.query.redirect
+    ? String(route.query.redirect)
+    : resolveAuthRedirect(authStore.user?.roles || [], '/user');
+  router.push(target);
 }
 </script>

@@ -35,26 +35,6 @@
       <div v-else>
         <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1.4fr)_420px]">
         <section class="space-y-4">
-          <div v-if="!authStore.isAuthenticated" class="rounded-[2rem] border border-teal-200 bg-teal-50 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.04)]">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p class="text-xs font-bold uppercase tracking-[0.24em] text-teal-700">Fast checkout</p>
-                <h2 class="mt-1 text-xl font-black text-slate-900">Sign in or create an account to continue</h2>
-                <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                  You can log in or register right here without leaving checkout. After that, add your shipping address on this page and place the order.
-                </p>
-              </div>
-              <div class="flex flex-wrap gap-3">
-                <Button variant="primary" class="rounded-2xl bg-teal-600 px-5 py-3 text-white hover:bg-teal-700" @click="openAuthModal('login')">
-                  Sign in
-                </Button>
-                <Button variant="ghost" class="rounded-2xl border border-teal-200 bg-white px-5 py-3 text-teal-700 hover:bg-teal-50" @click="openAuthModal('register')">
-                  Create account
-                </Button>
-              </div>
-            </div>
-          </div>
-
           <div class="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-[0_18px_45px_rgba(15,23,42,0.05)]">
             <div class="flex items-center justify-between gap-3">
               <div>
@@ -166,6 +146,82 @@
             </div>
           </div>
 
+          <div class="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-[0_18px_45px_rgba(15,23,42,0.05)]">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <h2 class="text-2xl font-black text-slate-950">Contact</h2>
+                <p class="mt-1 text-sm text-slate-500">Use email code now. SMS code can be enabled later from the shared auth module.</p>
+              </div>
+              <RouterLink
+                v-if="!authStore.isAuthenticated"
+                :to="{ name: 'login', query: { redirect: '/shopping/checkout' } }"
+                class="text-sm font-semibold text-teal-700 underline-offset-4 hover:underline"
+              >
+                Sign in
+              </RouterLink>
+            </div>
+
+            <div v-if="!authStore.isAuthenticated" class="mt-5 rounded-[1.5rem] bg-slate-50 p-5">
+              <AuthOtpPanel
+                title="Welcome"
+                subtitle="Please enter your phone number / email"
+                redirect-path="/shopping/checkout"
+                :framed="false"
+                @authenticated="handleCheckoutAuthenticated"
+              />
+            </div>
+
+            <div v-else class="mt-5 space-y-5">
+              <div class="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-800">
+                Signed in as {{ authStore.user?.email || authStore.user?.phone }}
+              </div>
+
+              <div v-if="!authStore.user?.phone">
+                <Input
+                  v-model="checkoutPhone"
+                  label="Phone"
+                  type="tel"
+                  placeholder="01XXXXXXXXX"
+                  :error="checkoutPhoneError"
+                  @input="checkoutPhoneError = ''"
+                />
+                <p class="mt-1 text-xs text-slate-500">Bangladesh mobile format: 01XXXXXXXXX or +8801XXXXXXXXX.</p>
+              </div>
+
+              <div class="space-y-4">
+                <h3 class="text-2xl font-black text-slate-950">Delivery</h3>
+
+                <Select
+                  v-if="addresses.length > 0"
+                  v-model="selectedAddressId"
+                  label="Saved address"
+                  :options="addressOptions"
+                  placeholder="Select an address"
+                />
+
+                <form v-if="addresses.length === 0" class="space-y-3" @submit.prevent="handleAddAddress">
+                  <div class="grid gap-3 sm:grid-cols-2">
+                    <Input v-model="addressForm.name" label="First name / recipient" placeholder="Name" :error="addressErrors.name" @input="addressErrors.name = ''" />
+                    <Input v-model="addressForm.city" label="City" placeholder="Dhaka" :error="addressErrors.city" @input="addressErrors.city = ''" />
+                  </div>
+                  <Input v-model="addressForm.address_line" label="Address" placeholder="House, road, area" :error="addressErrors.address_line" @input="addressErrors.address_line = ''" />
+                  <Input v-model="addressForm.notes" label="Apartment, suite, etc. (optional)" placeholder="Floor, apartment, landmark" />
+                  <div class="grid gap-3 sm:grid-cols-2">
+                    <Input v-model="addressForm.postal_code" label="Postal code (optional)" />
+                    <Input v-model="addressForm.phone" label="Delivery phone" type="tel" placeholder="01XXXXXXXXX" :error="addressErrors.phone" @input="addressErrors.phone = ''" />
+                  </div>
+                  <label class="flex items-center gap-2">
+                    <input v-model="addressForm.is_default" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
+                    <span class="text-sm text-slate-700">Save this information for next time</span>
+                  </label>
+                  <Button variant="ghost" type="submit" class="rounded-2xl border border-slate-200 bg-gray-100 px-4 py-2 text-teal-600 hover:bg-slate-50" :loading="savingAddress">
+                    Save delivery address
+                  </Button>
+                </form>
+              </div>
+            </div>
+          </div>
+
           <div class="hidden rounded-[2rem] border border-slate-200 bg-white p-5 shadow-[0_18px_45px_rgba(15,23,42,0.05)] lg:block">
             <div class="flex items-start justify-between gap-4">
               <div>
@@ -179,7 +235,7 @@
               </div>
               <div class="min-w-[220px] text-right">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Grand total</p>
-                <p class="mt-1 text-2xl font-black text-teal-700">{{ formatPrice(subtotal + (shippingFee || 0)) }}</p>
+                <p class="mt-1 text-2xl font-black text-teal-700">{{ formatPrice(grandTotal) }}</p>
               </div>
             </div>
 
@@ -202,7 +258,7 @@
                 Sign in or register on this page to continue checkout.
               </p>
               <p v-else-if="addresses.length === 0" class="text-sm leading-6 text-amber-700">
-                Add a shipping address on this page before placing the order.
+                Add your phone and delivery address on this page before placing the order.
               </p>
               <p v-else class="text-sm leading-6 text-slate-500">
                 Payment is not collected now. You can upload the payment slip from your orders page after checkout.
@@ -242,31 +298,35 @@
                 />
                 <div v-else class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
                   <p class="text-sm font-semibold text-slate-900">No shipping address yet</p>
-                  <p class="mt-1 text-xs leading-5 text-slate-500">Add your address here and continue checkout on this page.</p>
-                  <Button variant="primary" class="mt-3 rounded-2xl bg-teal-600 px-4 py-2 text-white hover:bg-teal-700" @click="showAddressModal = true">
-                    Add shipping address
-                  </Button>
+                  <p class="mt-1 text-xs leading-5 text-slate-500">Use the delivery form in the Contact section.</p>
                 </div>
               </div>
               <div v-else class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
-                <p class="text-sm font-semibold text-slate-900">Sign in to unlock saved addresses</p>
+                <p class="text-sm font-semibold text-slate-900">Sign in to continue</p>
                 <p class="mt-1 text-xs leading-5 text-slate-500">
-                  Use the quick sign in or register form on this page. No redirect needed.
+                  Use the Contact form on this page or open the full sign-in page.
                 </p>
-                <div class="mt-3 flex flex-wrap gap-2">
-                  <Button variant="primary" class="rounded-2xl bg-teal-600 px-4 py-2 text-white hover:bg-teal-700" @click="openAuthModal('login')">
-                    Sign in
-                  </Button>
-                  <Button variant="ghost" class="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-slate-700 hover:bg-slate-50" @click="openAuthModal('register')">
-                    Register
-                  </Button>
+              </div>
+              <div>
+                <p class="mb-2 text-sm font-semibold text-slate-900">Shipping method</p>
+                <div class="overflow-hidden rounded-2xl border border-slate-200">
+                  <label
+                    v-for="option in shippingOptions"
+                    :key="option.value"
+                    class="flex cursor-pointer items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 last:border-b-0"
+                    :class="shippingMethod === option.value ? 'bg-teal-50 ring-1 ring-inset ring-teal-600' : 'bg-white'"
+                  >
+                    <span class="flex items-center gap-3">
+                      <input v-model="shippingMethod" type="radio" :value="option.value" class="h-4 w-4 text-teal-700 focus:ring-teal-600" />
+                      <span>
+                        <span class="block text-sm font-bold text-slate-900">{{ option.label }}</span>
+                        <span class="block text-xs text-slate-500">Will be delivered by 12-14 days</span>
+                      </span>
+                    </span>
+                    <span class="text-sm font-bold text-slate-900">{{ option.value === 'air' ? formatPrice(shippingFee || 0) : 'Calculated' }}</span>
+                  </label>
                 </div>
               </div>
-              <Select
-                v-model="shippingMethod"
-                label="Shipping method"
-                :options="shippingOptions"
-              />
               <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <div class="flex items-center justify-between gap-3">
                   <div>
@@ -299,10 +359,29 @@
                 <span class="text-slate-600">Estimated shipping</span>
                 <span class="font-bold text-slate-900">{{ formatPrice(shippingFee || 0) }}</span>
               </div>
+              <div class="rounded-2xl border border-slate-200 bg-white p-3">
+                <label class="mb-2 block text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Coupon code</label>
+                <div class="flex gap-2">
+                  <Input v-model="couponCode" placeholder="SAVE10" class="flex-1" @input="clearAppliedCoupon" />
+                  <Button variant="ghost" class="shrink-0 border border-slate-200 bg-slate-50" :loading="applyingCoupon" @click="applyCoupon">
+                    Apply
+                  </Button>
+                </div>
+                <p v-if="appliedCoupon" class="mt-2 text-xs font-semibold text-teal-700">
+                  {{ appliedCoupon.code }} applied: -{{ formatPrice(appliedCoupon.discount_amount) }}
+                </p>
+                <button v-if="appliedCoupon" type="button" class="mt-1 text-xs font-semibold text-rose-600" @click="removeCoupon">
+                  Remove coupon
+                </button>
+              </div>
+              <div v-if="couponDiscount > 0" class="flex items-center justify-between text-sm">
+                <span class="text-slate-600">Coupon discount</span>
+                <span class="font-bold text-teal-700">-{{ formatPrice(couponDiscount) }}</span>
+              </div>
               <div class="border-t border-slate-200 pt-3 text-sm font-semibold text-slate-900">
                 <div class="flex items-center justify-between">
                   <span>Total</span>
-                  <span class="text-teal-700">{{ formatPrice(subtotal + (shippingFee || 0)) }}</span>
+                  <span class="text-teal-700">{{ formatPrice(grandTotal) }}</span>
                 </div>
               </div>
             </div>
@@ -357,84 +436,19 @@
     </div>
   </div>
 
-  <Modal v-model="showAuthModal" :title="authMode === 'login' ? 'Sign in to checkout' : 'Create account to checkout'" size="lg">
-    <div class="mb-4 flex rounded-2xl border border-slate-200 bg-slate-50 p-1">
-      <button
-        type="button"
-        class="flex-1 rounded-xl px-4 py-2 text-sm font-semibold transition"
-        :class="authMode === 'login' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'"
-        @click="authMode = 'login'"
-      >
-        Sign in
-      </button>
-      <button
-        type="button"
-        class="flex-1 rounded-xl px-4 py-2 text-sm font-semibold transition"
-        :class="authMode === 'register' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'"
-        @click="authMode = 'register'"
-      >
-        Register
-      </button>
-    </div>
-
-    <div v-if="authMode === 'login'" class="space-y-4">
-      <Input v-model="loginForm.identifier" label="Email or phone" placeholder="your@email.com or +880..." />
-      <Input v-model="loginForm.password" label="Password" type="password" />
-      <Button variant="primary" class="w-full rounded-2xl bg-teal-600 py-3 text-white hover:bg-teal-700" :loading="authLoading" @click="handleInlineLogin">
-        Sign in and continue
-      </Button>
-      <p class="text-center text-xs text-slate-500">
-        After sign in, add your shipping address right here if needed.
-      </p>
-    </div>
-
-    <div v-else class="space-y-4">
-      <Input v-model="registerForm.email" label="Email (optional)" type="email" placeholder="your@email.com" />
-      <Input v-model="registerForm.phone" label="Phone number" type="tel" placeholder="+880..." />
-      <Input v-model="registerForm.password" label="Password" type="password" />
-      <Input v-model="registerForm.confirmPassword" label="Confirm password" type="password" />
-      <Button variant="primary" class="w-full rounded-2xl bg-teal-600 py-3 text-white hover:bg-teal-700" :loading="authLoading" @click="handleInlineRegister">
-        Create account and continue
-      </Button>
-      <p class="text-center text-xs text-slate-500">
-        We will keep you on checkout and open the address form next if needed.
-      </p>
-    </div>
-  </Modal>
-
-  <Modal v-model="showAddressModal" title="Add shipping address" size="lg">
-    <form class="space-y-4" @submit.prevent="handleAddAddress">
-      <Input v-model="addressForm.name" label="Recipient name" required />
-      <Input v-model="addressForm.phone" label="Phone" required />
-      <Input v-model="addressForm.country" label="Country" placeholder="Bangladesh" />
-      <Input v-model="addressForm.city" label="City" required />
-      <Input v-model="addressForm.address_line" label="Address line" required />
-      <Input v-model="addressForm.postal_code" label="Postal code" />
-      <Input v-model="addressForm.notes" label="Notes" placeholder="Apartment, floor, landmark..." />
-      <div class="flex items-center gap-2">
-        <input v-model="addressForm.is_default" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
-        <span class="text-sm text-slate-700">Set as default address</span>
-      </div>
-      <div class="flex justify-end gap-3 pt-2">
-        <Button variant="ghost" type="button" @click="showAddressModal = false">Cancel</Button>
-        <Button variant="primary" type="submit" :loading="savingAddress" class="rounded-2xl bg-teal-600 px-5 py-3 text-white hover:bg-teal-700">
-          Save address
-        </Button>
-      </div>
-    </form>
-  </Modal>
-
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router';
 import { useToast } from '@bridgechina/ui';
 import { ChevronLeft, Minus, Package, Plus, ShoppingCart } from 'lucide-vue-next';
-import { Button, Input, Modal, Select } from '@bridgechina/ui';
+import { Button, Input, Select } from '@bridgechina/ui';
 import { useShoppingCart } from '@/composables/useShoppingCart';
 import { useAuthStore } from '@/stores/auth';
 import axios from '@/utils/axios';
+import AuthOtpPanel from '@/components/auth/AuthOtpPanel.vue';
+import { isValidBangladeshPhone, normalizeBangladeshPhone } from '@/utils/contact-validation';
 
 const router = useRouter();
 const toast = useToast();
@@ -453,18 +467,18 @@ const shoppingSettings = ref<{
   shippingRates?: Array<{ method: string; currency: string; min_rate_per_kg: number; max_rate_per_kg: number }>;
 }>({});
 const moqRule = ref({ minimum_product: 1, minimum_price_threshold: 0, currency: 'BDT' });
-const showAuthModal = ref(false);
-const showAddressModal = ref(false);
-const authMode = ref<'login' | 'register'>('login');
-const authLoading = ref(false);
 const savingAddress = ref(false);
 const syncingCart = ref(false);
-const loginForm = ref({ identifier: '', password: '' });
-const registerForm = ref({
-  email: '',
+const applyingCoupon = ref(false);
+const couponCode = ref('');
+const appliedCoupon = ref<any>(null);
+const checkoutPhone = ref(authStore.user?.phone || '');
+const checkoutPhoneError = ref('');
+const addressErrors = ref({
+  name: '',
   phone: '',
-  password: '',
-  confirmPassword: '',
+  city: '',
+  address_line: '',
 });
 const addressForm = ref({
   name: '',
@@ -521,6 +535,13 @@ const subtotal = computed(() => {
 const totalEstimatedWeight = computed(() => {
   return cartItems.value.reduce((sum, item) => sum + getItemWeight(item), 0);
 });
+
+const couponDiscount = computed(() => {
+  const amount = Number(appliedCoupon.value?.discount_amount || 0);
+  return Math.max(0, Math.min(subtotal.value, amount));
+});
+
+const grandTotal = computed(() => Math.max(0, subtotal.value - couponDiscount.value) + (shippingFee.value || 0));
 
 const activeShippingRate = computed(() => {
   const rates = shoppingSettings.value.shippingRates || [];
@@ -580,6 +601,42 @@ function formatPrice(price: number): string {
   return `BDT ${price.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 }
 
+function clearAppliedCoupon() {
+  appliedCoupon.value = null;
+}
+
+function removeCoupon() {
+  couponCode.value = '';
+  appliedCoupon.value = null;
+}
+
+async function applyCoupon() {
+  if (!couponCode.value.trim()) {
+    toast.error('Enter a coupon code');
+    return;
+  }
+  if (!authStore.isAuthenticated) {
+    toast.error('Sign in before applying a coupon');
+    return;
+  }
+  applyingCoupon.value = true;
+  try {
+    const response = await axios.post('/api/user/coupons/validate', {
+      code: couponCode.value.trim(),
+      subtotal: subtotal.value,
+      currency: 'BDT',
+    });
+    appliedCoupon.value = response.data;
+    couponCode.value = response.data.code;
+    toast.success('Coupon applied');
+  } catch (error: any) {
+    appliedCoupon.value = null;
+    toast.error(error.response?.data?.error || 'Coupon is not valid');
+  } finally {
+    applyingCoupon.value = false;
+  }
+}
+
 async function loadAddresses() {
   if (!authStore.isAuthenticated) return;
   loading.value = true;
@@ -595,9 +652,10 @@ async function loadAddresses() {
 }
 
 function resetAddressForm() {
+  const phone = authStore.user?.phone || checkoutPhone.value;
   addressForm.value = {
     name: '',
-    phone: '',
+    phone,
     country: 'Bangladesh',
     city: '',
     address_line: '',
@@ -697,75 +755,45 @@ async function hydrateAuthenticatedCart() {
     }
   }
   await loadServerCart();
+  addressErrors.value = { name: '', phone: '', city: '', address_line: '' };
 }
 
-function openAuthModal(mode: 'login' | 'register' = 'login') {
-  authMode.value = mode;
-  showAuthModal.value = true;
+async function handleCheckoutAuthenticated() {
+  checkoutPhone.value = authStore.user?.phone || checkoutPhone.value;
+  resetAddressForm();
+  await loadAddresses();
+  await hydrateAuthenticatedCart();
 }
 
-async function handleInlineLogin() {
-  if (!loginForm.value.identifier.trim() || !loginForm.value.password.trim()) {
-    toast.error('Enter your email or phone and password');
-    return;
+function validateAddressForm() {
+  addressErrors.value = { name: '', phone: '', city: '', address_line: '' };
+  let valid = true;
+  if (!addressForm.value.name.trim()) {
+    addressErrors.value.name = 'Recipient name is required';
+    valid = false;
   }
-
-  authLoading.value = true;
-  try {
-    await authStore.login(loginForm.value.identifier.trim(), loginForm.value.password);
-    toast.success('Signed in successfully');
-    showAuthModal.value = false;
-    await loadAddresses();
-    if (addresses.value.length === 0) {
-      resetAddressForm();
-      showAddressModal.value = true;
-    }
-  } catch (error: any) {
-    toast.error(error.response?.data?.error || 'Sign in failed');
-  } finally {
-    authLoading.value = false;
+  if (!addressForm.value.city.trim()) {
+    addressErrors.value.city = 'City is required';
+    valid = false;
   }
-}
-
-async function handleInlineRegister() {
-  if (!registerForm.value.phone.trim() || !registerForm.value.password.trim()) {
-    toast.error('Phone number and password are required');
-    return;
+  if (!addressForm.value.address_line.trim()) {
+    addressErrors.value.address_line = 'Address is required';
+    valid = false;
   }
-
-  if (registerForm.value.password !== registerForm.value.confirmPassword) {
-    toast.error('Passwords do not match');
-    return;
+  if (!isValidBangladeshPhone(addressForm.value.phone)) {
+    addressErrors.value.phone = 'Enter a valid Bangladesh mobile number';
+    valid = false;
   }
-
-  authLoading.value = true;
-  try {
-    await authStore.register({
-      email: registerForm.value.email.trim() || undefined,
-      phone: registerForm.value.phone.trim(),
-      password: registerForm.value.password,
-    });
-    toast.success('Account created');
-    showAuthModal.value = false;
-    await loadAddresses();
-    if (addresses.value.length === 0) {
-      resetAddressForm();
-      showAddressModal.value = true;
-    }
-  } catch (error: any) {
-    toast.error(error.response?.data?.error || 'Registration failed');
-  } finally {
-    authLoading.value = false;
-  }
+  return valid;
 }
 
 async function handleAddAddress() {
   if (!authStore.isAuthenticated) {
-    openAuthModal('login');
+    router.push({ name: 'login', query: { redirect: '/shopping/checkout' } });
     return;
   }
 
-  if (!addressForm.value.name.trim() || !addressForm.value.phone.trim() || !addressForm.value.city.trim() || !addressForm.value.address_line.trim()) {
+  if (!validateAddressForm()) {
     toast.error('Please complete the required address fields');
     return;
   }
@@ -774,10 +802,10 @@ async function handleAddAddress() {
   try {
     const response = await axios.post('/api/user/addresses', {
       ...addressForm.value,
+      phone: normalizeBangladeshPhone(addressForm.value.phone),
       is_default: !!addressForm.value.is_default,
     });
     toast.success('Address added');
-    showAddressModal.value = false;
     resetAddressForm();
     await loadAddresses();
     selectedAddressId.value = response.data?.id || addresses.value[0]?.id || '';
@@ -788,9 +816,35 @@ async function handleAddAddress() {
   }
 }
 
+async function ensureCheckoutPhone() {
+  if (authStore.user?.phone) return true;
+  const phone = checkoutPhone.value.trim();
+  if (!isValidBangladeshPhone(phone)) {
+    checkoutPhoneError.value = 'Enter a valid Bangladesh mobile number';
+    toast.error('Please provide a valid phone number');
+    return false;
+  }
+
+  await axios.patch('/api/user/profile', { phone: normalizeBangladeshPhone(phone) });
+  await authStore.fetchUser();
+  checkoutPhone.value = authStore.user?.phone || normalizeBangladeshPhone(phone);
+  if (!addressForm.value.phone) addressForm.value.phone = checkoutPhone.value;
+  return true;
+}
+
+async function ensureCheckoutAddress() {
+  if (selectedAddressId.value) return true;
+  if (addresses.value.length > 0) {
+    selectedAddressId.value = addresses.value[0].id;
+    return true;
+  }
+  await handleAddAddress();
+  return !!selectedAddressId.value;
+}
+
 async function submitCheckout() {
   if (!authStore.isAuthenticated) {
-    openAuthModal('login');
+    router.push({ name: 'login', query: { redirect: '/shopping/checkout' } });
     return;
   }
 
@@ -804,24 +858,28 @@ async function submitCheckout() {
     return;
   }
 
-  if (!selectedAddressId.value) {
-    toast.error('Please add or select a shipping address');
+  if (!(await ensureCheckoutPhone())) {
+    return;
+  }
+
+  if (!(await ensureCheckoutAddress())) {
     return;
   }
 
   submitting.value = true;
   try {
     await syncLocalCartToServer();
-    await axios.post('/api/user/orders/checkout', {
+    const response = await axios.post('/api/user/orders/checkout', {
       shipping_address_id: selectedAddressId.value,
       shipping_method: shippingMethod.value,
       currency: 'BDT',
+      coupon_code: appliedCoupon.value?.code || undefined,
       notes: notes.value || undefined,
     });
 
     toast.success('Order placed successfully');
     clearCart();
-    router.push('/user/orders');
+    router.push({ path: '/user/orders', query: { upload: response.data?.id } });
   } catch (error: any) {
     toast.error(error.response?.data?.error || 'Failed to place order');
   } finally {
@@ -836,24 +894,12 @@ function handleCheckoutPrimaryAction() {
   }
 
   if (!authStore.isAuthenticated) {
-    openAuthModal('login');
-    return;
-  }
-
-  if (addresses.value.length === 0) {
-    resetAddressForm();
-    showAddressModal.value = true;
+    router.push({ name: 'login', query: { redirect: '/shopping/checkout' } });
     return;
   }
 
   if (!selectedAddressId.value && addresses.value.length > 0) {
     selectedAddressId.value = addresses.value[0].id;
-  }
-
-  if (!selectedAddressId.value) {
-    resetAddressForm();
-    showAddressModal.value = true;
-    return;
   }
 
   submitCheckout();
@@ -878,6 +924,8 @@ watch(
   () => authStore.isAuthenticated,
   (isAuthenticated) => {
     if (isAuthenticated) {
+      checkoutPhone.value = authStore.user?.phone || checkoutPhone.value;
+      resetAddressForm();
       loadAddresses();
       hydrateAuthenticatedCart();
     } else {
@@ -889,6 +937,8 @@ watch(
 
 onMounted(() => {
   if (authStore.isAuthenticated) {
+    checkoutPhone.value = authStore.user?.phone || checkoutPhone.value;
+    resetAddressForm();
     loadAddresses();
     hydrateAuthenticatedCart();
   }
