@@ -354,7 +354,7 @@ import {
 } from '@bridgechina/ui';
 import { Upload, Trash2, Search, X, Copy, Eye, Edit } from 'lucide-vue-next';
 
-const MAX_FILE_SIZE = 1024 * 1024; // 1MB
+const MAX_FILE_SIZE = 3.5 * 1024 * 1024; // 3.5MB
 
 const media = ref<any[]>([]);
 const searchQuery = ref('');
