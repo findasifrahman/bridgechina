@@ -224,7 +224,10 @@
                 <span class="font-semibold text-slate-700">Total amount</span>
                 <span class="text-[15px] font-black text-teal-700">{{ formatTotalAmount() }}</span>
               </div>
-              <div class="mt-1 text-slate-500">{{ totalQuantity }} x {{ formatPrice(getUnitPrice()) }}</div>
+              <div class="mt-1 text-slate-500">
+                <span v-if="hasVariantRows">Calculated from selected SKU prices</span>
+                <span v-else>{{ totalQuantity }} x {{ formatPrice(getUnitPrice()) }}</span>
+              </div>
             </div>
 
             <div class="mt-3 grid gap-2">
@@ -589,7 +592,10 @@
                         <span class="font-semibold text-slate-700">Total amount</span>
                         <span class="text-[15px] font-black text-teal-700">{{ formatTotalAmount() }}</span>
                       </div>
-                      <div class="mt-1 text-slate-500">{{ totalQuantity }} x {{ formatPrice(getUnitPrice()) }}</div>
+                      <div class="mt-1 text-slate-500">
+                        <span v-if="hasVariantRows">Calculated from selected SKU prices</span>
+                        <span v-else>{{ totalQuantity }} x {{ formatPrice(getUnitPrice()) }}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -613,7 +619,10 @@
                       <span class="font-semibold text-slate-700">Total amount</span>
                       <span class="text-[15px] font-black text-teal-700">{{ formatTotalAmount() }}</span>
                     </div>
-                    <div class="mt-1 text-slate-500">{{ totalQuantity }} x {{ formatPrice(getUnitPrice()) }}</div>
+                    <div class="mt-1 text-slate-500">
+                      <span v-if="hasVariantRows">Calculated from selected SKU prices</span>
+                      <span v-else>{{ totalQuantity }} x {{ formatPrice(getUnitPrice()) }}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1621,7 +1630,46 @@ function formatPrice(price: number): string {
   return `$${(price * rate).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function convertPriceFromCny(price: number): number {
+  const curr = selectedCurrency.value;
+  if (curr === 'BDT') return price * (conversionRates.value.CNY_TO_BDT || 15);
+  if (curr === 'USD') return price * (conversionRates.value.CNY_TO_USD || 0.14);
+  return price;
+}
+
+function getSkuSourceUnitPrice(sku: any): number {
+  return Number(sku?.sale_price || sku?.price || 0);
+}
+
+function getSelectedSkuRows() {
+  return Object.entries(selectedSkus.value)
+    .map(([specId, qty]) => {
+      const row = variantRows.value.find((entry) => (entry.sku.specid || entry.sku.skuid) === specId);
+      if (!row || qty <= 0) return null;
+      return {
+        specId,
+        qty,
+        sku: row.sku,
+        label: row.label,
+        sourceUnitPrice: getSkuSourceUnitPrice(row.sku),
+      };
+    })
+    .filter((entry): entry is { specId: string; qty: number; sku: any; label: string; sourceUnitPrice: number } => !!entry);
+}
+
+function getSelectedSkuSourceTotal(): number {
+  return getSelectedSkuRows().reduce((sum, entry) => sum + (entry.sourceUnitPrice * entry.qty), 0);
+}
+
 function getUnitPrice(): number {
+  if (hasVariantRows.value) {
+    const selectedRows = getSelectedSkuRows();
+    if (selectedRows.length > 0) {
+      const totalQty = selectedRows.reduce((sum, row) => sum + row.qty, 0);
+      const totalPrice = selectedRows.reduce((sum, row) => sum + (row.sourceUnitPrice * row.qty), 0);
+      return totalQty > 0 ? totalPrice / totalQty : 0;
+    }
+  }
   if (!product.value) return 0;
   if (product.value.tieredPricing && product.value.tieredPricing.length > 0) {
     const matchingTier = product.value.tieredPricing.slice().reverse().find((tier: any) => totalQuantity.value >= tier.minQty);
@@ -1632,21 +1680,15 @@ function getUnitPrice(): number {
 }
 
 function formatTotalAmount(): string {
+  if (hasVariantRows.value) {
+    return formatPrice(getSelectedSkuSourceTotal());
+  }
   return formatPrice(getUnitPrice() * totalQuantity.value);
 }
 
 function getDisplayedUnitPrice(): number {
   const rawPrice = getUnitPrice();
-  const curr = selectedCurrency.value;
-  if (curr === 'BDT') {
-    const rate = conversionRates.value.CNY_TO_BDT || 15;
-    return rawPrice * rate;
-  }
-  if (curr === 'USD') {
-    const rate = conversionRates.value.CNY_TO_USD || 0.14;
-    return rawPrice * rate;
-  }
-  return rawPrice;
+  return convertPriceFromCny(rawPrice);
 }
 
 function buildCartProductPayload() {
@@ -1654,11 +1696,7 @@ function buildCartProductPayload() {
   const sourcePriceMax = typeof product.value?.priceMax === 'number' ? product.value.priceMax : sourcePriceMin;
   const displayPriceMin = getDisplayedUnitPrice();
   const displayCurrency = selectedCurrency.value;
-  const displayPriceMax = displayCurrency === 'CNY'
-    ? sourcePriceMax
-    : displayCurrency === 'BDT'
-      ? sourcePriceMax * (conversionRates.value.CNY_TO_BDT || 15)
-      : sourcePriceMax * (conversionRates.value.CNY_TO_USD || 0.14);
+  const displayPriceMax = convertPriceFromCny(sourcePriceMax);
 
   return {
     ...product.value,
@@ -1671,6 +1709,7 @@ function buildCartProductPayload() {
     displayPriceMax,
     priceMin: displayPriceMin,
     priceMax: displayPriceMax,
+    estimatedWeight: Number(product.value?.estimatedWeightKg ?? product.value?.weight_kg ?? product.value?.shipping?.weight_kg ?? 0) || undefined,
   };
 }
 
@@ -1824,12 +1863,14 @@ function buildSkuDetails() {
     return undefined;
   }
 
-  const skuDetails: any[] = [];
-  for (const [specId, qty] of Object.entries(selectedSkus.value)) {
-    if (qty <= 0) continue;
-    const sku = variantRows.value.find((row) => (row.sku.specid || row.sku.skuid) === specId)?.sku;
-    if (sku) skuDetails.push({ specId, qty, sku });
-  }
+  const skuDetails = getSelectedSkuRows().map((entry) => ({
+    specId: entry.specId,
+    qty: entry.qty,
+    sku: entry.sku,
+    label: entry.label,
+    sourceUnitPrice: entry.sourceUnitPrice,
+    displayUnitPrice: convertPriceFromCny(entry.sourceUnitPrice),
+  }));
   return skuDetails.length > 0 ? skuDetails : undefined;
 }
 

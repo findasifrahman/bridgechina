@@ -104,13 +104,13 @@
                       :key="idx"
                       class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600"
                     >
-                      {{ sku.sku?.props_names || sku.sku?.specid || `SKU ${idx + 1}` }} x{{ sku.qty }}
+                      {{ sku.label || sku.sku?.props_names || sku.sku?.specid || `SKU ${idx + 1}` }} x{{ sku.qty }}
                     </span>
                   </div>
 
                   <div class="mt-4 flex flex-wrap items-center gap-3">
                     <span class="text-sm font-semibold text-slate-600">Quantity</span>
-                    <div class="flex items-center rounded-2xl border border-slate-200 bg-white">
+                    <div v-if="!(item.skuDetails && item.skuDetails.length > 0)" class="flex items-center rounded-2xl border border-slate-200 bg-white">
                       <button
                         type="button"
                         class="h-10 w-10 text-rose-600 hover:bg-rose-50 disabled:opacity-40"
@@ -128,9 +128,15 @@
                         <Plus class="mx-auto h-4 w-4" />
                       </button>
                     </div>
+                    <div v-else class="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-900">
+                      {{ getItemCheckoutQuantity(item) }} selected
+                    </div>
+                    <p v-if="item.skuDetails && item.skuDetails.length > 0" class="text-xs text-slate-500">
+                      Variant quantities are calculated from the selected SKU rows.
+                    </p>
                     <div class="ml-auto text-right">
                       <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Line total</p>
-                      <p class="text-lg font-black text-teal-700">{{ formatPrice((getDisplayPriceMin(item) || 0) * item.quantity) }}</p>
+                      <p class="text-lg font-black text-teal-700">{{ formatPrice(getItemLineTotal(item)) }}</p>
                     </div>
                   </div>
                 </div>
@@ -203,13 +209,19 @@
                 label="Shipping method"
                 :options="shippingOptions"
               />
-              <Input
-                v-model.number="shippingFee"
-                label="Estimated shipping fee"
-                type="number"
-                min="0"
-                step="0.01"
-              />
+              <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div class="flex items-center justify-between gap-3">
+                  <div>
+                    <p class="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Estimated shipping fee</p>
+                    <p class="mt-1 text-lg font-black text-slate-900">{{ formatPrice(shippingFee) }}</p>
+                  </div>
+                  <div class="text-right text-xs text-slate-500">
+                    <p>{{ shippingMethodLabel }}</p>
+                    <p>{{ totalEstimatedWeightLabel }}</p>
+                  </div>
+                </div>
+                <p v-if="shippingRateLabel" class="mt-2 text-xs text-teal-700">{{ shippingRateLabel }}</p>
+              </div>
               <p class="rounded-2xl bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
                 The product weight is approximate. The final shipping cost will be calculated in front of the user by measuring the weight when the product arrives.
               </p>
@@ -358,6 +370,10 @@ const selectedAddressId = ref('');
 const shippingMethod = ref('air');
 const shippingFee = ref<number>(0);
 const notes = ref('');
+const shoppingSettings = ref<{
+  moqRule?: { minimum_product?: number; minimum_price_threshold?: number; currency?: string };
+  shippingRates?: Array<{ method: string; currency: string; min_rate_per_kg: number; max_rate_per_kg: number }>;
+}>({});
 const moqRule = ref({ minimum_product: 1, minimum_price_threshold: 0, currency: 'BDT' });
 const showAuthModal = ref(false);
 const showAddressModal = ref(false);
@@ -393,8 +409,58 @@ function getDisplayPriceMax(item: any): number | undefined {
   return typeof value === 'number' ? value : undefined;
 }
 
+function getItemLineTotal(item: any): number {
+  if (Array.isArray(item?.skuDetails) && item.skuDetails.length > 0) {
+    return item.skuDetails.reduce((sum: number, sku: any) => {
+      const unitPrice = Number(sku?.displayUnitPrice ?? sku?.sourceUnitPrice ?? getDisplayPriceMin(item) ?? 0);
+      const qty = Number(sku?.qty || 0);
+      return sum + (unitPrice * qty);
+    }, 0);
+  }
+
+  return (getDisplayPriceMin(item) || 0) * Number(item?.quantity || 0);
+}
+
+function getItemCheckoutQuantity(item: any): number {
+  if (Array.isArray(item?.skuDetails) && item.skuDetails.length > 0) {
+    return item.skuDetails.reduce((sum: number, sku: any) => sum + Number(sku?.qty || 0), 0);
+  }
+
+  return Number(item?.quantity || 0);
+}
+
+function getItemWeight(item: any): number {
+  const weight = Number(item?.estimatedWeight || 0);
+  const qty = getItemCheckoutQuantity(item);
+  return weight > 0 && qty > 0 ? weight * qty : 0;
+}
+
 const subtotal = computed(() => {
-  return cartItems.value.reduce((sum, item) => sum + ((getDisplayPriceMin(item) || 0) * item.quantity), 0);
+  return cartItems.value.reduce((sum, item) => sum + getItemLineTotal(item), 0);
+});
+
+const totalEstimatedWeight = computed(() => {
+  return cartItems.value.reduce((sum, item) => sum + getItemWeight(item), 0);
+});
+
+const activeShippingRate = computed(() => {
+  const rates = shoppingSettings.value.shippingRates || [];
+  return rates.find((rate) => rate.method === shippingMethod.value) || null;
+});
+
+const shippingMethodLabel = computed(() => {
+  return shippingMethod.value === 'sea' ? 'Sea shipping' : 'Air shipping';
+});
+
+const shippingRateLabel = computed(() => {
+  if (!activeShippingRate.value) return '';
+  const rate = activeShippingRate.value;
+  return `${rate.currency} ${rate.min_rate_per_kg}-${rate.max_rate_per_kg} per kg`;
+});
+
+const totalEstimatedWeightLabel = computed(() => {
+  if (totalEstimatedWeight.value <= 0) return 'Weight pending';
+  return `Approx. ${totalEstimatedWeight.value.toFixed(2).replace(/\.?0+$/, '')} kg`;
 });
 
 const orderWarnings = computed(() => {
@@ -465,6 +531,7 @@ function resetAddressForm() {
 async function loadShoppingSettings() {
   try {
     const response = await axios.get('/api/public/shopping/settings');
+    shoppingSettings.value = response.data || {};
     moqRule.value = response.data?.moqRule || moqRule.value;
   } catch (error) {
     console.error('Failed to load shopping settings', error);
@@ -589,18 +656,23 @@ async function submitCheckout() {
       shipping_fee: Number(shippingFee.value || 0),
       currency: 'BDT',
       notes: notes.value || undefined,
-      items: cartItems.value.map((item) => ({
-        externalId: item.externalId,
-        title: item.title,
-        qty: item.quantity,
-        priceMin: getDisplayPriceMin(item),
-        priceMax: getDisplayPriceMax(item),
-        sourcePriceMin: item.sourcePriceMin,
-        sourcePriceMax: item.sourcePriceMax,
-        displayCurrency: item.displayCurrency || 'BDT',
-        imageUrl: item.imageUrl,
-        sourceUrl: item.sourceUrl,
-      })),
+      items: cartItems.value.map((item) => {
+        const qty = getItemCheckoutQuantity(item);
+        const unitPrice = qty > 0 ? getItemLineTotal(item) / qty : 0;
+
+        return {
+          externalId: item.externalId,
+          title: item.title,
+          qty,
+          priceMin: unitPrice,
+          priceMax: unitPrice,
+          sourcePriceMin: item.sourcePriceMin,
+          sourcePriceMax: item.sourcePriceMax,
+          displayCurrency: item.displayCurrency || 'BDT',
+          imageUrl: item.imageUrl,
+          sourceUrl: item.sourceUrl,
+        };
+      }),
     });
 
     toast.success('Order placed successfully');
@@ -642,6 +714,21 @@ function handleCheckoutPrimaryAction() {
 
   submitCheckout();
 }
+
+watch(
+  [shippingMethod, totalEstimatedWeight, activeShippingRate],
+  () => {
+    const rate = activeShippingRate.value;
+    const weight = totalEstimatedWeight.value;
+    if (!rate || weight <= 0) {
+      shippingFee.value = 0;
+      return;
+    }
+
+    shippingFee.value = Math.round(weight * rate.min_rate_per_kg);
+  },
+  { immediate: true },
+);
 
 watch(
   () => authStore.isAuthenticated,

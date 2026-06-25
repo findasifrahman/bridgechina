@@ -24,6 +24,9 @@ export interface CartItem {
     specId: string;
     qty: number;
     sku: any;
+    label?: string;
+    sourceUnitPrice?: number;
+    displayUnitPrice?: number;
   }>;
   selectedShippingMethod?: string;
   estimatedWeight?: number;
@@ -31,6 +34,32 @@ export interface CartItem {
 
 const CART_STORAGE_KEY = 'bridgechina_shopping_cart';
 const cartItems = ref<CartItem[]>([]);
+
+function mergeSkuDetails(
+  current: CartItem['skuDetails'],
+  incoming: CartItem['skuDetails'],
+): CartItem['skuDetails'] {
+  const rows = [...(current || []), ...(incoming || [])];
+  if (!rows.length) return undefined;
+
+  const merged = new Map<string, any>();
+  for (const row of rows) {
+    const key = String(row?.specId || row?.sku?.specid || row?.sku?.skuid || '');
+    if (!key) continue;
+    const existing = merged.get(key);
+    if (existing) {
+      existing.qty = Number(existing.qty || 0) + Number(row?.qty || 0);
+      existing.sku = row?.sku || existing.sku;
+      existing.label = row?.label || existing.label;
+      existing.sourceUnitPrice = row?.sourceUnitPrice ?? existing.sourceUnitPrice;
+      existing.displayUnitPrice = row?.displayUnitPrice ?? existing.displayUnitPrice;
+    } else {
+      merged.set(key, { ...row, specId: key, qty: Number(row?.qty || 0) });
+    }
+  }
+
+  return Array.from(merged.values());
+}
 
 function normalizeCartItem(item: any): CartItem {
   const priceMin = typeof item?.priceMin === 'number' ? item.priceMin : undefined;
@@ -107,7 +136,8 @@ export function useShoppingCart() {
       if (product.imageUrl) cartItems.value[existingIndex].imageUrl = product.imageUrl;
       if (product.sourceUrl) cartItems.value[existingIndex].sourceUrl = product.sourceUrl;
       if (skuDetails) {
-        cartItems.value[existingIndex].skuDetails = skuDetails;
+        cartItems.value[existingIndex].skuDetails = mergeSkuDetails(cartItems.value[existingIndex].skuDetails, skuDetails);
+        cartItems.value[existingIndex].quantity = cartItems.value[existingIndex].skuDetails?.reduce((sum, row) => sum + Number(row.qty || 0), 0) || cartItems.value[existingIndex].quantity;
       }
     } else {
       const normalizedProduct = normalizeCartItem({
