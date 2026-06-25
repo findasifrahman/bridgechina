@@ -74,6 +74,20 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
+model AuthEmailOtp {
+  id         String    @id @default(uuid())
+  email      String
+  purpose    String
+  code_hash  String
+  expires_at DateTime
+  consumed_at DateTime?
+  created_at DateTime  @default(now())
+
+  @@index([email, purpose])
+  @@index([expires_at])
+  @@map("auth_email_otps")
+}
+
 model OAuthAccount {
   id                  String   @id @default(uuid())
   user_id             String

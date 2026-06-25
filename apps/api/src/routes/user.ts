@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
+import { escapeHtml, sendMail } from '../utils/mailer.js';
 
 const authPreHandler = [async (request: FastifyRequest, reply: FastifyReply) => {
   const fastify = request.server as FastifyInstance & { authenticate?: any };
@@ -149,6 +150,42 @@ async function calculateServerShippingFee(method: string, items: Array<{ qty: nu
 
   if (!rate) return 0;
   return Math.round(totalWeight * rate.min_rate_per_kg);
+}
+
+async function sendOrderConfirmationEmail(order: any) {
+  const email = order.user?.email;
+  if (!email) return;
+
+  const lines = (order.items || []).map((item: any) => {
+    const title = item.title_snapshot || item.product?.title || 'Product';
+    return `${title} x ${item.qty} - ${order.currency} ${(Number(item.price_snapshot || 0) * Number(item.qty || 0)).toLocaleString('en-US')}`;
+  });
+  const htmlItems = lines.map((line: string) => `<li>${escapeHtml(line)}</li>`).join('');
+
+  await sendMail({
+    to: email,
+    subject: `ChinaBuyBD order ${order.order_number} received`,
+    text: [
+      `Your order ${order.order_number} has been received.`,
+      '',
+      `Subtotal: ${order.currency} ${Number(order.subtotal || 0).toLocaleString('en-US')}`,
+      `Shipping: ${order.currency} ${Number(order.shipping_fee || 0).toLocaleString('en-US')}`,
+      `Total: ${order.currency} ${Number(order.total || 0).toLocaleString('en-US')}`,
+      '',
+      'Items:',
+      ...lines,
+      '',
+      'Payment is not collected now. Upload your payment slip from your orders page.',
+    ].join('\n'),
+    html: `
+      <p>Your order <strong>${escapeHtml(order.order_number)}</strong> has been received.</p>
+      <ul>${htmlItems}</ul>
+      <p><strong>Subtotal:</strong> ${escapeHtml(order.currency)} ${Number(order.subtotal || 0).toLocaleString('en-US')}</p>
+      <p><strong>Shipping:</strong> ${escapeHtml(order.currency)} ${Number(order.shipping_fee || 0).toLocaleString('en-US')}</p>
+      <p><strong>Total:</strong> ${escapeHtml(order.currency)} ${Number(order.total || 0).toLocaleString('en-US')}</p>
+      <p>Payment is not collected now. Upload your payment slip from your orders page.</p>
+    `,
+  });
 }
 
 export default async function userRoutes(fastify: FastifyInstance) {
@@ -697,12 +734,17 @@ export default async function userRoutes(fastify: FastifyInstance) {
           },
         },
         shippingAddress: true,
+        user: true,
       },
     });
 
     if (cart) {
       await prisma.cartItem.deleteMany({ where: { cart_id: cart.id } });
     }
+
+    sendOrderConfirmationEmail(order).catch((error) => {
+      fastify.log.error({ err: error, orderId: order.id }, '[User Route] Failed to send order confirmation email');
+    });
 
     return order;
   });

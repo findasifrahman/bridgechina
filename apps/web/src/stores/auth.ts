@@ -36,6 +36,26 @@ export const useAuthStore = defineStore('auth', () => {
     axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`;
   }
 
+  async function requestEmailCode(email: string, purpose: 'auth' | 'password_reset' = 'auth') {
+    await axios.post('/api/auth/email-code/request', { email, purpose });
+  }
+
+  async function verifyEmailCode(data: { email: string; code: string; name?: string; phone?: string }) {
+    const response = await axios.post('/api/auth/email-code/verify', data);
+    accessToken.value = response.data.accessToken;
+    user.value = response.data.user;
+    localStorage.setItem('accessToken', response.data.accessToken);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`;
+  }
+
+  async function resetPasswordWithCode(data: { email: string; code: string; password: string }) {
+    const response = await axios.post('/api/auth/password-reset/confirm', data);
+    accessToken.value = response.data.accessToken;
+    user.value = response.data.user;
+    localStorage.setItem('accessToken', response.data.accessToken);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`;
+  }
+
   async function logout() {
     await axios.post('/api/auth/logout');
     user.value = null;
@@ -83,6 +103,9 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     login,
     register,
+    requestEmailCode,
+    verifyEmailCode,
+    resetPasswordWithCode,
     logout,
     fetchUser,
     refreshToken,

@@ -84,6 +84,26 @@
             </router-link>
           </div>
         </form>
+
+        <div class="my-6 flex items-center gap-3">
+          <div class="h-px flex-1 bg-slate-200"></div>
+          <span class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">or</span>
+          <div class="h-px flex-1 bg-slate-200"></div>
+        </div>
+
+        <form class="space-y-4" @submit.prevent="handleEmailSignup">
+          <Input v-model="emailSignup.name" label="Name" placeholder="Your name" />
+          <Input v-model="emailSignup.email" label="Gmail or email" type="email" placeholder="your@email.com" required />
+          <div class="flex gap-2">
+            <Input v-model="emailSignup.code" label="6-digit code" placeholder="123456" class="flex-1" />
+            <Button type="button" variant="ghost" class="self-end" :loading="sendingCode" @click="sendSignupCode">
+              Send code
+            </Button>
+          </div>
+          <Button type="submit" variant="primary" :loading="emailSignupLoading" full-width>
+            Create account with email
+          </Button>
+        </form>
       </CardBody>
     </Card>
   </div>
@@ -138,6 +158,13 @@ const isFormValid = computed(() => {
 });
 
 const loading = ref(false);
+const sendingCode = ref(false);
+const emailSignupLoading = ref(false);
+const emailSignup = ref({
+  name: '',
+  email: '',
+  code: '',
+});
 
 function validateEmail() {
   if (!form.value.email) {
@@ -241,6 +268,44 @@ async function handleRegister() {
     }
   } finally {
     loading.value = false;
+  }
+}
+
+async function sendSignupCode() {
+  if (!emailSignup.value.email.trim()) {
+    toast.error('Enter your email first');
+    return;
+  }
+  sendingCode.value = true;
+  try {
+    await authStore.requestEmailCode(emailSignup.value.email.trim(), 'auth');
+    toast.success('Verification code sent');
+  } catch (error: any) {
+    toast.error(error.response?.data?.error || 'Failed to send code');
+  } finally {
+    sendingCode.value = false;
+  }
+}
+
+async function handleEmailSignup() {
+  if (!emailSignup.value.email.trim() || !emailSignup.value.code.trim()) {
+    toast.error('Enter your email and code');
+    return;
+  }
+  emailSignupLoading.value = true;
+  try {
+    await authStore.verifyEmailCode({
+      email: emailSignup.value.email.trim(),
+      code: emailSignup.value.code.trim(),
+      name: emailSignup.value.name.trim() || undefined,
+    });
+    const userRoles = authStore.user?.roles || [];
+    router.push(userRoles.includes('SELLER') ? '/seller' : userRoles.includes('ADMIN') ? '/admin' : '/user');
+    toast.success('Account created successfully!');
+  } catch (error: any) {
+    toast.error(error.response?.data?.error || 'Email verification failed');
+  } finally {
+    emailSignupLoading.value = false;
   }
 }
 </script>

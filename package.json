@@ -11,6 +11,8 @@
     "db:generate": "pnpm --filter @bridgechina/api db:generate",
     "db:deploy": "pnpm --filter @bridgechina/api db:deploy",
     "db:patch:snapshots": "pnpm --filter @bridgechina/api db:patch:snapshots",
+    "db:patch:auth-email": "pnpm --filter @bridgechina/api db:patch:auth-email",
+    "db:patch:prod": "pnpm --filter @bridgechina/api db:patch:prod",
     "db:migrate": "pnpm --filter @bridgechina/api db:migrate",
     "db:seed": "pnpm --filter @bridgechina/api db:seed",
     "db:studio": "pnpm --filter @bridgechina/api db:studio"
