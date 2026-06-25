@@ -32,7 +32,8 @@
         </div>
       </div>
 
-      <div v-else class="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_420px]">
+      <div v-else>
+        <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1.4fr)_420px]">
         <section class="space-y-4">
           <div v-if="!authStore.isAuthenticated" class="rounded-[2rem] border border-teal-200 bg-teal-50 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.04)]">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -98,21 +99,35 @@
                     </button>
                   </div>
 
-                  <div v-if="item.skuDetails && item.skuDetails.length > 0" class="mt-3 flex flex-wrap gap-2">
-                    <span
+                  <div v-if="item.skuDetails && item.skuDetails.length > 0" class="mt-3 space-y-2">
+                    <div
                       v-for="(sku, idx) in item.skuDetails"
                       :key="idx"
-                      class="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600"
+                      class="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2"
                     >
-                      {{ sku.label || sku.sku?.props_names || sku.sku?.specid || `SKU ${idx + 1}` }} x{{ sku.qty }}
-                    </span>
-                    <button
-                      type="button"
-                      class="rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700 hover:bg-teal-100"
-                      @click="openSkuEditor(item)"
-                    >
-                      Edit variants
-                    </button>
+                      <div class="min-w-0">
+                        <p class="truncate text-xs font-semibold text-slate-700">{{ sku.label || sku.sku?.props_names || sku.sku?.specid || `SKU ${idx + 1}` }}</p>
+                        <p class="mt-0.5 text-[11px] text-slate-500">{{ formatPrice(Number(sku.displayUnitPrice || 0)) }} each</p>
+                      </div>
+                      <div class="flex items-center rounded-2xl border border-slate-200 bg-slate-50">
+                        <button
+                          type="button"
+                          class="h-8 w-8 text-rose-600 hover:bg-rose-50 disabled:opacity-40"
+                          :disabled="Number(sku.qty || 0) <= 0"
+                          @click="changeCartSkuQty(item, idx, -1)"
+                        >
+                          <Minus class="mx-auto h-3.5 w-3.5" />
+                        </button>
+                        <span class="w-10 text-center text-sm font-bold text-slate-900">{{ sku.qty }}</span>
+                        <button
+                          type="button"
+                          class="h-8 w-8 text-teal-600 hover:bg-teal-50"
+                          @click="changeCartSkuQty(item, idx, 1)"
+                        >
+                          <Plus class="mx-auto h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   <div class="mt-4 flex flex-wrap items-center gap-3">
@@ -139,7 +154,7 @@
                       {{ getItemCheckoutQuantity(item) }} selected
                     </div>
                     <p v-if="item.skuDetails && item.skuDetails.length > 0" class="text-xs text-slate-500">
-                      Variant quantities are calculated from the selected SKU rows.
+                      Use the plus and minus buttons above to change each selected option.
                     </p>
                     <div class="ml-auto text-right">
                       <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Line total</p>
@@ -151,21 +166,59 @@
             </div>
           </div>
 
-          <div class="rounded-[2rem] border border-slate-200 bg-gradient-to-br from-slate-900 to-slate-700 p-6 text-white shadow-[0_18px_45px_rgba(15,23,42,0.12)]">
-            <p class="text-xs font-bold uppercase tracking-[0.24em] text-white/65">What happens next</p>
-            <div class="mt-4 grid gap-3 sm:grid-cols-3">
-              <div class="rounded-2xl bg-white/10 p-4">
-                <p class="text-sm font-semibold">1. Checkout</p>
-                <p class="mt-1 text-sm text-white/75">You place the order with your selected address.</p>
+          <div class="hidden rounded-[2rem] border border-slate-200 bg-white p-5 shadow-[0_18px_45px_rgba(15,23,42,0.05)] lg:block">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <p class="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Checkout status</p>
+                <h2 class="mt-1 text-xl font-black text-slate-900">
+                  {{ orderWarnings.length ? 'Action needed before checkout' : 'Ready to place your order' }}
+                </h2>
+                <p class="mt-2 text-sm leading-6 text-slate-600">
+                  {{ orderWarnings.length ? 'Please fix the highlighted issue below before placing the order.' : 'Your cart, shipping details, and address are ready for checkout.' }}
+                </p>
               </div>
-              <div class="rounded-2xl bg-white/10 p-4">
-                <p class="text-sm font-semibold">2. Payment slip</p>
-                <p class="mt-1 text-sm text-white/75">Upload a cash slip later from your orders page.</p>
+              <div class="min-w-[220px] text-right">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Grand total</p>
+                <p class="mt-1 text-2xl font-black text-teal-700">{{ formatPrice(subtotal + (shippingFee || 0)) }}</p>
               </div>
-              <div class="rounded-2xl bg-white/10 p-4">
-                <p class="text-sm font-semibold">3. Shipping</p>
-                <p class="mt-1 text-sm text-white/75">Seller and admin track purchased, warehouse, and shipped statuses.</p>
+            </div>
+
+            <div
+              v-if="orderWarnings.length"
+              class="mt-4 rounded-2xl border-2 border-rose-300 bg-rose-50 p-4 text-sm text-rose-700 shadow-[0_8px_24px_rgba(244,63,94,0.08)]"
+            >
+              <p class="font-bold text-rose-800">Checkout blocked</p>
+              <div class="mt-2 space-y-2">
+                <div v-for="warning in orderWarnings" :key="warning">{{ warning }}</div>
               </div>
+            </div>
+
+            <div v-else class="mt-4 rounded-2xl border border-teal-200 bg-teal-50 p-4 text-sm text-teal-800">
+              All minimum order requirements are satisfied.
+            </div>
+
+            <div class="mt-5 flex items-center justify-between gap-4">
+              <p v-if="!authStore.isAuthenticated" class="text-sm leading-6 text-slate-500">
+                Sign in or register on this page to continue checkout.
+              </p>
+              <p v-else-if="addresses.length === 0" class="text-sm leading-6 text-amber-700">
+                Add a shipping address on this page before placing the order.
+              </p>
+              <p v-else class="text-sm leading-6 text-slate-500">
+                Payment is not collected now. You can upload the payment slip from your orders page after checkout.
+              </p>
+
+              <Button
+                variant="primary"
+                size="lg"
+                class="shrink-0 rounded-2xl bg-teal-600 px-8 py-3 text-white hover:bg-teal-700"
+                :loading="submitting"
+                :disabled="orderWarnings.length > 0 || submitting"
+                @click="handleCheckoutPrimaryAction"
+              >
+                <ShoppingCart class="mr-2 h-4 w-4" />
+                {{ checkoutPrimaryLabel }}
+              </Button>
             </div>
           </div>
         </section>
@@ -189,9 +242,7 @@
                 />
                 <div v-else class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
                   <p class="text-sm font-semibold text-slate-900">No shipping address yet</p>
-                  <p class="mt-1 text-xs leading-5 text-slate-500">
-                    Add an address here now. You do not need to go to your profile.
-                  </p>
+                  <p class="mt-1 text-xs leading-5 text-slate-500">Add your address here and continue checkout on this page.</p>
                   <Button variant="primary" class="mt-3 rounded-2xl bg-teal-600 px-4 py-2 text-white hover:bg-teal-700" @click="showAddressModal = true">
                     Add shipping address
                   </Button>
@@ -208,44 +259,6 @@
                   </Button>
                   <Button variant="ghost" class="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-slate-700 hover:bg-slate-50" @click="openAuthModal('register')">
                     Register
-                  </Button>
-                </div>
-              </div>
-              <div
-                v-if="!authStore.isAuthenticated || addresses.length === 0"
-                class="rounded-2xl border border-slate-200 bg-white p-4"
-              >
-                <p class="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Quick access</p>
-                <p class="mt-2 text-sm font-semibold text-slate-900">
-                  {{ !authStore.isAuthenticated ? 'Login or register without leaving checkout' : 'Add your shipping address without leaving checkout' }}
-                </p>
-                <p class="mt-1 text-xs leading-5 text-slate-500">
-                  {{ !authStore.isAuthenticated ? 'Use the quick modal below. After login we can open the address form immediately.' : 'Open the address form here and continue checkout on the same page.' }}
-                </p>
-                <div class="mt-3 flex flex-wrap gap-2">
-                  <Button
-                    v-if="!authStore.isAuthenticated"
-                    variant="primary"
-                    class="rounded-2xl bg-teal-600 px-4 py-2 text-white hover:bg-teal-700"
-                    @click="openAuthModal('login')"
-                  >
-                    Quick sign in
-                  </Button>
-                  <Button
-                    v-if="!authStore.isAuthenticated"
-                    variant="ghost"
-                    class="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-slate-700 hover:bg-slate-50"
-                    @click="openAuthModal('register')"
-                  >
-                    Quick register
-                  </Button>
-                  <Button
-                    v-if="authStore.isAuthenticated && addresses.length === 0"
-                    variant="primary"
-                    class="rounded-2xl bg-teal-600 px-4 py-2 text-white hover:bg-teal-700"
-                    @click="openAddressModalFromCheckout"
-                  >
-                    Add shipping address
                   </Button>
                 </div>
               </div>
@@ -294,14 +307,14 @@
               </div>
             </div>
 
-            <div v-if="orderWarnings.length" class="mt-4 space-y-2 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700">
+            <div v-if="orderWarnings.length" class="mt-4 space-y-2 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700 lg:hidden">
               <div v-for="warning in orderWarnings" :key="warning">{{ warning }}</div>
             </div>
 
             <Button
               variant="primary"
               size="lg"
-              class="mt-5 w-full rounded-2xl bg-teal-600 py-3 text-white hover:bg-teal-700"
+              class="mt-5 w-full rounded-2xl bg-teal-600 py-3 text-white hover:bg-teal-700 lg:hidden"
               :loading="submitting"
               :disabled="orderWarnings.length > 0 || submitting"
               @click="handleCheckoutPrimaryAction"
@@ -310,17 +323,36 @@
               {{ checkoutPrimaryLabel }}
             </Button>
 
-            <p v-if="!authStore.isAuthenticated" class="mt-3 text-center text-xs leading-6 text-slate-500">
+            <p v-if="!authStore.isAuthenticated" class="mt-3 text-center text-xs leading-6 text-slate-500 lg:hidden">
               Sign in or register right here to complete checkout.
             </p>
-            <p v-else-if="addresses.length === 0" class="mt-3 text-center text-xs leading-6 text-amber-700">
+            <p v-else-if="addresses.length === 0" class="mt-3 text-center text-xs leading-6 text-amber-700 lg:hidden">
               Add a shipping address on this page before placing the order.
             </p>
-            <p v-else class="mt-3 text-center text-xs leading-6 text-slate-500">
+            <p v-else class="mt-3 text-center text-xs leading-6 text-slate-500 lg:hidden">
               Payment is not collected now. You can upload the payment slip from your orders page after checkout.
             </p>
           </div>
         </aside>
+        </div>
+
+        <div class="mt-6 rounded-[2rem] border border-slate-200 bg-gradient-to-br from-slate-900 to-slate-700 p-6 text-white shadow-[0_18px_45px_rgba(15,23,42,0.12)]">
+          <p class="text-xs font-bold uppercase tracking-[0.24em] text-white/65">What happens next</p>
+          <div class="mt-4 grid gap-3 sm:grid-cols-3">
+            <div class="rounded-2xl bg-white/10 p-4">
+              <p class="text-sm font-semibold">1. Checkout</p>
+              <p class="mt-1 text-sm text-white/75">You place the order with your selected address.</p>
+            </div>
+            <div class="rounded-2xl bg-white/10 p-4">
+              <p class="text-sm font-semibold">2. Payment slip</p>
+              <p class="mt-1 text-sm text-white/75">Upload a cash slip later from your orders page.</p>
+            </div>
+            <div class="rounded-2xl bg-white/10 p-4">
+              <p class="text-sm font-semibold">3. Shipping</p>
+              <p class="mt-1 text-sm text-white/75">Seller and admin track purchased, warehouse, and shipped statuses.</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -392,68 +424,6 @@
     </form>
   </Modal>
 
-  <Modal v-model="showSkuModal" title="Edit product quantity" size="lg">
-    <div v-if="editingCartItem" class="space-y-4">
-      <div>
-        <p class="text-sm font-bold text-slate-900">{{ editingCartItem.title }}</p>
-        <p class="mt-1 text-xs text-slate-500">Update SKU quantities here without going back to the product page.</p>
-      </div>
-
-      <div class="space-y-3">
-        <div
-          v-for="(sku, idx) in editingSkuDetails"
-          :key="sku.specId || idx"
-          class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3"
-        >
-          <div class="min-w-0 flex-1">
-            <p class="truncate text-sm font-semibold text-slate-900">{{ sku.label || sku.sku?.props_names || sku.sku?.specid || `SKU ${idx + 1}` }}</p>
-            <p class="mt-1 text-xs text-slate-500">{{ formatPrice(Number(sku.displayUnitPrice || 0)) }} each</p>
-          </div>
-          <div class="flex items-center rounded-2xl border border-slate-200 bg-white">
-            <button
-              type="button"
-              class="h-10 w-10 text-rose-600 hover:bg-rose-50 disabled:opacity-40"
-              :disabled="Number(sku.qty || 0) <= 0"
-              @click="changeEditingSkuQty(idx, -1)"
-            >
-              <Minus class="mx-auto h-4 w-4" />
-            </button>
-            <span class="w-12 text-center text-sm font-bold text-slate-900">{{ sku.qty }}</span>
-            <button
-              type="button"
-              class="h-10 w-10 text-teal-600 hover:bg-teal-50"
-              @click="changeEditingSkuQty(idx, 1)"
-            >
-              <Plus class="mx-auto h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3">
-        <div class="flex items-center justify-between text-sm">
-          <span class="font-semibold text-slate-700">Selected quantity</span>
-          <span class="font-black text-slate-900">{{ editingSkuQuantity }}</span>
-        </div>
-        <div class="mt-1 flex items-center justify-between text-sm">
-          <span class="font-semibold text-slate-700">Line total</span>
-          <span class="font-black text-teal-700">{{ formatPrice(editingSkuLineTotal) }}</span>
-        </div>
-      </div>
-
-      <div class="flex justify-end gap-3 pt-2">
-        <Button variant="ghost" type="button" @click="showSkuModal = false">Cancel</Button>
-        <Button
-          variant="primary"
-          type="button"
-          class="rounded-2xl bg-teal-600 px-5 py-3 text-white hover:bg-teal-700"
-          @click="saveSkuEditor"
-        >
-          Save changes
-        </Button>
-      </div>
-    </div>
-  </Modal>
 </template>
 
 <script setup lang="ts">
@@ -485,12 +455,9 @@ const shoppingSettings = ref<{
 const moqRule = ref({ minimum_product: 1, minimum_price_threshold: 0, currency: 'BDT' });
 const showAuthModal = ref(false);
 const showAddressModal = ref(false);
-const showSkuModal = ref(false);
 const authMode = ref<'login' | 'register'>('login');
 const authLoading = ref(false);
 const savingAddress = ref(false);
-const editingCartItemId = ref('');
-const editingSkuDetails = ref<any[]>([]);
 const loginForm = ref({ identifier: '', password: '' });
 const registerForm = ref({
   email: '',
@@ -508,15 +475,6 @@ const addressForm = ref({
   notes: '',
   is_default: false,
 });
-
-const editingCartItem = computed(() => cartItems.value.find((item) => item.externalId === editingCartItemId.value) || null);
-
-const editingSkuQuantity = computed(() => editingSkuDetails.value.reduce((sum, sku) => sum + Number(sku?.qty || 0), 0));
-
-const editingSkuLineTotal = computed(() => editingSkuDetails.value.reduce((sum, sku) => {
-  const unitPrice = Number(sku?.displayUnitPrice || 0);
-  return sum + (unitPrice * Number(sku?.qty || 0));
-}, 0));
 
 function getDisplayPriceMin(item: any): number | undefined {
   const value = item?.displayPriceMin ?? item?.priceMin ?? item?.sourcePriceMin;
@@ -648,45 +606,23 @@ function resetAddressForm() {
   };
 }
 
-function openAddressModalFromCheckout() {
-  resetAddressForm();
-  showAddressModal.value = true;
-}
-
-function openSkuEditor(item: any) {
-  editingCartItemId.value = item.externalId;
-  editingSkuDetails.value = Array.isArray(item?.skuDetails)
+function changeCartSkuQty(item: any, skuIndex: number, delta: number) {
+  const rows = Array.isArray(item?.skuDetails)
     ? item.skuDetails.map((sku: any) => ({ ...sku, qty: Number(sku?.qty || 0) }))
     : [];
-  showSkuModal.value = true;
-}
-
-function changeEditingSkuQty(index: number, delta: number) {
-  const row = editingSkuDetails.value[index];
+  const row = rows[skuIndex];
   if (!row) return;
-  row.qty = Math.max(0, Number(row.qty || 0) + delta);
-}
 
-function saveSkuEditor() {
-  if (!editingCartItemId.value) {
-    showSkuModal.value = false;
-    return;
-  }
-
-  const normalizedRows = editingSkuDetails.value
-    .map((sku) => ({ ...sku, qty: Number(sku?.qty || 0) }))
-    .filter((sku) => sku.qty > 0);
+  row.qty = Math.max(0, row.qty + delta);
+  const normalizedRows = rows.filter((sku: any) => sku.qty > 0);
 
   if (!normalizedRows.length) {
-    removeFromCart(editingCartItemId.value);
-    showSkuModal.value = false;
+    removeFromCart(item.externalId);
     toast.success('Item removed from cart');
     return;
   }
 
-  updateSkuDetails(editingCartItemId.value, normalizedRows);
-  showSkuModal.value = false;
-  toast.success('Cart updated');
+  updateSkuDetails(item.externalId, normalizedRows);
 }
 
 async function loadShoppingSettings() {
