@@ -104,6 +104,7 @@
     <!-- Add/Edit Modal -->
     <Modal v-model="showModal" :title="editingBanner ? 'Edit Banner' : 'Add Banner'" size="lg">
       <form @submit.prevent="saveBanner" class="space-y-4">
+        
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Title *</label>
           <Input
@@ -121,7 +122,7 @@
             :rows="2"
           />
         </div>
-
+      
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Link URL</label>
           <Input

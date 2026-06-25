@@ -43,12 +43,14 @@
         <section class="group relative overflow-hidden bg-slate-900">
           <!-- Slide image -->
           <div class="relative h-[200px] sm:h-[260px] md:h-[320px] lg:h-[360px]">
-            <img
-              :key="currentHeroSlide.key"
-              :src="currentHeroSlide.image"
-              :alt="currentHeroSlide.title"
-              class="h-full w-full object-cover transition-opacity duration-500"
-            />
+            <Transition name="hero-fade" mode="out-in">
+              <img
+                :key="currentHeroSlide.key"
+                :src="currentHeroSlide.image"
+                :alt="currentHeroSlide.title"
+                class="h-full w-full object-cover"
+              />
+            </Transition>
             <!-- Gradient overlay -->
             <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
@@ -764,6 +766,11 @@ const heroSlides: HeroSlide[] = [
     title: 'Search by image',
     image: '/home/hero-01.jpg',
   },
+  {
+    key: 'market-finds',
+    title: 'Curated China market picks',
+    image: '/home/hero-02.jpg',
+  },
 ];
 
 const router = useRouter();
@@ -809,19 +816,7 @@ let heroTimer: number | undefined;
 const layoutClass = computed(() => 'lg:grid-cols-[minmax(0,1fr)_280px]');
 
 const carouselItems = computed<CarouselItem[]>(() => {
-  if (homepageBanners.value.length > 0) {
-    return homepageBanners.value.map((banner: any) => ({
-      key: banner.id,
-      title: banner.title || 'Homepage banner',
-      subtitle: banner.subtitle || '',
-      image: banner.coverAsset?.public_url || banner.coverAsset?.thumbnail_url || heroSlides[0].image,
-      link: banner.link || null,
-      ctaText: banner.cta_text || 'Learn more',
-      banner,
-    }));
-  }
-
-  return heroSlides.map((slide) => ({
+  const fallbackItems = heroSlides.map((slide) => ({
     key: slide.key,
     title: slide.title,
     subtitle: '',
@@ -830,6 +825,22 @@ const carouselItems = computed<CarouselItem[]>(() => {
     ctaText: 'Learn more',
     banner: null,
   }));
+
+  if (homepageBanners.value.length > 0) {
+    const bannerItems = homepageBanners.value.map((banner: any) => ({
+      key: banner.id,
+      title: banner.title || 'Homepage banner',
+      subtitle: banner.subtitle || '',
+      image: banner.coverAsset?.public_url || banner.coverAsset?.thumbnail_url || heroSlides[0].image,
+      link: banner.link || null,
+      ctaText: banner.cta_text || 'Learn more',
+      banner,
+    }));
+
+    return [...bannerItems, ...fallbackItems].slice(0, 4);
+  }
+
+  return fallbackItems.slice(0, 4);
 });
 
 const currentHeroSlide = computed<CarouselItem>(() => {
@@ -1252,7 +1263,7 @@ onMounted(() => {
   heroTimer = window.setInterval(() => {
     const count = carouselItems.value.length || heroSlides.length || 1;
     heroSlideIndex.value = (heroSlideIndex.value + 1) % count;
-  }, 4200);
+  }, 7200);
 
   loadCategories();
   loadHotItems();
@@ -1271,3 +1282,18 @@ onBeforeUnmount(() => {
   if (heroTimer) window.clearInterval(heroTimer);
 });
 </script>
+
+<style scoped>
+.hero-fade-enter-active,
+.hero-fade-leave-active {
+  transition:
+    opacity 1.15s ease-in-out,
+    transform 1.15s ease-in-out;
+}
+
+.hero-fade-enter-from,
+.hero-fade-leave-to {
+  opacity: 0;
+  transform: scale(1.01);
+}
+</style>

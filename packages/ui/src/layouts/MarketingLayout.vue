@@ -177,7 +177,7 @@
             <img
               src="/logo_verticle.png"
               alt="BridgeChina"
-              class="h-8 w-8 rounded-xl object-contain shadow-[0_6px_16px_rgba(0,0,0,0.26)] ring-1 ring-white/10"
+              class="h-7 w-7 rounded-xl object-contain shadow-[0_6px_16px_rgba(0,0,0,0.26)] ring-1 ring-white/10 sm:h-8 sm:w-8"
             />
             <div class="hidden min-w-0 leading-tight sm:block">
               <p class="truncate text-[14px] font-black tracking-tight text-white">ChinaBuyBD</p>
@@ -185,22 +185,22 @@
             </div>
           </router-link>
 
-          <!-- Search bar (desktop) -->
-          <form class="hidden min-w-0 flex-1 md:flex" @submit.prevent="submitSearch">
-            <div class="flex h-10 w-full items-center overflow-hidden rounded-full border border-white/30 bg-white/10 shadow-[0_4px_14px_rgba(0,0,0,0.18)] focus-within:border-rose-400/70 focus-within:ring-1 focus-within:ring-rose-300/25">
-              <span class="pl-4 text-white/65">
+          <!-- Search bar -->
+          <form class="flex min-w-0 flex-1" @submit.prevent="submitSearch">
+            <div class="flex h-10 w-full min-w-0 items-center overflow-hidden rounded-full border border-white/30 bg-white/10 shadow-[0_4px_14px_rgba(0,0,0,0.18)] focus-within:border-rose-400/70 focus-within:ring-1 focus-within:ring-rose-300/25">
+              <span class="pl-3 text-white/65 sm:pl-4">
                 <Search class="h-4 w-4" />
               </span>
               <input
                 v-model="searchQuery"
                 type="search"
-                placeholder="Search products, factories, or keywords..."
-                class="w-full bg-transparent px-3 text-[12px] font-medium text-white placeholder:text-white/55 focus:outline-none"
+                placeholder="Search products..."
+                class="min-w-0 flex-1 bg-transparent px-2 text-[12px] font-medium text-white placeholder:text-white/55 focus:outline-none sm:px-3 md:placeholder:text-white/55"
               />
               <button
                 type="button"
                 @click="openImagePicker"
-                class="mr-1 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/12 text-white/70 transition-colors hover:bg-rose-500/20 hover:text-rose-200"
+                class="mr-1 inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-white/12 text-white/70 transition-colors hover:bg-rose-500/20 hover:text-rose-200"
                 title="Search by image"
               >
                 <Camera class="h-4 w-4" />
@@ -243,27 +243,6 @@
           </div>
         </div>
 
-        <!-- Mobile search bar (below the icon row) -->
-        <form class="pb-2.5 md:hidden" @submit.prevent="submitSearch">
-          <div class="flex h-10 items-center overflow-hidden rounded-full border border-white/30 bg-white/10 focus-within:border-rose-400/70">
-            <span class="pl-4 text-white/65">
-              <Search class="h-4 w-4" />
-            </span>
-            <input
-              v-model="searchQuery"
-              type="search"
-              placeholder="Search products..."
-              class="w-full bg-transparent px-3 text-[12px] font-medium text-white placeholder:text-white/55 focus:outline-none"
-            />
-            <button
-              type="button"
-              @click="openImagePicker"
-              class="mr-1 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/12 text-white/70 hover:bg-rose-500/20 hover:text-rose-200"
-            >
-              <Camera class="h-4 w-4" />
-            </button>
-          </div>
-        </form>
       </div>
     </header>
 
