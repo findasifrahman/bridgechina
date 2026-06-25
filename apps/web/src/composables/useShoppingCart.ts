@@ -173,6 +173,26 @@ export function useShoppingCart() {
     }
   };
 
+  const updateSkuDetails = (externalId: string, skuDetails: CartItem['skuDetails']) => {
+    const item = cartItems.value.find((entry) => entry.externalId === externalId);
+    if (!item) return;
+
+    const normalizedRows = (skuDetails || [])
+      .map((row) => ({
+        ...row,
+        qty: Number(row?.qty || 0),
+      }))
+      .filter((row) => row.qty > 0);
+
+    if (!normalizedRows.length) {
+      removeFromCart(externalId);
+      return;
+    }
+
+    item.skuDetails = normalizedRows;
+    item.quantity = normalizedRows.reduce((sum, row) => sum + Number(row.qty || 0), 0);
+  };
+
   const clearCart = () => {
     cartItems.value = [];
   };
@@ -204,6 +224,7 @@ export function useShoppingCart() {
     addToCart,
     removeFromCart,
     updateQuantity,
+    updateSkuDetails,
     clearCart,
     getCartItem,
   };

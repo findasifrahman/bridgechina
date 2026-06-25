@@ -106,6 +106,13 @@
                     >
                       {{ sku.label || sku.sku?.props_names || sku.sku?.specid || `SKU ${idx + 1}` }} x{{ sku.qty }}
                     </span>
+                    <button
+                      type="button"
+                      class="rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700 hover:bg-teal-100"
+                      @click="openSkuEditor(item)"
+                    >
+                      Edit variants
+                    </button>
                   </div>
 
                   <div class="mt-4 flex flex-wrap items-center gap-3">
@@ -201,6 +208,44 @@
                   </Button>
                   <Button variant="ghost" class="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-slate-700 hover:bg-slate-50" @click="openAuthModal('register')">
                     Register
+                  </Button>
+                </div>
+              </div>
+              <div
+                v-if="!authStore.isAuthenticated || addresses.length === 0"
+                class="rounded-2xl border border-slate-200 bg-white p-4"
+              >
+                <p class="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Quick access</p>
+                <p class="mt-2 text-sm font-semibold text-slate-900">
+                  {{ !authStore.isAuthenticated ? 'Login or register without leaving checkout' : 'Add your shipping address without leaving checkout' }}
+                </p>
+                <p class="mt-1 text-xs leading-5 text-slate-500">
+                  {{ !authStore.isAuthenticated ? 'Use the quick modal below. After login we can open the address form immediately.' : 'Open the address form here and continue checkout on the same page.' }}
+                </p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    v-if="!authStore.isAuthenticated"
+                    variant="primary"
+                    class="rounded-2xl bg-teal-600 px-4 py-2 text-white hover:bg-teal-700"
+                    @click="openAuthModal('login')"
+                  >
+                    Quick sign in
+                  </Button>
+                  <Button
+                    v-if="!authStore.isAuthenticated"
+                    variant="ghost"
+                    class="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-slate-700 hover:bg-slate-50"
+                    @click="openAuthModal('register')"
+                  >
+                    Quick register
+                  </Button>
+                  <Button
+                    v-if="authStore.isAuthenticated && addresses.length === 0"
+                    variant="primary"
+                    class="rounded-2xl bg-teal-600 px-4 py-2 text-white hover:bg-teal-700"
+                    @click="openAddressModalFromCheckout"
+                  >
+                    Add shipping address
                   </Button>
                 </div>
               </div>
@@ -346,6 +391,69 @@
       </div>
     </form>
   </Modal>
+
+  <Modal v-model="showSkuModal" title="Edit product quantity" size="lg">
+    <div v-if="editingCartItem" class="space-y-4">
+      <div>
+        <p class="text-sm font-bold text-slate-900">{{ editingCartItem.title }}</p>
+        <p class="mt-1 text-xs text-slate-500">Update SKU quantities here without going back to the product page.</p>
+      </div>
+
+      <div class="space-y-3">
+        <div
+          v-for="(sku, idx) in editingSkuDetails"
+          :key="sku.specId || idx"
+          class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3"
+        >
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-semibold text-slate-900">{{ sku.label || sku.sku?.props_names || sku.sku?.specid || `SKU ${idx + 1}` }}</p>
+            <p class="mt-1 text-xs text-slate-500">{{ formatPrice(Number(sku.displayUnitPrice || 0)) }} each</p>
+          </div>
+          <div class="flex items-center rounded-2xl border border-slate-200 bg-white">
+            <button
+              type="button"
+              class="h-10 w-10 text-rose-600 hover:bg-rose-50 disabled:opacity-40"
+              :disabled="Number(sku.qty || 0) <= 0"
+              @click="changeEditingSkuQty(idx, -1)"
+            >
+              <Minus class="mx-auto h-4 w-4" />
+            </button>
+            <span class="w-12 text-center text-sm font-bold text-slate-900">{{ sku.qty }}</span>
+            <button
+              type="button"
+              class="h-10 w-10 text-teal-600 hover:bg-teal-50"
+              @click="changeEditingSkuQty(idx, 1)"
+            >
+              <Plus class="mx-auto h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3">
+        <div class="flex items-center justify-between text-sm">
+          <span class="font-semibold text-slate-700">Selected quantity</span>
+          <span class="font-black text-slate-900">{{ editingSkuQuantity }}</span>
+        </div>
+        <div class="mt-1 flex items-center justify-between text-sm">
+          <span class="font-semibold text-slate-700">Line total</span>
+          <span class="font-black text-teal-700">{{ formatPrice(editingSkuLineTotal) }}</span>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-2">
+        <Button variant="ghost" type="button" @click="showSkuModal = false">Cancel</Button>
+        <Button
+          variant="primary"
+          type="button"
+          class="rounded-2xl bg-teal-600 px-5 py-3 text-white hover:bg-teal-700"
+          @click="saveSkuEditor"
+        >
+          Save changes
+        </Button>
+      </div>
+    </div>
+  </Modal>
 </template>
 
 <script setup lang="ts">
@@ -361,7 +469,7 @@ import axios from '@/utils/axios';
 const router = useRouter();
 const toast = useToast();
 const authStore = useAuthStore();
-const { cartItems, totalItems, isEmpty, updateQuantity, removeFromCart, clearCart } = useShoppingCart();
+const { cartItems, totalItems, isEmpty, updateQuantity, updateSkuDetails, removeFromCart, clearCart } = useShoppingCart();
 
 const loading = ref(false);
 const submitting = ref(false);
@@ -377,9 +485,12 @@ const shoppingSettings = ref<{
 const moqRule = ref({ minimum_product: 1, minimum_price_threshold: 0, currency: 'BDT' });
 const showAuthModal = ref(false);
 const showAddressModal = ref(false);
+const showSkuModal = ref(false);
 const authMode = ref<'login' | 'register'>('login');
 const authLoading = ref(false);
 const savingAddress = ref(false);
+const editingCartItemId = ref('');
+const editingSkuDetails = ref<any[]>([]);
 const loginForm = ref({ identifier: '', password: '' });
 const registerForm = ref({
   email: '',
@@ -397,6 +508,15 @@ const addressForm = ref({
   notes: '',
   is_default: false,
 });
+
+const editingCartItem = computed(() => cartItems.value.find((item) => item.externalId === editingCartItemId.value) || null);
+
+const editingSkuQuantity = computed(() => editingSkuDetails.value.reduce((sum, sku) => sum + Number(sku?.qty || 0), 0));
+
+const editingSkuLineTotal = computed(() => editingSkuDetails.value.reduce((sum, sku) => {
+  const unitPrice = Number(sku?.displayUnitPrice || 0);
+  return sum + (unitPrice * Number(sku?.qty || 0));
+}, 0));
 
 function getDisplayPriceMin(item: any): number | undefined {
   const value = item?.displayPriceMin ?? item?.priceMin ?? item?.sourcePriceMin;
@@ -526,6 +646,47 @@ function resetAddressForm() {
     notes: '',
     is_default: addresses.value.length === 0,
   };
+}
+
+function openAddressModalFromCheckout() {
+  resetAddressForm();
+  showAddressModal.value = true;
+}
+
+function openSkuEditor(item: any) {
+  editingCartItemId.value = item.externalId;
+  editingSkuDetails.value = Array.isArray(item?.skuDetails)
+    ? item.skuDetails.map((sku: any) => ({ ...sku, qty: Number(sku?.qty || 0) }))
+    : [];
+  showSkuModal.value = true;
+}
+
+function changeEditingSkuQty(index: number, delta: number) {
+  const row = editingSkuDetails.value[index];
+  if (!row) return;
+  row.qty = Math.max(0, Number(row.qty || 0) + delta);
+}
+
+function saveSkuEditor() {
+  if (!editingCartItemId.value) {
+    showSkuModal.value = false;
+    return;
+  }
+
+  const normalizedRows = editingSkuDetails.value
+    .map((sku) => ({ ...sku, qty: Number(sku?.qty || 0) }))
+    .filter((sku) => sku.qty > 0);
+
+  if (!normalizedRows.length) {
+    removeFromCart(editingCartItemId.value);
+    showSkuModal.value = false;
+    toast.success('Item removed from cart');
+    return;
+  }
+
+  updateSkuDetails(editingCartItemId.value, normalizedRows);
+  showSkuModal.value = false;
+  toast.success('Cart updated');
 }
 
 async function loadShoppingSettings() {
