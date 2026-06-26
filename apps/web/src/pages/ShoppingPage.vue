@@ -56,9 +56,11 @@
 
             <!-- Text overlay (bottom-left) -->
             <div class="absolute bottom-0 left-0 right-0 px-5 pb-5 pt-10 sm:px-8 sm:pb-7">
+              <!--
               <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-300">ChinaBuyBD</p>
               <h2 class="mt-1 text-[20px] font-black tracking-tight text-white sm:text-[26px]">{{ currentHeroSlide.title }}</h2>
               <p v-if="currentHeroSlide.subtitle" class="mt-1 line-clamp-1 text-[12px] text-white/70">{{ currentHeroSlide.subtitle }}</p>
+            
               <button
                 type="button"
                 class="mt-3 inline-flex items-center gap-1.5 rounded-full bg-rose-600 px-4 py-2 text-[12px] font-semibold text-white shadow-[0_8px_22px_rgba(225,29,72,0.30)] transition-colors hover:bg-rose-700"
@@ -67,6 +69,7 @@
                 {{ currentHeroSlide.ctaText || 'View details' }}
                 <ArrowRight class="h-3.5 w-3.5" />
               </button>
+            -->
             </div>
 
             <!-- Prev / Next arrows -->
