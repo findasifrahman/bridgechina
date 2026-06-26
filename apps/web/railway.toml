@@ -1,11 +1,23 @@
 [build]
 builder = "NIXPACKS"
-# Don't use cd ../.. - instead, Railway should set root directory to repo root
-# If root directory is set to "apps/web", change it to "." (repo root) in Railway dashboard
+# Railway service settings:
+# - Root Directory: /
+# - Config File Path: /apps/web/railway.toml
+# This service needs the repo root so pnpm can resolve workspace packages.
 buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @bridgechina/web build"
+watchPatterns = [
+  "/apps/web/**",
+  "/packages/ui/**",
+  "/packages/shared/**",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml"
+]
 
 [deploy]
 startCommand = "bash apps/web/start.sh"
+healthcheckPath = "/"
+healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 

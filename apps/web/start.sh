@@ -24,8 +24,8 @@ fi
 echo "Dist folder contents:"
 ls -la dist/ | head -10
 
-# Start serve
+# Start serve through pnpm so the workspace package binary is available on PATH.
 echo "Starting serve on port ${PORT:-3000}..."
 echo "Serving from: $(pwd)/dist"
-serve -s dist -l ${PORT:-3000}
+pnpm exec serve -s dist -l tcp://0.0.0.0:${PORT:-3000}
 

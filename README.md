@@ -140,6 +140,97 @@ pnpm --filter @bridgechina/web build
 pnpm --filter @bridgechina/web dev
 ```
 
+## Railway Deployment
+
+This repo should run as separate Railway services from the same GitHub repository:
+
+- API service: uses the root `railway.toml` and deploys `@bridgechina/api`.
+- Web service: uses `apps/web/railway.toml` and deploys `@bridgechina/web`.
+- PostgreSQL service: provides the API `DATABASE_URL`.
+
+### Frontend Service on Railway
+
+To move the frontend from Vercel to Railway, create a new Railway service in the same Railway project as the API and connect it to this GitHub repo.
+
+Use these service settings:
+
+```text
+Service name: bridgechina-web
+Source: GitHub repo for this monorepo
+Branch: main, or the production branch you already use
+Root Directory: /
+Config File Path: /apps/web/railway.toml
+```
+
+Keep the root directory at `/`. The web app imports workspace packages from `packages/ui` and `packages/shared`, so building only from `apps/web` will not have the full workspace context. Railway config files also do not follow the root directory automatically, so the frontend service must point directly to `/apps/web/railway.toml`.
+
+The frontend Railway config builds and starts the app with:
+
+```bash
+pnpm install --frozen-lockfile && pnpm --filter @bridgechina/web build
+bash apps/web/start.sh
+```
+
+Set this frontend service variable before deploying:
+
+```text
+VITE_API_URL=https://your-api-domain
+```
+
+Use the public API origin only, with no trailing `/api`. For example:
+
+```text
+VITE_API_URL=https://api.chinabuybd.com
+```
+
+Then update the API Railway service variables so cookies, redirects, CORS, and generated links know about the new frontend:
+
+```text
+APP_BASE_URL=https://www.chinabuybd.com
+WEB_APP_URL=https://www.chinabuybd.com
+FRONTEND_URL=https://www.chinabuybd.com
+ALLOWED_ORIGINS=https://www.chinabuybd.com,https://chinabuybd.com
+API_BASE_URL=https://api.chinabuybd.com
+```
+
+If you keep the Railway-generated API domain instead of a custom API domain, use that URL for `VITE_API_URL` and `API_BASE_URL`.
+
+### Domain Setup
+
+Recommended production mapping:
+
+```text
+www.chinabuybd.com -> Railway frontend service
+chinabuybd.com     -> Railway frontend service, or redirect to www
+api.chinabuybd.com -> Railway API service
+```
+
+In Railway, open each service and go to `Settings -> Networking -> Public Networking`.
+
+For the frontend service:
+
+1. Generate a Railway domain first and verify the site loads.
+2. Add the custom domain `www.chinabuybd.com`.
+3. Add the DNS records Railway shows at your DNS provider. Railway normally provides a `CNAME` record and a `TXT` verification record; both are required.
+4. Add `chinabuybd.com` too if the apex/root domain should load the frontend.
+
+For the API service:
+
+1. Add the custom domain `api.chinabuybd.com`.
+2. Add the Railway-provided `CNAME` and `TXT` records at your DNS provider.
+3. After the domain verifies, update frontend `VITE_API_URL` and API `API_BASE_URL` to `https://api.chinabuybd.com`.
+
+For an apex/root domain such as `chinabuybd.com`, use a DNS provider that supports CNAME flattening, ALIAS, or ANAME records. Do not use an `A` record unless Railway explicitly gives you one; Railway domains are dynamic and are normally configured with CNAME-style records plus TXT verification.
+
+After DNS verifies and both services redeploy, test:
+
+```text
+https://www.chinabuybd.com
+https://api.chinabuybd.com/health
+```
+
+If login, cart, or admin requests fail in the browser, check the API service logs for CORS errors and make sure `ALLOWED_ORIGINS`, `APP_BASE_URL`, and `WEB_APP_URL` exactly match the final frontend domain, including `https://`.
+
 ## Public API Surface
 
 - `POST /api/public/shopping/upload-image`
