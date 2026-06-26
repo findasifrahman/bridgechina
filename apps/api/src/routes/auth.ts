@@ -90,6 +90,36 @@ async function findExistingAccountByEmailOrPhone(email?: string | null, phones: 
   });
 }
 
+async function accountAuthMethods(userId: string) {
+  const oauthRows = await prisma.$queryRaw`
+    SELECT provider
+    FROM oauth_accounts
+    WHERE user_id = ${userId}
+  ` as Array<{ provider: string }>;
+  const providers = Array.from(new Set(oauthRows.map((row) => row.provider).filter(Boolean)));
+  const google = providers.includes('google');
+  return {
+    google,
+    password: !google,
+    providers,
+  };
+}
+
+async function duplicateEmailResponse(reply: FastifyReply, userId: string) {
+  const authMethods = await accountAuthMethods(userId);
+  const error = authMethods.google && !authMethods.password
+    ? 'This email is already registered with Google. Please sign in with Google to continue.'
+    : authMethods.google
+      ? 'This email is already registered. Please sign in with Google or your password to continue.'
+      : 'This email is already registered. Please sign in with your email and password to continue.';
+
+  return reply.status(409).send({
+    code: authMethods.google ? 'EMAIL_REGISTERED_WITH_GOOGLE' : 'EMAIL_REGISTERED_WITH_PASSWORD',
+    error,
+    authMethods,
+  });
+}
+
 function uniquePhoneCandidates(rawPhone?: string | null) {
   if (!rawPhone) return [];
   return Array.from(new Set([normalizeBangladeshPhone(rawPhone), rawPhone.trim()].filter(Boolean)));
@@ -398,7 +428,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
     const existing = await findExistingAccountByEmailOrPhone(email, phoneCandidates);
     if (existing?.email && email && existing.email === email) {
-      return reply.status(409).send({ code: 'EMAIL_ALREADY_REGISTERED', error: 'This email is already registered. Please sign in instead.' });
+      return duplicateEmailResponse(reply, existing.id);
     }
     if (existing?.phone && phoneCandidates.includes(existing.phone)) {
       return reply.status(409).send({ code: 'PHONE_ALREADY_REGISTERED', error: 'This phone number is already registered. Please sign in with your password.' });
@@ -496,7 +526,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
     if (body.intent === 'register') {
       const user = await prisma.user.findUnique({ where: { email } });
       if (user) {
-        return reply.status(409).send({ code: 'EMAIL_ALREADY_REGISTERED', error: 'This email is already registered. Please sign in instead.' });
+        return duplicateEmailResponse(reply, user.id);
       }
     }
 

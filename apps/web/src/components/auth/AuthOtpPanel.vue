@@ -24,11 +24,35 @@
           placeholder="Email or mobile phone number"
           autocomplete="email"
           :error="identifierError"
-          @input="identifierError = ''"
+          @input="handleIdentifierInput"
         />
         <p v-if="isPhoneInput" class="mt-1 text-xs text-slate-500">
           SMS code is planned. Please use email code for now.
         </p>
+      </div>
+
+      <div
+        v-if="existingAccount"
+        class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+      >
+        <p class="font-semibold">{{ existingAccount.message }}</p>
+        <div v-if="existingAccount.authMethods.google" class="mt-3">
+          <Button type="button" variant="ghost" full-width class="border border-amber-200 bg-white" @click="startGoogle">
+            Sign in with Google
+          </Button>
+        </div>
+        <div v-if="existingAccount.authMethods.password" class="mt-3 space-y-3">
+          <Input
+            v-model="password"
+            label="Password"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Enter your password"
+          />
+          <Button type="button" variant="primary" full-width class="bg-teal-700 py-3 text-white hover:bg-teal-800" :loading="passwordLoading" @click="handlePasswordLogin">
+            Sign in and continue
+          </Button>
+        </div>
       </div>
 
       <div v-if="codeStep">
@@ -38,7 +62,7 @@
         <Input v-model="code" placeholder="6-digit code" inputmode="numeric" autocomplete="one-time-code" />
       </div>
 
-      <Button type="submit" variant="primary" full-width class="bg-teal-700 py-3 text-white hover:bg-teal-800" :loading="loading">
+      <Button v-if="!existingAccount" type="submit" variant="primary" full-width class="bg-teal-700 py-3 text-white hover:bg-teal-800" :loading="loading">
         {{ codeStep ? 'Verify and continue' : 'Submit' }}
       </Button>
     </form>
@@ -87,7 +111,17 @@ const identifier = ref('');
 const code = ref('');
 const codeStep = ref(false);
 const loading = ref(false);
+const passwordLoading = ref(false);
 const identifierError = ref('');
+const password = ref('');
+const existingAccount = ref<null | {
+  message: string;
+  authMethods: {
+    google?: boolean;
+    password?: boolean;
+    providers?: string[];
+  };
+}>(null);
 
 const isPhoneInput = computed(() => {
   const value = identifier.value.trim();
@@ -100,6 +134,44 @@ function startGoogle() {
     intent: props.mode,
   });
   window.location.href = buildApiUrl(`/api/auth/google/start?${params.toString()}`);
+}
+
+function handleIdentifierInput() {
+  identifierError.value = '';
+  existingAccount.value = null;
+  password.value = '';
+}
+
+function setExistingAccount(error: any, fallback: string) {
+  const data = error.response?.data || {};
+  if (error.response?.status !== 409) return false;
+
+  existingAccount.value = {
+    message: data.error || fallback,
+    authMethods: data.authMethods || { password: true },
+  };
+  identifierError.value = '';
+  codeStep.value = false;
+  return true;
+}
+
+async function handlePasswordLogin() {
+  const value = identifier.value.trim();
+  if (!password.value) {
+    toast.error('Enter your password');
+    return;
+  }
+
+  passwordLoading.value = true;
+  try {
+    await authStore.login(value, password.value);
+    toast.success('Signed in successfully');
+    emit('authenticated');
+  } catch (error: any) {
+    toast.error(error.response?.data?.error || 'Password sign in failed');
+  } finally {
+    passwordLoading.value = false;
+  }
 }
 
 async function handleSubmit() {
@@ -125,6 +197,10 @@ async function handleSubmit() {
       toast.success('Verification code sent');
     } catch (error: any) {
       const message = error.response?.data?.error || 'Failed to send code';
+      if (setExistingAccount(error, message)) {
+        toast.info(message);
+        return;
+      }
       identifierError.value = message;
       toast.error(message);
     } finally {
@@ -145,9 +221,9 @@ async function handleSubmit() {
     emit('authenticated');
   } catch (error: any) {
     const message = error.response?.data?.error || 'Verification failed';
-    if (error.response?.status === 409) {
-      identifierError.value = message;
-      codeStep.value = false;
+    if (setExistingAccount(error, message)) {
+      toast.info(message);
+      return;
     }
     toast.error(message);
   } finally {
