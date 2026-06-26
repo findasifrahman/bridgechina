@@ -128,7 +128,7 @@ async function translateProductCardTitle(card: ProductCard): Promise<ProductCard
   return translatedCard;
 }
 
-async function translateProductCardTitles(cards: ProductCard[]): Promise<ProductCard[]> {
+export async function translateProductCardTitles(cards: ProductCard[]): Promise<ProductCard[]> {
   return Promise.all(cards.map(translateProductCardTitle));
 }
 

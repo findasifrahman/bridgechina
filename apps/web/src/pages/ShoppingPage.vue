@@ -395,7 +395,7 @@
             <div v-for="section in wideCuratedSections" :key="`${section.slug}-wide`" class="mt-5 rounded-[24px] border border-slate-200 bg-slate-50/60 p-4">
               <div class="flex items-center justify-between gap-3">
                 <div>
-                  <h3 class="text-[16px] font-bold text-slate-900">{{ section.label }}</h3>
+                  <h3 class="text-[20px] font-bold text-slate-900">{{ section.label }}</h3>
                   <p class="text-[11px] font-semibold text-rose-600">Premium items</p>
                 </div>
                 <button

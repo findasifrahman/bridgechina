@@ -248,6 +248,7 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
     searchByVendorId,
     getHotItems,
     getCuratedHomeSections,
+    translateProductCardTitles,
   } = shoppingModule as any;
 
   const {
@@ -426,7 +427,10 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
       const page = parseInt((request.query as any).page || '1', 10);
       const pageSize = parseInt((request.query as any).pageSize || '20', 10);
       const items = await getHotItems(query.category, page, Math.max(pageSize * 3, pageSize));
-      return Array.isArray(items) ? items.filter(hasDisplayableImage).slice(0, pageSize) : [];
+      const visibleItems = Array.isArray(items) ? items.filter(hasDisplayableImage).slice(0, pageSize) : [];
+      return typeof translateProductCardTitles === 'function'
+        ? await translateProductCardTitles(visibleItems)
+        : visibleItems;
     } catch (error: any) {
       fastify.log.error({ error, stack: error.stack, query: request.query }, '[Public Shopping Route] /shopping/hot error');
       reply.status(400).send({ error: error.message || 'Invalid query parameters' });
