@@ -12027,3 +12027,15 @@
 [API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
 [API] {"level":30,"time":1782498876381,"pid":31480,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
 [API] Server listening on port 3000
+[API] 1:03:23 AM [tsx] change in ./src\modules\shopping\shopping.service.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782500605483,"pid":36264,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 1:03:38 AM [tsx] change in ./src\modules\shopping\shopping.service.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782500620315,"pid":8364,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000

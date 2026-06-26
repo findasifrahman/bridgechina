@@ -152,16 +152,17 @@
                 <h2 class="text-2xl font-black text-slate-950">Contact</h2>
                 <p class="mt-1 text-sm text-slate-500">Use email code now. SMS code can be enabled later from the shared auth module.</p>
               </div>
-              <RouterLink
+              <button
                 v-if="!authStore.isAuthenticated"
-                :to="{ name: 'login', query: { redirect: '/shopping/checkout' } }"
+                type="button"
                 class="text-sm font-semibold text-teal-700 underline-offset-4 hover:underline"
+                @click="focusCheckoutAuth"
               >
                 Sign in
-              </RouterLink>
+              </button>
             </div>
 
-            <div v-if="!authStore.isAuthenticated" class="mt-5 rounded-[1.5rem] bg-slate-50 p-5">
+            <div v-if="!authStore.isAuthenticated" ref="checkoutAuthRef" class="mt-5 rounded-[1.5rem] bg-slate-50 p-5">
               <AuthOtpPanel
                 title="Welcome"
                 subtitle="Please enter your phone number / email"
@@ -442,7 +443,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { RouterLink, useRouter } from 'vue-router';
+import { useRouter } from 'vue-router';
 import { useToast } from '@bridgechina/ui';
 import { ChevronLeft, Minus, Package, Plus, ShoppingCart } from 'lucide-vue-next';
 import { Button, Input, Select } from '@bridgechina/ui';
@@ -458,6 +459,7 @@ const authStore = useAuthStore();
 const { cartItems, totalItems, isEmpty, updateQuantity, updateSkuDetails, removeFromCart, clearCart, setCartItems } = useShoppingCart();
 
 const loading = ref(false);
+const checkoutAuthRef = ref<HTMLElement | null>(null);
 const submitting = ref(false);
 const addresses = ref<any[]>([]);
 const selectedAddressId = ref('');
@@ -771,6 +773,10 @@ async function handleCheckoutAuthenticated() {
   await hydrateAuthenticatedCart();
 }
 
+function focusCheckoutAuth() {
+  checkoutAuthRef.value?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 function validateAddressForm() {
   addressErrors.value = { name: '', phone: '', city: '', address_line: '' };
   let valid = true;
@@ -795,7 +801,7 @@ function validateAddressForm() {
 
 async function handleAddAddress() {
   if (!authStore.isAuthenticated) {
-    router.push({ name: 'login', query: { redirect: '/shopping/checkout' } });
+    focusCheckoutAuth();
     return;
   }
 
@@ -850,7 +856,7 @@ async function ensureCheckoutAddress() {
 
 async function submitCheckout() {
   if (!authStore.isAuthenticated) {
-    router.push({ name: 'login', query: { redirect: '/shopping/checkout' } });
+    focusCheckoutAuth();
     return;
   }
 
@@ -900,7 +906,7 @@ function handleCheckoutPrimaryAction() {
   }
 
   if (!authStore.isAuthenticated) {
-    router.push({ name: 'login', query: { redirect: '/shopping/checkout' } });
+    focusCheckoutAuth();
     return;
   }
 

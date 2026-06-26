@@ -218,6 +218,7 @@ function startGoogle() {
     redirect: props.redirectPath,
     intent: props.mode,
   });
+  sessionStorage.setItem('bc_auth_redirect_after_oauth', props.redirectPath);
   window.location.href = buildApiUrl(`/api/auth/google/start?${params.toString()}`);
 }
 

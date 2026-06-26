@@ -1276,7 +1276,7 @@ function handleVisualMenuClick(item: any) {
   refreshYouMayLike();
   router.push({
     path: '/shopping/browse',
-    query: { q: keyword, language: 'en' },
+    query: { q: keyword, language: selectedLanguage.value },
   });
 }
 

@@ -31,7 +31,8 @@ onMounted(async () => {
 
   const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
   const token = params.get('accessToken') || String(route.query.accessToken || '');
-  const redirect = params.get('redirect') || String(route.query.redirect || '/user');
+  const storedRedirect = sessionStorage.getItem('bc_auth_redirect_after_oauth') || '';
+  const redirect = params.get('redirect') || String(route.query.redirect || storedRedirect || '/user');
   if (!token) {
     toast.error('Google sign in failed');
     router.replace('/login');
@@ -40,6 +41,7 @@ onMounted(async () => {
 
   try {
     await authStore.acceptOAuthAccessToken(token);
+    sessionStorage.removeItem('bc_auth_redirect_after_oauth');
     router.replace(redirect.startsWith('/') && !redirect.startsWith('//') ? redirect : '/user');
   } catch {
     toast.error('Google sign in failed');

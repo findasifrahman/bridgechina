@@ -39,6 +39,18 @@ function singleflight<T>(key: string, fn: () => Promise<T>): Promise<T> {
   _inFlight.set(key, promise);
   return promise;
 }
+
+function normalizeKeywordForChineseSearch(keyword: string): string {
+  return keyword
+    .replace(/\bface\s*id\b/gi, 'face recognition')
+    .replace(/\bfaceid\b/gi, 'face recognition')
+    .replace(/\battendance\s+machine\b/gi, 'time attendance machine')
+    .replace(/\battendance\s+device\b/gi, 'time attendance machine')
+    .replace(/\bbiometric\s+attendance\b/gi, 'biometric time attendance')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 const CURATED_CATEGORY_DEFS = [
   { slug: 'phone-accessories', label: 'Mobile accessories', keywords: ['mobile accessories', 'phone accessories', 'phone cover', 'phone charger', 'phone glass', 'power bank'] },
   { slug: 'bags', label: 'Bags', keywords: ['bag', 'bags', 'handbag', 'backpack', 'tote', 'wallet', 'suitcase'] },
@@ -246,11 +258,14 @@ export async function searchByKeyword(
 
   // If no keyword but category provided, use category name as keyword
   const baseKeyword = keyword?.trim() || opts?.category || 'products';
+  const hasUserKeyword = !!keyword?.trim();
   const searchContext = buildShoppingSearchContext(baseKeyword, opts?.category);
   const language = opts?.language || 'zh';
-  let searchKeyword = language === 'en' && keyword?.trim()
+  let searchKeyword = language === 'en'
     ? baseKeyword
-    : searchContext.primaryKeyword || baseKeyword;
+    : hasUserKeyword
+      ? normalizeKeywordForChineseSearch(baseKeyword)
+      : searchContext.primaryKeyword || baseKeyword;
   const strongShoppingSignal =
     searchContext.matchedGroupSlugs.length > 0 ||
     searchContext.matchedSubgroupSlugs.length > 0 ||
@@ -265,16 +280,22 @@ export async function searchByKeyword(
       const fallbackChinese = buildChineseShoppingQuery(searchKeyword, opts?.category);
       const chosen = translated && translated !== searchKeyword
         ? translated
-        : strongShoppingSignal
+        : !hasUserKeyword && strongShoppingSignal
           ? fallbackChinese
           : '';
       if (chosen && chosen !== searchKeyword) {
-        console.log('[Shopping Service] Chinese keyword selected:', { original: searchKeyword, chosen, fallbackChinese });
+        console.log('[Shopping Service] Chinese keyword selected:', {
+          originalKeyword: keyword,
+          normalizedKeyword: searchKeyword,
+          chosen,
+          fallbackChinese,
+          usedGoogleTranslation: translated && translated !== searchKeyword,
+        });
         searchKeyword = chosen;
       }
     } catch (error: any) {
       const fallbackChinese = buildChineseShoppingQuery(searchKeyword, opts?.category);
-      if (strongShoppingSignal && fallbackChinese && fallbackChinese !== searchKeyword) {
+      if (!hasUserKeyword && strongShoppingSignal && fallbackChinese && fallbackChinese !== searchKeyword) {
         console.log('[Shopping Service] Translation failed, using fallback Chinese query:', { original: searchKeyword, fallbackChinese });
         searchKeyword = fallbackChinese;
       } else {
