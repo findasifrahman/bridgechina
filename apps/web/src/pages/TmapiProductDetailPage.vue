@@ -1587,7 +1587,17 @@ const organizedDescription = computed(() => {
   const desc = String(product.value?.description || '').trim();
   if (!desc) return '';
 
-  if (/<\w[\s\S]*>/.test(desc)) return desc;
+  // Rewrite <img src="..."> CDN URLs to go through our image proxy so they load in the browser
+  const proxyDescImages = (html: string) =>
+    html
+      .replace(/(<img\b[^>]*?\bsrc=")([^"]+)"/gi, (_, pre, url) =>
+        url.startsWith('http') ? `${pre}${buildImageProxyUrl(url)}"` : `${pre}${url}"`
+      )
+      .replace(/(<img\b[^>]*?\bsrc=')([^']+)'/gi, (_, pre, url) =>
+        url.startsWith('http') ? `${pre}${buildImageProxyUrl(url)}'` : `${pre}${url}'`
+      );
+
+  if (/<\w[\s\S]*>/.test(desc)) return proxyDescImages(desc);
 
   const escapeHtml = (s: string) =>
     s

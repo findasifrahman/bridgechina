@@ -956,10 +956,14 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
   if (cached && cached.raw_json && cached.expires_at > new Date()) {
     // Serve description and ratings from what was stored at cache-fill time — zero TMAPI calls
     const rawJson = cached.raw_json as any;
-    const description = rawJson._bc_description ?? null;
-    const ratings = rawJson._bc_ratings ?? null;
+    // Strip internal cache-only fields so they don't leak into the frontend's raw payload
+    // (collectImageCandidates recursively scans `raw`, and _bc_description.detail_imgs would pollute the gallery)
+    const { _bc_description, _bc_ratings, ...rawForFrontend } = rawJson;
+    const description = _bc_description ?? null;
+    const ratings = _bc_ratings ?? null;
 
     const normalized = normalizeProductDetail(rawJson, description);
+    normalized.raw = rawForFrontend;
     if (cached.title_en) {
       normalized.title = cached.title_en;
     }
