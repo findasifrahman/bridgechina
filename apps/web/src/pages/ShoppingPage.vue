@@ -138,7 +138,7 @@
                       </div>
                     </div>
                     <div class="p-2.5">
-                      <p class="line-clamp-2 text-[12px] font-semibold leading-4 text-slate-900">{{ item.title }}</p>
+                      <p class="line-clamp-2 text-[13px] font-semibold leading-4 text-slate-900">{{ item.title }}</p>
                       <div class="mt-1 flex items-center justify-between gap-2">
                         <span class="text-[14px] font-black text-rose-600">{{ formatPrice(item.priceMin ?? item.priceMax ?? 0) }}</span>
                 <span class="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-600">MOQ {{ item.minimumOrderQty || shoppingSettings.moqRule?.minimum_product || 3 }}</span>
@@ -171,8 +171,8 @@
                   </div>
                 </div>
                 <div class="p-2.5">
-                  <p class="line-clamp-2 text-[11px] font-semibold leading-4 text-slate-900">{{ item.title }}</p>
-                  <p class="mt-1 text-[11px] font-black text-rose-600">{{ formatPrice(item.priceMin ?? item.priceMax ?? 0) }}</p>
+                  <p class="line-clamp-2 text-[13px] font-semibold leading-4 text-slate-900">{{ item.title }}</p>
+                  <p class="mt-1 text-[14px] font-black text-rose-600">{{ formatPrice(item.priceMin ?? item.priceMax ?? 0) }}</p>
                 </div>
               </button>
             </div>
@@ -207,9 +207,9 @@
                   </div>
                 </div>
                 <div class="p-3">
-                  <p class="line-clamp-2 text-[12px] font-semibold leading-5 text-slate-900">{{ product.title }}</p>
+                  <p class="line-clamp-2 text-[15px] font-semibold leading-5 text-slate-900">{{ product.title }}</p>
                   <div class="mt-2 flex items-center justify-between gap-2">
-                    <span class="text-[13px] font-black text-rose-600">{{ formatPrice(product.priceMin ?? product.priceMax ?? 0) }}</span>
+                    <span class="text-[14px] font-black text-rose-600">{{ formatPrice(product.priceMin ?? product.priceMax ?? 0) }}</span>
                 <span class="rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-600">
                       MOQ {{ product.minimumOrderQty || shoppingSettings.moqRule?.minimum_product || 3 }}
                     </span>
@@ -248,7 +248,7 @@
                       <Package class="h-8 w-8" />
                     </div>
                   </div>
-                  <p class="mt-1.5 text-[11px] text-slate-800">{{ section.items[0].title }}</p>
+                  <p class="mt-1.5 text-[14px] font-semibold text-slate-900">{{ section.items[0].title }}</p>
                 </button>
 
                 <!-- Sub-items 2×2 -->
@@ -271,7 +271,7 @@
                         <Package class="h-5 w-5" />
                       </div>
                     </div>
-                    <p class="mt-1 line-clamp-2 text-[11px] leading-[1.3] text-slate-800">{{ item.title }}</p>
+                    <p class="mt-1 line-clamp-2 text-[15px] font-semibold leading-[1.3] text-slate-900">{{ item.title }}</p>
                   </button>
                 </div>
 
@@ -351,7 +351,7 @@
 
             <div class="grid grid-cols-2 gap-x-5 gap-y-6 md:grid-cols-4">
               <div v-for="section in primaryCuratedSections" :key="section.slug" class="flex flex-col">
-                <h3 class="text-[13px] font-bold text-slate-900">{{ section.label }}</h3>
+                <h3 class="text-[16px] font-bold text-slate-900">{{ section.label }}</h3>
                 <p class="text-[11px] font-semibold text-rose-600">Premium items</p>
 
                 <!-- 2×2 product grid -->
@@ -374,7 +374,7 @@
                         <Package class="h-5 w-5" />
                       </div>
                     </div>
-                    <p class="mt-1 line-clamp-2 text-[10px] leading-[1.3] text-slate-600">{{ item.title }}</p>
+                    <p class="mt-1 line-clamp-2 text-[12px] font-semibold leading-[1.3] text-slate-900">{{ item.title }}</p>
                   </button>
                 </div>
 
