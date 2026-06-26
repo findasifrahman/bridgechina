@@ -41,7 +41,7 @@ export const useAuthStore = defineStore('auth', () => {
     purpose: 'auth' | 'password_reset' = 'auth',
     intent: 'login' | 'register' = 'login'
   ) {
-    await axios.post('/api/auth/email-code/request', { email, purpose, intent });
+    await axios.post('/api/auth/email-code/request', { email, purpose, intent }, { timeout: 20000 });
   }
 
   async function verifyEmailCode(data: { email: string; code: string; name?: string; phone?: string; intent?: 'login' | 'register' }) {

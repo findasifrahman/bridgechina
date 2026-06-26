@@ -1,10 +1,10 @@
 <template>
   <div class="rounded-[1.5rem] bg-white" :class="framed ? 'border border-slate-200 p-6 shadow-sm' : ''">
-    <div class="text-center">
+    <div v-if="showLogo" class="text-center">
       <img src="/logo_verticle.png" alt="ChinaBuyBD" class="mx-auto h-20 w-auto object-contain" />
     </div>
 
-    <div class="mt-5">
+    <div :class="showLogo ? 'mt-5' : ''">
       <h2 class="text-2xl font-black text-slate-950">{{ title }}</h2>
       <p class="mt-1 text-sm font-medium text-slate-700">{{ subtitle }}</p>
     </div>
@@ -66,12 +66,14 @@ const props = withDefaults(defineProps<{
   redirectPath?: string;
   framed?: boolean;
   mode?: 'login' | 'register';
+  showLogo?: boolean;
 }>(), {
   title: 'Welcome',
   subtitle: 'Please enter your phone number / email',
   redirectPath: '/user',
   framed: true,
   mode: 'login',
+  showLogo: true,
 });
 
 const emit = defineEmits<{

@@ -167,6 +167,8 @@
                 subtitle="Please enter your phone number / email"
                 redirect-path="/shopping/checkout"
                 :framed="false"
+                mode="register"
+                :show-logo="false"
                 @authenticated="handleCheckoutAuthenticated"
               />
             </div>

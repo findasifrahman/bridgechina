@@ -68,6 +68,9 @@ function createTransport() {
     host: config.host,
     port: config.port,
     secure: config.port === 465,
+    connectionTimeout: Number(envValue('SMTP_CONNECTION_TIMEOUT_MS') || 10000),
+    greetingTimeout: Number(envValue('SMTP_GREETING_TIMEOUT_MS') || 10000),
+    socketTimeout: Number(envValue('SMTP_SOCKET_TIMEOUT_MS') || 15000),
     auth: {
       user: config.user,
       pass: config.password,
