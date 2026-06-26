@@ -5,6 +5,7 @@ import { registerSchema, loginSchema } from '@bridgechina/shared';
 import { randomInt, randomUUID } from 'crypto';
 import { z } from 'zod';
 import { isMailerConfigured, mailerConfigStatus, sendMail } from '../utils/mailer.js';
+import { isSmsConfigured, normalizeSmsBdPhone, sendSmsBdOtp } from '../utils/sms-bd.js';
 
 const authRateLimit = {
   max: 5,
@@ -32,6 +33,20 @@ const emailCodeVerifySchema = z.object({
   code: z.string().regex(/^\d{6}$/),
   name: z.string().min(2).optional(),
   phone: z.string().optional(),
+});
+
+const phoneCodeRequestSchema = z.object({
+  phone: z.string().min(10),
+  purpose: z.enum(['auth']).default('auth'),
+  intent: z.enum(['login', 'register']).default('login'),
+});
+
+const phoneCodeVerifySchema = z.object({
+  phone: z.string().min(10),
+  code: z.string().regex(/^\d{4}$/),
+  intent: z.enum(['login', 'register']).default('login'),
+  name: z.string().min(2).optional(),
+  password: z.string().min(4).max(128).optional(),
 });
 
 const passwordResetConfirmSchema = z.object({
@@ -145,6 +160,44 @@ function sanitizeRedirectPath(value: unknown) {
 
 function createOtpCode() {
   return String(randomInt(100000, 1000000));
+}
+
+function createPhoneOtpCode() {
+  return String(randomInt(1000, 10000));
+}
+
+function phoneAlreadyRegisteredResponse(reply: FastifyReply) {
+  return reply.status(409).send({
+    code: 'PHONE_ALREADY_REGISTERED',
+    error: 'This phone number is already registered. Sign in with your password or phone OTP to continue.',
+    authMethods: { password: true, phoneOtp: true },
+  });
+}
+
+async function activeOtpBlock(channel: string, identifier: string) {
+  const rows = await prisma.$queryRaw`
+    SELECT blocked_until
+    FROM auth_otp_blocks
+    WHERE channel = ${channel}
+      AND identifier = ${identifier}
+      AND blocked_until > NOW()
+    ORDER BY blocked_until DESC
+    LIMIT 1
+  ` as Array<{ blocked_until: Date }>;
+  return rows[0] || null;
+}
+
+async function blockOtp(channel: string, identifier: string, reason: string) {
+  const blockedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await prisma.$executeRaw`
+    INSERT INTO auth_otp_blocks (id, channel, identifier, reason, blocked_until)
+    VALUES (${randomUUID()}, ${channel}, ${identifier}, ${reason}, ${blockedUntil})
+  `;
+  return blockedUntil;
+}
+
+function otpBlockedMessage(blockedUntil: Date) {
+  return `Too many OTP attempts. Please try again after ${blockedUntil.toLocaleString('en-US', { timeZone: 'Asia/Dhaka' })}.`;
 }
 
 async function createAuthResponse(fastify: FastifyInstance, reply: FastifyReply, user: any) {
@@ -611,6 +664,163 @@ export default async function authRoutes(fastify: FastifyInstance) {
         }
         throw error;
       }
+    }
+
+    if (user.status !== 'active') {
+      return reply.status(403).send({ error: 'Account is not active' });
+    }
+
+    return createAuthResponse(fastify, reply, user);
+  });
+
+  fastify.post('/phone-code/request', {
+    config: {
+      rateLimit: emailCodeRateLimit,
+    },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const body = phoneCodeRequestSchema.parse(request.body);
+    const phone = normalizeBangladeshPhone(body.phone);
+    const smsPhone = normalizeSmsBdPhone(phone);
+
+    if (!/^8801[3-9]\d{8}$/.test(smsPhone)) {
+      return reply.status(400).send({ error: 'Enter a valid Bangladesh mobile number' });
+    }
+
+    const existingUser = await prisma.user.findFirst({
+      where: { OR: uniquePhoneCandidates(body.phone).map((candidate) => ({ phone: candidate })) },
+      select: { id: true },
+    });
+
+    if (body.intent === 'register' && existingUser) {
+      return phoneAlreadyRegisteredResponse(reply);
+    }
+
+    if (body.intent === 'login' && !existingUser) {
+      return reply.status(404).send({ code: 'PHONE_NOT_REGISTERED', error: 'No account found for this phone number. Please register first.' });
+    }
+
+    const block = await activeOtpBlock('sms', smsPhone);
+    if (block) {
+      return reply.status(429).send({ code: 'OTP_BLOCKED', error: otpBlockedMessage(block.blocked_until) });
+    }
+
+    const sendRows = await prisma.$queryRaw`
+      SELECT COUNT(*)::int AS count
+      FROM auth_phone_otps
+      WHERE phone = ${smsPhone}
+        AND created_at > NOW() - INTERVAL '24 hours'
+    ` as Array<{ count: number }>;
+
+    if (Number(sendRows[0]?.count || 0) >= 3) {
+      const blockedUntil = await blockOtp('sms', smsPhone, 'daily_send_limit');
+      return reply.status(429).send({ code: 'OTP_BLOCKED', error: otpBlockedMessage(blockedUntil) });
+    }
+
+    if (!isSmsConfigured()) {
+      return reply.status(500).send({ error: 'SMS sending is not configured' });
+    }
+
+    const code = createPhoneOtpCode();
+    await prisma.$executeRaw`
+      INSERT INTO auth_phone_otps (id, phone, purpose, code_hash, expires_at)
+      VALUES (${randomUUID()}, ${smsPhone}, ${body.purpose}, ${await argon2.hash(code)}, ${new Date(Date.now() + 60 * 1000)})
+    `;
+
+    try {
+      await sendSmsBdOtp(smsPhone, code);
+    } catch (error: any) {
+      request.log.error({ err: error }, '[Auth] Failed to send phone OTP');
+      return reply.status(500).send({ error: error.message || 'Failed to send SMS OTP' });
+    }
+
+    return { message: 'OTP sent', expiresInSeconds: 60 };
+  });
+
+  fastify.post('/phone-code/verify', {
+    config: {
+      rateLimit: authRateLimit,
+    },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const body = phoneCodeVerifySchema.parse(request.body);
+    const phone = normalizeBangladeshPhone(body.phone);
+    const smsPhone = normalizeSmsBdPhone(phone);
+
+    const block = await activeOtpBlock('sms', smsPhone);
+    if (block) {
+      return reply.status(429).send({ code: 'OTP_BLOCKED', error: otpBlockedMessage(block.blocked_until) });
+    }
+
+    const rows = await prisma.$queryRaw`
+      SELECT id, code_hash, attempts
+      FROM auth_phone_otps
+      WHERE phone = ${smsPhone}
+        AND purpose = 'auth'
+        AND consumed_at IS NULL
+        AND expires_at > NOW()
+      ORDER BY created_at DESC
+      LIMIT 1
+    ` as Array<{ id: string; code_hash: string; attempts: number }>;
+
+    const otp = rows[0];
+    if (!otp) {
+      return reply.status(400).send({ error: 'Invalid or expired OTP' });
+    }
+
+    const valid = await argon2.verify(otp.code_hash, body.code);
+    if (!valid) {
+      const attempts = Number(otp.attempts || 0) + 1;
+      await prisma.$executeRaw`
+        UPDATE auth_phone_otps
+        SET attempts = ${attempts}
+        WHERE id = ${otp.id}
+      `;
+      if (attempts >= 3) {
+        const blockedUntil = await blockOtp('sms', smsPhone, 'verify_attempt_limit');
+        return reply.status(429).send({ code: 'OTP_BLOCKED', error: otpBlockedMessage(blockedUntil) });
+      }
+      return reply.status(400).send({ error: `Invalid OTP. ${3 - attempts} attempt(s) left.` });
+    }
+
+    await prisma.$executeRaw`
+      UPDATE auth_phone_otps
+      SET consumed_at = NOW()
+      WHERE id = ${otp.id}
+    `;
+
+    let user = await prisma.user.findFirst({
+      where: { OR: uniquePhoneCandidates(body.phone).map((candidate) => ({ phone: candidate })) },
+      include: { roles: { include: { role: true } } },
+    });
+
+    if (body.intent === 'register' && user) {
+      return phoneAlreadyRegisteredResponse(reply);
+    }
+
+    if (!user) {
+      if (body.intent === 'login') {
+        return reply.status(404).send({ code: 'PHONE_NOT_REGISTERED', error: 'No account found for this phone number. Please register first.' });
+      }
+      user = await prisma.user.create({
+        data: {
+          phone,
+          password_hash: await argon2.hash(body.password || randomUUID()),
+          status: 'active',
+          roles: {
+            create: {
+              role: {
+                connect: { name: 'CUSTOMER' },
+              },
+            },
+          },
+          customerProfile: {
+            create: {
+              full_name: body.name || null,
+              preferred_currency: 'BDT',
+            },
+          },
+        },
+        include: { roles: { include: { role: true } } },
+      });
     }
 
     if (user.status !== 'active') {

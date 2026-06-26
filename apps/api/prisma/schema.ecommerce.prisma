@@ -88,6 +88,34 @@ model AuthEmailOtp {
   @@map("auth_email_otps")
 }
 
+model AuthPhoneOtp {
+  id          String    @id @default(uuid())
+  phone       String
+  purpose     String
+  code_hash   String
+  attempts    Int       @default(0)
+  expires_at  DateTime
+  consumed_at DateTime?
+  created_at  DateTime  @default(now())
+
+  @@index([phone, purpose])
+  @@index([expires_at])
+  @@map("auth_phone_otps")
+}
+
+model AuthOtpBlock {
+  id            String   @id @default(uuid())
+  channel       String
+  identifier    String
+  reason        String?
+  blocked_until DateTime
+  created_at    DateTime @default(now())
+
+  @@index([channel, identifier])
+  @@index([blocked_until])
+  @@map("auth_otp_blocks")
+}
+
 model OAuthAccount {
   id                  String   @id @default(uuid())
   user_id             String

@@ -52,6 +52,18 @@ export const useAuthStore = defineStore('auth', () => {
     axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`;
   }
 
+  async function requestPhoneCode(phone: string, intent: 'login' | 'register' = 'login') {
+    await axios.post('/api/auth/phone-code/request', { phone, purpose: 'auth', intent }, { timeout: 20000 });
+  }
+
+  async function verifyPhoneCode(data: { phone: string; code: string; password?: string; name?: string; intent?: 'login' | 'register' }) {
+    const response = await axios.post('/api/auth/phone-code/verify', data);
+    accessToken.value = response.data.accessToken;
+    user.value = response.data.user;
+    localStorage.setItem('accessToken', response.data.accessToken);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.accessToken}`;
+  }
+
   async function resetPasswordWithCode(data: { email: string; code: string; password: string }) {
     const response = await axios.post('/api/auth/password-reset/confirm', data);
     accessToken.value = response.data.accessToken;
@@ -116,6 +128,8 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     requestEmailCode,
     verifyEmailCode,
+    requestPhoneCode,
+    verifyPhoneCode,
     resetPasswordWithCode,
     acceptOAuthAccessToken,
     logout,

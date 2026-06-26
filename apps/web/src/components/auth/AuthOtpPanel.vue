@@ -22,12 +22,12 @@
           v-model="identifier"
           type="text"
           placeholder="Email or mobile phone number"
-          autocomplete="email"
+          :autocomplete="isPhoneInput ? 'tel' : 'email'"
           :error="identifierError"
           @input="handleIdentifierInput"
         />
-        <p v-if="isPhoneInput" class="mt-1 text-xs text-slate-500">
-          SMS code is planned. Please use email code for now.
+        <p v-if="identifierHint" class="mt-1 text-xs" :class="identifierHintTone === 'error' ? 'text-rose-600' : 'text-slate-500'">
+          {{ identifierHint }}
         </p>
       </div>
 
@@ -53,36 +53,61 @@
             Sign in and continue
           </Button>
         </div>
+        <Button
+          v-if="existingAccount.authMethods.phoneOtp"
+          type="button"
+          variant="ghost"
+          full-width
+          class="mt-3 border border-amber-200 bg-white"
+          :loading="loading"
+          @click="requestExistingPhoneOtp"
+        >
+          Sign in with phone OTP
+        </Button>
       </div>
 
       <div v-if="codeStep">
         <label class="mb-2 block text-sm font-semibold text-slate-900">
           <span class="text-rose-600">*</span> Verification code
         </label>
-        <Input v-model="code" placeholder="6-digit code" inputmode="numeric" autocomplete="one-time-code" />
+        <Input v-model="code" :placeholder="isPhoneInput ? '4-digit code' : '6-digit code'" inputmode="numeric" autocomplete="one-time-code" />
+        <p v-if="isPhoneInput" class="mt-1 text-xs text-slate-500">
+          OTP expires in {{ otpSecondsLeft }}s.
+        </p>
+      </div>
+
+      <div v-if="codeStep && isPhoneInput && mode === 'register'">
+        <Input
+          v-model="optionalPassword"
+          label="Password (optional)"
+          type="password"
+          autocomplete="new-password"
+          placeholder="Set a password, or leave blank to use OTP login later"
+        />
       </div>
 
       <Button v-if="!existingAccount" type="submit" variant="primary" full-width class="bg-teal-700 py-3 text-white hover:bg-teal-800" :loading="loading">
-        {{ codeStep ? 'Verify and continue' : 'Submit' }}
+        {{ codeStep ? 'Verify and continue' : 'Send verification code' }}
       </Button>
     </form>
 
     <button
       type="button"
-      class="mt-5 text-sm font-semibold text-slate-900 underline-offset-4 hover:text-teal-700 hover:underline"
-      @click="codeStep = !codeStep"
+      class="mt-5 text-sm font-semibold text-slate-900 underline-offset-4 hover:text-teal-700 hover:underline disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
+      :disabled="codeStep && isPhoneInput && otpSecondsLeft > 0"
+      @click="handleOtpToggle"
     >
-      {{ codeStep ? 'Need a new OTP? Click Here' : 'Already has an OTP ? Click Here' }}
+      {{ otpToggleLabel }}
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onUnmounted, ref } from 'vue';
 import { Button, Input, useToast } from '@bridgechina/ui';
 import { useAuthStore } from '@/stores/auth';
 import { buildApiUrl } from '@/utils/api-url';
-import { contactKind, isValidEmail } from '@/utils/contact-validation';
+import { contactKind, isValidBangladeshPhone, isValidEmail } from '@/utils/contact-validation';
 
 const props = withDefaults(defineProps<{
   title?: string;
@@ -114,18 +139,69 @@ const loading = ref(false);
 const passwordLoading = ref(false);
 const identifierError = ref('');
 const password = ref('');
+const optionalPassword = ref('');
+const otpSecondsLeft = ref(0);
+let otpTimer: ReturnType<typeof setInterval> | null = null;
 const existingAccount = ref<null | {
   message: string;
   authMethods: {
     google?: boolean;
     password?: boolean;
+    phoneOtp?: boolean;
     providers?: string[];
   };
 }>(null);
 
+const contactType = computed(() => contactKind(identifier.value));
 const isPhoneInput = computed(() => {
   const value = identifier.value.trim();
   return !!value && !value.includes('@') && /^[+\d\s-]+$/.test(value);
+});
+
+const identifierHintTone = computed(() => {
+  const value = identifier.value.trim();
+  if (!value) return 'muted';
+  if (value.includes('@')) return isValidEmail(value) ? 'muted' : 'error';
+  if (/^[+\d\s-]+$/.test(value)) return isValidBangladeshPhone(value) ? 'muted' : 'error';
+  return 'error';
+});
+
+const identifierHint = computed(() => {
+  const value = identifier.value.trim();
+  if (!value) return '';
+  if (value.includes('@')) {
+    return isValidEmail(value)
+      ? 'Email detected. We will send a verification code.'
+      : 'Enter a valid email address, for example name@example.com.';
+  }
+  if (/^[+\d\s-]+$/.test(value)) {
+    return isValidBangladeshPhone(value)
+      ? 'Bangladesh mobile detected. We will send a 4-digit SMS OTP.'
+      : 'Enter a Bangladesh mobile number like 01XXXXXXXXX or +8801XXXXXXXXX.';
+  }
+  return 'Use a valid email address or Bangladesh mobile number.';
+});
+
+const otpToggleLabel = computed(() => {
+  if (!codeStep.value) return 'Already has an OTP? Click Here';
+  if (isPhoneInput.value && otpSecondsLeft.value > 0) return `Resend OTP in ${otpSecondsLeft.value}s`;
+  return 'Need a new OTP? Click Here';
+});
+
+function startOtpTimer(seconds = 60) {
+  otpSecondsLeft.value = seconds;
+  if (otpTimer) clearInterval(otpTimer);
+  otpTimer = setInterval(() => {
+    otpSecondsLeft.value = Math.max(0, otpSecondsLeft.value - 1);
+    if (otpSecondsLeft.value <= 0 && otpTimer) {
+      clearInterval(otpTimer);
+      otpTimer = null;
+    }
+  }, 1000);
+}
+
+onUnmounted(() => {
+  if (otpTimer) clearInterval(otpTimer);
 });
 
 function startGoogle() {
@@ -140,6 +216,18 @@ function handleIdentifierInput() {
   identifierError.value = '';
   existingAccount.value = null;
   password.value = '';
+  optionalPassword.value = '';
+  code.value = '';
+  codeStep.value = false;
+}
+
+async function requestVerificationCode(value: string, kind: 'email' | 'phone') {
+  if (kind === 'phone') {
+    await authStore.requestPhoneCode(value, props.mode);
+    startOtpTimer();
+    return;
+  }
+  await authStore.requestEmailCode(value, 'auth', props.mode);
 }
 
 function setExistingAccount(error: any, fallback: string) {
@@ -174,27 +262,76 @@ async function handlePasswordLogin() {
   }
 }
 
+async function requestExistingPhoneOtp() {
+  const value = identifier.value.trim();
+  loading.value = true;
+  try {
+    await authStore.requestPhoneCode(value, 'login');
+    existingAccount.value = null;
+    codeStep.value = true;
+    startOtpTimer();
+    toast.success('OTP sent');
+  } catch (error: any) {
+    toast.error(error.response?.data?.error || 'Failed to send OTP');
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function handleOtpToggle() {
+  if (!codeStep.value) {
+    const value = identifier.value.trim();
+    if (!value || (contactType.value !== 'email' && contactType.value !== 'phone')) {
+      identifierError.value = 'Enter a valid email address or Bangladesh mobile number first.';
+      return;
+    }
+    codeStep.value = true;
+    return;
+  }
+
+  if (isPhoneInput.value && otpSecondsLeft.value > 0) return;
+
+  const value = identifier.value.trim();
+  const kind = contactKind(value);
+  if (kind !== 'email' && kind !== 'phone') {
+    identifierError.value = 'Enter a valid email address or Bangladesh mobile number.';
+    codeStep.value = false;
+    return;
+  }
+
+  loading.value = true;
+  try {
+    await requestVerificationCode(value, kind);
+    toast.success(kind === 'phone' ? 'OTP sent' : 'Verification code sent');
+  } catch (error: any) {
+    const message = error.response?.data?.error || 'Failed to send code';
+    if (setExistingAccount(error, message)) {
+      toast.info(message);
+      return;
+    }
+    identifierError.value = message;
+    toast.error(message);
+  } finally {
+    loading.value = false;
+  }
+}
+
 async function handleSubmit() {
   const value = identifier.value.trim();
   const kind = contactKind(value);
   identifierError.value = '';
 
-  if (kind === 'phone') {
-    identifierError.value = 'SMS code is coming soon. Please use your email for now.';
-    return;
-  }
-
-  if (kind !== 'email' || !isValidEmail(value)) {
-    identifierError.value = 'Enter a valid email address.';
+  if (kind !== 'email' && kind !== 'phone') {
+    identifierError.value = 'Enter a valid email address or Bangladesh mobile number.';
     return;
   }
 
   if (!codeStep.value) {
     loading.value = true;
     try {
-      await authStore.requestEmailCode(value, 'auth', props.mode);
+      await requestVerificationCode(value, kind);
       codeStep.value = true;
-      toast.success('Verification code sent');
+      toast.success(kind === 'phone' ? 'OTP sent' : 'Verification code sent');
     } catch (error: any) {
       const message = error.response?.data?.error || 'Failed to send code';
       if (setExistingAccount(error, message)) {
@@ -213,10 +350,27 @@ async function handleSubmit() {
     toast.error('Enter the verification code');
     return;
   }
+  if (kind === 'phone' && !/^\d{4}$/.test(code.value.trim())) {
+    toast.error('Enter the 4-digit SMS OTP');
+    return;
+  }
+  if (kind === 'email' && !/^\d{6}$/.test(code.value.trim())) {
+    toast.error('Enter the 6-digit email code');
+    return;
+  }
 
   loading.value = true;
   try {
-    await authStore.verifyEmailCode({ email: value, code: code.value.trim(), intent: props.mode });
+    if (kind === 'phone') {
+      await authStore.verifyPhoneCode({
+        phone: value,
+        code: code.value.trim(),
+        intent: props.mode,
+        password: optionalPassword.value || undefined,
+      });
+    } else {
+      await authStore.verifyEmailCode({ email: value, code: code.value.trim(), intent: props.mode });
+    }
     toast.success('Signed in successfully');
     emit('authenticated');
   } catch (error: any) {

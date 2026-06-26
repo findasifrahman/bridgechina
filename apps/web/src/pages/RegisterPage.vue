@@ -3,7 +3,7 @@
     <div class="w-full max-w-lg">
       <AuthOtpPanel
         title="Create account"
-        subtitle="Enter your email to receive a verification code"
+        subtitle="Enter your phone number or email to receive a verification code"
         :redirect-path="redirectPath"
         mode="register"
         @authenticated="handleAuthenticated"
