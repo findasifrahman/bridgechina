@@ -750,9 +750,7 @@ export async function searchByImage(
   // The conversion API returns a path like "/search/imgextra4/xxx.jpeg" which is already on Alibaba CDN
   // We use it as-is (path format) as that's what TMAPI returns and expects
   console.log('[Shopping Service] Step 3: Calling TMAPI image search with converted URL...');
-  const response = language === 'en'
-    ? await tmapiClient.searchByImageMultilingual(convertedUrl, language, { ...opts, sort })
-    : await tmapiClient.searchByImage(convertedUrl, { ...opts, sort });
+  const response = await tmapiClient.searchByImageMultilingual(convertedUrl, language, { ...opts, sort });
 
   console.log('[Shopping Service] Image search response:', {
     hasData: !!response.data,
@@ -1532,4 +1530,3 @@ export async function getCuratedHomeSections(): Promise<Array<{ slug: string; la
 
   return sections;
 }
-

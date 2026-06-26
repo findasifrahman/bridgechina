@@ -92,6 +92,10 @@
                         </span>
                         <span v-if="order.items.length > 2" class="text-slate-400">+{{ order.items.length - 2 }}</span>
                       </div>
+                      <div v-if="order.items?.[0]" class="mt-1 max-w-[18rem] text-[10px] text-slate-500">
+                        {{ sellerLabel(order.items[0]) }}
+                        <span v-if="vendorId(order.items[0])"> · Vendor {{ vendorId(order.items[0]) }}</span>
+                      </div>
                     </div>
                   </td>
                   <td class="border-b border-slate-100 px-2 py-2">
@@ -237,8 +241,18 @@
           <div class="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900">Items</div>
           <div class="divide-y divide-slate-100">
             <div v-for="item in selectedOrder.items" :key="item.id" class="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-              <div>
+              <div class="min-w-0 flex-1">
                 <div class="font-medium text-slate-900">{{ item.title_snapshot || item.product?.title }}</div>
+                <div class="mt-2 grid gap-1 text-[11px] text-slate-500 md:grid-cols-2">
+                  <div>Seller: <span class="text-slate-700">{{ sellerLabel(item) }}</span></div>
+                  <div>Vendor ID: <span class="text-slate-700">{{ vendorId(item) || 'N/A' }}</span></div>
+                  <a v-if="productUrl(item)" :href="productUrl(item)" target="_blank" rel="noreferrer" class="font-medium text-teal-700 hover:underline">
+                    Product URL
+                  </a>
+                  <a v-if="shopUrl(item)" :href="shopUrl(item)" target="_blank" rel="noreferrer" class="font-medium text-teal-700 hover:underline">
+                    Shop URL
+                  </a>
+                </div>
                 <div class="text-slate-500">Qty {{ item.qty }} • {{ money(item.price_snapshot, item.currency_snapshot) }}</div>
               </div>
               <Badge :variant="badgeVariant(item.seller_status)" class="text-[11px]">{{ item.seller_status }}</Badge>
@@ -362,6 +376,22 @@ function sellerStateSummary(order: any) {
 
 function latestProof(order: any) {
   return order?.paymentProofs?.[0] || null;
+}
+
+function sellerLabel(item: any) {
+  return item?.seller_name_snapshot || item?.product?.vendor_name || item?.seller?.sellerProfile?.shop_name || item?.seller?.email || 'N/A';
+}
+
+function vendorId(item: any) {
+  return item?.vendor_id_snapshot || item?.product?.vendor_id || '';
+}
+
+function productUrl(item: any) {
+  return item?.product_url_snapshot || item?.source_url_snapshot || item?.product?.product_url || item?.product?.source_url || '';
+}
+
+function shopUrl(item: any) {
+  return item?.shop_url_snapshot || item?.product?.shop_url || '';
 }
 
 async function loadOrders() {

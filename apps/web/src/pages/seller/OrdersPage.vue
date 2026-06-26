@@ -77,6 +77,14 @@
                     <div class="space-y-1">
                       <div class="font-medium text-slate-900">{{ item.product?.title || item.title_snapshot }}</div>
                       <div class="text-slate-500">{{ item.product?.category?.name || 'Category' }}</div>
+                      <div class="text-[10px] text-slate-500">
+                        {{ sellerLabel(item) }}
+                        <span v-if="vendorId(item)"> · Vendor {{ vendorId(item) }}</span>
+                      </div>
+                      <div class="flex flex-wrap gap-2 text-[10px]">
+                        <a v-if="productUrl(item)" :href="productUrl(item)" target="_blank" rel="noreferrer" class="font-medium text-teal-700 hover:underline">Product URL</a>
+                        <a v-if="shopUrl(item)" :href="shopUrl(item)" target="_blank" rel="noreferrer" class="font-medium text-teal-700 hover:underline">Shop URL</a>
+                      </div>
                       <Badge :variant="badgeVariant(item.seller_status)" class="text-[10px]">{{ item.seller_status || 'pending_review' }}</Badge>
                     </div>
                   </td>
@@ -133,6 +141,12 @@
           <div class="font-semibold text-slate-900">{{ customerName(selectedOrderItem) }}</div>
           <div class="text-sm text-slate-600">{{ customerPhone(selectedOrderItem) }}</div>
           <div class="text-sm text-slate-600">{{ shippingSummary(selectedOrderItem) }}</div>
+          <div class="mt-3 grid gap-1 text-xs text-slate-600 md:grid-cols-2">
+            <div>Seller: <span class="text-slate-900">{{ sellerLabel(selectedOrderItem) }}</span></div>
+            <div>Vendor ID: <span class="text-slate-900">{{ vendorId(selectedOrderItem) || 'N/A' }}</span></div>
+            <a v-if="productUrl(selectedOrderItem)" :href="productUrl(selectedOrderItem)" target="_blank" rel="noreferrer" class="font-semibold text-teal-700 hover:underline">Product URL</a>
+            <a v-if="shopUrl(selectedOrderItem)" :href="shopUrl(selectedOrderItem)" target="_blank" rel="noreferrer" class="font-semibold text-teal-700 hover:underline">Shop URL</a>
+          </div>
         </div>
         <div class="grid gap-3 md:grid-cols-2">
           <Input v-model.number="customerReview.rating" type="number" min="1" max="10" label="Customer rating" />
@@ -231,6 +245,22 @@ function shippingSummary(item: any) {
   const shipping = item?.order?.shippingAddress;
   if (!shipping) return 'No shipping address';
   return `${shipping.name || 'Address'} • ${shipping.city || ''}`.trim();
+}
+
+function sellerLabel(item: any) {
+  return item?.seller_name_snapshot || item?.product?.vendor_name || item?.seller?.sellerProfile?.shop_name || item?.seller?.email || 'N/A';
+}
+
+function vendorId(item: any) {
+  return item?.vendor_id_snapshot || item?.product?.vendor_id || '';
+}
+
+function productUrl(item: any) {
+  return item?.product_url_snapshot || item?.source_url_snapshot || item?.product?.product_url || item?.product?.source_url || '';
+}
+
+function shopUrl(item: any) {
+  return item?.shop_url_snapshot || item?.product?.shop_url || '';
 }
 
 async function loadOrders() {

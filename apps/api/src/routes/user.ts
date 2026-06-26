@@ -74,6 +74,10 @@ const checkoutItemSchema = z.object({
   priceMax: z.number().positive().optional(),
   imageUrl: z.string().optional(),
   sourceUrl: z.string().optional(),
+  productUrl: z.string().optional(),
+  sellerName: z.string().optional(),
+  vendorId: z.string().optional(),
+  shopUrl: z.string().optional(),
   skuDetails: z.array(z.object({
     specId: z.string().min(1),
     qty: z.number().int().positive(),
@@ -569,10 +573,27 @@ export default async function userRoutes(fastify: FastifyInstance) {
             status: 'published',
             source_kind: 'checkout',
             source_url: item.sourceUrl || null,
+            product_url: item.productUrl || item.sourceUrl || null,
+            vendor_id: item.vendorId || null,
+            vendor_name: item.sellerName || null,
+            shop_url: item.shopUrl || null,
             external_id: item.externalId,
-          },
+          } as any,
+        });
+      } else if (item.productUrl || item.vendorId || item.sellerName || item.shopUrl) {
+        const productSnapshot = product as any;
+        product = await prisma.product.update({
+          where: { id: product.id },
+          data: {
+            source_url: product.source_url || item.sourceUrl || item.productUrl || undefined,
+            product_url: productSnapshot.product_url || item.productUrl || item.sourceUrl || undefined,
+            vendor_id: productSnapshot.vendor_id || item.vendorId || undefined,
+            vendor_name: productSnapshot.vendor_name || item.sellerName || undefined,
+            shop_url: productSnapshot.shop_url || item.shopUrl || undefined,
+          } as any,
         });
       }
+      const productSnapshot = product as any;
 
       await prisma.cartItem.create({
         data: {
@@ -586,9 +607,13 @@ export default async function userRoutes(fastify: FastifyInstance) {
           sku_details_snapshot: sanitizeSkuDetails(item.skuDetails) || undefined,
           image_url_snapshot: item.imageUrl || null,
           source_url_snapshot: item.sourceUrl || product.source_url || null,
+          product_url_snapshot: item.productUrl || item.sourceUrl || productSnapshot.product_url || product.source_url || null,
+          seller_name_snapshot: item.sellerName || productSnapshot.vendor_name || null,
+          vendor_id_snapshot: item.vendorId || productSnapshot.vendor_id || null,
+          shop_url_snapshot: item.shopUrl || productSnapshot.shop_url || null,
           selected_shipping_method: item.selectedShippingMethod || null,
           estimated_weight_kg: item.estimatedWeight ?? null,
-        },
+        } as any,
       });
     }
 
@@ -695,6 +720,10 @@ export default async function userRoutes(fastify: FastifyInstance) {
           qty: item.qty,
           price: resolveCheckoutUnitPrice(item),
           sourceUrl: item.sourceUrl,
+          productUrl: item.productUrl,
+          sellerName: item.sellerName,
+          vendorId: item.vendorId,
+          shopUrl: item.shopUrl,
           imageUrl: item.imageUrl,
           skuDetails: sanitizeSkuDetails(item.skuDetails),
           selectedShippingMethod: item.selectedShippingMethod,
@@ -728,7 +757,11 @@ export default async function userRoutes(fastify: FastifyInstance) {
       title: item.title_snapshot || item.product?.title || 'Product',
       qty: item.qty,
       price: item.price_snapshot,
-      sourceUrl: item.product?.source_url || null,
+      sourceUrl: item.source_url_snapshot || item.product?.source_url || null,
+      productUrl: (item as any).product_url_snapshot || (item.product as any)?.product_url || item.product?.source_url || null,
+      sellerName: (item as any).seller_name_snapshot || (item.product as any)?.vendor_name || null,
+      vendorId: (item as any).vendor_id_snapshot || (item.product as any)?.vendor_id || null,
+      shopUrl: (item as any).shop_url_snapshot || (item.product as any)?.shop_url || null,
       imageUrl: item.image_url_snapshot || undefined,
       skuDetails: Array.isArray(item.sku_details_snapshot) ? item.sku_details_snapshot : undefined,
       selectedShippingMethod: item.selected_shipping_method || undefined,
@@ -751,6 +784,10 @@ export default async function userRoutes(fastify: FastifyInstance) {
       sku_details_snapshot?: any;
       image_url_snapshot?: string | null;
       source_url_snapshot?: string | null;
+      product_url_snapshot?: string | null;
+      seller_name_snapshot?: string | null;
+      vendor_id_snapshot?: string | null;
+      shop_url_snapshot?: string | null;
       selected_shipping_method?: string | null;
       estimated_weight_kg?: number | null;
     }> = [];
@@ -789,10 +826,27 @@ export default async function userRoutes(fastify: FastifyInstance) {
             status: 'published',
             source_kind: 'checkout',
             source_url: item.sourceUrl || null,
+            product_url: item.productUrl || item.sourceUrl || null,
+            vendor_id: item.vendorId || null,
+            vendor_name: item.sellerName || null,
+            shop_url: item.shopUrl || null,
             external_id: item.productId,
-          },
+          } as any,
+        });
+      } else if (item.productUrl || item.vendorId || item.sellerName || item.shopUrl) {
+        const productSnapshot = product as any;
+        product = await prisma.product.update({
+          where: { id: product.id },
+          data: {
+            source_url: product.source_url || item.sourceUrl || item.productUrl || undefined,
+            product_url: productSnapshot.product_url || item.productUrl || item.sourceUrl || undefined,
+            vendor_id: productSnapshot.vendor_id || item.vendorId || undefined,
+            vendor_name: productSnapshot.vendor_name || item.sellerName || undefined,
+            shop_url: productSnapshot.shop_url || item.shopUrl || undefined,
+          } as any,
         });
       }
+      const productSnapshot = product as any;
 
       resolvedItems.push({
         product_id: product.id,
@@ -804,6 +858,10 @@ export default async function userRoutes(fastify: FastifyInstance) {
         sku_details_snapshot: item.skuDetails || undefined,
         image_url_snapshot: item.imageUrl || null,
         source_url_snapshot: item.sourceUrl || product.source_url || null,
+        product_url_snapshot: item.productUrl || item.sourceUrl || productSnapshot.product_url || product.source_url || null,
+        seller_name_snapshot: item.sellerName || productSnapshot.vendor_name || null,
+        vendor_id_snapshot: item.vendorId || productSnapshot.vendor_id || null,
+        shop_url_snapshot: item.shopUrl || productSnapshot.shop_url || null,
         selected_shipping_method: item.selectedShippingMethod || body.shipping_method || null,
         estimated_weight_kg: item.estimatedWeight ?? product.weight_kg ?? null,
       });

@@ -322,7 +322,11 @@ model Product {
   status            String          @default("draft")
   source_kind       String          @default("manual")
   source_url        String?
+  product_url       String?
   external_id       String?
+  vendor_id         String?
+  vendor_name       String?
+  shop_url          String?
   cover_asset_id    String?
   brand             String?
   dimensions        Json?
@@ -374,6 +378,10 @@ model CartItem {
   sku_details_snapshot Json?
   image_url_snapshot String?
   source_url_snapshot String?
+  product_url_snapshot String?
+  seller_name_snapshot String?
+  vendor_id_snapshot String?
+  shop_url_snapshot String?
   selected_shipping_method String?
   estimated_weight_kg Float?
   created_at        DateTime @default(now())
@@ -436,6 +444,10 @@ model OrderItem {
   sku_details_snapshot Json?
   image_url_snapshot String?
   source_url_snapshot String?
+  product_url_snapshot String?
+  seller_name_snapshot String?
+  vendor_id_snapshot String?
+  shop_url_snapshot String?
   selected_shipping_method String?
   estimated_weight_kg Float?
   seller_status     String    @default("pending_review")

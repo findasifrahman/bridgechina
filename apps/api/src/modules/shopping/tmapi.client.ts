@@ -93,7 +93,7 @@ class TMAPIClient {
 
       const response = await this.client.post(
         '/1688/tools/image/convert_url',
-        { url },
+        { url, search_api_endpoint: '/global/search/image/v2' },
         {
           params: {
             apiToken: this.apiToken,
@@ -693,9 +693,8 @@ class TMAPIClient {
   }
 
   /**
-   * Search for 1688 products by image (Multilingual version)
-   * Based on TMAPI docs: GET /1688/global/search/image
-   * https://tmapi.top/docs/ali/multi-language-apis/search-items-by-image-url
+   * Search for 1688 products by image (Multilingual V2)
+   * Based on TMAPI docs: GET /1688/global/search/image/v2
    */
   async searchByImageMultilingual(
     imgUrl: string,
@@ -720,13 +719,13 @@ class TMAPIClient {
 
       console.log('[TMAPI Client] searchByImageMultilingual request:', {
         baseURL: this.client.defaults.baseURL,
-        endpoint: '/1688/global/search/image',
+        endpoint: '/1688/global/search/image/v2',
         imgUrl: imgUrl.substring(0, 100) + '...',
         language,
         params: { ...params, apiToken: params.apiToken ? '[REDACTED]' : 'MISSING' },
       });
 
-      const response = await this.client.get('/1688/global/search/image', { params });
+      const response = await this.client.get('/1688/global/search/image/v2', { params });
       
       console.log('[TMAPI Client] searchByImageMultilingual response:', {
         status: response.status,

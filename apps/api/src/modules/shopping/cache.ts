@@ -163,8 +163,8 @@ export async function setCachedItem(
   const priceMax = itemData.price_max || (itemData.price?.max ? parseFloat(itemData.price.max) : null);
   const mainImages = itemData.main_images || itemData.images || null;
   const skusJson = itemData.skus || itemData.sku_list || null;
-  const sellerJson = itemData.seller || itemData.seller_info || null;
-  const sourceUrl = itemData.detail_url || itemData.url || itemData.link || null;
+  const sellerJson = itemData.shop_info || itemData.seller || itemData.seller_info || null;
+  const sourceUrl = itemData.product_url || itemData.detail_url || itemData.url || itemData.link || null;
 
   await prisma.externalCatalogItem.upsert({
     where: { 

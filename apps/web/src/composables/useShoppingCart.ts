@@ -18,6 +18,10 @@ export interface CartItem {
   sourceCurrency?: string;
   imageUrl?: string;
   sourceUrl?: string;
+  productUrl?: string;
+  sellerName?: string;
+  vendorId?: string;
+  shopUrl?: string;
   quantity: number;
   minimumOrderQty?: number;
   skuDetails?: Array<{
@@ -84,6 +88,10 @@ function normalizeCartItem(item: any): CartItem {
     sourceCurrency: item?.sourceCurrency || product.currency,
     imageUrl: item?.imageUrl || item?.image_url_snapshot || product.coverAsset?.public_url,
     sourceUrl: item?.sourceUrl || item?.source_url_snapshot || product.source_url,
+    productUrl: item?.productUrl || item?.product_url_snapshot || product.product_url || item?.sourceUrl || item?.source_url_snapshot || product.source_url,
+    sellerName: item?.sellerName || item?.seller_name_snapshot || product.vendor_name || item?.shopName || item?.shop?.name,
+    vendorId: item?.vendorId || item?.vendor_id_snapshot || product.vendor_id || item?.shop?.vendorId,
+    shopUrl: item?.shopUrl || item?.shop_url_snapshot || product.shop_url || item?.shop?.url,
     quantity: Number(item?.quantity || item?.qty || 1),
     minimumOrderQty: item?.minimumOrderQty || product.minimum_order_qty,
     skuDetails,
@@ -139,6 +147,10 @@ export function useShoppingCart() {
       cartItems.value[existingIndex].sourceCurrency = product.sourceCurrency || cartItems.value[existingIndex].sourceCurrency;
       if (product.imageUrl) cartItems.value[existingIndex].imageUrl = product.imageUrl;
       if (product.sourceUrl) cartItems.value[existingIndex].sourceUrl = product.sourceUrl;
+      if (product.productUrl || product.sourceUrl) cartItems.value[existingIndex].productUrl = product.productUrl || product.sourceUrl;
+      if (product.sellerName || product.shopName) cartItems.value[existingIndex].sellerName = product.sellerName || product.shopName;
+      if (product.vendorId) cartItems.value[existingIndex].vendorId = product.vendorId;
+      if (product.shopUrl) cartItems.value[existingIndex].shopUrl = product.shopUrl;
       if (skuDetails) {
         cartItems.value[existingIndex].skuDetails = mergeSkuDetails(cartItems.value[existingIndex].skuDetails, skuDetails);
         cartItems.value[existingIndex].quantity = cartItems.value[existingIndex].skuDetails?.reduce((sum, row) => sum + Number(row.qty || 0), 0) || cartItems.value[existingIndex].quantity;

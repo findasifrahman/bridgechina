@@ -42,6 +42,7 @@ export interface ProductCard {
   vendorId?: string;
   shopName?: string;
   shopUrl?: string;
+  productUrl?: string;
   shop?: {
     vendorId?: string;
     name?: string;
@@ -300,13 +301,9 @@ export function normalizeProductCard(item: any): ProductCard {
 
   card.minimumOrderQty = parseCompactNumber(item.moq ?? item.quantity_begin);
 
-  // Source URL - TMAPI uses 'product_url' field
-  if (item.product_url) {
-    card.sourceUrl = item.product_url;
-  }
-  if (item.detail_url || item.url || item.link) {
-    card.sourceUrl = item.detail_url || item.url || item.link;
-  }
+  // Source URL - TMAPI uses 'product_url' field for the canonical 1688 detail page.
+  card.productUrl = firstString(item.product_url, item.detail_url);
+  card.sourceUrl = firstString(item.product_url, item.detail_url, item.url, item.link);
 
   return card;
 }
