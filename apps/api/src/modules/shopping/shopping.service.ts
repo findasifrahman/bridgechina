@@ -96,6 +96,42 @@ async function applyEnglishDisplayTranslations(detail: ProductDetail): Promise<P
   return detail;
 }
 
+async function translateProductCardTitle(card: ProductCard): Promise<ProductCard> {
+  const originalTitle = card.title;
+  const translatedTitle = await translateProductDisplayText(originalTitle);
+  if (!translatedTitle || translatedTitle === originalTitle) return card;
+
+  const translatedCard = {
+    ...card,
+    titleOrigin: card.titleOrigin || originalTitle,
+    title: translatedTitle,
+  };
+
+  if (translatedCard.externalId) {
+    prisma.externalCatalogItem.updateMany({
+      where: {
+        source: SOURCE,
+        external_id: translatedCard.externalId,
+      },
+      data: {
+        title_en: translatedTitle,
+        title: translatedTitle,
+      },
+    }).catch((error: any) => {
+      console.warn('[Shopping Service] Failed to persist translated card title:', {
+        externalId: translatedCard.externalId,
+        error: error.message,
+      });
+    });
+  }
+
+  return translatedCard;
+}
+
+async function translateProductCardTitles(cards: ProductCard[]): Promise<ProductCard[]> {
+  return Promise.all(cards.map(translateProductCardTitle));
+}
+
 const CURATED_CATEGORY_DEFS = [
   { slug: 'phone-accessories', label: 'Mobile accessories', keywords: ['mobile accessories', 'phone accessories', 'phone cover', 'phone charger', 'phone glass', 'power bank'] },
   { slug: 'bags', label: 'Bags', keywords: ['bag', 'bags', 'handbag', 'backpack', 'tote', 'wallet', 'suitcase'] },
@@ -1525,8 +1561,9 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
     // Apply pagination
     const start = (page - 1) * pageSize;
     const paginated = items.slice(start, start + pageSize);
-    console.log(`[Shopping Service] getHotItems returning ${paginated.length} items (total: ${items.length}, page: ${page}, pageSize: ${pageSize})`);
-    return paginated;
+    const translated = await translateProductCardTitles(paginated);
+    console.log(`[Shopping Service] getHotItems returning ${translated.length} items (total: ${items.length}, page: ${page}, pageSize: ${pageSize})`);
+    return translated;
   } catch (error: any) {
     if (isDatabaseUnavailable(error)) {
       console.warn('[Shopping Service] Database unavailable while loading hot items - returning empty list');

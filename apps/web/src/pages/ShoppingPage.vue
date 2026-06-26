@@ -138,10 +138,10 @@
                       </div>
                     </div>
                     <div class="p-2.5">
-                      <p class="line-clamp-2 text-[11px] font-semibold leading-4 text-slate-900">{{ item.title }}</p>
+                      <p class="line-clamp-2 text-[12px] font-semibold leading-4 text-slate-900">{{ item.title }}</p>
                       <div class="mt-1 flex items-center justify-between gap-2">
-                        <span class="text-[11px] font-black text-rose-600">{{ formatPrice(item.priceMin ?? item.priceMax ?? 0) }}</span>
-                <span class="rounded-full bg-rose-50 px-2 py-0.5 text-[9px] font-semibold text-rose-600">MOQ {{ item.minimumOrderQty || shoppingSettings.moqRule?.minimum_product || 3 }}</span>
+                        <span class="text-[14px] font-black text-rose-600">{{ formatPrice(item.priceMin ?? item.priceMax ?? 0) }}</span>
+                <span class="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-600">MOQ {{ item.minimumOrderQty || shoppingSettings.moqRule?.minimum_product || 3 }}</span>
                       </div>
                     </div>
                   </button>
