@@ -14,6 +14,48 @@ function isDatabaseUnavailable(error: any): boolean {
 
 let shoppingDbAvailable = true;
 
+function getClientIp(request: FastifyRequest): string {
+  const cfConnectingIp = request.headers['cf-connecting-ip'];
+  if (typeof cfConnectingIp === 'string' && cfConnectingIp.trim()) return cfConnectingIp.trim();
+
+  const forwardedFor = request.headers['x-forwarded-for'];
+  if (typeof forwardedFor === 'string' && forwardedFor.trim()) {
+    return forwardedFor.split(',')[0].trim();
+  }
+
+  return request.ip;
+}
+
+async function verifyTurnstile(token: string | undefined, ip: string): Promise<boolean> {
+  const secret = process.env.CLOUDFLARE_TURNSTILE_SECRET;
+  if (!secret) return true;
+  if (!token) return false;
+
+  const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      secret,
+      response: token,
+      remoteip: ip,
+    }),
+  });
+
+  if (!res.ok) return false;
+
+  const data = await res.json() as { success?: boolean };
+  return data.success === true;
+}
+
+async function requireTurnstile(request: FastifyRequest, reply: FastifyReply, token: string | undefined): Promise<boolean> {
+  const verified = await verifyTurnstile(token, getClientIp(request));
+  if (!verified) {
+    reply.status(403).send({ error: 'Human verification failed. Please refresh and try again.' });
+    return false;
+  }
+  return true;
+}
+
 function normalizeGalleryAssets(product: any, mediaById: Map<string, any>) {
   const ids = Array.isArray(product.gallery_asset_ids)
     ? product.gallery_asset_ids.filter((id: any) => typeof id === 'string' && id.trim().length > 0)
@@ -413,6 +455,8 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
     try {
       reply.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=1800');
       const query = searchByKeywordSchema.parse(request.query);
+      if (!(await requireTurnstile(request, reply, query.turnstileToken))) return;
+
       const searchContext = buildShoppingSearchContext(query.keyword, query.category);
       let categoryKeyword: string | undefined;
       let categoryTrailKeyword: string | undefined;
@@ -632,6 +676,8 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
   fastify.post('/shopping/search/image', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const body = searchByImageSchema.parse(request.body);
+      if (!(await requireTurnstile(request, reply, body.turnstileToken))) return;
+
       return searchByImage(body.r2_public_url, {
         category: body.category,
         page: body.page,

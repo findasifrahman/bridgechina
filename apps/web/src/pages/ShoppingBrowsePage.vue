@@ -249,6 +249,7 @@ import { useToast } from '@bridgechina/ui';
 import ProductCard from '@/components/shopping/ProductCard.vue';
 import { Search } from 'lucide-vue-next';
 import { useShoppingCart } from '@/composables/useShoppingCart';
+import { getTurnstileToken } from '@/utils/turnstile';
 import { aggregateTopShops, formatShopSubtitle, splitSearchResultsByFocus } from '@/utils/shop';
 import {
   cacheProductCards,
@@ -348,6 +349,7 @@ async function runSearch() {
   }
   loading.value = true;
   try {
+    const turnstileToken = await getTurnstileToken('shopping_search');
     const response = await axios.get('/api/public/shopping/search', {
       params: {
         keyword: searchQuery.value.trim() || undefined,
@@ -357,6 +359,7 @@ async function runSearch() {
         pageSize: pageSize.value,
         language: selectedLanguage.value,
         sort: 'sales',
+        turnstileToken,
       },
     });
     if (requestId !== searchRequestId) return;
@@ -392,6 +395,7 @@ async function runImageSearch() {
 
   loading.value = true;
   try {
+    const turnstileToken = await getTurnstileToken('shopping_image_search');
     const blob = await (await fetch(stored)).blob();
     const file = new File([blob], 'shopping-image-search.png', { type: blob.type || 'image/png' });
     const formData = new FormData();
@@ -408,6 +412,7 @@ async function runImageSearch() {
       pageSize: pageSize.value,
       language: selectedLanguage.value,
       sort: 'sales',
+      turnstileToken,
     });
     if (requestId !== searchRequestId) return;
 

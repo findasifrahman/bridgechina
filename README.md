@@ -175,6 +175,7 @@ Set this frontend service variable before deploying:
 
 ```text
 VITE_API_URL=https://your-api-domain
+VITE_TURNSTILE_SITE_KEY=0x4AAAAAADrc_RtUOfIXlxx2
 ```
 
 Use the public API origin only, with no trailing `/api`. For example:
@@ -191,9 +192,12 @@ WEB_APP_URL=https://www.chinabuybd.com
 FRONTEND_URL=https://www.chinabuybd.com
 ALLOWED_ORIGINS=https://www.chinabuybd.com,https://chinabuybd.com
 API_BASE_URL=https://api.chinabuybd.com
+CLOUDFLARE_TURNSTILE_SECRET=<your-cloudflare-turnstile-secret-key>
 ```
 
 If you keep the Railway-generated API domain instead of a custom API domain, use that URL for `VITE_API_URL` and `API_BASE_URL`.
+
+The frontend Turnstile key must use the `VITE_` prefix because Vite only exposes variables with that prefix to browser code. After changing `VITE_API_URL` or `VITE_TURNSTILE_SITE_KEY`, redeploy the frontend service so Railway rebuilds the static bundle. A restart alone is not enough.
 
 ### Domain Setup
 

@@ -1008,6 +1008,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from '@/utils/axios';
 import { buildImageProxyUrl } from '@/utils/api-url';
+import { getTurnstileToken } from '@/utils/turnstile';
 import { useToast } from '@bridgechina/ui';
 import { AlertTriangle, ArrowLeft, MessageCircle, Minus, Package, Play, Plus, RefreshCw, ShoppingCart, Star, Truck, X } from 'lucide-vue-next';
 import { Badge, Button, EmptyState, Input } from '@bridgechina/ui';
@@ -1796,6 +1797,7 @@ function updateSkuQuantity(sku: any, delta: number) {
 async function loadSimilarProducts() {
   try {
     if (shopVendorId.value) {
+      const turnstileToken = await getTurnstileToken('shopping_similar');
       const response = await axios.get('/api/public/shopping/search', {
         params: {
           vendorId: shopVendorId.value,
@@ -1803,6 +1805,7 @@ async function loadSimilarProducts() {
           pageSize: 8,
           language: selectedLanguage.value,
           sort: 'sales',
+          turnstileToken,
         },
       });
       const products = Array.isArray(response.data?.otapiItems)
