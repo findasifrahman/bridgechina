@@ -1937,17 +1937,8 @@ function addToCart() {
     return;
   }
 
-  let skuDetails: any[] | undefined;
-  if (hasVariantRows.value && Object.keys(selectedSkus.value).length > 0) {
-    skuDetails = [];
-    for (const [specId, qty] of Object.entries(selectedSkus.value)) {
-      if (qty <= 0) continue;
-      const sku = variantRows.value.find((row) => (row.sku.specid || row.sku.skuid) === specId)?.sku;
-      if (sku) skuDetails.push({ specId, qty, sku });
-    }
-  }
-
-  addToCartComposable(buildCartProductPayload(), totalQuantity.value, skuDetails && skuDetails.length > 0 ? skuDetails : undefined);
+  const skuDetails = buildSkuDetails();
+  addToCartComposable(buildCartProductPayload(), totalQuantity.value, skuDetails);
   toast.success('Added to cart');
 }
 

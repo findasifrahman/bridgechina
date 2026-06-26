@@ -1,6 +1,6 @@
 const INTENT_KEY = 'bc_shopping_intents_v1';
 const PRODUCT_KEY = 'bc_shopping_product_cards_v1';
-const DETAIL_KEY_PREFIX = 'bc_shopping_detail_v2:';
+const DETAIL_KEY_PREFIX = 'bc_shopping_detail_v3:';
 const MAX_INTENTS = 50;
 const MAX_PRODUCTS = 80;
 const TTL_MS = 7 * 24 * 60 * 60 * 1000;

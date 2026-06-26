@@ -20,7 +20,7 @@ import {
   getCachedItem,
   setCachedItem,
 } from './cache.js';
-import { translateKeywordToChinese } from './googleTranslate.js';
+import { translateChineseTextToEnglish, translateKeywordToChinese } from './googleTranslate.js';
 import {
   buildChineseShoppingQuery,
   buildShoppingSearchContext,
@@ -49,6 +49,51 @@ function normalizeKeywordForChineseSearch(keyword: string): string {
     .replace(/\bbiometric\s+attendance\b/gi, 'biometric time attendance')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+async function translateProductDisplayText(text: any): Promise<string | undefined> {
+  const source = String(text || '').trim();
+  if (!source) return undefined;
+  const translated = await translateChineseTextToEnglish(source);
+  return translated || source;
+}
+
+async function applyEnglishDisplayTranslations(detail: ProductDetail): Promise<ProductDetail> {
+  const originalTitle = detail.title;
+  const translatedTitle = await translateProductDisplayText(originalTitle);
+  if (translatedTitle && translatedTitle !== originalTitle) {
+    detail.titleOrigin = originalTitle;
+    detail.title = translatedTitle;
+  }
+
+  if (Array.isArray(detail.skus) && detail.skus.length > 0) {
+    const labelBySource = new Map<string, string>();
+    const sourceLabels = Array.from(new Set(
+      detail.skus
+        .map((sku: any) => String(sku?.props_names || sku?.name || sku?.title || sku?.label || '').trim())
+        .filter(Boolean),
+    ));
+
+    await Promise.all(sourceLabels.map(async (sourceLabel) => {
+      const translated = await translateProductDisplayText(sourceLabel);
+      if (translated) labelBySource.set(sourceLabel, translated);
+    }));
+
+    detail.skus = detail.skus.map((sku: any) => {
+      const sourceLabel = String(sku?.props_names || sku?.name || sku?.title || sku?.label || '').trim();
+      const translatedLabel = sourceLabel ? labelBySource.get(sourceLabel) : undefined;
+      if (!translatedLabel || translatedLabel === sourceLabel) return sku;
+      return {
+        ...sku,
+        props_names_origin: sku?.props_names || sourceLabel,
+        props_names: translatedLabel,
+        label_origin: sku?.label || undefined,
+        label: translatedLabel,
+      };
+    });
+  }
+
+  return detail;
 }
 
 const CURATED_CATEGORY_DEFS = [
@@ -988,6 +1033,7 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
     if (cached.title_en) {
       normalized.title = cached.title_en;
     }
+    await applyEnglishDisplayTranslations(normalized);
 
     if (ratings && ratings.list && ratings.list.length > 0) {
       const ratingsList = ratings.list;
@@ -1070,7 +1116,7 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
     });
 
     if (cachedFallback) {
-      return cachedFallback;
+      return applyEnglishDisplayTranslations(cachedFallback);
     }
 
     throw error;
@@ -1091,6 +1137,7 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
 
   // Normalize to extract data (pass description if fetched)
   const normalized = normalizeProductDetail(itemData, description);
+  await applyEnglishDisplayTranslations(normalized);
 
   // Enhance with ratings if available
   if (ratings && ratings.list && ratings.list.length > 0) {
@@ -1166,19 +1213,23 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
         source: SOURCE,
         external_id: externalId,
         title: normalized.title,
+        title_en: normalized.title,
         price_min: normalized.priceMin,
         price_max: normalized.priceMax,
         currency: normalized.currency,
         main_images: normalized.images ? JSON.parse(JSON.stringify(normalized.images)) : null,
+        skus_json: normalized.skus ? JSON.parse(JSON.stringify(normalized.skus)) : null,
         source_url: normalized.sourceUrl,
         raw_json: rawJsonToCache as any,
         expires_at: expiresAt,
       },
       update: {
         title: normalized.title,
+        title_en: normalized.title,
         price_min: normalized.priceMin,
         price_max: normalized.priceMax,
         main_images: normalized.images ? JSON.parse(JSON.stringify(normalized.images)) : null,
+        skus_json: normalized.skus ? JSON.parse(JSON.stringify(normalized.skus)) : null,
         source_url: normalized.sourceUrl,
         raw_json: rawJsonToCache as any,
         expires_at: expiresAt,
@@ -1209,9 +1260,11 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
             where: { id: existing.id },
             data: {
               title: normalized.title,
+              title_en: normalized.title,
               price_min: normalized.priceMin,
               price_max: normalized.priceMax,
               main_images: normalized.images ? JSON.parse(JSON.stringify(normalized.images)) : null,
+              skus_json: normalized.skus ? JSON.parse(JSON.stringify(normalized.skus)) : null,
               source_url: normalized.sourceUrl,
               raw_json: rawJsonToCache as any,
               expires_at: expiresAt,
@@ -1224,10 +1277,12 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
               source: SOURCE,
               external_id: externalId,
               title: normalized.title,
+              title_en: normalized.title,
               price_min: normalized.priceMin,
               price_max: normalized.priceMax,
               currency: normalized.currency,
               main_images: normalized.images ? JSON.parse(JSON.stringify(normalized.images)) : null,
+              skus_json: normalized.skus ? JSON.parse(JSON.stringify(normalized.skus)) : null,
               source_url: normalized.sourceUrl,
               raw_json: rawJsonToCache as any,
               expires_at: expiresAt,
@@ -1251,23 +1306,25 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
             if (existingItem) {
               await prisma.$executeRawUnsafe(`
                 UPDATE external_catalog_items 
-                SET title = $1, price_min = $2, price_max = $3, 
-                    main_images = $4, source_url = $5, raw_json = $6, expires_at = $7, 
-                    last_synced_at = $8, updated_at = $9
-                WHERE id = $10
-              `, normalized.title, normalized.priceMin, normalized.priceMax,
+                SET title = $1, title_en = $2, price_min = $3, price_max = $4, 
+                    main_images = $5, skus_json = $6, source_url = $7, raw_json = $8, expires_at = $9, 
+                    last_synced_at = $10, updated_at = $11
+                WHERE id = $12
+              `, normalized.title, normalized.title, normalized.priceMin, normalized.priceMax,
                  normalized.images ? JSON.stringify(normalized.images) : null,
+                 normalized.skus ? JSON.stringify(normalized.skus) : null,
                  normalized.sourceUrl, JSON.stringify(rawJsonToCache),
                  expiresAt, new Date(), now, existingItem.id);
             } else {
               await prisma.$executeRawUnsafe(`
                 INSERT INTO external_catalog_items
-                (id, source, external_id, title, price_min, price_max, currency,
-                 main_images, source_url, raw_json, expires_at, created_at, updated_at)
-                VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-              `, SOURCE, externalId, normalized.title, normalized.priceMin, normalized.priceMax,
+                (id, source, external_id, title, title_en, price_min, price_max, currency,
+                 main_images, skus_json, source_url, raw_json, expires_at, created_at, updated_at)
+                VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+              `, SOURCE, externalId, normalized.title, normalized.title, normalized.priceMin, normalized.priceMax,
                  normalized.currency || 'CNY',
                  normalized.images ? JSON.stringify(normalized.images) : null,
+                 normalized.skus ? JSON.stringify(normalized.skus) : null,
                  normalized.sourceUrl, JSON.stringify(rawJsonToCache),
                  expiresAt, now, now);
             }

@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import { escapeHtml, sendMail } from '../utils/mailer.js';
+import { translateChineseTextToEnglish } from '../modules/shopping/googleTranslate.js';
 
 const authPreHandler = [async (request: FastifyRequest, reply: FastifyReply) => {
   const fastify = request.server as FastifyInstance & { authenticate?: any };
@@ -102,6 +103,58 @@ function sanitizeSkuDetails(value: z.infer<typeof checkoutItemSchema>['skuDetail
       displayUnitPrice: row.displayUnitPrice ?? null,
     }))
     .filter((row) => row.specId && row.qty > 0);
+}
+
+async function translateSnapshotText(value: string | null | undefined, fallback = '') {
+  const source = String(value || fallback || '').trim();
+  if (!source) return fallback;
+  return translateChineseTextToEnglish(source);
+}
+
+async function translateCheckoutSkuDetails(value: z.infer<typeof checkoutItemSchema>['skuDetails']) {
+  const sanitized = sanitizeSkuDetails(value);
+  if (!sanitized?.length) return undefined;
+
+  return Promise.all(sanitized.map(async (row) => {
+    const translatedLabel = row.label
+      ? await translateSnapshotText(row.label)
+      : null;
+    let translatedSku = row.sku;
+    if (row.sku && typeof row.sku === 'object') {
+      const sourceSkuLabel = String(row.sku.props_names || row.sku.label || row.sku.name || row.sku.title || '').trim();
+      const skuLabel = sourceSkuLabel ? await translateSnapshotText(sourceSkuLabel) : '';
+      if (skuLabel && skuLabel !== sourceSkuLabel) {
+        translatedSku = {
+          ...row.sku,
+          props_names_origin: row.sku.props_names || sourceSkuLabel,
+          props_names: skuLabel,
+          label_origin: row.sku.label || undefined,
+          label: skuLabel,
+        };
+      }
+    }
+
+    return {
+      ...row,
+      sku: translatedSku,
+      label: translatedLabel || row.label || undefined,
+      sourceUnitPrice: row.sourceUnitPrice ?? undefined,
+      displayUnitPrice: row.displayUnitPrice ?? undefined,
+    };
+  }));
+}
+
+async function normalizeCheckoutItemSnapshot(item: z.infer<typeof checkoutItemSchema>) {
+  const [title, skuDetails] = await Promise.all([
+    translateSnapshotText(item.title, 'Product'),
+    translateCheckoutSkuDetails(item.skuDetails),
+  ]);
+
+  return {
+    ...item,
+    title,
+    skuDetails,
+  };
 }
 
 function resolveCheckoutUnitPrice(item: z.infer<typeof checkoutItemSchema>) {
@@ -538,7 +591,8 @@ export default async function userRoutes(fastify: FastifyInstance) {
       create: { user_id: req.user.id },
     });
 
-    const itemsToSync = body.items.map((item) => ({
+    const normalizedItems = await Promise.all(body.items.map(normalizeCheckoutItemSnapshot));
+    const itemsToSync = normalizedItems.map((item) => ({
       item,
       unitPrice: resolveCheckoutUnitPrice(item),
     }));
@@ -713,8 +767,12 @@ export default async function userRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: 'Shipping address not found' });
     }
 
-    const sourceItems = body.items && body.items.length > 0
-      ? body.items.map((item) => ({
+    const normalizedBodyItems = body.items && body.items.length > 0
+      ? await Promise.all(body.items.map(normalizeCheckoutItemSnapshot))
+      : null;
+
+    const sourceItems = normalizedBodyItems
+      ? normalizedBodyItems.map((item) => ({
           productId: item.externalId,
           title: item.title,
           qty: item.qty,

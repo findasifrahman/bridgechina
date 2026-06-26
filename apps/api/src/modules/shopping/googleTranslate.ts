@@ -29,6 +29,10 @@ function normalizeSourceText(text: string): string {
 /**
  * Check if text contains mostly Latin characters (needs translation)
  */
+function hasChineseCharacters(text: string): boolean {
+  return /[\u4e00-\u9fff]/.test(text);
+}
+
 function needsTranslation(text: string): boolean {
   const normalized = text.trim();
   if (!normalized) return false;
@@ -44,7 +48,7 @@ function needsTranslation(text: string): boolean {
 /**
  * Translate text from English to Chinese using Google Translate API
  */
-async function translateWithGoogle(text: string): Promise<string> {
+async function translateWithGoogle(text: string, target: string, source?: string): Promise<string> {
   const apiKey = process.env.GOOGLE_LANGUAGE_API_KEY;
   if (!apiKey) {
     console.warn('[Google Translate] GOOGLE_LANGUAGE_API_KEY not set, skipping translation');
@@ -60,8 +64,8 @@ async function translateWithGoogle(text: string): Promise<string> {
       },
       body: JSON.stringify({
         q: text,
-        source: 'en',
-        target: 'zh',
+        ...(source ? { source } : {}),
+        target,
       }),
     });
 
@@ -101,18 +105,23 @@ async function translateWithGoogle(text: string): Promise<string> {
  * Translate keyword from English to Chinese with caching
  * Returns original text if translation fails or not needed
  */
-export async function translateKeywordToChinese(keyword: string): Promise<string> {
-  // Check if translation is needed
-  if (!needsTranslation(keyword)) {
-    console.log('[Google Translate] Keyword appears to be Chinese, skipping translation');
-    return keyword;
+async function translateWithCache(params: {
+  text: string;
+  target: string;
+  source?: string;
+  cachePrefix: string;
+  shouldTranslate: (text: string) => boolean;
+}): Promise<string> {
+  if (!params.shouldTranslate(params.text)) {
+    return params.text;
   }
 
-  const normalized = normalizeSourceText(keyword);
-  const cacheKey = `google:zh:${normalized}`;
+  const normalized = normalizeSourceText(params.text);
+  const dbSourceText = `${params.cachePrefix}:${normalized}`;
+  const memoryKey = `google:${params.cachePrefix}:${normalized}`;
 
   // Check memory cache first
-  const memoryEntry = memoryCache.get(cacheKey);
+  const memoryEntry = memoryCache.get(memoryKey);
   if (memoryEntry && memoryEntry.expiresAt > Date.now()) {
     console.log('[Google Translate] Using memory cache for:', normalized);
     return memoryEntry.translated;
@@ -121,14 +130,14 @@ export async function translateKeywordToChinese(keyword: string): Promise<string
   // Check database cache
   try {
     const dbEntry = await prisma.productTitleTranslation.findUnique({
-      where: { source_text: normalized },
+      where: { source_text: dbSourceText },
     });
 
     if (dbEntry && dbEntry.provider === 'google') {
       console.log('[Google Translate] Using DB cache for:', normalized);
       
       // Update memory cache
-      memoryCache.set(cacheKey, {
+      memoryCache.set(memoryKey, {
         translated: dbEntry.translated_text,
         expiresAt: Date.now() + MEMORY_CACHE_TTL_MS,
       });
@@ -143,14 +152,14 @@ export async function translateKeywordToChinese(keyword: string): Promise<string
   // Call Google Translate API
   console.log('[Google Translate] Calling API for:', normalized);
   try {
-    const translated = await translateWithGoogle(keyword);
+    const translated = await translateWithGoogle(params.text, params.target, params.source);
 
     // Save to database (upsert)
     try {
       await prisma.productTitleTranslation.upsert({
-        where: { source_text: normalized },
+        where: { source_text: dbSourceText },
         create: {
-          source_text: normalized,
+          source_text: dbSourceText,
           translated_text: translated,
           provider: 'google',
         },
@@ -165,7 +174,7 @@ export async function translateKeywordToChinese(keyword: string): Promise<string
     }
 
     // Update memory cache
-    memoryCache.set(cacheKey, {
+    memoryCache.set(memoryKey, {
       translated,
       expiresAt: Date.now() + MEMORY_CACHE_TTL_MS,
     });
@@ -174,8 +183,44 @@ export async function translateKeywordToChinese(keyword: string): Promise<string
     return translated;
   } catch (error: any) {
     console.error('[Google Translate] Translation failed, returning original:', error.message);
-    return keyword; // Return original on failure
+    return params.text; // Return original on failure
   }
+}
+
+/**
+ * Translate keyword from English to Chinese with caching.
+ * Returns original text if translation fails or not needed.
+ */
+export async function translateKeywordToChinese(keyword: string): Promise<string> {
+  if (!needsTranslation(keyword)) {
+    console.log('[Google Translate] Keyword appears to be Chinese, skipping translation');
+    return keyword;
+  }
+
+  return translateWithCache({
+    text: keyword,
+    source: 'en',
+    target: 'zh-CN',
+    cachePrefix: 'en:zh',
+    shouldTranslate: needsTranslation,
+  });
+}
+
+/**
+ * Translate Chinese product display text to English with caching.
+ * Returns original text if translation fails or no Chinese characters are present.
+ */
+export async function translateChineseTextToEnglish(text: string): Promise<string> {
+  const source = String(text || '').trim();
+  if (!source || !hasChineseCharacters(source)) return source;
+
+  return translateWithCache({
+    text: source,
+    source: 'zh-CN',
+    target: 'en',
+    cachePrefix: 'zh:en',
+    shouldTranslate: hasChineseCharacters,
+  });
 }
 
 /**
