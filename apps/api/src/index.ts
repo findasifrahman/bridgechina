@@ -15,6 +15,7 @@ import authRoutes from './routes/auth.js';
 import userRoutes from './routes/user.js';
 import sellerRoutes from './routes/seller.js';
 import adminRoutes from './routes/admin.js';
+import { mailerConfigStatus } from './utils/mailer.js';
 
 dotenv.config();
 
@@ -78,6 +79,7 @@ fastify.get('/', async () => ({
 fastify.get('/health', async () => ({
   status: 'ok',
   timestamp: new Date().toISOString(),
+  mailer: mailerConfigStatus(),
 }));
 
 await fastify.register(publicRoutes, { prefix: '/api/public' });

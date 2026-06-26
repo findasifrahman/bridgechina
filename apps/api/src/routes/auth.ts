@@ -4,7 +4,7 @@ import argon2 from 'argon2';
 import { registerSchema, loginSchema } from '@bridgechina/shared';
 import { randomInt, randomUUID } from 'crypto';
 import { z } from 'zod';
-import { isMailerConfigured, sendMail } from '../utils/mailer.js';
+import { isMailerConfigured, mailerConfigStatus, sendMail } from '../utils/mailer.js';
 
 const authRateLimit = {
   max: 5,
@@ -167,6 +167,7 @@ async function sendOtpEmail(email: string, code: string, purpose: 'auth' | 'pass
 
 async function createAndSendOtp(email: string, purpose: 'auth' | 'password_reset') {
   if (!isMailerConfigured()) {
+    console.error('[Auth] Email sending is not configured', mailerConfigStatus());
     throw new Error('Email sending is not configured');
   }
 

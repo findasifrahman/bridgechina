@@ -11434,3 +11434,453 @@
 [API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
 [API] {"level":30,"time":1782422784923,"pid":18712,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
 [API] Server listening on port 3000
+[API] 3:45:09 AM [tsx] change in ./src\routes\admin.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782423911520,"pid":20920,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 3:45:32 AM [tsx] change in ./src\routes\seller.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782423933651,"pid":16028,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 3:47:26 AM [tsx] change in ./src\routes\admin.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782424047996,"pid":14504,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 3:47:32 AM [tsx] change in ./src\routes\seller.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782424054081,"pid":34880,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] prisma:error 
+[API] Invalid `prisma.externalSearchCache.deleteMany()` invocation in
+[API] C:\Users\asif\Desktop\bridgechina\apps\api\src\modules\shopping\cache.ts:211:36
+[API] 
+[API]   208 export async function cleanupExpiredCache(): Promise<void> {
+[API]   209   const now = new Date();
+[API]   210 
+[API] → 211   await prisma.externalSearchCache.deleteMany(
+[API] Can't reach database server at `switchback.proxy.rlwy.net:24086`
+[API] 
+[API] Please make sure your database server is running at `switchback.proxy.rlwy.net:24086`.
+[API] {"level":50,"time":1782427659290,"pid":34880,"hostname":"DESKTOP-FT34RPM","err":{"type":"PrismaClientInitializationError","message":"\nInvalid `prisma.externalSearchCache.deleteMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\modules\\shopping\\cache.ts:211:36\n\n  208 export async function cleanupExpiredCache(): Promise<void> {\n  209   const now = new Date();\n  210 \n→ 211   await prisma.externalSearchCache.deleteMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.","stack":"PrismaClientInitializationError: \nInvalid `prisma.externalSearchCache.deleteMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\modules\\shopping\\cache.ts:211:36\n\n  208 export async function cleanupExpiredCache(): Promise<void> {\n  209   const now = new Date();\n  210 \n→ 211   await prisma.externalSearchCache.deleteMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.\n    at $n.handleRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:7615)\n    at $n.handleAndLogRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6623)\n    at $n.request (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6307)\n    at async l (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:130:9633)\n    at async cleanupExpiredCache (C:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\modules\\shopping\\cache.ts:211:3)","name":"PrismaClientInitializationError","clientVersion":"5.22.0"},"msg":"[Cache] Cleanup failed"}
+[API] prisma:error 
+[API] Invalid `prisma.externalSearchCache.deleteMany()` invocation in
+[API] C:\Users\asif\Desktop\bridgechina\apps\api\src\modules\shopping\cache.ts:211:36
+[API] 
+[API]   208 export async function cleanupExpiredCache(): Promise<void> {
+[API]   209   const now = new Date();
+[API]   210 
+[API] → 211   await prisma.externalSearchCache.deleteMany(
+[API] Can't reach database server at `switchback.proxy.rlwy.net:24086`
+[API] 
+[API] Please make sure your database server is running at `switchback.proxy.rlwy.net:24086`.
+[API] {"level":50,"time":1782431258771,"pid":34880,"hostname":"DESKTOP-FT34RPM","err":{"type":"PrismaClientInitializationError","message":"\nInvalid `prisma.externalSearchCache.deleteMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\modules\\shopping\\cache.ts:211:36\n\n  208 export async function cleanupExpiredCache(): Promise<void> {\n  209   const now = new Date();\n  210 \n→ 211   await prisma.externalSearchCache.deleteMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.","stack":"PrismaClientInitializationError: \nInvalid `prisma.externalSearchCache.deleteMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\modules\\shopping\\cache.ts:211:36\n\n  208 export async function cleanupExpiredCache(): Promise<void> {\n  209   const now = new Date();\n  210 \n→ 211   await prisma.externalSearchCache.deleteMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.\n    at $n.handleRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:7615)\n    at $n.handleAndLogRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6623)\n    at $n.request (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6307)\n    at async l (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:130:9633)\n    at async cleanupExpiredCache (C:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\modules\\shopping\\cache.ts:211:3)","name":"PrismaClientInitializationError","clientVersion":"5.22.0"},"msg":"[Cache] Cleanup failed"}
+[API] prisma:error 
+[API] Invalid `prisma.externalSearchCache.deleteMany()` invocation in
+[API] C:\Users\asif\Desktop\bridgechina\apps\api\src\modules\shopping\cache.ts:211:36
+[API] 
+[API]   208 export async function cleanupExpiredCache(): Promise<void> {
+[API]   209   const now = new Date();
+[API]   210 
+[API] → 211   await prisma.externalSearchCache.deleteMany(
+[API] Can't reach database server at `switchback.proxy.rlwy.net:24086`
+[API] 
+[API] Please make sure your database server is running at `switchback.proxy.rlwy.net:24086`.
+[API] {"level":50,"time":1782434858699,"pid":34880,"hostname":"DESKTOP-FT34RPM","err":{"type":"PrismaClientInitializationError","message":"\nInvalid `prisma.externalSearchCache.deleteMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\modules\\shopping\\cache.ts:211:36\n\n  208 export async function cleanupExpiredCache(): Promise<void> {\n  209   const now = new Date();\n  210 \n→ 211   await prisma.externalSearchCache.deleteMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.","stack":"PrismaClientInitializationError: \nInvalid `prisma.externalSearchCache.deleteMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\modules\\shopping\\cache.ts:211:36\n\n  208 export async function cleanupExpiredCache(): Promise<void> {\n  209   const now = new Date();\n  210 \n→ 211   await prisma.externalSearchCache.deleteMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.\n    at $n.handleRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:7615)\n    at $n.handleAndLogRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6623)\n    at $n.request (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6307)\n    at async l (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:130:9633)\n    at async cleanupExpiredCache (C:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\modules\\shopping\\cache.ts:211:3)","name":"PrismaClientInitializationError","clientVersion":"5.22.0"},"msg":"[Cache] Cleanup failed"}
+[API] prisma:query DELETE FROM "public"."external_search_cache" WHERE "public"."external_search_cache"."expires_at" < $1
+[API] prisma:error 
+[API] Invalid `prisma.externalSearchCache.deleteMany()` invocation in
+[API] C:\Users\asif\Desktop\bridgechina\apps\api\src\modules\shopping\cache.ts:211:36
+[API] 
+[API]   208 export async function cleanupExpiredCache(): Promise<void> {
+[API]   209   const now = new Date();
+[API]   210 
+[API] → 211   await prisma.externalSearchCache.deleteMany(
+[API] Can't reach database server at `switchback.proxy.rlwy.net:24086`
+[API] 
+[API] Please make sure your database server is running at `switchback.proxy.rlwy.net:24086`.
+[API] {"level":50,"time":1782442058691,"pid":34880,"hostname":"DESKTOP-FT34RPM","err":{"type":"PrismaClientKnownRequestError","message":"\nInvalid `prisma.externalSearchCache.deleteMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\modules\\shopping\\cache.ts:211:36\n\n  208 export async function cleanupExpiredCache(): Promise<void> {\n  209   const now = new Date();\n  210 \n→ 211   await prisma.externalSearchCache.deleteMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.","stack":"PrismaClientKnownRequestError: \nInvalid `prisma.externalSearchCache.deleteMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\modules\\shopping\\cache.ts:211:36\n\n  208 export async function cleanupExpiredCache(): Promise<void> {\n  209   const now = new Date();\n  210 \n→ 211   await prisma.externalSearchCache.deleteMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.\n    at $n.handleRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:7315)\n    at $n.handleAndLogRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6623)\n    at $n.request (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6307)\n    at async l (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:130:9633)\n    at async cleanupExpiredCache (C:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\modules\\shopping\\cache.ts:211:3)","name":"PrismaClientKnownRequestError","code":"P1001","clientVersion":"5.22.0","meta":{"modelName":"ExternalSearchCache","database_host":"switchback.proxy.rlwy.net","database_port":24086}},"msg":"[Cache] Cleanup failed"}
+[API] prisma:error 
+[API] Invalid `prisma.externalSearchCache.deleteMany()` invocation in
+[API] C:\Users\asif\Desktop\bridgechina\apps\api\src\modules\shopping\cache.ts:211:36
+[API] 
+[API]   208 export async function cleanupExpiredCache(): Promise<void> {
+[API]   209   const now = new Date();
+[API]   210 
+[API] → 211   await prisma.externalSearchCache.deleteMany(
+[API] Can't reach database server at `switchback.proxy.rlwy.net:24086`
+[API] 
+[API] Please make sure your database server is running at `switchback.proxy.rlwy.net:24086`.
+[API] {"level":50,"time":1782460509163,"pid":34880,"hostname":"DESKTOP-FT34RPM","err":{"type":"PrismaClientKnownRequestError","message":"\nInvalid `prisma.externalSearchCache.deleteMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\modules\\shopping\\cache.ts:211:36\n\n  208 export async function cleanupExpiredCache(): Promise<void> {\n  209   const now = new Date();\n  210 \n→ 211   await prisma.externalSearchCache.deleteMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.","stack":"PrismaClientKnownRequestError: \nInvalid `prisma.externalSearchCache.deleteMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\modules\\shopping\\cache.ts:211:36\n\n  208 export async function cleanupExpiredCache(): Promise<void> {\n  209   const now = new Date();\n  210 \n→ 211   await prisma.externalSearchCache.deleteMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.\n    at $n.handleRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:7315)\n    at $n.handleAndLogRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6623)\n    at $n.request (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6307)\n    at async l (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:130:9633)\n    at async cleanupExpiredCache (C:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\modules\\shopping\\cache.ts:211:3)","name":"PrismaClientKnownRequestError","code":"P1001","clientVersion":"5.22.0","meta":{"modelName":"ExternalSearchCache","database_host":"switchback.proxy.rlwy.net","database_port":24086}},"msg":"[Cache] Cleanup failed"}
+[API] {"level":30,"time":1782460764912,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-1","req":{"method":"GET","url":"/api/public/shopping/categories","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":26559},"msg":"incoming request"}
+[API] {"level":30,"time":1782460764971,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-2","req":{"method":"GET","url":"/api/public/shopping/hot?page=1&pageSize=12","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":26565},"msg":"incoming request"}
+[API] [Shopping Service] getHotItems called: { categorySlug: undefined, page: 1, pageSize: 12 }
+[API] {"level":30,"time":1782460765004,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-3","req":{"method":"GET","url":"/api/public/offers","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":26566},"msg":"incoming request"}
+[API] {"level":30,"time":1782460765014,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-4","req":{"method":"GET","url":"/api/public/homepage-banners","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":26567},"msg":"incoming request"}
+[API] {"level":30,"time":1782460765018,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-5","req":{"method":"GET","url":"/api/public/shopping/home-visual-menu","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":26568},"msg":"incoming request"}
+[API] {"level":30,"time":1782460765019,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-6","req":{"method":"GET","url":"/api/public/shopping/premium-products?limit=4","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":26569},"msg":"incoming request"}
+[API] prisma:error 
+[API] Invalid `prisma.productCategory.findMany()` invocation in
+[API] C:\Users\asif\Desktop\bridgechina\apps\api\src\routes\public.shopping.ts:357:53
+[API] 
+[API]   354 });
+[API]   355 
+[API]   356 fastify.get('/shopping/categories', async () => {
+[API] → 357   const categories = await prisma.productCategory.findMany(
+[API] Can't reach database server at `switchback.proxy.rlwy.net:24086`
+[API] 
+[API] Please make sure your database server is running at `switchback.proxy.rlwy.net:24086`.
+[API] {"level":50,"time":1782460770031,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-1","req":{"method":"GET","url":"/api/public/shopping/categories","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":26559},"res":{"statusCode":500},"err":{"type":"PrismaClientKnownRequestError","message":"\nInvalid `prisma.productCategory.findMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:357:53\n\n  354 });\n  355 \n  356 fastify.get('/shopping/categories', async () => {\n→ 357   const categories = await prisma.productCategory.findMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.","stack":"PrismaClientKnownRequestError: \nInvalid `prisma.productCategory.findMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:357:53\n\n  354 });\n  355 \n  356 fastify.get('/shopping/categories', async () => {\n→ 357   const categories = await prisma.productCategory.findMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.\n    at $n.handleRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:7315)\n    at $n.handleAndLogRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6623)\n    at $n.request (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6307)\n    at async l (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:130:9633)\n    at async Object.<anonymous> (C:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:357:24)","name":"PrismaClientKnownRequestError","code":"P1001","clientVersion":"5.22.0","meta":{"modelName":"ProductCategory","database_host":"switchback.proxy.rlwy.net","database_port":24086}},"msg":"\nInvalid `prisma.productCategory.findMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:357:53\n\n  354 });\n  355 \n  356 fastify.get('/shopping/categories', async () => {\n→ 357   const categories = await prisma.productCategory.findMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`."}
+[API] prisma:error 
+[API] Invalid `prisma.externalHotItem.findMany()` invocation in
+[API] C:\Users\asif\Desktop\bridgechina\apps\api\src\modules\shopping\shopping.service.ts:1291:51
+[API] 
+[API]   1288 const existingIds = new Set<string>();
+[API]   1289 
+[API]   1290 // First, try to get pinned hot items (pinned_rank > 0 means pinned)
+[API] → 1291 const hotItems = await prisma.externalHotItem.findMany(
+[API] Can't reach database server at `switchback.proxy.rlwy.net:24086`
+[API] 
+[API] Please make sure your database server is running at `switchback.proxy.rlwy.net:24086`.
+[API] [Shopping Service] Database unavailable while loading hot items - returning empty list
+[API] prisma:error 
+[API] Invalid `prisma.homepageVisualMenuItem.findMany()` invocation in
+[API] C:\Users\asif\Desktop\bridgechina\apps\api\src\routes\public.shopping.ts:365:55
+[API] 
+[API]   362 });
+[API]   363 
+[API]   364 fastify.get('/shopping/home-visual-menu', async () => {
+[API] → 365   const items = await prisma.homepageVisualMenuItem.findMany(
+[API] Can't reach database server at `switchback.proxy.rlwy.net:24086`
+[API] 
+[API] Please make sure your database server is running at `switchback.proxy.rlwy.net:24086`.
+[API] prisma:error 
+[API] Invalid `prisma.homepageOffer.findMany()` invocation in
+[API] C:\Users\asif\Desktop\bridgechina\apps\api\src\routes\public.shopping.ts:759:49
+[API] 
+[API]   756   return [];
+[API]   757 }
+[API]   758 const now = new Date();
+[API] → 759 const offers = await prisma.homepageOffer.findMany(
+[API] Can't reach database server at `switchback.proxy.rlwy.net:24086`
+[API] 
+[API] Please make sure your database server is running at `switchback.proxy.rlwy.net:24086`.
+[API] prisma:error 
+[API] Invalid `prisma.homepageBanner.findMany()` invocation in
+[API] C:\Users\asif\Desktop\bridgechina\apps\api\src\routes\public.shopping.ts:814:51
+[API] 
+[API]   811 if (!shoppingDbAvailable) {
+[API]   812   return [];
+[API]   813 }
+[API] → 814 const banners = await prisma.homepageBanner.findMany(
+[API] Can't reach database server at `switchback.proxy.rlwy.net:24086`
+[API] 
+[API] Please make sure your database server is running at `switchback.proxy.rlwy.net:24086`.
+[API] {"level":30,"time":1782460770046,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-1","res":{"statusCode":500},"responseTime":5126.1834000349045,"msg":"request completed"}
+[API] {"level":30,"time":1782460770075,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-2","res":{"statusCode":200},"responseTime":5102.718799948692,"msg":"request completed"}
+[API] {"level":50,"time":1782460770077,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-5","req":{"method":"GET","url":"/api/public/shopping/home-visual-menu","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":26568},"res":{"statusCode":500},"err":{"type":"PrismaClientKnownRequestError","message":"\nInvalid `prisma.homepageVisualMenuItem.findMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:365:55\n\n  362 });\n  363 \n  364 fastify.get('/shopping/home-visual-menu', async () => {\n→ 365   const items = await prisma.homepageVisualMenuItem.findMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.","stack":"PrismaClientKnownRequestError: \nInvalid `prisma.homepageVisualMenuItem.findMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:365:55\n\n  362 });\n  363 \n  364 fastify.get('/shopping/home-visual-menu', async () => {\n→ 365   const items = await prisma.homepageVisualMenuItem.findMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.\n    at $n.handleRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:7315)\n    at $n.handleAndLogRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6623)\n    at $n.request (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6307)\n    at async l (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:130:9633)\n    at async Object.<anonymous> (C:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:365:19)","name":"PrismaClientKnownRequestError","code":"P1001","clientVersion":"5.22.0","meta":{"modelName":"HomepageVisualMenuItem","database_host":"switchback.proxy.rlwy.net","database_port":24086}},"msg":"\nInvalid `prisma.homepageVisualMenuItem.findMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:365:55\n\n  362 });\n  363 \n  364 fastify.get('/shopping/home-visual-menu', async () => {\n→ 365   const items = await prisma.homepageVisualMenuItem.findMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`."}
+[API] {"level":30,"time":1782460770078,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-5","res":{"statusCode":500},"responseTime":5059.873199999332,"msg":"request completed"}
+[API] {"level":40,"time":1782460770081,"pid":34880,"hostname":"DESKTOP-FT34RPM","msg":"[Offers] Database connection unavailable - returning empty array"}
+[API] {"level":30,"time":1782460770082,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-3","res":{"statusCode":200},"responseTime":5077.744199991226,"msg":"request completed"}
+[API] {"level":40,"time":1782460770086,"pid":34880,"hostname":"DESKTOP-FT34RPM","msg":"[Homepage Banners] Database connection unavailable - returning empty array"}
+[API] {"level":30,"time":1782460770087,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-4","res":{"statusCode":200},"responseTime":5072.820100009441,"msg":"request completed"}
+[API] prisma:error 
+[API] Invalid `prisma.product.findMany()` invocation in
+[API] C:\Users\asif\Desktop\bridgechina\apps\api\src\routes\public.shopping.ts:581:40
+[API] 
+[API]   578   where.category = { slug: query.category };
+[API]   579 }
+[API]   580 
+[API] → 581 const items = await prisma.product.findMany(
+[API] Can't reach database server at `switchback.proxy.rlwy.net:24086`
+[API] 
+[API] Please make sure your database server is running at `switchback.proxy.rlwy.net:24086`.
+[API] {"level":50,"time":1782460770091,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-6","req":{"method":"GET","url":"/api/public/shopping/premium-products?limit=4","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":26569},"res":{"statusCode":500},"err":{"type":"PrismaClientKnownRequestError","message":"\nInvalid `prisma.product.findMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:581:40\n\n  578   where.category = { slug: query.category };\n  579 }\n  580 \n→ 581 const items = await prisma.product.findMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.","stack":"PrismaClientKnownRequestError: \nInvalid `prisma.product.findMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:581:40\n\n  578   where.category = { slug: query.category };\n  579 }\n  580 \n→ 581 const items = await prisma.product.findMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.\n    at $n.handleRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:7315)\n    at $n.handleAndLogRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6623)\n    at $n.request (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6307)\n    at async l (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:130:9633)\n    at async Object.<anonymous> (C:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:581:19)","name":"PrismaClientKnownRequestError","code":"P1001","clientVersion":"5.22.0","meta":{"modelName":"Product","database_host":"switchback.proxy.rlwy.net","database_port":24086}},"msg":"\nInvalid `prisma.product.findMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:581:40\n\n  578   where.category = { slug: query.category };\n  579 }\n  580 \n→ 581 const items = await prisma.product.findMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`."}
+[API] {"level":30,"time":1782460770092,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-6","res":{"statusCode":500},"responseTime":5073.137600004673,"msg":"request completed"}
+[API] {"level":30,"time":1782460770098,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-7","req":{"method":"GET","url":"/api/public/shopping/home-curated","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":57888},"msg":"incoming request"}
+[API] {"level":30,"time":1782460770102,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-8","req":{"method":"GET","url":"/api/public/shopping/settings","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":54698},"msg":"incoming request"}
+[API] {"level":30,"time":1782460770105,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-9","req":{"method":"GET","url":"/api/public/shopping/recent-searches?limit=8&language=en","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":6031},"msg":"incoming request"}
+[API] {"level":30,"time":1782460770106,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-9","res":{"statusCode":200},"responseTime":1.2763000130653381,"msg":"request completed"}
+[API] {"level":30,"time":1782460770107,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-a","req":{"method":"GET","url":"/api/public/shopping/categories","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":6033},"msg":"incoming request"}
+[API] prisma:error 
+[API] Invalid `prisma.externalSearchCache.findUnique()` invocation in
+[API] C:\Users\asif\Desktop\bridgechina\apps\api\src\routes\public.shopping.ts:391:55
+[API] 
+[API]   388 }
+[API]   389 // Cache the entire curated response for 6 hours to avoid firing 6-18 TMAPI search calls per request
+[API]   390 const CURATED_CACHE_KEY = 'system::home-curated-v1';
+[API] → 391 const cached = await prisma.externalSearchCache.findUnique(
+[API] Can't reach database server at `switchback.proxy.rlwy.net:24086`
+[API] 
+[API] Please make sure your database server is running at `switchback.proxy.rlwy.net:24086`.
+[API] {"level":50,"time":1782460775107,"pid":34880,"hostname":"DESKTOP-FT34RPM","error":{"name":"PrismaClientKnownRequestError","code":"P1001","clientVersion":"5.22.0","meta":{"modelName":"ExternalSearchCache","database_host":"switchback.proxy.rlwy.net","database_port":24086}},"stack":"PrismaClientKnownRequestError: \nInvalid `prisma.externalSearchCache.findUnique()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:391:55\n\n  388 }\n  389 // Cache the entire curated response for 6 hours to avoid firing 6-18 TMAPI search calls per request\n  390 const CURATED_CACHE_KEY = 'system::home-curated-v1';\n→ 391 const cached = await prisma.externalSearchCache.findUnique(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.\n    at $n.handleRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:7315)\n    at $n.handleAndLogRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6623)\n    at $n.request (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6307)\n    at async l (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:130:9633)\n    at async Object.<anonymous> (C:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:391:22)","query":{},"msg":"[Public Shopping Route] /shopping/home-curated error"}
+[API] prisma:error 
+[API] Invalid `prisma.shippingRateSetting.findMany()` invocation in
+[API] C:\Users\asif\Desktop\bridgechina\apps\api\src\routes\public.shopping.ts:608:36
+[API] 
+[API]   605 
+[API]   606 fastify.get('/shopping/settings', async () => {
+[API]   607     const [shippingRates, markupSetting, moqRule] = await Promise.all([
+[API] → 608       prisma.shippingRateSetting.findMany(
+[API] Can't reach database server at `switchback.proxy.rlwy.net:24086`
+[API] 
+[API] Please make sure your database server is running at `switchback.proxy.rlwy.net:24086`.
+[API] prisma:error 
+[API] Invalid `prisma.moqShoppingOtapiRule.findUnique()` invocation in
+[API] C:\Users\asif\Desktop\bridgechina\apps\api\src\routes\public.shopping.ts:615:37
+[API] 
+[API]   612 prisma.sourceMarkupSetting.findUnique({
+[API]   613   where: { source_kind: 'shopping_otapi' },
+[API]   614 }),
+[API] → 615 prisma.moqShoppingOtapiRule.findUnique(
+[API] Can't reach database server at `switchback.proxy.rlwy.net:24086`
+[API] 
+[API] Please make sure your database server is running at `switchback.proxy.rlwy.net:24086`.
+[API] prisma:error 
+[API] Invalid `prisma.sourceMarkupSetting.findUnique()` invocation in
+[API] C:\Users\asif\Desktop\bridgechina\apps\api\src\routes\public.shopping.ts:612:36
+[API] 
+[API]   609   where: { is_active: true },
+[API]   610   orderBy: [{ method: 'asc' }, { currency: 'asc' }],
+[API]   611 }),
+[API] → 612 prisma.sourceMarkupSetting.findUnique(
+[API] Can't reach database server at `switchback.proxy.rlwy.net:24086`
+[API] 
+[API] Please make sure your database server is running at `switchback.proxy.rlwy.net:24086`.
+[API] {"level":30,"time":1782460775108,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-7","res":{"statusCode":400},"responseTime":5009.358799993992,"msg":"request completed"}
+[API] {"level":50,"time":1782460775110,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-8","req":{"method":"GET","url":"/api/public/shopping/settings","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":54698},"res":{"statusCode":500},"err":{"type":"PrismaClientKnownRequestError","message":"\nInvalid `prisma.shippingRateSetting.findMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:608:36\n\n  605 \n  606 fastify.get('/shopping/settings', async () => {\n  607     const [shippingRates, markupSetting, moqRule] = await Promise.all([\n→ 608       prisma.shippingRateSetting.findMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.","stack":"PrismaClientKnownRequestError: \nInvalid `prisma.shippingRateSetting.findMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:608:36\n\n  605 \n  606 fastify.get('/shopping/settings', async () => {\n  607     const [shippingRates, markupSetting, moqRule] = await Promise.all([\n→ 608       prisma.shippingRateSetting.findMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.\n    at $n.handleRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:7315)\n    at $n.handleAndLogRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6623)\n    at $n.request (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6307)\n    at async l (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:130:9633)\n    at async Promise.all (index 0)\n    at async Object.<anonymous> (C:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:607:55)","name":"PrismaClientKnownRequestError","code":"P1001","clientVersion":"5.22.0","meta":{"modelName":"ShippingRateSetting","database_host":"switchback.proxy.rlwy.net","database_port":24086}},"msg":"\nInvalid `prisma.shippingRateSetting.findMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:608:36\n\n  605 \n  606 fastify.get('/shopping/settings', async () => {\n  607     const [shippingRates, markupSetting, moqRule] = await Promise.all([\n→ 608       prisma.shippingRateSetting.findMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`."}
+[API] {"level":30,"time":1782460775111,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-8","res":{"statusCode":500},"responseTime":5008.602800011635,"msg":"request completed"}
+[API] prisma:error 
+[API] Invalid `prisma.productCategory.findMany()` invocation in
+[API] C:\Users\asif\Desktop\bridgechina\apps\api\src\routes\public.shopping.ts:357:53
+[API] 
+[API]   354 });
+[API]   355 
+[API]   356 fastify.get('/shopping/categories', async () => {
+[API] → 357   const categories = await prisma.productCategory.findMany(
+[API] Can't reach database server at `switchback.proxy.rlwy.net:24086`
+[API] 
+[API] Please make sure your database server is running at `switchback.proxy.rlwy.net:24086`.
+[API] {"level":50,"time":1782460775118,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-a","req":{"method":"GET","url":"/api/public/shopping/categories","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":6033},"res":{"statusCode":500},"err":{"type":"PrismaClientKnownRequestError","message":"\nInvalid `prisma.productCategory.findMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:357:53\n\n  354 });\n  355 \n  356 fastify.get('/shopping/categories', async () => {\n→ 357   const categories = await prisma.productCategory.findMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.","stack":"PrismaClientKnownRequestError: \nInvalid `prisma.productCategory.findMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:357:53\n\n  354 });\n  355 \n  356 fastify.get('/shopping/categories', async () => {\n→ 357   const categories = await prisma.productCategory.findMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.\n    at $n.handleRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:7315)\n    at $n.handleAndLogRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6623)\n    at $n.request (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6307)\n    at async l (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:130:9633)\n    at async Object.<anonymous> (C:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:357:24)","name":"PrismaClientKnownRequestError","code":"P1001","clientVersion":"5.22.0","meta":{"modelName":"ProductCategory","database_host":"switchback.proxy.rlwy.net","database_port":24086}},"msg":"\nInvalid `prisma.productCategory.findMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\routes\\public.shopping.ts:357:53\n\n  354 });\n  355 \n  356 fastify.get('/shopping/categories', async () => {\n→ 357   const categories = await prisma.productCategory.findMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`."}
+[API] {"level":30,"time":1782460775119,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-a","res":{"statusCode":500},"responseTime":5011.871299982071,"msg":"request completed"}
+[API] {"level":30,"time":1782460783312,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-b","req":{"method":"GET","url":"/api/public/shopping/categories","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":10993},"msg":"incoming request"}
+[API] {"level":30,"time":1782460783321,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-c","req":{"method":"GET","url":"/api/public/shopping/hot?page=1&pageSize=12","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":11000},"msg":"incoming request"}
+[API] [Shopping Service] getHotItems called: { categorySlug: undefined, page: 1, pageSize: 12 }
+[API] {"level":30,"time":1782460783326,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-d","req":{"method":"GET","url":"/api/public/offers","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":11001},"msg":"incoming request"}
+[API] {"level":30,"time":1782460783331,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-d","res":{"statusCode":200},"responseTime":3.904900014400482,"msg":"request completed"}
+[API] {"level":30,"time":1782460783331,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-e","req":{"method":"GET","url":"/api/public/homepage-banners","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":11002},"msg":"incoming request"}
+[API] {"level":30,"time":1782460783332,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-e","res":{"statusCode":200},"responseTime":0.676800012588501,"msg":"request completed"}
+[API] {"level":30,"time":1782460783332,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-f","req":{"method":"GET","url":"/api/public/shopping/premium-products?limit=4","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":11003},"msg":"incoming request"}
+[API] {"level":30,"time":1782460783334,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-g","req":{"method":"GET","url":"/api/public/shopping/home-visual-menu","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":11004},"msg":"incoming request"}
+[API] {"level":30,"time":1782460783346,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-h","req":{"method":"GET","url":"/api/public/shopping/home-curated","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":53347},"msg":"incoming request"}
+[API] {"level":30,"time":1782460783347,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-i","req":{"method":"GET","url":"/api/public/shopping/settings","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":53351},"msg":"incoming request"}
+[API] prisma:query SELECT "public"."external_hot_items"."id", "public"."external_hot_items"."source", "public"."external_hot_items"."external_id", "public"."external_hot_items"."category_slug", "public"."external_hot_items"."pinned_rank", "public"."external_hot_items"."created_at" FROM "public"."external_hot_items" WHERE ("public"."external_hot_items"."source" = $1 AND "public"."external_hot_items"."pinned_rank" > $2) ORDER BY "public"."external_hot_items"."pinned_rank" ASC LIMIT $3 OFFSET $4
+[API] prisma:query SELECT "public"."products"."id", "public"."products"."seller_id", "public"."products"."category_id", "public"."products"."title", "public"."products"."description", "public"."products"."price", "public"."products"."currency", "public"."products"."original_price", "public"."products"."stock_qty", "public"."products"."minimum_order_qty", "public"."products"."status", "public"."products"."source_kind", "public"."products"."source_url", "public"."products"."external_id", "public"."products"."cover_asset_id", "public"."products"."brand", "public"."products"."dimensions", "public"."products"."rating", "public"."products"."review_count", "public"."products"."sku", "public"."products"."specifications", "public"."products"."tags", "public"."products"."weight_kg", "public"."products"."gallery_asset_ids", "public"."products"."is_featured", "public"."products"."created_at", "public"."products"."updated_at" FROM "public"."products" WHERE ("public"."products"."status" = $1 AND "public"."products"."source_kind" = $2) ORDER BY "public"."products"."is_featured" DESC, "public"."products"."created_at" DESC LIMIT $3 OFFSET $4
+[API] prisma:query SELECT "public"."source_markup_settings"."id", "public"."source_markup_settings"."source_kind", "public"."source_markup_settings"."percent_rate", "public"."source_markup_settings"."updated_by", "public"."source_markup_settings"."created_at", "public"."source_markup_settings"."updated_at" FROM "public"."source_markup_settings" WHERE ("public"."source_markup_settings"."source_kind" = $1 AND 1=1) LIMIT $2 OFFSET $3
+[API] prisma:query SELECT "public"."shipping_rate_settings"."id", "public"."shipping_rate_settings"."method", "public"."shipping_rate_settings"."currency", "public"."shipping_rate_settings"."min_rate_per_kg", "public"."shipping_rate_settings"."max_rate_per_kg", "public"."shipping_rate_settings"."is_active", "public"."shipping_rate_settings"."updated_by", "public"."shipping_rate_settings"."created_at", "public"."shipping_rate_settings"."updated_at" FROM "public"."shipping_rate_settings" WHERE "public"."shipping_rate_settings"."is_active" = $1 ORDER BY "public"."shipping_rate_settings"."method" ASC, "public"."shipping_rate_settings"."currency" ASC OFFSET $2
+[API] prisma:query SELECT "public"."moq_shopping_otapi_rule"."id", "public"."moq_shopping_otapi_rule"."scope", "public"."moq_shopping_otapi_rule"."minimum_product", "public"."moq_shopping_otapi_rule"."minimum_price_threshold", "public"."moq_shopping_otapi_rule"."currency", "public"."moq_shopping_otapi_rule"."updated_by", "public"."moq_shopping_otapi_rule"."created_at", "public"."moq_shopping_otapi_rule"."updated_at" FROM "public"."moq_shopping_otapi_rule" WHERE ("public"."moq_shopping_otapi_rule"."scope" = $1 AND 1=1) LIMIT $2 OFFSET $3
+[API] {"level":30,"time":1782460786160,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-i","res":{"statusCode":200},"responseTime":2812.2518000006676,"msg":"request completed"}
+[API] {"level":30,"time":1782460786166,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-j","req":{"method":"GET","url":"/api/public/shopping/recent-searches?limit=8&language=en","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":17748},"msg":"incoming request"}
+[API] {"level":30,"time":1782460786167,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-j","res":{"statusCode":200},"responseTime":0.6446999907493591,"msg":"request completed"}
+[API] prisma:query SELECT "public"."homepage_visual_menu_items"."id", "public"."homepage_visual_menu_items"."section_key", "public"."homepage_visual_menu_items"."section_label", "public"."homepage_visual_menu_items"."section_sort_order", "public"."homepage_visual_menu_items"."title", "public"."homepage_visual_menu_items"."search_keyword", "public"."homepage_visual_menu_items"."image_url", "public"."homepage_visual_menu_items"."image_alt", "public"."homepage_visual_menu_items"."sort_order", "public"."homepage_visual_menu_items"."is_active", "public"."homepage_visual_menu_items"."created_at", "public"."homepage_visual_menu_items"."updated_at" FROM "public"."homepage_visual_menu_items" WHERE "public"."homepage_visual_menu_items"."is_active" = $1 ORDER BY "public"."homepage_visual_menu_items"."section_sort_order" ASC, "public"."homepage_visual_menu_items"."sort_order" ASC, "public"."homepage_visual_menu_items"."created_at" ASC OFFSET $2
+[API] {"level":30,"time":1782460786197,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-g","res":{"statusCode":200},"responseTime":2863.1797000169754,"msg":"request completed"}
+[API] prisma:query SELECT "public"."product_categories"."id", "public"."product_categories"."parent_id", "public"."product_categories"."name", "public"."product_categories"."slug", "public"."product_categories"."description", "public"."product_categories"."icon", "public"."product_categories"."sort_order", "public"."product_categories"."is_active", "public"."product_categories"."created_at", "public"."product_categories"."updated_at" FROM "public"."product_categories" WHERE "public"."product_categories"."is_active" = $1 ORDER BY "public"."product_categories"."sort_order" ASC, "public"."product_categories"."name" ASC OFFSET $2
+[API] {"level":30,"time":1782460786408,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-b","res":{"statusCode":200},"responseTime":3095.461899995804,"msg":"request completed"}
+[API] {"level":30,"time":1782460786412,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-k","req":{"method":"GET","url":"/api/public/shopping/categories","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":27921},"msg":"incoming request"}
+[API] prisma:query SELECT "public"."external_search_cache"."id", "public"."external_search_cache"."source", "public"."external_search_cache"."cache_key", "public"."external_search_cache"."query_json", "public"."external_search_cache"."results_json", "public"."external_search_cache"."created_at", "public"."external_search_cache"."expires_at" FROM "public"."external_search_cache" WHERE ("public"."external_search_cache"."cache_key" = $1 AND 1=1) LIMIT $2 OFFSET $3
+[API] {"level":30,"time":1782460786513,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-h","res":{"statusCode":200},"responseTime":3166.559499979019,"msg":"request completed"}
+[API] prisma:query SELECT "public"."media_assets"."id", "public"."media_assets"."r2_key", "public"."media_assets"."public_url", "public"."media_assets"."mime_type", "public"."media_assets"."size", "public"."media_assets"."uploaded_by", "public"."media_assets"."created_at", "public"."media_assets"."category", "public"."media_assets"."height", "public"."media_assets"."tags", "public"."media_assets"."thumbnail_key", "public"."media_assets"."thumbnail_url", "public"."media_assets"."width" FROM "public"."media_assets" WHERE "public"."media_assets"."id" IN ($1,$2) OFFSET $3
+[API] prisma:query SELECT "public"."product_categories"."id", "public"."product_categories"."parent_id", "public"."product_categories"."name", "public"."product_categories"."slug", "public"."product_categories"."description", "public"."product_categories"."icon", "public"."product_categories"."sort_order", "public"."product_categories"."is_active", "public"."product_categories"."created_at", "public"."product_categories"."updated_at" FROM "public"."product_categories" WHERE "public"."product_categories"."is_active" = $1 ORDER BY "public"."product_categories"."sort_order" ASC, "public"."product_categories"."name" ASC OFFSET $2
+[API] {"level":30,"time":1782460786823,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-k","res":{"statusCode":200},"responseTime":410.7717999815941,"msg":"request completed"}
+[API] prisma:query SELECT "public"."external_search_cache"."id", "public"."external_search_cache"."source", "public"."external_search_cache"."cache_key", "public"."external_search_cache"."query_json", "public"."external_search_cache"."results_json", "public"."external_search_cache"."created_at", "public"."external_search_cache"."expires_at" FROM "public"."external_search_cache" WHERE "public"."external_search_cache"."source" = $1 ORDER BY "public"."external_search_cache"."created_at" DESC LIMIT $2 OFFSET $3
+[API] [Shopping Service] getHotItems returning 12 items (total: 12, page: 1, pageSize: 12)
+[API] {"level":30,"time":1782460787027,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-c","res":{"statusCode":200},"responseTime":3705.559700012207,"msg":"request completed"}
+[API] prisma:query SELECT "public"."users"."id", "public"."users"."email", "public"."users"."phone", "public"."users"."password_hash", "public"."users"."status", "public"."users"."created_at", "public"."users"."updated_at" FROM "public"."users" WHERE "public"."users"."id" IN ($1) OFFSET $2
+[API] prisma:query SELECT "public"."seller_profiles"."id", "public"."seller_profiles"."user_id", "public"."seller_profiles"."shop_name", "public"."seller_profiles"."display_name", "public"."seller_profiles"."contact_name", "public"."seller_profiles"."whatsapp", "public"."seller_profiles"."wechat", "public"."seller_profiles"."email", "public"."seller_profiles"."website", "public"."seller_profiles"."description", "public"."seller_profiles"."address_text", "public"."seller_profiles"."service_area", "public"."seller_profiles"."verified", "public"."seller_profiles"."is_active", "public"."seller_profiles"."rating", "public"."seller_profiles"."review_count", "public"."seller_profiles"."logo_asset_id", "public"."seller_profiles"."banner_asset_id", "public"."seller_profiles"."created_at", "public"."seller_profiles"."updated_at" FROM "public"."seller_profiles" WHERE "public"."seller_profiles"."user_id" IN ($1) OFFSET $2
+[API] prisma:query SELECT "public"."product_categories"."id", "public"."product_categories"."parent_id", "public"."product_categories"."name", "public"."product_categories"."slug", "public"."product_categories"."description", "public"."product_categories"."icon", "public"."product_categories"."sort_order", "public"."product_categories"."is_active", "public"."product_categories"."created_at", "public"."product_categories"."updated_at" FROM "public"."product_categories" WHERE "public"."product_categories"."id" IN ($1,$2,$3,$4) OFFSET $5
+[API] prisma:query SELECT "public"."media_assets"."id", "public"."media_assets"."public_url", "public"."media_assets"."thumbnail_url" FROM "public"."media_assets" WHERE "public"."media_assets"."id" IN ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) OFFSET $17
+[API] {"level":30,"time":1782460788893,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-f","res":{"statusCode":200},"responseTime":5560.518699944019,"msg":"request completed"}
+[API] {"level":30,"time":1782460801212,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-l","req":{"method":"GET","url":"/api/public/shopping/categories","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":37004},"msg":"incoming request"}
+[API] {"level":30,"time":1782460801236,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-m","req":{"method":"GET","url":"/api/public/shopping/hot?page=1&pageSize=12","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":37010},"msg":"incoming request"}
+[API] [Shopping Service] getHotItems called: { categorySlug: undefined, page: 1, pageSize: 12 }
+[API] {"level":30,"time":1782460801241,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-n","req":{"method":"GET","url":"/api/public/offers","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":37011},"msg":"incoming request"}
+[API] {"level":30,"time":1782460801242,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-n","res":{"statusCode":200},"responseTime":1.190999984741211,"msg":"request completed"}
+[API] {"level":30,"time":1782460801242,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-o","req":{"method":"GET","url":"/api/public/homepage-banners","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":37012},"msg":"incoming request"}
+[API] {"level":30,"time":1782460801243,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-o","res":{"statusCode":200},"responseTime":0.40459996461868286,"msg":"request completed"}
+[API] {"level":30,"time":1782460801243,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-p","req":{"method":"GET","url":"/api/public/shopping/premium-products?limit=4","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":37013},"msg":"incoming request"}
+[API] {"level":30,"time":1782460801244,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-q","req":{"method":"GET","url":"/api/public/shopping/home-visual-menu","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":37014},"msg":"incoming request"}
+[API] {"level":30,"time":1782460801265,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-r","req":{"method":"GET","url":"/api/public/shopping/home-curated","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":61861},"msg":"incoming request"}
+[API] {"level":30,"time":1782460801269,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-s","req":{"method":"GET","url":"/api/public/shopping/settings","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":61863},"msg":"incoming request"}
+[API] prisma:query SELECT 1
+[API] prisma:query SELECT 1
+[API] prisma:query SELECT 1
+[API] prisma:query SELECT 1
+[API] prisma:query SELECT 1
+[API] prisma:query SELECT 1
+[API] prisma:query SELECT 1
+[API] prisma:query SELECT 1
+[API] prisma:query SELECT "public"."external_hot_items"."id", "public"."external_hot_items"."source", "public"."external_hot_items"."external_id", "public"."external_hot_items"."category_slug", "public"."external_hot_items"."pinned_rank", "public"."external_hot_items"."created_at" FROM "public"."external_hot_items" WHERE ("public"."external_hot_items"."source" = $1 AND "public"."external_hot_items"."pinned_rank" > $2) ORDER BY "public"."external_hot_items"."pinned_rank" ASC LIMIT $3 OFFSET $4
+[API] prisma:query SELECT "public"."source_markup_settings"."id", "public"."source_markup_settings"."source_kind", "public"."source_markup_settings"."percent_rate", "public"."source_markup_settings"."updated_by", "public"."source_markup_settings"."created_at", "public"."source_markup_settings"."updated_at" FROM "public"."source_markup_settings" WHERE ("public"."source_markup_settings"."source_kind" = $1 AND 1=1) LIMIT $2 OFFSET $3
+[API] prisma:query SELECT "public"."homepage_visual_menu_items"."id", "public"."homepage_visual_menu_items"."section_key", "public"."homepage_visual_menu_items"."section_label", "public"."homepage_visual_menu_items"."section_sort_order", "public"."homepage_visual_menu_items"."title", "public"."homepage_visual_menu_items"."search_keyword", "public"."homepage_visual_menu_items"."image_url", "public"."homepage_visual_menu_items"."image_alt", "public"."homepage_visual_menu_items"."sort_order", "public"."homepage_visual_menu_items"."is_active", "public"."homepage_visual_menu_items"."created_at", "public"."homepage_visual_menu_items"."updated_at" FROM "public"."homepage_visual_menu_items" WHERE "public"."homepage_visual_menu_items"."is_active" = $1 ORDER BY "public"."homepage_visual_menu_items"."section_sort_order" ASC, "public"."homepage_visual_menu_items"."sort_order" ASC, "public"."homepage_visual_menu_items"."created_at" ASC OFFSET $2
+[API] {"level":30,"time":1782460802178,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-q","res":{"statusCode":200},"responseTime":933.5892000198364,"msg":"request completed"}
+[API] {"level":30,"time":1782460802183,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-t","req":{"method":"GET","url":"/api/public/shopping/recent-searches?limit=8&language=en","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":62393},"msg":"incoming request"}
+[API] {"level":30,"time":1782460802184,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-t","res":{"statusCode":200},"responseTime":0.7324000000953674,"msg":"request completed"}
+[API] prisma:query SELECT "public"."products"."id", "public"."products"."seller_id", "public"."products"."category_id", "public"."products"."title", "public"."products"."description", "public"."products"."price", "public"."products"."currency", "public"."products"."original_price", "public"."products"."stock_qty", "public"."products"."minimum_order_qty", "public"."products"."status", "public"."products"."source_kind", "public"."products"."source_url", "public"."products"."external_id", "public"."products"."cover_asset_id", "public"."products"."brand", "public"."products"."dimensions", "public"."products"."rating", "public"."products"."review_count", "public"."products"."sku", "public"."products"."specifications", "public"."products"."tags", "public"."products"."weight_kg", "public"."products"."gallery_asset_ids", "public"."products"."is_featured", "public"."products"."created_at", "public"."products"."updated_at" FROM "public"."products" WHERE ("public"."products"."status" = $1 AND "public"."products"."source_kind" = $2) ORDER BY "public"."products"."is_featured" DESC, "public"."products"."created_at" DESC LIMIT $3 OFFSET $4
+[API] prisma:query SELECT "public"."moq_shopping_otapi_rule"."id", "public"."moq_shopping_otapi_rule"."scope", "public"."moq_shopping_otapi_rule"."minimum_product", "public"."moq_shopping_otapi_rule"."minimum_price_threshold", "public"."moq_shopping_otapi_rule"."currency", "public"."moq_shopping_otapi_rule"."updated_by", "public"."moq_shopping_otapi_rule"."created_at", "public"."moq_shopping_otapi_rule"."updated_at" FROM "public"."moq_shopping_otapi_rule" WHERE ("public"."moq_shopping_otapi_rule"."scope" = $1 AND 1=1) LIMIT $2 OFFSET $3
+[API] prisma:query SELECT "public"."shipping_rate_settings"."id", "public"."shipping_rate_settings"."method", "public"."shipping_rate_settings"."currency", "public"."shipping_rate_settings"."min_rate_per_kg", "public"."shipping_rate_settings"."max_rate_per_kg", "public"."shipping_rate_settings"."is_active", "public"."shipping_rate_settings"."updated_by", "public"."shipping_rate_settings"."created_at", "public"."shipping_rate_settings"."updated_at" FROM "public"."shipping_rate_settings" WHERE "public"."shipping_rate_settings"."is_active" = $1 ORDER BY "public"."shipping_rate_settings"."method" ASC, "public"."shipping_rate_settings"."currency" ASC OFFSET $2
+[API] {"level":30,"time":1782460802290,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-s","res":{"statusCode":200},"responseTime":1021.1413000226021,"msg":"request completed"}
+[API] prisma:query SELECT "public"."product_categories"."id", "public"."product_categories"."parent_id", "public"."product_categories"."name", "public"."product_categories"."slug", "public"."product_categories"."description", "public"."product_categories"."icon", "public"."product_categories"."sort_order", "public"."product_categories"."is_active", "public"."product_categories"."created_at", "public"."product_categories"."updated_at" FROM "public"."product_categories" WHERE "public"."product_categories"."is_active" = $1 ORDER BY "public"."product_categories"."sort_order" ASC, "public"."product_categories"."name" ASC OFFSET $2
+[API] {"level":30,"time":1782460802482,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-l","res":{"statusCode":200},"responseTime":1269.984200000763,"msg":"request completed"}
+[API] {"level":30,"time":1782460802487,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-u","req":{"method":"GET","url":"/api/public/shopping/categories","hostname":"localhost:3000","remoteAddress":"127.0.0.1","remotePort":1472},"msg":"incoming request"}
+[API] prisma:query SELECT "public"."external_search_cache"."id", "public"."external_search_cache"."source", "public"."external_search_cache"."cache_key", "public"."external_search_cache"."query_json", "public"."external_search_cache"."results_json", "public"."external_search_cache"."created_at", "public"."external_search_cache"."expires_at" FROM "public"."external_search_cache" WHERE ("public"."external_search_cache"."cache_key" = $1 AND 1=1) LIMIT $2 OFFSET $3
+[API] {"level":30,"time":1782460802643,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-r","res":{"statusCode":200},"responseTime":1377.8193999528885,"msg":"request completed"}
+[API] prisma:query SELECT "public"."external_search_cache"."id", "public"."external_search_cache"."source", "public"."external_search_cache"."cache_key", "public"."external_search_cache"."query_json", "public"."external_search_cache"."results_json", "public"."external_search_cache"."created_at", "public"."external_search_cache"."expires_at" FROM "public"."external_search_cache" WHERE "public"."external_search_cache"."source" = $1 ORDER BY "public"."external_search_cache"."created_at" DESC LIMIT $2 OFFSET $3
+[API] [Shopping Service] getHotItems returning 12 items (total: 12, page: 1, pageSize: 12)
+[API] {"level":30,"time":1782460802665,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-m","res":{"statusCode":200},"responseTime":1429.3452000021935,"msg":"request completed"}
+[API] prisma:query SELECT "public"."media_assets"."id", "public"."media_assets"."r2_key", "public"."media_assets"."public_url", "public"."media_assets"."mime_type", "public"."media_assets"."size", "public"."media_assets"."uploaded_by", "public"."media_assets"."created_at", "public"."media_assets"."category", "public"."media_assets"."height", "public"."media_assets"."tags", "public"."media_assets"."thumbnail_key", "public"."media_assets"."thumbnail_url", "public"."media_assets"."width" FROM "public"."media_assets" WHERE "public"."media_assets"."id" IN ($1,$2) OFFSET $3
+[API] prisma:query SELECT "public"."product_categories"."id", "public"."product_categories"."parent_id", "public"."product_categories"."name", "public"."product_categories"."slug", "public"."product_categories"."description", "public"."product_categories"."icon", "public"."product_categories"."sort_order", "public"."product_categories"."is_active", "public"."product_categories"."created_at", "public"."product_categories"."updated_at" FROM "public"."product_categories" WHERE "public"."product_categories"."is_active" = $1 ORDER BY "public"."product_categories"."sort_order" ASC, "public"."product_categories"."name" ASC OFFSET $2
+[API] {"level":30,"time":1782460802944,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-u","res":{"statusCode":200},"responseTime":455.9991999864578,"msg":"request completed"}
+[API] prisma:query SELECT "public"."users"."id", "public"."users"."email", "public"."users"."phone", "public"."users"."password_hash", "public"."users"."status", "public"."users"."created_at", "public"."users"."updated_at" FROM "public"."users" WHERE "public"."users"."id" IN ($1) OFFSET $2
+[API] prisma:query SELECT "public"."seller_profiles"."id", "public"."seller_profiles"."user_id", "public"."seller_profiles"."shop_name", "public"."seller_profiles"."display_name", "public"."seller_profiles"."contact_name", "public"."seller_profiles"."whatsapp", "public"."seller_profiles"."wechat", "public"."seller_profiles"."email", "public"."seller_profiles"."website", "public"."seller_profiles"."description", "public"."seller_profiles"."address_text", "public"."seller_profiles"."service_area", "public"."seller_profiles"."verified", "public"."seller_profiles"."is_active", "public"."seller_profiles"."rating", "public"."seller_profiles"."review_count", "public"."seller_profiles"."logo_asset_id", "public"."seller_profiles"."banner_asset_id", "public"."seller_profiles"."created_at", "public"."seller_profiles"."updated_at" FROM "public"."seller_profiles" WHERE "public"."seller_profiles"."user_id" IN ($1) OFFSET $2
+[API] prisma:query SELECT "public"."product_categories"."id", "public"."product_categories"."parent_id", "public"."product_categories"."name", "public"."product_categories"."slug", "public"."product_categories"."description", "public"."product_categories"."icon", "public"."product_categories"."sort_order", "public"."product_categories"."is_active", "public"."product_categories"."created_at", "public"."product_categories"."updated_at" FROM "public"."product_categories" WHERE "public"."product_categories"."id" IN ($1,$2,$3,$4) OFFSET $5
+[API] prisma:query SELECT "public"."media_assets"."id", "public"."media_assets"."public_url", "public"."media_assets"."thumbnail_url" FROM "public"."media_assets" WHERE "public"."media_assets"."id" IN ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) OFFSET $17
+[API] {"level":30,"time":1782460805048,"pid":34880,"hostname":"DESKTOP-FT34RPM","reqId":"req-p","res":{"statusCode":200},"responseTime":3804.889999985695,"msg":"request completed"}
+[API] 2:24:25 PM [tsx] change in ./src\modules\shopping\tmapi.client.ts Rerunning...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782462267443,"pid":34240,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 2:24:31 PM [tsx] change in ./src\modules\shopping\cache.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782462273240,"pid":25760,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 2:25:05 PM [tsx] change in ./src\routes\user.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782462307256,"pid":23624,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 2:25:16 PM [tsx] change in ./src\routes\user.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782462317721,"pid":10304,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 2:25:25 PM [tsx] change in ./src\routes\user.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782462326673,"pid":35384,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 2:25:38 PM [tsx] change in ./src\modules\shopping\shopping.normalize.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782462340512,"pid":18580,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 2:25:47 PM [tsx] change in ./src\routes\public.shopping.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782462348953,"pid":32440,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 2:29:06 PM [tsx] change in ./src\routes\user.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782462548429,"pid":16584,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 2:29:29 PM [tsx] change in ./src\routes\public.shopping.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782462570855,"pid":11568,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 2:29:56 PM [tsx] change in ./src\routes\user.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782462597555,"pid":30624,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 2:30:47 PM [tsx] change in ./src\modules\shopping\shopping.service.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782462648559,"pid":21356,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 3:07:10 PM [tsx] unlink in ./..\..\node_modules\.pnpm\@prisma+client@5.22.0_prisma@5.22.0\node_modules\.prisma\client\index.js Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782464832551,"pid":24588,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 3:07:30 PM [tsx] unlink in ./..\..\node_modules\.pnpm\@prisma+client@5.22.0_prisma@5.22.0\node_modules\.prisma\client\index.js Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782464851427,"pid":32236,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 3:08:02 PM [tsx] unlink in ./..\..\node_modules\.pnpm\@prisma+client@5.22.0_prisma@5.22.0\node_modules\.prisma\client\default.js Rerunning...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782464884343,"pid":22140,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 3:08:19 PM [tsx] unlink in ./..\..\node_modules\.pnpm\@prisma+client@5.22.0_prisma@5.22.0\node_modules\.prisma\client\default.js Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782464900597,"pid":33492,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 3:08:38 PM [tsx] unlink in ./..\..\node_modules\.pnpm\@prisma+client@5.22.0_prisma@5.22.0\node_modules\.prisma\client\index.js Rerunning...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782464919620,"pid":21204,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 3:21:34 PM [tsx] unlink in ./..\..\node_modules\.pnpm\@prisma+client@5.22.0_prisma@5.22.0\node_modules\.prisma\client\default.js Rerunning...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782465695515,"pid":29328,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 3:32:38 PM [tsx] unlink in ./..\..\node_modules\.pnpm\@prisma+client@5.22.0_prisma@5.22.0\node_modules\.prisma\client\default.js Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782466360580,"pid":25000,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 3:32:55 PM [tsx] unlink in ./..\..\node_modules\.pnpm\@prisma+client@5.22.0_prisma@5.22.0\node_modules\.prisma\client\default.js Rerunning...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782466377123,"pid":12212,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 3:36:29 PM [tsx] change in ./src\utils\mailer.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782466591003,"pid":4484,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 3:36:35 PM [tsx] change in ./src\routes\auth.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782466597045,"pid":27216,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 3:36:41 PM [tsx] change in ./src\index.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782466603513,"pid":28760,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
