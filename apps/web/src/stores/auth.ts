@@ -41,11 +41,11 @@ export const useAuthStore = defineStore('auth', () => {
     purpose: 'auth' | 'password_reset' = 'auth',
     intent: 'login' | 'register' = 'login'
   ) {
-    await axios.post('/api/auth/email-code/request', { email, purpose, intent }, { timeout: 20000 });
+    await axios.post('/api/auth/email-code/request', { email, purpose, intent }, { timeout: 20000, suppressGlobalErrorToast: true } as any);
   }
 
   async function verifyEmailCode(data: { email: string; code: string; name?: string; phone?: string; intent?: 'login' | 'register' }) {
-    const response = await axios.post('/api/auth/email-code/verify', data);
+    const response = await axios.post('/api/auth/email-code/verify', data, { suppressGlobalErrorToast: true } as any);
     accessToken.value = response.data.accessToken;
     user.value = response.data.user;
     localStorage.setItem('accessToken', response.data.accessToken);
@@ -53,11 +53,11 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function requestPhoneCode(phone: string, intent: 'login' | 'register' = 'login') {
-    await axios.post('/api/auth/phone-code/request', { phone, purpose: 'auth', intent }, { timeout: 20000 });
+    await axios.post('/api/auth/phone-code/request', { phone, purpose: 'auth', intent }, { timeout: 20000, suppressGlobalErrorToast: true } as any);
   }
 
   async function verifyPhoneCode(data: { phone: string; code: string; password?: string; name?: string; intent?: 'login' | 'register' }) {
-    const response = await axios.post('/api/auth/phone-code/verify', data);
+    const response = await axios.post('/api/auth/phone-code/verify', data, { suppressGlobalErrorToast: true } as any);
     accessToken.value = response.data.accessToken;
     user.value = response.data.user;
     localStorage.setItem('accessToken', response.data.accessToken);

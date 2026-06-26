@@ -24,7 +24,7 @@ export async function sendSmsBdOtp(phone: string, code: string) {
 
   const body = new URLSearchParams({
     api_key: apiKey,
-    msg: `your chinabuybd.com otp is: ${code}`,
+    msg: `your chinabuybd OTP code is: ${code}`,
     to: normalizeSmsBdPhone(phone),
   });
 

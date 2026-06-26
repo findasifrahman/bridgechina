@@ -71,12 +71,20 @@
           <span class="text-rose-600">*</span> Verification code
         </label>
         <Input v-model="code" :placeholder="isPhoneInput ? '4-digit code' : '6-digit code'" inputmode="numeric" autocomplete="one-time-code" />
-        <p v-if="isPhoneInput" class="mt-1 text-xs text-slate-500">
-          OTP expires in {{ otpSecondsLeft }}s.
-        </p>
+        <div v-if="isPhoneInput" class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+          <span>OTP expires in {{ otpSecondsLeft }}s.</span>
+          <button
+            type="button"
+            class="font-semibold text-teal-700 underline-offset-4 hover:underline disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
+            :disabled="otpSecondsLeft > 0 || loading"
+            @click="handleOtpToggle"
+          >
+            {{ otpToggleLabel }}
+          </button>
+        </div>
       </div>
 
-      <div v-if="codeStep && isPhoneInput && mode === 'register'">
+      <div v-if="codeStep && isPhoneInput && otpIntent === 'register'">
         <Input
           v-model="optionalPassword"
           label="Password (optional)"
@@ -92,9 +100,9 @@
     </form>
 
     <button
+      v-if="!codeStep"
       type="button"
       class="mt-5 text-sm font-semibold text-slate-900 underline-offset-4 hover:text-teal-700 hover:underline disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
-      :disabled="codeStep && isPhoneInput && otpSecondsLeft > 0"
       @click="handleOtpToggle"
     >
       {{ otpToggleLabel }}
@@ -141,6 +149,7 @@ const identifierError = ref('');
 const password = ref('');
 const optionalPassword = ref('');
 const otpSecondsLeft = ref(0);
+const otpIntent = ref<'login' | 'register'>(props.mode);
 let otpTimer: ReturnType<typeof setInterval> | null = null;
 const existingAccount = ref<null | {
   message: string;
@@ -219,15 +228,17 @@ function handleIdentifierInput() {
   optionalPassword.value = '';
   code.value = '';
   codeStep.value = false;
+  otpIntent.value = props.mode;
 }
 
-async function requestVerificationCode(value: string, kind: 'email' | 'phone') {
+async function requestVerificationCode(value: string, kind: 'email' | 'phone', intent: 'login' | 'register' = props.mode) {
+  otpIntent.value = intent;
   if (kind === 'phone') {
-    await authStore.requestPhoneCode(value, props.mode);
+    await authStore.requestPhoneCode(value, intent);
     startOtpTimer();
     return;
   }
-  await authStore.requestEmailCode(value, 'auth', props.mode);
+  await authStore.requestEmailCode(value, 'auth', intent);
 }
 
 function setExistingAccount(error: any, fallback: string) {
@@ -266,10 +277,9 @@ async function requestExistingPhoneOtp() {
   const value = identifier.value.trim();
   loading.value = true;
   try {
-    await authStore.requestPhoneCode(value, 'login');
+    await requestVerificationCode(value, 'phone', 'login');
     existingAccount.value = null;
     codeStep.value = true;
-    startOtpTimer();
     toast.success('OTP sent');
   } catch (error: any) {
     toast.error(error.response?.data?.error || 'Failed to send OTP');
@@ -301,12 +311,11 @@ async function handleOtpToggle() {
 
   loading.value = true;
   try {
-    await requestVerificationCode(value, kind);
+    await requestVerificationCode(value, kind, otpIntent.value);
     toast.success(kind === 'phone' ? 'OTP sent' : 'Verification code sent');
   } catch (error: any) {
     const message = error.response?.data?.error || 'Failed to send code';
     if (setExistingAccount(error, message)) {
-      toast.info(message);
       return;
     }
     identifierError.value = message;
@@ -335,7 +344,6 @@ async function handleSubmit() {
     } catch (error: any) {
       const message = error.response?.data?.error || 'Failed to send code';
       if (setExistingAccount(error, message)) {
-        toast.info(message);
         return;
       }
       identifierError.value = message;
@@ -365,18 +373,17 @@ async function handleSubmit() {
       await authStore.verifyPhoneCode({
         phone: value,
         code: code.value.trim(),
-        intent: props.mode,
+        intent: otpIntent.value,
         password: optionalPassword.value || undefined,
       });
     } else {
-      await authStore.verifyEmailCode({ email: value, code: code.value.trim(), intent: props.mode });
+      await authStore.verifyEmailCode({ email: value, code: code.value.trim(), intent: otpIntent.value });
     }
     toast.success('Signed in successfully');
     emit('authenticated');
   } catch (error: any) {
     const message = error.response?.data?.error || 'Verification failed';
     if (setExistingAccount(error, message)) {
-      toast.info(message);
       return;
     }
     toast.error(message);

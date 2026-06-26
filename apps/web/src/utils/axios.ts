@@ -25,14 +25,17 @@ axios.interceptors.request.use(
 axios.interceptors.response.use(
   (response) => response,
   async (error) => {
+    const suppressGlobalErrorToast = Boolean((error.config as any)?.suppressGlobalErrorToast);
     // Dynamic import to avoid circular dependency
     let toast: any = null;
-    try {
-      const toastModule = await import('@bridgechina/ui');
-      toast = toastModule.useToast();
-    } catch (e) {
-      // Toast not available, use console
-      console.error('API Error:', error);
+    if (!suppressGlobalErrorToast) {
+      try {
+        const toastModule = await import('@bridgechina/ui');
+        toast = toastModule.useToast();
+      } catch (e) {
+        // Toast not available, use console
+        console.error('API Error:', error);
+      }
     }
 
     if (error.response) {
