@@ -1,7 +1,7 @@
 const INTENT_KEY = 'bc_shopping_intents_v1';
 const PRODUCT_KEY = 'bc_shopping_product_cards_v1';
 const DETAIL_KEY_PREFIX = 'bc_shopping_detail_v2:';
-const MAX_INTENTS = 24;
+const MAX_INTENTS = 50;
 const MAX_PRODUCTS = 80;
 const TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -44,6 +44,12 @@ function productId(product: any) {
   return String(product?.externalId || product?.external_id || product?.id || '').trim();
 }
 
+function hasProductImage(product: any) {
+  const direct = String(product?.imageUrl || product?.image_url || '').trim();
+  if (direct) return true;
+  return Array.isArray(product?.images) && product.images.some((image: unknown) => String(image || '').trim());
+}
+
 function productKeywords(product: any) {
   return [
     product?.title,
@@ -73,7 +79,7 @@ export function cacheProductCards(products: any[]) {
   const existing = readJson<any[]>(PRODUCT_KEY, []);
   const next = [
     ...products
-      .filter((product) => productId(product))
+      .filter((product) => productId(product) && hasProductImage(product))
       .map((product) => ({
         externalId: productId(product),
         id: product?.id,
@@ -154,7 +160,7 @@ export function getYouMayLikeProducts(limit = 12) {
 
   const excludedProductIds = new Set(recent.filter((intent) => intent.type === 'product').map((intent) => intent.productId).filter(Boolean));
   const scored = products
-    .filter((product) => !excludedProductIds.has(productId(product)))
+    .filter((product) => !excludedProductIds.has(productId(product)) && hasProductImage(product))
     .map((product) => {
       const haystack = productKeywords(product).join(' ');
       let score = 0;

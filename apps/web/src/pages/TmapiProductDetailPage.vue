@@ -1832,6 +1832,15 @@ async function loadShopSettings() {
   try {
     const response = await axios.get('/api/public/shopping/settings');
     shoppingSettings.value = response.data || {};
+    if (response.data?.conversionRates) {
+      conversionRates.value = {
+        CNY_TO_BDT: Number(response.data.conversionRates.CNY_TO_BDT || conversionRates.value.CNY_TO_BDT || 15),
+        CNY_TO_USD: Number(response.data.conversionRates.CNY_TO_USD || conversionRates.value.CNY_TO_USD || 0.14),
+      };
+    }
+    if (!route.query.language && (response.data?.searchLanguage === 'zh' || response.data?.searchLanguage === 'en')) {
+      selectedLanguage.value = response.data.searchLanguage;
+    }
   } catch (error) {
     console.error('Failed to load shopping settings', error);
     shoppingSettings.value = {};
@@ -1843,7 +1852,7 @@ async function loadProduct() {
   try {
     const externalId = route.params.externalId as string;
     const query = route.query as { language?: string };
-    const language = query.language === 'en' ? 'en' : 'zh';
+    const language = query.language === 'en' ? 'en' : query.language === 'zh' ? 'zh' : selectedLanguage.value || 'zh';
     selectedLanguage.value = language;
     quantity.value = 1;
     selectedSkus.value = {};
@@ -1957,11 +1966,13 @@ watch(selectedImage, async () => {
 watch(
   () => route.params.externalId,
   async () => {
+    await loadShopSettings();
     await loadProduct();
   }
 );
 
-onMounted(() => {
-  Promise.all([loadProduct(), loadShopSettings()]);
+onMounted(async () => {
+  await loadShopSettings();
+  await loadProduct();
 });
 </script>

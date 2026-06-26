@@ -128,8 +128,8 @@
                   >
                     <div class="aspect-[4/3] bg-slate-100">
                       <img
-                        v-if="item.imageUrl"
-                        :src="item.imageUrl"
+                        v-if="primaryProductImage(item)"
+                        :src="proxyImageUrl(primaryProductImage(item))"
                         :alt="item.title"
                         class="h-full w-full object-cover"
                       />
@@ -797,7 +797,7 @@ const currentPage = ref(1);
 const pageSize = ref(12);
 const totalPages = ref(1);
 const totalCount = ref<number | null>(null);
-const selectedLanguage = ref<'en' | 'zh'>('en');
+const selectedLanguage = ref<'en' | 'zh'>('zh');
 const selectedCurrency = ref<'BDT' | 'CNY' | 'USD'>('BDT');
 const recentSearches = ref<string[]>([]);
 const premiumProducts = ref<any[]>([]);
@@ -861,7 +861,7 @@ const currentHeroSlide = computed<CarouselItem>(() => {
 });
 const hasSearchResults = computed(() => searchTriggered.value);
 const visibleProducts = computed(() => (hasSearchResults.value ? searchResults.value : hotItems.value));
-const displayProducts = computed(() => visibleProducts.value);
+const displayProducts = computed(() => visibleProducts.value.filter((item: any) => hasProductImage(item)));
 const displayOffers = computed(() => offers.value.slice(0, 3));
 const hasOfferRail = computed(() => displayOffers.value.length > 0);
 const shippingRateSummary = computed(() => {
@@ -991,6 +991,14 @@ function collectImageCandidates(input: any): string[] {
     if (key in input) values.push(...collectImageCandidates(input[key]));
   }
   return values;
+}
+
+function primaryProductImage(product: any): string {
+  return collectImageCandidates(product?.imageUrl || product?.image_url)[0] || collectImageCandidates(product?.images)[0] || '';
+}
+
+function hasProductImage(product: any): boolean {
+  return Boolean(primaryProductImage(product));
 }
 
 function handleFileSelect(event: Event) {
@@ -1225,6 +1233,16 @@ async function loadShopSettings() {
   try {
     const response = await axios.get('/api/public/shopping/settings');
     shoppingSettings.value = response.data || {};
+    const settingsLanguage = response.data?.searchLanguage;
+    if (settingsLanguage === 'zh' || settingsLanguage === 'en') {
+      selectedLanguage.value = settingsLanguage;
+    }
+    if (response.data?.conversionRates) {
+      conversionRates.value = {
+        CNY_TO_BDT: Number(response.data.conversionRates.CNY_TO_BDT || conversionRates.value.CNY_TO_BDT || 15),
+        CNY_TO_USD: Number(response.data.conversionRates.CNY_TO_USD || conversionRates.value.CNY_TO_USD || 0.14),
+      };
+    }
   } catch (error) {
     console.error('Failed to load shopping settings:', error);
     shoppingSettings.value = {};
@@ -1244,7 +1262,11 @@ async function loadRecentSearches() {
 }
 
 async function loadConversionRates() {
-  conversionRates.value = { CNY_TO_BDT: 15, CNY_TO_USD: 0.14 };
+  const settingsRates = shoppingSettings.value?.conversionRates;
+  conversionRates.value = {
+    CNY_TO_BDT: Number(settingsRates?.CNY_TO_BDT || conversionRates.value.CNY_TO_BDT || 15),
+    CNY_TO_USD: Number(settingsRates?.CNY_TO_USD || conversionRates.value.CNY_TO_USD || 0.14),
+  };
 }
 
 function handleVisualMenuClick(item: any) {
@@ -1262,12 +1284,14 @@ function refreshYouMayLike() {
   youMayLikeProducts.value = getYouMayLikeProducts(12);
 }
 
-onMounted(() => {
+onMounted(async () => {
   heroTimer = window.setInterval(() => {
     const count = carouselItems.value.length || heroSlides.length || 1;
     heroSlideIndex.value = (heroSlideIndex.value + 1) % count;
   }, 7200);
 
+  await loadShopSettings();
+  loadConversionRates();
   loadCategories();
   loadHotItems();
   loadOffers();
@@ -1275,9 +1299,7 @@ onMounted(() => {
   loadPremiumProducts();
   loadHomepageVisualMenu();
   loadCuratedSections();
-  loadShopSettings();
   loadRecentSearches();
-  loadConversionRates();
   refreshYouMayLike();
 });
 

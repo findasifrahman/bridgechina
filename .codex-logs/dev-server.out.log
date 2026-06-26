@@ -11997,3 +11997,33 @@
 [API] {"level":50,"time":1782490457240,"pid":26004,"hostname":"DESKTOP-FT34RPM","err":{"type":"PrismaClientInitializationError","message":"\nInvalid `prisma.externalSearchCache.deleteMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\modules\\shopping\\cache.ts:211:36\n\n  208 export async function cleanupExpiredCache(): Promise<void> {\n  209   const now = new Date();\n  210 \n→ 211   await prisma.externalSearchCache.deleteMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.","stack":"PrismaClientInitializationError: \nInvalid `prisma.externalSearchCache.deleteMany()` invocation in\nC:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\modules\\shopping\\cache.ts:211:36\n\n  208 export async function cleanupExpiredCache(): Promise<void> {\n  209   const now = new Date();\n  210 \n→ 211   await prisma.externalSearchCache.deleteMany(\nCan't reach database server at `switchback.proxy.rlwy.net:24086`\n\nPlease make sure your database server is running at `switchback.proxy.rlwy.net:24086`.\n    at $n.handleRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:7615)\n    at $n.handleAndLogRequestError (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6623)\n    at $n.request (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:121:6307)\n    at async l (C:\\Users\\asif\\Desktop\\bridgechina\\node_modules\\.pnpm\\@prisma+client@5.22.0_prisma@5.22.0\\node_modules\\@prisma\\client\\runtime\\library.js:130:9633)\n    at async cleanupExpiredCache (C:\\Users\\asif\\Desktop\\bridgechina\\apps\\api\\src\\modules\\shopping\\cache.ts:211:3)","name":"PrismaClientInitializationError","clientVersion":"5.22.0"},"msg":"[Cache] Cleanup failed"}
 [API] prisma:query DELETE FROM "public"."external_search_cache" WHERE "public"."external_search_cache"."expires_at" < $1
 [API] prisma:query DELETE FROM "public"."external_search_cache" WHERE "public"."external_search_cache"."expires_at" < $1
+[API] 12:20:48 AM [tsx] change in ./src\utils\sms-bd.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782498050580,"pid":22512,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 12:31:05 AM [tsx] change in ./src\routes\public.shopping.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782498667475,"pid":35788,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 12:31:14 AM [tsx] change in ./src\routes\admin.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782498676672,"pid":37172,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 12:31:31 AM [tsx] change in ./src\routes\admin.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782498693656,"pid":36100,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 12:34:34 AM [tsx] change in ./src\routes\public.shopping.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782498876381,"pid":31480,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000

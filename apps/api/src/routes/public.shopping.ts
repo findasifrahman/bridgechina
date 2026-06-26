@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../lib/prisma.js';
 import { buildShoppingSearchContext } from '../modules/shopping/search.synonyms.js';
+import { getShoppingAppSettings } from '../modules/shopping/app-settings.js';
 
 function isDatabaseUnavailable(error: any): boolean {
   const message = String(error?.message || '');
@@ -224,6 +225,11 @@ function hasDisplayablePrice(card: { priceMin?: number | null; priceMax?: number
   return values.some((value) => value > 0);
 }
 
+function hasDisplayableImage(card: any): boolean {
+  if (String(card?.imageUrl || card?.image_url || '').trim()) return true;
+  return Array.isArray(card?.images) && card.images.some((image: unknown) => String(image || '').trim());
+}
+
 export default async function publicShoppingRoutes(fastify: FastifyInstance) {
   const { getShoppingProviderKey } = await import('../modules/shopping/shopping.provider.js');
   const shoppingProvider = getShoppingProviderKey();
@@ -419,7 +425,8 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
       const query = getHotItemsSchema.parse(request.query);
       const page = parseInt((request.query as any).page || '1', 10);
       const pageSize = parseInt((request.query as any).pageSize || '20', 10);
-      return getHotItems(query.category, page, pageSize);
+      const items = await getHotItems(query.category, page, Math.max(pageSize * 3, pageSize));
+      return Array.isArray(items) ? items.filter(hasDisplayableImage).slice(0, pageSize) : [];
     } catch (error: any) {
       fastify.log.error({ error, stack: error.stack, query: request.query }, '[Public Shopping Route] /shopping/hot error');
       reply.status(400).send({ error: error.message || 'Invalid query parameters' });
@@ -651,7 +658,7 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get('/shopping/settings', async () => {
-      const [shippingRates, markupSetting, moqRule] = await Promise.all([
+      const [shippingRates, markupSetting, moqRule, appSettings] = await Promise.all([
         prisma.shippingRateSetting.findMany({
           where: { is_active: true },
           orderBy: [{ method: 'asc' }, { currency: 'asc' }],
@@ -662,12 +669,18 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
         prisma.moqShoppingOtapiRule.findUnique({
           where: { scope: 'global' },
         }),
+        getShoppingAppSettings(),
       ]);
 
       return {
         shippingRates,
         otapiMarkupPercent: markupSetting?.percent_rate ?? 0,
         defaultCurrency: 'BDT',
+        searchLanguage: appSettings.searchLanguage,
+        conversionRates: {
+          CNY_TO_BDT: appSettings.cnyToBdt,
+          CNY_TO_USD: appSettings.cnyToUsd,
+        },
         moqRule: moqRule || null,
         shippingTimeText: '12-14 days',
       };

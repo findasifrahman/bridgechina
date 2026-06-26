@@ -12,6 +12,27 @@
       <Card>
         <CardBody class="space-y-4">
           <div>
+            <h3 class="text-lg font-semibold text-slate-900">Storefront search and currency</h3>
+            <p class="text-sm text-slate-500">Controls the default 1688 search API language and CNY conversion rates shown to shoppers.</p>
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-slate-700">Default 1688 search language</label>
+            <select v-model="appSettings.searchLanguage" class="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm">
+              <option value="zh">Chinese 1688 search</option>
+              <option value="en">English multilingual search</option>
+            </select>
+          </div>
+          <div class="grid gap-3 sm:grid-cols-2">
+            <Input v-model.number="appSettings.cnyToBdt" type="number" min="0" step="0.01" label="CNY to BDT" />
+            <Input v-model.number="appSettings.cnyToUsd" type="number" min="0" step="0.0001" label="CNY to USD" />
+          </div>
+          <Button variant="primary" :loading="savingAppSettings" @click="saveAppSettings">Save storefront settings</Button>
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardBody class="space-y-4">
+          <div>
             <h3 class="text-lg font-semibold text-slate-900">Shipping rates</h3>
             <p class="text-sm text-slate-500">Set the per-kg range displayed on the storefront and seller dashboard.</p>
           </div>
@@ -178,6 +199,7 @@ const savingShipping = ref(false);
 const savingMarkup = ref(false);
 const savingMoq = ref(false);
 const savingCoupon = ref(false);
+const savingAppSettings = ref(false);
 const coupons = ref<any[]>([]);
 const editingCouponId = ref('');
 const markupPercent = ref(0);
@@ -198,6 +220,11 @@ const moqRule = reactive({
   minimum_price_threshold: 0,
   currency: 'BDT',
 });
+const appSettings = reactive({
+  searchLanguage: 'zh' as 'zh' | 'en',
+  cnyToBdt: 15,
+  cnyToUsd: 0.14,
+});
 const couponForm = reactive({
   code: '',
   title: '',
@@ -217,11 +244,12 @@ const couponForm = reactive({
 async function loadSettings() {
   loading.value = true;
   try {
-    const [markupRes, moqRes, shippingRes, couponsRes] = await Promise.all([
+    const [markupRes, moqRes, shippingRes, couponsRes, appSettingsRes] = await Promise.all([
       axios.get('/api/admin/profit-markup'),
       axios.get('/api/admin/moq-rule'),
       axios.get('/api/admin/shipping-rates'),
       axios.get('/api/admin/coupons'),
+      axios.get('/api/admin/shopping-app-settings'),
     ]);
 
     markupPercent.value = markupRes.data?.percent_rate ?? 0;
@@ -243,6 +271,11 @@ async function loadSettings() {
       currency: sea?.currency ?? 'BDT',
       min_rate_per_kg: sea?.min_rate_per_kg ?? 0,
       max_rate_per_kg: sea?.max_rate_per_kg ?? 0,
+    });
+    Object.assign(appSettings, {
+      searchLanguage: appSettingsRes.data?.searchLanguage === 'en' ? 'en' : 'zh',
+      cnyToBdt: Number(appSettingsRes.data?.cnyToBdt || 15),
+      cnyToUsd: Number(appSettingsRes.data?.cnyToUsd || 0.14),
     });
     coupons.value = Array.isArray(couponsRes.data) ? couponsRes.data : [];
   } catch (error: any) {
@@ -407,6 +440,22 @@ async function saveMoqRule() {
     toast.error(error.response?.data?.error || 'Failed to save MOQ rule');
   } finally {
     savingMoq.value = false;
+  }
+}
+
+async function saveAppSettings() {
+  savingAppSettings.value = true;
+  try {
+    await axios.put('/api/admin/shopping-app-settings', {
+      searchLanguage: appSettings.searchLanguage,
+      cnyToBdt: Number(appSettings.cnyToBdt || 15),
+      cnyToUsd: Number(appSettings.cnyToUsd || 0.14),
+    });
+    toast.success('Storefront settings updated');
+  } catch (error: any) {
+    toast.error(error.response?.data?.error || 'Failed to save storefront settings');
+  } finally {
+    savingAppSettings.value = false;
   }
 }
 

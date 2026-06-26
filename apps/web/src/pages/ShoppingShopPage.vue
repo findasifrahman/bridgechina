@@ -234,7 +234,7 @@ const loading = ref(false);
 const searchQuery = ref(String(route.query.q || ''));
 const selectedCategory = ref(String(route.query.category || ''));
 const currentPage = ref(Math.max(1, Number(route.query.page || 1)));
-const selectedLanguage = ref(String(route.query.language || 'en') === 'zh' ? 'zh' : 'en');
+const selectedLanguage = ref(String(route.query.language || 'zh') === 'en' ? 'en' : 'zh');
 const pageSize = ref(24);
 const totalPages = ref(1);
 const totalCount = ref(0);
@@ -243,6 +243,7 @@ const conversionRates = ref({ CNY_TO_BDT: 15, CNY_TO_USD: 0.14 });
 const shopVendor = ref<any>(null);
 const shopProducts = ref<any[]>([]);
 let loadRequestId = 0;
+let settingsLoaded = false;
 
 const vendorId = computed(() => String(route.params.vendorId || '').trim());
 const shopIdentity = computed(() => (
@@ -310,6 +311,7 @@ function normalizedProducts(payload: any): any[] {
 }
 
 async function loadShop() {
+  await loadShoppingSettings();
   const requestId = ++loadRequestId;
   const id = vendorId.value;
   if (!id) return;
@@ -356,7 +358,27 @@ function syncFromRoute() {
   searchQuery.value = String(route.query.q || '');
   selectedCategory.value = String(route.query.category || '');
   currentPage.value = Math.max(1, Number(route.query.page || 1));
-  selectedLanguage.value = String(route.query.language || 'en') === 'zh' ? 'zh' : 'en';
+  selectedLanguage.value = String(route.query.language || selectedLanguage.value || 'zh') === 'en' ? 'en' : 'zh';
+}
+
+async function loadShoppingSettings() {
+  if (settingsLoaded) return;
+  settingsLoaded = true;
+  try {
+    const response = await axios.get('/api/public/shopping/settings');
+    const settingsLanguage = response.data?.searchLanguage;
+    if (!route.query.language && (settingsLanguage === 'zh' || settingsLanguage === 'en')) {
+      selectedLanguage.value = settingsLanguage;
+    }
+    if (response.data?.conversionRates) {
+      conversionRates.value = {
+        CNY_TO_BDT: Number(response.data.conversionRates.CNY_TO_BDT || 15),
+        CNY_TO_USD: Number(response.data.conversionRates.CNY_TO_USD || 0.14),
+      };
+    }
+  } catch (error) {
+    console.error('Failed to load shopping settings', error);
+  }
 }
 
 function submitSearch() {

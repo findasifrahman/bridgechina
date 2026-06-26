@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { prisma } from '../lib/prisma.js';
+import { getShoppingAppSettings, updateShoppingAppSettings } from '../modules/shopping/app-settings.js';
 import { deleteFromR2, getPublicUrl, uploadToR2 } from '../utils/r2.js';
 import { z } from 'zod';
 
@@ -1250,6 +1251,20 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     return prisma.shippingRateSetting.findMany({
       orderBy: [{ method: 'asc' }, { currency: 'asc' }],
     });
+  });
+
+  fastify.get('/shopping-app-settings', { preHandler: auth }, async () => {
+    return getShoppingAppSettings(true);
+  });
+
+  fastify.put('/shopping-app-settings', { preHandler: auth }, async (request: FastifyRequest) => {
+    const body = z.object({
+      searchLanguage: z.enum(['zh', 'en']),
+      cnyToBdt: z.number().min(0.0001),
+      cnyToUsd: z.number().min(0.0001),
+    }).parse(request.body);
+
+    return updateShoppingAppSettings(body);
   });
 
   fastify.put('/shipping-rates/:method', { preHandler: auth }, async (request: FastifyRequest) => {

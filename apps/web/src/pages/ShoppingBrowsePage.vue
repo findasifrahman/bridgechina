@@ -274,11 +274,12 @@ const totalPages = ref(1);
 const totalCount = ref(0);
 const searchTrace = ref<any>(null);
 const selectedCurrency = ref<'BDT' | 'CNY' | 'USD'>('BDT');
-const selectedLanguage = ref<'en' | 'zh'>(String(route.query.language || 'en') === 'zh' ? 'zh' : 'en');
+const selectedLanguage = ref<'en' | 'zh'>(String(route.query.language || 'zh') === 'en' ? 'en' : 'zh');
 const conversionRates = ref({ CNY_TO_BDT: 15, CNY_TO_USD: 0.14 });
 const localItems = ref<any[]>([]);
 const otapiItems = ref<any[]>([]);
 let searchRequestId = 0;
+let settingsLoaded = false;
 const allItems = computed(() => [...localItems.value, ...otapiItems.value]);
 const topShops = computed(() => aggregateTopShops(allItems.value, searchQuery.value || selectedCategory.value || '', 6).filter((shop) => !!shop.vendorId));
 const otapiResultSplit = computed(() => splitSearchResultsByFocus(otapiItems.value, searchQuery.value || selectedCategory.value || '', 4));
@@ -341,6 +342,7 @@ function handleAddToCart(product: any) {
 }
 
 async function runSearch() {
+  await loadShoppingSettings();
   const requestId = ++searchRequestId;
   imageSearchKey.value = String(route.query.imageSearchKey || '');
   if (imageSearchKey.value && !searchQuery.value.trim()) {
@@ -475,10 +477,30 @@ watch(
     selectedCategory.value = String(routeQuery.category || '');
     imageSearchKey.value = String(routeQuery.imageSearchKey || '');
     selectedVendorId.value = String(routeQuery.vendorId || '');
-    selectedLanguage.value = String(routeQuery.language || 'en') === 'zh' ? 'zh' : 'en';
+    selectedLanguage.value = String(routeQuery.language || selectedLanguage.value || 'zh') === 'en' ? 'en' : 'zh';
     currentPage.value = Math.max(1, Number(routeQuery.page || 1));
     runSearch();
   },
   { immediate: true }
 );
+
+async function loadShoppingSettings() {
+  if (settingsLoaded) return;
+  settingsLoaded = true;
+  try {
+    const response = await axios.get('/api/public/shopping/settings');
+    const settingsLanguage = response.data?.searchLanguage;
+    if (!route.query.language && (settingsLanguage === 'zh' || settingsLanguage === 'en')) {
+      selectedLanguage.value = settingsLanguage;
+    }
+    if (response.data?.conversionRates) {
+      conversionRates.value = {
+        CNY_TO_BDT: Number(response.data.conversionRates.CNY_TO_BDT || 15),
+        CNY_TO_USD: Number(response.data.conversionRates.CNY_TO_USD || 0.14),
+      };
+    }
+  } catch (error) {
+    console.error('Failed to load shopping settings', error);
+  }
+}
 </script>
