@@ -22,15 +22,18 @@
           <div class="group relative h-[34vh] max-h-[280px] min-h-[220px] w-full overflow-hidden rounded-[20px] bg-slate-100" @click="openFullscreen(activeMediaUrl)">
             <video
               v-if="showVideo"
-              ref="videoRef"
+              ref="mobileVideoRef"
               :src="product.videoUrl"
-              :autoplay="videoMode === 'auto'"
-              :muted="videoMode === 'auto'"
+              autoplay
+              muted
               playsinline
               loop
               controls
+              preload="metadata"
+              :poster="galleryImages[0] || undefined"
               class="h-full w-full object-contain object-center"
               @click.stop
+              @loadeddata="handleVideoLoaded"
             />
             <img
               v-else-if="activeMediaUrl"
@@ -49,12 +52,22 @@
             </div>
           </div>
 
-          <div class="mt-3 flex max-w-full flex-nowrap overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div v-if="showGalleryThumbs" class="mt-3 flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <button
+              v-if="product.videoUrl"
+              type="button"
+              class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[14px] border bg-slate-50 transition-all"
+              :class="selectedImage === product.videoUrl ? 'border-teal-500 ring-2 ring-teal-100' : 'border-slate-200 hover:border-teal-300'"
+              @click="selectVideo()"
+            >
+              <Play class="h-4 w-4 text-slate-600" />
+            </button>
             <button
               v-for="img in galleryImages"
               :key="img"
               type="button"
-              class="h-12 w-12 shrink-0 overflow-hidden rounded-[14px] border border-slate-200 bg-slate-50"
+              class="h-12 w-12 shrink-0 overflow-hidden rounded-[14px] border border-slate-200 bg-slate-50 transition-all"
+              :class="selectedImage === img ? 'border-teal-500 ring-2 ring-teal-100' : 'hover:border-teal-300'"
               @click="selectImage(img)"
             >
               <img :src="img" :alt="product.title" class="h-full w-full object-cover" @error="markBrokenImage(img)" />
@@ -349,15 +362,18 @@
                 <div class="group relative h-[42vh] w-full max-w-full overflow-hidden rounded-[20px] bg-slate-100 sm:h-auto sm:aspect-[0.94/1]" @click="openFullscreen(activeMediaUrl)">
                   <video
                     v-if="showVideo"
-                    ref="videoRef"
+                    ref="desktopVideoRef"
                     :src="product.videoUrl"
-                    :autoplay="videoMode === 'auto'"
-                    :muted="videoMode === 'auto'"
+                    autoplay
+                    muted
                     playsinline
                     loop
                     controls
+                    preload="metadata"
+                    :poster="galleryImages[0] || undefined"
                     class="h-full w-full max-w-full object-contain object-center"
                     @click.stop
+                    @loadeddata="handleVideoLoaded"
                   />
                   <img
                     v-else-if="activeMediaUrl"
@@ -1034,7 +1050,8 @@ const loading = ref(true);
 const quantity = ref(1);
 const selectedImage = ref<string | null>(null);
 const brokenGalleryImages = ref<string[]>([]);
-const videoRef = ref<HTMLVideoElement | null>(null);
+const mobileVideoRef = ref<HTMLVideoElement | null>(null);
+const desktopVideoRef = ref<HTMLVideoElement | null>(null);
 const videoMode = ref<'none' | 'auto' | 'user'>('none');
 const selectedSkus = ref<Record<string, number>>({});
 const selectedLanguage = ref<'en' | 'zh'>('zh');
@@ -1730,25 +1747,55 @@ function buildCartProductPayload() {
   };
 }
 
+function getActiveVideoElement(): HTMLVideoElement | null {
+  const candidates = [mobileVideoRef.value, desktopVideoRef.value].filter((node): node is HTMLVideoElement => !!node);
+  if (!candidates.length) return null;
+  return candidates.find((node) => node.offsetParent !== null) || candidates[0] || null;
+}
+
 function selectImage(img: string) {
   selectedImage.value = proxyImageUrl(img);
   videoMode.value = 'none';
 }
 
-function selectVideo() {
+async function selectVideo() {
   if (!product.value?.videoUrl) return;
   selectedImage.value = product.value.videoUrl;
   videoMode.value = 'user';
+  await nextTick();
+  await playActiveVideo();
+}
+
+async function playActiveVideo() {
+  const video = getActiveVideoElement();
+  if (!video || !product.value?.videoUrl || selectedImage.value !== product.value.videoUrl) return;
+  try {
+    video.muted = true;
+    video.defaultMuted = true;
+    video.playsInline = true;
+    await video.play();
+  } catch (error) {
+    if (videoMode.value === 'auto') {
+      videoMode.value = 'none';
+      selectedImage.value = galleryImages.value[0] || product.value?.imageUrl || null;
+    }
+    console.warn('Failed to play product video', error);
+  }
 }
 
 async function tryAutoplayVideo() {
-  if (!product.value?.videoUrl || videoMode.value !== 'auto' || !videoRef.value) return;
+  if (!product.value?.videoUrl || videoMode.value !== 'auto') return;
   try {
-    videoRef.value.muted = true;
-    await videoRef.value.play();
+    await playActiveVideo();
   } catch {
     videoMode.value = 'none';
     selectedImage.value = galleryImages.value[0] || product.value?.imageUrl || null;
+  }
+}
+
+function handleVideoLoaded() {
+  if (selectedImage.value === product.value?.videoUrl) {
+    void playActiveVideo();
   }
 }
 
@@ -1948,9 +1995,9 @@ function openWhatsApp() {
 }
 
 watch(selectedImage, async () => {
-  if (product.value?.videoUrl && selectedImage.value === product.value.videoUrl && videoMode.value === 'auto') {
+  if (product.value?.videoUrl && selectedImage.value === product.value.videoUrl) {
     await nextTick();
-    await tryAutoplayVideo();
+    await playActiveVideo();
   }
 });
 

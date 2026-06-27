@@ -98,7 +98,14 @@
                         >
                           <Minus class="mx-auto h-3.5 w-3.5" />
                         </button>
-                        <span class="w-10 text-center text-sm font-bold text-slate-900">{{ sku.qty }}</span>
+                        <input
+                          :value="Number(sku.qty || 0)"
+                          type="number"
+                          min="0"
+                          inputmode="numeric"
+                          class="h-8 w-12 border-x border-slate-200 bg-white text-center text-sm font-bold text-slate-900 outline-none"
+                          @input="setCartSkuQty(item, idx, ($event.target as HTMLInputElement).value)"
+                        />
                         <button
                           type="button"
                           class="h-8 w-8 text-teal-600 hover:bg-teal-50"
@@ -121,7 +128,14 @@
                       >
                         <Minus class="mx-auto h-4 w-4" />
                       </button>
-                      <span class="w-12 text-center text-sm font-bold text-slate-900">{{ item.quantity }}</span>
+                      <input
+                        :value="Number(item.quantity || 0)"
+                        type="number"
+                        min="1"
+                        inputmode="numeric"
+                        class="h-10 w-14 border-x border-slate-200 text-center text-sm font-bold text-slate-900 outline-none"
+                        @input="setCartItemQty(item, ($event.target as HTMLInputElement).value)"
+                      />
                       <button
                         type="button"
                         class="h-10 w-10 text-teal-600 hover:bg-teal-50"
@@ -682,6 +696,35 @@ function changeCartSkuQty(item: any, skuIndex: number, delta: number) {
   if (!normalizedRows.length) {
     removeFromCart(item.externalId);
     toast.success('Item removed from cart');
+    return;
+  }
+
+  updateSkuDetails(item.externalId, normalizedRows);
+}
+
+function normalizeTypedQuantity(value: string, min: number): number {
+  const numeric = Number.parseInt(String(value || '').replace(/[^\d]/g, ''), 10);
+  if (!Number.isFinite(numeric)) return min;
+  return Math.max(min, numeric);
+}
+
+function setCartItemQty(item: any, value: string) {
+  const nextQty = normalizeTypedQuantity(value, 1);
+  updateQuantity(item.externalId, nextQty);
+}
+
+function setCartSkuQty(item: any, skuIndex: number, value: string) {
+  const rows = Array.isArray(item?.skuDetails)
+    ? item.skuDetails.map((sku: any) => ({ ...sku, qty: Number(sku?.qty || 0) }))
+    : [];
+  const row = rows[skuIndex];
+  if (!row) return;
+
+  row.qty = normalizeTypedQuantity(value, 0);
+  const normalizedRows = rows.filter((sku: any) => sku.qty > 0);
+
+  if (!normalizedRows.length) {
+    removeFromCart(item.externalId);
     return;
   }
 

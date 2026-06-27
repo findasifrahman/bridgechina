@@ -12133,3 +12133,107 @@
 [API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
 [API] {"level":30,"time":1782509905923,"pid":38460,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
 [API] Server listening on port 3000
+[API] 3:53:24 AM [tsx] change in ./src\modules\shopping\shopping.service.ts Rerunning...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782510807662,"pid":9920,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 3:53:35 AM [tsx] change in ./src\routes\public.shopping.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782510816969,"pid":24036,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] prisma:query DELETE FROM "public"."external_search_cache" WHERE "public"."external_search_cache"."expires_at" < $1
+[API] prisma:query DELETE FROM "public"."external_search_cache" WHERE "public"."external_search_cache"."expires_at" < $1
+[API] prisma:query DELETE FROM "public"."external_search_cache" WHERE "public"."external_search_cache"."expires_at" < $1
+[API] prisma:query DELETE FROM "public"."external_search_cache" WHERE "public"."external_search_cache"."expires_at" < $1
+[API] prisma:query DELETE FROM "public"."external_search_cache" WHERE "public"."external_search_cache"."expires_at" < $1
+[API] prisma:query DELETE FROM "public"."external_search_cache" WHERE "public"."external_search_cache"."expires_at" < $1
+[API] 1:55:51 PM [tsx] change in ./src\modules\shopping\googleTranslate.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782546954519,"pid":9436,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 1:56:00 PM [tsx] change in ./src\index.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782546962119,"pid":25324,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] prisma:query DELETE FROM "public"."external_search_cache" WHERE "public"."external_search_cache"."expires_at" < $1
+[API] 3:42:59 PM [tsx] change in ./src\modules\shopping\shopping.service.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782553383495,"pid":12776,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 3:43:12 PM [tsx] change in ./src\modules\shopping\shopping.service.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782553394133,"pid":8236,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 3:43:45 PM [tsx] change in ./src\modules\shopping\shopping.service.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782553426754,"pid":39700,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 3:44:01 PM [tsx] change in ./src\modules\shopping\shopping.service.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782553442716,"pid":13924,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] prisma:query DELETE FROM "public"."external_search_cache" WHERE "public"."external_search_cache"."expires_at" < $1
+[API] 4:51:22 PM [tsx] change in ./src\modules\shopping\shopping.service.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782557484358,"pid":18560,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 4:51:40 PM [tsx] change in ./src\routes\admin.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782557502200,"pid":29272,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 4:55:08 PM [tsx] change in ./src\routes\user.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782557710495,"pid":38476,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 5:14:47 PM [tsx] change in ./src\modules\shopping\googleTranslate.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782558888830,"pid":8756,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 5:15:37 PM [tsx] change in ./src\modules\shopping\shopping.service.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782558939218,"pid":25272,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 5:15:52 PM [tsx] change in ./src\routes\public.shopping.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782558954247,"pid":30856,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 5:16:08 PM [tsx] change in ./src\modules\shopping\shopping.service.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782558970022,"pid":9228,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
+[API] 5:16:59 PM [tsx] change in ./src\modules\shopping\googleTranslate.ts Restarting...
+[API] c[dotenv@17.2.3] injecting env (0) from .env -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+[API] [TMAPI Client] Initialized: { baseURL: 'https://api.tmapi.top', hasToken: true }
+[API] [TMAPI Client] Axios client created: { baseURL: 'https://api.tmapi.top', timeout: 30000 }
+[API] {"level":30,"time":1782559020973,"pid":8272,"hostname":"DESKTOP-FT34RPM","msg":"Server listening at http://0.0.0.0:3000"}
+[API] Server listening on port 3000
