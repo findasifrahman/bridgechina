@@ -11,8 +11,25 @@ interface CacheEntry {
   expiresAt: number;
 }
 
+interface PersistedTranslationRow {
+  source_text: string;
+  translated_text: string;
+  provider: string;
+}
+
 const memoryCache = new Map<string, CacheEntry>();
 const MEMORY_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const DAILY_USAGE_SETTINGS_KEY = 'google_translate_daily_usage';
+const DAILY_CHAR_LIMIT = Number(process.env.GOOGLE_TRANSLATE_DAILY_CHAR_LIMIT || 18000);
+const DAILY_CHAR_RESERVE = Number(process.env.GOOGLE_TRANSLATE_DAILY_CHAR_RESERVE || 2000);
+
+type TranslateUsageState = {
+  date: string;
+  chars: number;
+  requests: number;
+};
+
+let usageCache: { value: TranslateUsageState; expiresAt: number } | null = null;
 
 export function googleTranslateConfigStatus() {
   const apiKey = process.env.GOOGLE_LANGUAGE_API_KEY || '';
@@ -42,6 +59,14 @@ function hasChineseCharacters(text: string): boolean {
   return /[\u4e00-\u9fff]/.test(text);
 }
 
+function hasMeaningfulTranslatableChinese(text: string): boolean {
+  if (!hasChineseCharacters(text)) return false;
+  const stripped = text
+    .replace(/[\d\s\-_/|()[\]{}.,:;+*"'`~!?@#$%^&=<>]+/g, '')
+    .replace(/[A-Za-z]+/g, '');
+  return /[\u4e00-\u9fff]/.test(stripped);
+}
+
 function needsTranslation(text: string): boolean {
   const normalized = text.trim();
   if (!normalized) return false;
@@ -54,14 +79,81 @@ function needsTranslation(text: string): boolean {
   return chineseChars / totalChars < 0.3;
 }
 
+function getUsageDateKey(): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: process.env.APP_TIMEZONE || 'Asia/Dhaka',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${lookup.year}-${lookup.month}-${lookup.day}`;
+}
+
+async function getDailyUsage(forceRefresh = false): Promise<TranslateUsageState> {
+  if (!forceRefresh && usageCache && usageCache.expiresAt > Date.now()) {
+    return usageCache.value;
+  }
+
+  const today = getUsageDateKey();
+  const row = await prisma.siteSetting.findUnique({ where: { key: DAILY_USAGE_SETTINGS_KEY } }).catch(() => null);
+  const raw = row?.value_json as Partial<TranslateUsageState> | undefined;
+  const value: TranslateUsageState = {
+    date: raw?.date === today ? today : today,
+    chars: raw?.date === today ? Number(raw?.chars || 0) : 0,
+    requests: raw?.date === today ? Number(raw?.requests || 0) : 0,
+  };
+  usageCache = { value, expiresAt: Date.now() + 60 * 1000 };
+  return value;
+}
+
+async function recordDailyUsage(chars: number): Promise<void> {
+  if (!chars || chars <= 0) return;
+  const current = await getDailyUsage();
+  const next: TranslateUsageState = {
+    date: current.date,
+    chars: current.chars + chars,
+    requests: current.requests + 1,
+  };
+
+  usageCache = { value: next, expiresAt: Date.now() + 60 * 1000 };
+
+  await prisma.siteSetting.upsert({
+    where: { key: DAILY_USAGE_SETTINGS_KEY },
+    create: { key: DAILY_USAGE_SETTINGS_KEY, value_json: next },
+    update: { value_json: next },
+  }).catch((error: any) => {
+    console.warn('[Google Translate] Failed to persist usage stats:', error.message);
+  });
+}
+
+async function hasBudgetFor(chars: number): Promise<boolean> {
+  const current = await getDailyUsage();
+  const limit = Math.max(0, DAILY_CHAR_LIMIT - DAILY_CHAR_RESERVE);
+  return current.chars + chars <= limit;
+}
+
 /**
  * Translate text from English to Chinese using Google Translate API
  */
-async function translateWithGoogle(text: string, target: string, source?: string): Promise<string> {
+async function translateWithGoogleBatch(texts: string[], target: string, source?: string): Promise<string[]> {
   const apiKey = process.env.GOOGLE_LANGUAGE_API_KEY;
   if (!apiKey) {
     console.warn('[Google Translate] GOOGLE_LANGUAGE_API_KEY not set, skipping translation');
-    return text; // Return original if no API key
+    return texts;
+  }
+
+  if (texts.length === 0) return [];
+
+  const totalChars = texts.reduce((sum, text) => sum + text.length, 0);
+  const allowed = await hasBudgetFor(totalChars);
+  if (!allowed) {
+    console.warn('[Google Translate] Daily character budget nearly exhausted, skipping translation batch', {
+      totalChars,
+      dailyLimit: DAILY_CHAR_LIMIT,
+      reserve: DAILY_CHAR_RESERVE,
+    });
+    return texts;
   }
 
   try {
@@ -72,7 +164,7 @@ async function translateWithGoogle(text: string, target: string, source?: string
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        q: text,
+        q: texts,
         ...(source ? { source } : {}),
         target,
       }),
@@ -88,7 +180,7 @@ async function translateWithGoogle(text: string, target: string, source?: string
           ? 'Google rejected the API key. Check Cloud Translation API enablement, billing, API restrictions, and application restrictions for server-side Railway requests.'
           : undefined,
       });
-      throw new Error(`Google Translate API error: ${response.status}`);
+      return texts;
     }
 
     const data = await response.json() as {
@@ -96,20 +188,21 @@ async function translateWithGoogle(text: string, target: string, source?: string
         translations?: Array<{ translatedText?: string }>;
       };
     };
-    const translated = data.data?.translations?.[0]?.translatedText;
-    
-    if (!translated) {
+    const translated = data.data?.translations?.map((item) => item.translatedText || '') || [];
+
+    if (translated.length !== texts.length) {
       console.warn('[Google Translate] No translation in response:', data);
-      return text;
+      return texts;
     }
 
-    return translated;
+    await recordDailyUsage(totalChars);
+    return translated.map((value, index) => value || texts[index]);
   } catch (error: any) {
     console.error('[Google Translate] Translation failed:', {
       error: error.message,
       stack: error.stack,
     });
-    throw error;
+    return texts;
   }
 }
 
@@ -117,86 +210,122 @@ async function translateWithGoogle(text: string, target: string, source?: string
  * Translate keyword from English to Chinese with caching
  * Returns original text if translation fails or not needed
  */
-async function translateWithCache(params: {
-  text: string;
+async function translateManyWithCache(params: {
+  texts: string[];
   target: string;
   source?: string;
   cachePrefix: string;
   shouldTranslate: (text: string) => boolean;
-}): Promise<string> {
-  if (!params.shouldTranslate(params.text)) {
-    return params.text;
-  }
+}): Promise<string[]> {
+  if (!params.texts.length) return [];
 
-  const normalized = normalizeSourceText(params.text);
-  const dbSourceText = `${params.cachePrefix}:${normalized}`;
-  const memoryKey = `google:${params.cachePrefix}:${normalized}`;
+  const results = [...params.texts];
+  const missingIndexes: number[] = [];
+  const missingOriginals: string[] = [];
+  const missingCacheKeys: string[] = [];
 
-  // Check memory cache first
-  const memoryEntry = memoryCache.get(memoryKey);
-  if (memoryEntry && memoryEntry.expiresAt > Date.now()) {
-    console.log('[Google Translate] Using memory cache for:', normalized);
-    return memoryEntry.translated;
-  }
+  for (const [index, originalText] of params.texts.entries()) {
+    if (!params.shouldTranslate(originalText)) continue;
 
-  // Check database cache
-  try {
-    const dbEntry = await prisma.productTitleTranslation.findUnique({
-      where: { source_text: dbSourceText },
-    });
-
-    if (dbEntry && dbEntry.provider === 'google') {
-      console.log('[Google Translate] Using DB cache for:', normalized);
-      
-      // Update memory cache
-      memoryCache.set(memoryKey, {
-        translated: dbEntry.translated_text,
-        expiresAt: Date.now() + MEMORY_CACHE_TTL_MS,
-      });
-
-      return dbEntry.translated_text;
+    const normalized = normalizeSourceText(originalText);
+    const dbSourceText = `${params.cachePrefix}:${normalized}`;
+    const memoryKey = `google:${params.cachePrefix}:${normalized}`;
+    const memoryEntry = memoryCache.get(memoryKey);
+    if (memoryEntry && memoryEntry.expiresAt > Date.now()) {
+      results[index] = memoryEntry.translated;
+      continue;
     }
-  } catch (error: any) {
-    console.warn('[Google Translate] DB lookup failed:', error.message);
-    // Continue to API call
+
+    missingIndexes.push(index);
+    missingOriginals.push(originalText);
+    missingCacheKeys.push(dbSourceText);
   }
 
-  // Call Google Translate API
-  console.log('[Google Translate] Calling API for:', normalized);
-  try {
-    const translated = await translateWithGoogle(params.text, params.target, params.source);
-
-    // Save to database (upsert)
+  if (missingCacheKeys.length) {
     try {
-      await prisma.productTitleTranslation.upsert({
-        where: { source_text: dbSourceText },
-        create: {
-          source_text: dbSourceText,
-          translated_text: translated,
-          provider: 'google',
-        },
-        update: {
-          translated_text: translated,
-          provider: 'google',
-        },
+      const dbEntries = await prisma.productTitleTranslation.findMany({
+        where: { source_text: { in: missingCacheKeys } },
       });
-    } catch (dbError: any) {
-      console.warn('[Google Translate] Failed to save to DB:', dbError.message);
-      // Continue even if DB save fails
-    }
+      const dbMap = new Map<string, string>(
+        dbEntries.map((entry) => [String(entry.source_text), String(entry.translated_text)]),
+      );
 
-    // Update memory cache
-    memoryCache.set(memoryKey, {
+      const stillMissingIndexes: number[] = [];
+      const stillMissingOriginals: string[] = [];
+      const stillMissingCacheKeys: string[] = [];
+
+      for (let i = 0; i < missingIndexes.length; i += 1) {
+        const dbSourceText = missingCacheKeys[i];
+        const translated = dbMap.get(dbSourceText);
+        if (translated) {
+          results[missingIndexes[i]] = translated;
+          memoryCache.set(`google:${dbSourceText}`, {
+            translated,
+            expiresAt: Date.now() + MEMORY_CACHE_TTL_MS,
+          });
+        } else {
+          stillMissingIndexes.push(missingIndexes[i]);
+          stillMissingOriginals.push(missingOriginals[i]);
+          stillMissingCacheKeys.push(dbSourceText);
+        }
+      }
+
+      missingIndexes.length = 0;
+      missingOriginals.length = 0;
+      missingCacheKeys.length = 0;
+      missingIndexes.push(...stillMissingIndexes);
+      missingOriginals.push(...stillMissingOriginals);
+      missingCacheKeys.push(...stillMissingCacheKeys);
+    } catch (error: any) {
+      console.warn('[Google Translate] DB lookup failed:', error.message);
+    }
+  }
+
+  if (!missingOriginals.length) return results;
+
+  const translatedValues = await translateWithGoogleBatch(missingOriginals, params.target, params.source);
+  const rowsToPersist: PersistedTranslationRow[] = [];
+
+  for (let i = 0; i < missingIndexes.length; i += 1) {
+    const translated = translatedValues[i] || missingOriginals[i];
+    const index = missingIndexes[i];
+    const dbSourceText = missingCacheKeys[i];
+    results[index] = translated;
+    memoryCache.set(`google:${dbSourceText}`, {
       translated,
       expiresAt: Date.now() + MEMORY_CACHE_TTL_MS,
     });
-
-    console.log('[Google Translate] Translation successful:', { original: normalized, translated });
-    return translated;
-  } catch (error: any) {
-    console.error('[Google Translate] Translation failed, returning original:', error.message);
-    return params.text; // Return original on failure
+    if (translated !== missingOriginals[i]) {
+      rowsToPersist.push({
+        source_text: dbSourceText,
+        translated_text: translated,
+        provider: 'google',
+      });
+    }
   }
+
+  if (rowsToPersist.length) {
+    await prisma.productTitleTranslation.createMany({
+      data: rowsToPersist,
+      skipDuplicates: true,
+    }).catch(async (error: any) => {
+      console.warn('[Google Translate] createMany failed, falling back to upsert:', error.message);
+      await Promise.all(rowsToPersist.map((row) =>
+        prisma.productTitleTranslation.upsert({
+          where: { source_text: row.source_text },
+          create: row,
+          update: {
+            translated_text: row.translated_text,
+            provider: row.provider,
+          },
+        }).catch((upsertError: any) => {
+          console.warn('[Google Translate] Failed to save translation row:', upsertError.message);
+        })
+      ));
+    });
+  }
+
+  return results;
 }
 
 /**
@@ -209,13 +338,14 @@ export async function translateKeywordToChinese(keyword: string): Promise<string
     return keyword;
   }
 
-  return translateWithCache({
-    text: keyword,
+  const [translated] = await translateManyWithCache({
+    texts: [keyword],
     source: 'en',
     target: 'zh-CN',
     cachePrefix: 'en:zh',
     shouldTranslate: needsTranslation,
   });
+  return translated || keyword;
 }
 
 /**
@@ -224,14 +354,26 @@ export async function translateKeywordToChinese(keyword: string): Promise<string
  */
 export async function translateChineseTextToEnglish(text: string): Promise<string> {
   const source = String(text || '').trim();
-  if (!source || !hasChineseCharacters(source)) return source;
+  if (!source || !hasMeaningfulTranslatableChinese(source)) return source;
 
-  return translateWithCache({
-    text: source,
+  const [translated] = await translateManyWithCache({
+    texts: [source],
     source: 'zh-CN',
     target: 'en',
     cachePrefix: 'zh:en',
-    shouldTranslate: hasChineseCharacters,
+    shouldTranslate: hasMeaningfulTranslatableChinese,
+  });
+  return translated || source;
+}
+
+export async function translateChineseTextsToEnglish(texts: string[]): Promise<string[]> {
+  const prepared = texts.map((text) => String(text || '').trim());
+  return translateManyWithCache({
+    texts: prepared,
+    source: 'zh-CN',
+    target: 'en',
+    cachePrefix: 'zh:en',
+    shouldTranslate: hasMeaningfulTranslatableChinese,
   });
 }
 

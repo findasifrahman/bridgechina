@@ -20,7 +20,7 @@ import {
   getCachedItem,
   setCachedItem,
 } from './cache.js';
-import { translateChineseTextToEnglish, translateKeywordToChinese } from './googleTranslate.js';
+import { translateChineseTextToEnglish, translateChineseTextsToEnglish, translateKeywordToChinese } from './googleTranslate.js';
 import {
   buildChineseShoppingQuery,
   buildShoppingSearchContext,
@@ -61,24 +61,29 @@ async function translateProductDisplayText(text: any): Promise<string | undefine
 
 async function applyEnglishDisplayTranslations(detail: ProductDetail): Promise<ProductDetail> {
   const originalTitle = detail.title;
-  const translatedTitle = await translateProductDisplayText(originalTitle);
+  const sourceLabels = Array.isArray(detail.skus) && detail.skus.length > 0
+    ? Array.from(new Set(
+        detail.skus
+          .map((sku: any) => String(sku?.props_names || sku?.name || sku?.title || sku?.label || '').trim())
+          .filter(Boolean),
+      ))
+    : [];
+  const translationInputs = [originalTitle, ...sourceLabels].filter(Boolean);
+  if (!translationInputs.length) return detail;
+
+  const translatedValues = await translateChineseTextsToEnglish(translationInputs);
+  const translatedTitle = translatedValues[0];
   if (translatedTitle && translatedTitle !== originalTitle) {
     detail.titleOrigin = originalTitle;
     detail.title = translatedTitle;
   }
 
-  if (Array.isArray(detail.skus) && detail.skus.length > 0) {
+  if (sourceLabels.length > 0 && Array.isArray(detail.skus) && detail.skus.length > 0) {
     const labelBySource = new Map<string, string>();
-    const sourceLabels = Array.from(new Set(
-      detail.skus
-        .map((sku: any) => String(sku?.props_names || sku?.name || sku?.title || sku?.label || '').trim())
-        .filter(Boolean),
-    ));
-
-    await Promise.all(sourceLabels.map(async (sourceLabel) => {
-      const translated = await translateProductDisplayText(sourceLabel);
+    sourceLabels.forEach((sourceLabel, index) => {
+      const translated = translatedValues[index + 1];
       if (translated) labelBySource.set(sourceLabel, translated);
-    }));
+    });
 
     detail.skus = detail.skus.map((sku: any) => {
       const sourceLabel = String(sku?.props_names || sku?.name || sku?.title || sku?.label || '').trim();
@@ -130,7 +135,93 @@ async function translateProductCardTitle(card: ProductCard): Promise<ProductCard
 }
 
 export async function translateProductCardTitles(cards: ProductCard[]): Promise<ProductCard[]> {
-  return Promise.all(cards.map(translateProductCardTitle));
+  const uniqueTitles = Array.from(new Set(
+    cards
+      .map((card) => String(card?.title || '').trim())
+      .filter(Boolean),
+  ));
+  const translatedTitles = await translateChineseTextsToEnglish(uniqueTitles);
+  const titleMap = new Map<string, string>();
+  uniqueTitles.forEach((title, index) => {
+    const translated = translatedTitles[index];
+    if (translated) titleMap.set(title, translated);
+  });
+
+  return Promise.all(cards.map(async (card) => {
+    const translatedTitle = titleMap.get(String(card?.title || '').trim());
+    if (!translatedTitle || translatedTitle === card.title) return card;
+
+    const translatedCard = {
+      ...card,
+      title: translatedTitle,
+      titleOrigin: card.titleOrigin || card.title,
+    };
+
+    if (translatedCard.externalId) {
+      prisma.externalCatalogItem.updateMany({
+        where: {
+          source: SOURCE,
+          external_id: translatedCard.externalId,
+        },
+        data: {
+          title_en: translatedTitle,
+          title: translatedTitle,
+        },
+      }).catch((error: any) => {
+        console.warn('[Shopping Service] Failed to persist translated card title:', {
+          externalId: translatedCard.externalId,
+          error: error.message,
+        });
+      });
+    }
+
+    return translatedCard;
+  }));
+}
+
+function overlayEnglishDisplayDetail(base: ProductDetail, englishOverlay: ProductDetail | null | undefined): ProductDetail {
+  if (!englishOverlay) return base;
+
+  if (englishOverlay.title && englishOverlay.title !== base.title) {
+    base.titleOrigin = base.titleOrigin || base.title;
+    base.title = englishOverlay.title;
+  }
+
+  const englishSkus = Array.isArray(englishOverlay.skus) ? englishOverlay.skus : [];
+  if (!englishSkus.length || !Array.isArray(base.skus) || !base.skus.length) return base;
+
+  const englishById = new Map<string, any>();
+  for (const sku of englishSkus) {
+    const keys = [
+      String(sku?.specid || '').trim(),
+      String(sku?.skuid || '').trim(),
+      String(sku?.skuId || '').trim(),
+    ].filter(Boolean);
+    for (const key of keys) englishById.set(key, sku);
+  }
+
+  base.skus = base.skus.map((sku: any, index: number) => {
+    const keys = [
+      String(sku?.specid || '').trim(),
+      String(sku?.skuid || '').trim(),
+      String(sku?.skuId || '').trim(),
+    ].filter(Boolean);
+    const overlay = keys.map((key) => englishById.get(key)).find(Boolean) || englishSkus[index];
+    if (!overlay) return sku;
+
+    const overlayLabel = String(overlay?.props_names || overlay?.label || overlay?.name || overlay?.title || '').trim();
+    if (!overlayLabel || overlayLabel === String(sku?.props_names || sku?.label || '').trim()) return sku;
+
+    return {
+      ...sku,
+      props_names_origin: sku?.props_names || overlayLabel,
+      props_names: overlayLabel,
+      label_origin: sku?.label || undefined,
+      label: overlayLabel,
+    };
+  });
+
+  return base;
 }
 
 function applyPercent(value: number | undefined, percent: number): number | undefined {
@@ -1136,7 +1227,11 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
     if (cached.title_en) {
       normalized.title = cached.title_en;
     }
-    await applyEnglishDisplayTranslations(normalized);
+    if (Array.isArray(cached.skus_json) && cached.skus_json.length > 0) {
+      normalized.skus = JSON.parse(JSON.stringify(cached.skus_json));
+    } else {
+      await applyEnglishDisplayTranslations(normalized);
+    }
     const markedCachedDetail = await applyMarkupToDetail(normalized);
 
     if (ratings && ratings.list && ratings.list.length > 0) {
@@ -1201,15 +1296,29 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
   }
 
   let itemData: any;
+  let englishItemData: any = null;
   try {
-    // Call TMAPI - use multilingual API if language is 'en', otherwise use regular API
-    const response = language === 'en'
-      ? await tmapiClient.getItemDetailMultilingual(externalId, language)
-      : await tmapiClient.getItemDetail(externalId);
-    // TMAPI response structure: { code: 200, msg: "success", data: { ...item data... } }
-    // The client returns response.data (the full TMAPI response), so response is already { code, msg, data }
-    // So we need response.data to get the actual item data object (the inner data field)
-    itemData = response.data?.data || response.data || response;
+    if (language === 'en') {
+      const response = await tmapiClient.getItemDetailMultilingual(externalId, 'en');
+      itemData = response.data?.data || response.data || response;
+    } else {
+      const needsEnglishOverlay = !cached?.title_en || !Array.isArray(cached?.skus_json) || cached.skus_json.length === 0;
+      const [nativeResponse, englishResponse] = await Promise.all([
+        tmapiClient.getItemDetail(externalId),
+        needsEnglishOverlay
+          ? tmapiClient.getItemDetailMultilingual(externalId, 'en').catch((error: any) => {
+              console.warn('[Shopping Service] TMAPI multilingual detail overlay failed:', {
+                externalId,
+                message: error.message,
+              });
+              return null;
+            })
+          : Promise.resolve(null),
+      ]);
+
+      itemData = nativeResponse.data?.data || nativeResponse.data || nativeResponse;
+      englishItemData = englishResponse?.data?.data || englishResponse?.data || englishResponse || null;
+    }
   } catch (error: any) {
     console.warn('[Shopping Service] Live TMAPI item detail request failed, using cached fallback if available:', {
       externalId,
@@ -1241,6 +1350,10 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
 
   // Normalize to extract data (pass description if fetched)
   const normalized = normalizeProductDetail(itemData, description);
+  if (language !== 'en' && englishItemData) {
+    const normalizedEnglishOverlay = normalizeProductDetail(englishItemData, null);
+    overlayEnglishDisplayDetail(normalized, normalizedEnglishOverlay);
+  }
   await applyEnglishDisplayTranslations(normalized);
   const markedDetail = await applyMarkupToDetail(normalized);
 
