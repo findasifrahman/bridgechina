@@ -146,10 +146,15 @@ async function getTmapiMarkupPercent(): Promise<number> {
   }
 
   try {
-    const setting = await prisma.sourceMarkupSetting.findUnique({
-      where: { source_kind: SOURCE },
-    });
-    const percent = setting?.percent_rate ?? 0;
+    const [tmapiSetting, legacySetting] = await Promise.all([
+      prisma.sourceMarkupSetting.findUnique({
+        where: { source_kind: SOURCE },
+      }),
+      prisma.sourceMarkupSetting.findUnique({
+        where: { source_kind: 'shopping_otapi' },
+      }),
+    ]);
+    const percent = tmapiSetting?.percent_rate ?? legacySetting?.percent_rate ?? 0;
     markupCache = { percent, fetchedAt: now };
     return percent;
   } catch {

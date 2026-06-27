@@ -1210,9 +1210,15 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get('/profit-markup', { preHandler: auth }, async () => {
-    return prisma.sourceMarkupSetting.findUnique({
-      where: { source_kind: 'shopping_otapi' },
-    });
+    const [tmapiSetting, otapiSetting] = await Promise.all([
+      prisma.sourceMarkupSetting.findUnique({
+        where: { source_kind: 'tmapi_1688' },
+      }),
+      prisma.sourceMarkupSetting.findUnique({
+        where: { source_kind: 'shopping_otapi' },
+      }),
+    ]);
+    return tmapiSetting || otapiSetting;
   });
 
   fastify.get('/moq-rule', { preHandler: auth }, async () => {
@@ -1307,17 +1313,35 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       percent_rate: z.number().min(0),
     }).parse(request.body);
 
-    return prisma.sourceMarkupSetting.upsert({
-      where: { source_kind: 'shopping_otapi' },
-      update: {
-        percent_rate: body.percent_rate,
-        updated_by: req.user.id,
-      },
-      create: {
-        source_kind: 'shopping_otapi',
-        percent_rate: body.percent_rate,
-        updated_by: req.user.id,
-      },
+    await prisma.$transaction([
+      prisma.sourceMarkupSetting.upsert({
+        where: { source_kind: 'shopping_otapi' },
+        update: {
+          percent_rate: body.percent_rate,
+          updated_by: req.user.id,
+        },
+        create: {
+          source_kind: 'shopping_otapi',
+          percent_rate: body.percent_rate,
+          updated_by: req.user.id,
+        },
+      }),
+      prisma.sourceMarkupSetting.upsert({
+        where: { source_kind: 'tmapi_1688' },
+        update: {
+          percent_rate: body.percent_rate,
+          updated_by: req.user.id,
+        },
+        create: {
+          source_kind: 'tmapi_1688',
+          percent_rate: body.percent_rate,
+          updated_by: req.user.id,
+        },
+      }),
+    ]);
+
+    return prisma.sourceMarkupSetting.findUnique({
+      where: { source_kind: 'tmapi_1688' },
     });
   });
 

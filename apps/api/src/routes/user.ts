@@ -15,6 +15,21 @@ const authPreHandler = [async (request: FastifyRequest, reply: FastifyReply) => 
   await fastify.authenticate(request, reply);
 }];
 
+const nullableOptionalString = z.preprocess(
+  (value) => value == null ? undefined : value,
+  z.string().optional(),
+);
+
+const nullableOptionalPositiveNumber = z.preprocess(
+  (value) => value == null ? undefined : value,
+  z.number().positive().optional(),
+);
+
+const nullableOptionalNonNegativeNumber = z.preprocess(
+  (value) => value == null ? undefined : value,
+  z.number().min(0).optional(),
+);
+
 function normalizeBangladeshPhone(phone: string) {
   const digits = phone.replace(/\D/g, '');
   if (digits.startsWith('8801') && digits.length === 13) return `+${digits}`;
@@ -71,24 +86,24 @@ const checkoutItemSchema = z.object({
   externalId: z.string().min(1),
   title: z.string().min(1),
   qty: z.number().int().positive(),
-  priceMin: z.number().positive().optional(),
-  priceMax: z.number().positive().optional(),
-  imageUrl: z.string().optional(),
-  sourceUrl: z.string().optional(),
-  productUrl: z.string().optional(),
-  sellerName: z.string().optional(),
-  vendorId: z.string().optional(),
-  shopUrl: z.string().optional(),
+  priceMin: nullableOptionalPositiveNumber,
+  priceMax: nullableOptionalPositiveNumber,
+  imageUrl: nullableOptionalString,
+  sourceUrl: nullableOptionalString,
+  productUrl: nullableOptionalString,
+  sellerName: nullableOptionalString,
+  vendorId: nullableOptionalString,
+  shopUrl: nullableOptionalString,
   skuDetails: z.array(z.object({
     specId: z.string().min(1),
     qty: z.number().int().positive(),
     sku: z.any().optional(),
-    label: z.string().optional(),
-    sourceUnitPrice: z.number().positive().optional(),
-    displayUnitPrice: z.number().positive().optional(),
+    label: nullableOptionalString,
+    sourceUnitPrice: nullableOptionalPositiveNumber,
+    displayUnitPrice: nullableOptionalPositiveNumber,
   })).optional(),
-  selectedShippingMethod: z.string().optional(),
-  estimatedWeight: z.number().min(0).optional(),
+  selectedShippingMethod: nullableOptionalString,
+  estimatedWeight: nullableOptionalNonNegativeNumber,
 });
 
 function sanitizeSkuDetails(value: z.infer<typeof checkoutItemSchema>['skuDetails']) {
