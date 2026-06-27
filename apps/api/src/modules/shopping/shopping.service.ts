@@ -29,6 +29,7 @@ import {
 } from './search.synonyms.js';
 const SOURCE = 'tmapi_1688';
 const MENU_CACHE_TTL_MINUTES = 60 * 24 * 7;
+let markupCache: { percent: number; fetchedAt: number } = { percent: 0, fetchedAt: 0 };
 
 // Singleflight: collapse concurrent identical TMAPI requests into one
 const _inFlight = new Map<string, Promise<any>>();
@@ -130,6 +131,66 @@ async function translateProductCardTitle(card: ProductCard): Promise<ProductCard
 
 export async function translateProductCardTitles(cards: ProductCard[]): Promise<ProductCard[]> {
   return Promise.all(cards.map(translateProductCardTitle));
+}
+
+function applyPercent(value: number | undefined, percent: number): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return value;
+  return Number((value * (1 + percent / 100)).toFixed(2));
+}
+
+async function getTmapiMarkupPercent(): Promise<number> {
+  const ttl = 5 * 60 * 1000;
+  const now = Date.now();
+  if (now - markupCache.fetchedAt < ttl) {
+    return markupCache.percent;
+  }
+
+  try {
+    const setting = await prisma.sourceMarkupSetting.findUnique({
+      where: { source_kind: SOURCE },
+    });
+    const percent = setting?.percent_rate ?? 0;
+    markupCache = { percent, fetchedAt: now };
+    return percent;
+  } catch {
+    return markupCache.percent;
+  }
+}
+
+async function applyMarkupToCards(cards: ProductCard[]): Promise<ProductCard[]> {
+  const percent = await getTmapiMarkupPercent();
+  const marked = percent
+    ? cards.map((card) => ({
+        ...card,
+        priceMin: applyPercent(card.priceMin, percent),
+        priceMax: applyPercent(card.priceMax, percent),
+      }))
+    : cards;
+  return filterPricedCards(marked);
+}
+
+async function applyMarkupToDetail(detail: ProductDetail): Promise<ProductDetail> {
+  const percent = await getTmapiMarkupPercent();
+  if (!percent) return detail;
+
+  const markedSkus = Array.isArray(detail.skus)
+    ? detail.skus.map((sku: any) => ({
+        ...sku,
+        sale_price: applyPercent(typeof sku?.sale_price === 'number' ? sku.sale_price : Number(sku?.sale_price || 0), percent) ?? sku?.sale_price,
+        price: applyPercent(typeof sku?.price === 'number' ? sku.price : Number(sku?.price || 0), percent) ?? sku?.price,
+      }))
+    : detail.skus;
+
+  return {
+    ...detail,
+    priceMin: applyPercent(detail.priceMin, percent),
+    priceMax: applyPercent(detail.priceMax, percent),
+    skus: markedSkus,
+    tieredPricing: detail.tieredPricing?.map((tier) => ({
+      ...tier,
+      price: applyPercent(tier.price, percent) ?? tier.price,
+    })),
+  };
 }
 
 const CURATED_CATEGORY_DEFS = [
@@ -416,7 +477,7 @@ export async function searchByKeyword(
     // getCachedSearch returns cached.results_json, which is the full TMAPI response
     // Structure: { code: 200, msg: "success", data: { items: [...], total_count: ... } }
     const items = cached?.data?.items || cached?.items || [];
-    const normalized = normalizeProductCards(items);
+    const normalized = await applyMarkupToCards(normalizeProductCards(items));
     const totalCount = cached?.data?.total_count || normalized.length;
     const totalPages = Math.ceil(totalCount / pageSize);
     const hasNextPage = page < totalPages;
@@ -468,7 +529,7 @@ export async function searchByKeyword(
     // So we need response.data.items (not response.data.data.items)
     const items = response.data?.items || response.items || response.result || [];
     console.log('[Shopping Service] Extracted items count:', items.length);
-    const normalized = normalizeProductCards(items);
+    const normalized = await applyMarkupToCards(normalizeProductCards(items));
     const totalCount = response.data?.total_count || normalized.length;
     const totalPages = Math.ceil(totalCount / pageSize);
 
@@ -536,8 +597,9 @@ export async function searchByKeyword(
       
       // Apply pagination
       const start = (page - 1) * pageSize;
-      const paginated = normalized.slice(start, start + pageSize);
-      const totalCount = normalized.length;
+      const marked = await applyMarkupToCards(normalized);
+      const paginated = marked.slice(start, start + pageSize);
+      const totalCount = marked.length;
       const totalPages = Math.ceil(totalCount / pageSize);
       
       if (paginated.length > 0) {
@@ -1070,6 +1132,7 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
       normalized.title = cached.title_en;
     }
     await applyEnglishDisplayTranslations(normalized);
+    const markedCachedDetail = await applyMarkupToDetail(normalized);
 
     if (ratings && ratings.list && ratings.list.length > 0) {
       const ratingsList = ratings.list;
@@ -1129,7 +1192,7 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
       ],
     };
     
-    return normalized;
+    return markedCachedDetail;
   }
 
   let itemData: any;
@@ -1152,7 +1215,7 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
     });
 
     if (cachedFallback) {
-      return applyEnglishDisplayTranslations(cachedFallback);
+      return applyMarkupToDetail(await applyEnglishDisplayTranslations(cachedFallback));
     }
 
     throw error;
@@ -1174,6 +1237,7 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
   // Normalize to extract data (pass description if fetched)
   const normalized = normalizeProductDetail(itemData, description);
   await applyEnglishDisplayTranslations(normalized);
+  const markedDetail = await applyMarkupToDetail(normalized);
 
   // Enhance with ratings if available
   if (ratings && ratings.list && ratings.list.length > 0) {
@@ -1248,25 +1312,25 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
       create: {
         source: SOURCE,
         external_id: externalId,
-        title: normalized.title,
-        title_en: normalized.title,
-        price_min: normalized.priceMin,
-        price_max: normalized.priceMax,
-        currency: normalized.currency,
-        main_images: normalized.images ? JSON.parse(JSON.stringify(normalized.images)) : null,
-        skus_json: normalized.skus ? JSON.parse(JSON.stringify(normalized.skus)) : null,
-        source_url: normalized.sourceUrl,
+        title: markedDetail.title,
+        title_en: markedDetail.title,
+        price_min: markedDetail.priceMin,
+        price_max: markedDetail.priceMax,
+        currency: markedDetail.currency,
+        main_images: markedDetail.images ? JSON.parse(JSON.stringify(markedDetail.images)) : null,
+        skus_json: markedDetail.skus ? JSON.parse(JSON.stringify(markedDetail.skus)) : null,
+        source_url: markedDetail.sourceUrl,
         raw_json: rawJsonToCache as any,
         expires_at: expiresAt,
       },
       update: {
-        title: normalized.title,
-        title_en: normalized.title,
-        price_min: normalized.priceMin,
-        price_max: normalized.priceMax,
-        main_images: normalized.images ? JSON.parse(JSON.stringify(normalized.images)) : null,
-        skus_json: normalized.skus ? JSON.parse(JSON.stringify(normalized.skus)) : null,
-        source_url: normalized.sourceUrl,
+        title: markedDetail.title,
+        title_en: markedDetail.title,
+        price_min: markedDetail.priceMin,
+        price_max: markedDetail.priceMax,
+        main_images: markedDetail.images ? JSON.parse(JSON.stringify(markedDetail.images)) : null,
+        skus_json: markedDetail.skus ? JSON.parse(JSON.stringify(markedDetail.skus)) : null,
+        source_url: markedDetail.sourceUrl,
         raw_json: rawJsonToCache as any,
         expires_at: expiresAt,
         last_synced_at: new Date(),
@@ -1295,13 +1359,13 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
           await prisma.externalCatalogItem.update({
             where: { id: existing.id },
             data: {
-              title: normalized.title,
-              title_en: normalized.title,
-              price_min: normalized.priceMin,
-              price_max: normalized.priceMax,
-              main_images: normalized.images ? JSON.parse(JSON.stringify(normalized.images)) : null,
-              skus_json: normalized.skus ? JSON.parse(JSON.stringify(normalized.skus)) : null,
-              source_url: normalized.sourceUrl,
+              title: markedDetail.title,
+              title_en: markedDetail.title,
+              price_min: markedDetail.priceMin,
+              price_max: markedDetail.priceMax,
+              main_images: markedDetail.images ? JSON.parse(JSON.stringify(markedDetail.images)) : null,
+              skus_json: markedDetail.skus ? JSON.parse(JSON.stringify(markedDetail.skus)) : null,
+              source_url: markedDetail.sourceUrl,
               raw_json: rawJsonToCache as any,
               expires_at: expiresAt,
               last_synced_at: new Date(),
@@ -1312,14 +1376,14 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
             data: {
               source: SOURCE,
               external_id: externalId,
-              title: normalized.title,
-              title_en: normalized.title,
-              price_min: normalized.priceMin,
-              price_max: normalized.priceMax,
-              currency: normalized.currency,
-              main_images: normalized.images ? JSON.parse(JSON.stringify(normalized.images)) : null,
-              skus_json: normalized.skus ? JSON.parse(JSON.stringify(normalized.skus)) : null,
-              source_url: normalized.sourceUrl,
+              title: markedDetail.title,
+              title_en: markedDetail.title,
+              price_min: markedDetail.priceMin,
+              price_max: markedDetail.priceMax,
+              currency: markedDetail.currency,
+              main_images: markedDetail.images ? JSON.parse(JSON.stringify(markedDetail.images)) : null,
+              skus_json: markedDetail.skus ? JSON.parse(JSON.stringify(markedDetail.skus)) : null,
+              source_url: markedDetail.sourceUrl,
               raw_json: rawJsonToCache as any,
               expires_at: expiresAt,
             },
@@ -1346,10 +1410,10 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
                     main_images = $5, skus_json = $6, source_url = $7, raw_json = $8, expires_at = $9, 
                     last_synced_at = $10, updated_at = $11
                 WHERE id = $12
-              `, normalized.title, normalized.title, normalized.priceMin, normalized.priceMax,
-                 normalized.images ? JSON.stringify(normalized.images) : null,
-                 normalized.skus ? JSON.stringify(normalized.skus) : null,
-                 normalized.sourceUrl, JSON.stringify(rawJsonToCache),
+              `, markedDetail.title, markedDetail.title, markedDetail.priceMin, markedDetail.priceMax,
+                 markedDetail.images ? JSON.stringify(markedDetail.images) : null,
+                 markedDetail.skus ? JSON.stringify(markedDetail.skus) : null,
+                 markedDetail.sourceUrl, JSON.stringify(rawJsonToCache),
                  expiresAt, new Date(), now, existingItem.id);
             } else {
               await prisma.$executeRawUnsafe(`
@@ -1357,11 +1421,11 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
                 (id, source, external_id, title, title_en, price_min, price_max, currency,
                  main_images, skus_json, source_url, raw_json, expires_at, created_at, updated_at)
                 VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-              `, SOURCE, externalId, normalized.title, normalized.title, normalized.priceMin, normalized.priceMax,
-                 normalized.currency || 'CNY',
-                 normalized.images ? JSON.stringify(normalized.images) : null,
-                 normalized.skus ? JSON.stringify(normalized.skus) : null,
-                 normalized.sourceUrl, JSON.stringify(rawJsonToCache),
+              `, SOURCE, externalId, markedDetail.title, markedDetail.title, markedDetail.priceMin, markedDetail.priceMax,
+                 markedDetail.currency || 'CNY',
+                 markedDetail.images ? JSON.stringify(markedDetail.images) : null,
+                 markedDetail.skus ? JSON.stringify(markedDetail.skus) : null,
+                 markedDetail.sourceUrl, JSON.stringify(rawJsonToCache),
                  expiresAt, now, now);
             }
           } catch (rawError: any) {
@@ -1385,7 +1449,7 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
     }
   }
 
-  return normalized;
+  return markedDetail;
 }
 
 /**
@@ -1430,7 +1494,7 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
       const cached: any = cachedMap.get(hotItem.external_id);
       if (cached && cached.raw_json) {
         // Use cached data
-        const normalized = normalizeProductDetail(cached.raw_json as any);
+        const normalized = await applyMarkupToDetail(normalizeProductDetail(cached.raw_json as any));
         // Override title with English if available
         if (cached.title_en) {
           normalized.title = cached.title_en;
@@ -1473,10 +1537,10 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
         console.error('[Shopping Service] Error fetching search cache:', error);
       }
 
-      const buckets = buildSearchCacheBuckets(recentSearches).map((bucket) => ({
+      const buckets = await Promise.all(buildSearchCacheBuckets(recentSearches).map(async (bucket) => ({
         entry: bucket.entry,
-        items: normalizeProductCards(bucket.items),
-      }));
+        items: await applyMarkupToCards(normalizeProductCards(bucket.items)),
+      })));
 
       let round = 0;
       while (items.length < pageSize) {
@@ -1515,7 +1579,7 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
           let normalized: ProductCard;
           
           if (cached.raw_json) {
-            normalized = normalizeProductDetail(cached.raw_json as any);
+            normalized = await applyMarkupToDetail(normalizeProductDetail(cached.raw_json as any));
             if (cached.title_en) {
               normalized.title = cached.title_en;
             }
@@ -1548,8 +1612,14 @@ export async function getHotItems(categorySlug?: string, page: number = 1, pageS
             }
           }
           
-          items.push(normalized);
-          existingIds.add(normalized.externalId);
+          const markedCard = 'skus' in normalized
+            ? normalized
+            : (await applyMarkupToCards([normalized]))[0];
+          if (!markedCard || !hasDisplayablePrice(markedCard)) {
+            continue;
+          }
+          items.push(markedCard);
+          existingIds.add(markedCard.externalId);
           
           if (items.length >= pageSize) break;
         } catch (error) {

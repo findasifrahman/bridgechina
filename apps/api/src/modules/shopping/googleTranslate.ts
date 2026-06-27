@@ -14,6 +14,15 @@ interface CacheEntry {
 const memoryCache = new Map<string, CacheEntry>();
 const MEMORY_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
+export function googleTranslateConfigStatus() {
+  const apiKey = process.env.GOOGLE_LANGUAGE_API_KEY || '';
+  return {
+    configured: Boolean(apiKey),
+    keyPrefix: apiKey ? apiKey.slice(0, 6) : null,
+    keySuffix: apiKey ? apiKey.slice(-4) : null,
+  };
+}
+
 /**
  * Normalize source text for cache key
  */
@@ -74,7 +83,10 @@ async function translateWithGoogle(text: string, target: string, source?: string
       console.error('[Google Translate] API error:', {
         status: response.status,
         statusText: response.statusText,
-        error: errorText,
+        error: errorText.slice(0, 1000),
+        hint: response.status === 403
+          ? 'Google rejected the API key. Check Cloud Translation API enablement, billing, API restrictions, and application restrictions for server-side Railway requests.'
+          : undefined,
       });
       throw new Error(`Google Translate API error: ${response.status}`);
     }

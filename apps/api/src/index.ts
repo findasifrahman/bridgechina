@@ -16,6 +16,7 @@ import userRoutes from './routes/user.js';
 import sellerRoutes from './routes/seller.js';
 import adminRoutes from './routes/admin.js';
 import { mailerConfigStatus } from './utils/mailer.js';
+import { googleTranslateConfigStatus } from './modules/shopping/googleTranslate.js';
 
 dotenv.config();
 
@@ -80,6 +81,7 @@ fastify.get('/health', async () => ({
   status: 'ok',
   timestamp: new Date().toISOString(),
   mailer: mailerConfigStatus(),
+  googleTranslate: googleTranslateConfigStatus(),
 }));
 
 await fastify.register(publicRoutes, { prefix: '/api/public' });
