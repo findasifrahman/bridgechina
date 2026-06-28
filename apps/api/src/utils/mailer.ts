@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
+import { lookup as dnsLookup } from 'node:dns';
 
 type MailPayload = {
   to: string;
@@ -74,6 +75,9 @@ function createTransport() {
     secure: config.port === 465,
     name: host,
     family: config.family,
+    lookup(hostname, _options, callback) {
+      dnsLookup(hostname, { family: config.family || 4, all: false }, callback);
+    },
     connectionTimeout: Number(envValue('SMTP_CONNECTION_TIMEOUT_MS') || 10000),
     greetingTimeout: Number(envValue('SMTP_GREETING_TIMEOUT_MS') || 10000),
     socketTimeout: Number(envValue('SMTP_SOCKET_TIMEOUT_MS') || 15000),
