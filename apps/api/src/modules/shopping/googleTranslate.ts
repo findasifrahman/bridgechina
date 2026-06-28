@@ -1,11 +1,10 @@
 /**
- * Google Translate integration with DB + LRU caching
- * Reuses translations to control API costs
+ * Azure Translator integration with DB + process memory caching.
+ * The filename is kept for existing imports; the provider is Azure.
  */
 
 import { prisma } from '../../lib/prisma.js';
 
-// In-memory LRU cache (process-level)
 interface CacheEntry {
   translated: string;
   expiresAt: number;
@@ -17,66 +16,53 @@ interface PersistedTranslationRow {
   provider: string;
 }
 
-const memoryCache = new Map<string, CacheEntry>();
-const MEMORY_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-const DAILY_USAGE_SETTINGS_KEY = 'google_translate_daily_usage';
-const DAILY_CHAR_LIMIT = Number(process.env.GOOGLE_TRANSLATE_DAILY_CHAR_LIMIT || 18000);
-const DAILY_CHAR_RESERVE = Number(process.env.GOOGLE_TRANSLATE_DAILY_CHAR_RESERVE || 2000);
-
 type TranslateUsageState = {
   date: string;
   chars: number;
   requests: number;
 };
 
+const memoryCache = new Map<string, CacheEntry>();
+const MEMORY_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const DAILY_USAGE_SETTINGS_KEY = 'azure_translate_daily_usage';
+const DAILY_CHAR_LIMIT = Number(process.env.AZURE_TRANSLATE_DAILY_CHAR_LIMIT || process.env.GOOGLE_TRANSLATE_DAILY_CHAR_LIMIT || 18000);
+const DAILY_CHAR_RESERVE = Number(process.env.AZURE_TRANSLATE_DAILY_CHAR_RESERVE || process.env.GOOGLE_TRANSLATE_DAILY_CHAR_RESERVE || 2000);
+const PROVIDER = 'azure';
+
 let usageCache: { value: TranslateUsageState; expiresAt: number } | null = null;
 
 export function googleTranslateConfigStatus() {
-  const apiKey = process.env.GOOGLE_LANGUAGE_API_KEY || '';
+  const key = process.env.AZURE_TRANSLATE_KEY || '';
+  const endpoint = process.env.AZURE_TRANSLATE_ENDPOINT || '';
   return {
-    configured: Boolean(apiKey),
-    keyPrefix: apiKey ? apiKey.slice(0, 6) : null,
-    keySuffix: apiKey ? apiKey.slice(-4) : null,
+    provider: PROVIDER,
+    configured: Boolean(key && endpoint),
+    endpoint: endpoint ? 'set' : 'missing',
+    region: process.env.AZURE_TRANSLATE_REGION ? 'set' : 'missing',
+    keyPrefix: key ? key.slice(0, 6) : null,
+    keySuffix: key ? key.slice(-4) : null,
   };
 }
 
-/**
- * Normalize source text for cache key
- */
 function normalizeSourceText(text: string): string {
   return text
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, ' ') // Collapse whitespace
-    .replace(/[^\w\s\u4e00-\u9fff]/g, '') // Remove punctuation except Chinese chars
-    .substring(0, 200); // Limit length
+    .replace(/\s+/g, ' ')
+    .replace(/[^\w\s\u4e00-\u9fff]/g, '')
+    .substring(0, 220);
 }
 
-/**
- * Check if text contains mostly Latin characters (needs translation)
- */
-function hasChineseCharacters(text: string): boolean {
-  return /[\u4e00-\u9fff]/.test(text);
+export function hasChineseCharacters(text: string): boolean {
+  return /[\u4e00-\u9fff]/.test(String(text || ''));
 }
 
 function hasMeaningfulTranslatableChinese(text: string): boolean {
   if (!hasChineseCharacters(text)) return false;
-  const stripped = text
+  const stripped = String(text || '')
     .replace(/[\d\s\-_/|()[\]{}.,:;+*"'`~!?@#$%^&=<>]+/g, '')
     .replace(/[A-Za-z]+/g, '');
   return /[\u4e00-\u9fff]/.test(stripped);
-}
-
-function needsTranslation(text: string): boolean {
-  const normalized = text.trim();
-  if (!normalized) return false;
-  
-  // Count Chinese characters
-  const chineseChars = (normalized.match(/[\u4e00-\u9fff]/g) || []).length;
-  const totalChars = normalized.length;
-  
-  // If less than 30% are Chinese, consider it non-Chinese
-  return chineseChars / totalChars < 0.3;
 }
 
 function getUsageDateKey(): string {
@@ -91,40 +77,18 @@ function getUsageDateKey(): string {
 }
 
 async function getDailyUsage(forceRefresh = false): Promise<TranslateUsageState> {
-  if (!forceRefresh && usageCache && usageCache.expiresAt > Date.now()) {
-    return usageCache.value;
-  }
+  if (!forceRefresh && usageCache && usageCache.expiresAt > Date.now()) return usageCache.value;
 
   const today = getUsageDateKey();
   const row = await prisma.siteSetting.findUnique({ where: { key: DAILY_USAGE_SETTINGS_KEY } }).catch(() => null);
   const raw = row?.value_json as Partial<TranslateUsageState> | undefined;
   const value: TranslateUsageState = {
-    date: raw?.date === today ? today : today,
+    date: today,
     chars: raw?.date === today ? Number(raw?.chars || 0) : 0,
     requests: raw?.date === today ? Number(raw?.requests || 0) : 0,
   };
   usageCache = { value, expiresAt: Date.now() + 60 * 1000 };
   return value;
-}
-
-async function recordDailyUsage(chars: number): Promise<void> {
-  if (!chars || chars <= 0) return;
-  const current = await getDailyUsage();
-  const next: TranslateUsageState = {
-    date: current.date,
-    chars: current.chars + chars,
-    requests: current.requests + 1,
-  };
-
-  usageCache = { value: next, expiresAt: Date.now() + 60 * 1000 };
-
-  await prisma.siteSetting.upsert({
-    where: { key: DAILY_USAGE_SETTINGS_KEY },
-    create: { key: DAILY_USAGE_SETTINGS_KEY, value_json: next },
-    update: { value_json: next },
-  }).catch((error: any) => {
-    console.warn('[Google Translate] Failed to persist usage stats:', error.message);
-  });
 }
 
 async function hasBudgetFor(chars: number): Promise<boolean> {
@@ -133,103 +97,101 @@ async function hasBudgetFor(chars: number): Promise<boolean> {
   return current.chars + chars <= limit;
 }
 
-/**
- * Translate text from English to Chinese using Google Translate API
- */
-async function translateWithGoogleBatch(texts: string[], target: string, source?: string): Promise<string[]> {
-  const apiKey = process.env.GOOGLE_LANGUAGE_API_KEY;
-  if (!apiKey) {
-    console.warn('[Google Translate] GOOGLE_LANGUAGE_API_KEY not set, skipping translation');
+async function recordDailyUsage(chars: number): Promise<void> {
+  if (chars <= 0) return;
+  const current = await getDailyUsage();
+  const next = {
+    date: current.date,
+    chars: current.chars + chars,
+    requests: current.requests + 1,
+  };
+  usageCache = { value: next, expiresAt: Date.now() + 60 * 1000 };
+  await prisma.siteSetting.upsert({
+    where: { key: DAILY_USAGE_SETTINGS_KEY },
+    create: { key: DAILY_USAGE_SETTINGS_KEY, value_json: next },
+    update: { value_json: next },
+  }).catch((error: any) => {
+    console.warn('[Azure Translator] Failed to persist usage stats:', error.message);
+  });
+}
+
+function buildAzureTranslateUrl(endpoint: string): string {
+  const normalized = endpoint.replace(/\/+$/, '');
+  return `${normalized}/translate?api-version=3.0&from=zh-Hans&to=en`;
+}
+
+async function translateWithAzureBatch(texts: string[]): Promise<string[]> {
+  const key = process.env.AZURE_TRANSLATE_KEY;
+  const endpoint = process.env.AZURE_TRANSLATE_ENDPOINT;
+  if (!key || !endpoint) {
+    console.warn('[Azure Translator] AZURE_TRANSLATE_KEY or AZURE_TRANSLATE_ENDPOINT not set, skipping translation');
     return texts;
   }
 
-  if (texts.length === 0) return [];
-
-  const totalChars = texts.reduce((sum, text) => sum + text.length, 0);
-  const allowed = await hasBudgetFor(totalChars);
-  if (!allowed) {
-    console.warn('[Google Translate] Daily character budget nearly exhausted, skipping translation batch', {
+  const candidates = texts.map((text) => String(text || '').trim());
+  const totalChars = candidates.reduce((sum, text) => sum + text.length, 0);
+  if (!candidates.length || totalChars <= 0) return candidates;
+  if (!(await hasBudgetFor(totalChars))) {
+    console.warn('[Azure Translator] Daily character budget nearly exhausted, skipping translation batch', {
       totalChars,
       dailyLimit: DAILY_CHAR_LIMIT,
       reserve: DAILY_CHAR_RESERVE,
     });
-    return texts;
+    return candidates;
   }
 
   try {
-    const url = `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`;
-    const response = await fetch(url, {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Ocp-Apim-Subscription-Key': key,
+    };
+    if (process.env.AZURE_TRANSLATE_REGION) {
+      headers['Ocp-Apim-Subscription-Region'] = process.env.AZURE_TRANSLATE_REGION;
+    }
+
+    const response = await fetch(buildAzureTranslateUrl(endpoint), {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        q: texts,
-        ...(source ? { source } : {}),
-        target,
-      }),
+      headers,
+      body: JSON.stringify(candidates.map((text) => ({ text }))),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[Google Translate] API error:', {
+      console.error('[Azure Translator] API error:', {
         status: response.status,
         statusText: response.statusText,
         error: errorText.slice(0, 1000),
-        hint: response.status === 403
-          ? 'Google rejected the API key. Check Cloud Translation API enablement, billing, API restrictions, and application restrictions for server-side Railway requests.'
-          : undefined,
       });
-      return texts;
+      return candidates;
     }
 
-    const data = await response.json() as {
-      data?: {
-        translations?: Array<{ translatedText?: string }>;
-      };
-    };
-    const translated = data.data?.translations?.map((item) => item.translatedText || '') || [];
-
-    if (translated.length !== texts.length) {
-      console.warn('[Google Translate] No translation in response:', data);
-      return texts;
-    }
-
+    const data = await response.json() as Array<{ translations?: Array<{ text?: string }> }>;
+    const translated = data.map((row, index) => row.translations?.[0]?.text || candidates[index]);
     await recordDailyUsage(totalChars);
-    return translated.map((value, index) => value || texts[index]);
+    return translated;
   } catch (error: any) {
-    console.error('[Google Translate] Translation failed:', {
+    console.error('[Azure Translator] Translation failed:', {
       error: error.message,
       stack: error.stack,
     });
-    return texts;
+    return candidates;
   }
 }
 
-/**
- * Translate keyword from English to Chinese with caching
- * Returns original text if translation fails or not needed
- */
-async function translateManyWithCache(params: {
-  texts: string[];
-  target: string;
-  source?: string;
-  cachePrefix: string;
-  shouldTranslate: (text: string) => boolean;
-}): Promise<string[]> {
-  if (!params.texts.length) return [];
+async function translateManyWithCache(texts: string[]): Promise<string[]> {
+  if (!texts.length) return [];
 
-  const results = [...params.texts];
+  const results = texts.map((text) => String(text || '').trim());
   const missingIndexes: number[] = [];
   const missingOriginals: string[] = [];
   const missingCacheKeys: string[] = [];
 
-  for (const [index, originalText] of params.texts.entries()) {
-    if (!params.shouldTranslate(originalText)) continue;
+  for (const [index, sourceText] of results.entries()) {
+    if (!hasMeaningfulTranslatableChinese(sourceText)) continue;
 
-    const normalized = normalizeSourceText(originalText);
-    const dbSourceText = `${params.cachePrefix}:${normalized}`;
-    const memoryKey = `google:${params.cachePrefix}:${normalized}`;
+    const normalized = normalizeSourceText(sourceText);
+    const dbSourceText = `zh:en:${normalized}`;
+    const memoryKey = `${PROVIDER}:${dbSourceText}`;
     const memoryEntry = memoryCache.get(memoryKey);
     if (memoryEntry && memoryEntry.expiresAt > Date.now()) {
       results[index] = memoryEntry.translated;
@@ -237,69 +199,59 @@ async function translateManyWithCache(params: {
     }
 
     missingIndexes.push(index);
-    missingOriginals.push(originalText);
+    missingOriginals.push(sourceText);
     missingCacheKeys.push(dbSourceText);
   }
 
   if (missingCacheKeys.length) {
     try {
-      const dbEntries = await prisma.productTitleTranslation.findMany({
+      const rows = await prisma.productTitleTranslation.findMany({
         where: { source_text: { in: missingCacheKeys } },
       });
-      const dbMap = new Map<string, string>(
-        dbEntries.map((entry) => [String(entry.source_text), String(entry.translated_text)]),
-      );
-
-      const stillMissingIndexes: number[] = [];
-      const stillMissingOriginals: string[] = [];
-      const stillMissingCacheKeys: string[] = [];
+      const bySource = new Map<string, string>(rows.map((row) => [String(row.source_text), String(row.translated_text)]));
+      const unresolvedIndexes: number[] = [];
+      const unresolvedOriginals: string[] = [];
+      const unresolvedCacheKeys: string[] = [];
 
       for (let i = 0; i < missingIndexes.length; i += 1) {
-        const dbSourceText = missingCacheKeys[i];
-        const translated = dbMap.get(dbSourceText);
+        const cacheKey = missingCacheKeys[i];
+        const translated = bySource.get(cacheKey);
         if (translated) {
           results[missingIndexes[i]] = translated;
-          memoryCache.set(`google:${dbSourceText}`, {
-            translated,
-            expiresAt: Date.now() + MEMORY_CACHE_TTL_MS,
-          });
+          memoryCache.set(`${PROVIDER}:${cacheKey}`, { translated, expiresAt: Date.now() + MEMORY_CACHE_TTL_MS });
         } else {
-          stillMissingIndexes.push(missingIndexes[i]);
-          stillMissingOriginals.push(missingOriginals[i]);
-          stillMissingCacheKeys.push(dbSourceText);
+          unresolvedIndexes.push(missingIndexes[i]);
+          unresolvedOriginals.push(missingOriginals[i]);
+          unresolvedCacheKeys.push(cacheKey);
         }
       }
 
       missingIndexes.length = 0;
       missingOriginals.length = 0;
       missingCacheKeys.length = 0;
-      missingIndexes.push(...stillMissingIndexes);
-      missingOriginals.push(...stillMissingOriginals);
-      missingCacheKeys.push(...stillMissingCacheKeys);
+      missingIndexes.push(...unresolvedIndexes);
+      missingOriginals.push(...unresolvedOriginals);
+      missingCacheKeys.push(...unresolvedCacheKeys);
     } catch (error: any) {
-      console.warn('[Google Translate] DB lookup failed:', error.message);
+      console.warn('[Azure Translator] DB lookup failed:', error.message);
     }
   }
 
   if (!missingOriginals.length) return results;
 
-  const translatedValues = await translateWithGoogleBatch(missingOriginals, params.target, params.source);
+  const translatedValues = await translateWithAzureBatch(missingOriginals);
   const rowsToPersist: PersistedTranslationRow[] = [];
-
   for (let i = 0; i < missingIndexes.length; i += 1) {
     const translated = translatedValues[i] || missingOriginals[i];
     const index = missingIndexes[i];
-    const dbSourceText = missingCacheKeys[i];
+    const cacheKey = missingCacheKeys[i];
     results[index] = translated;
-    memoryCache.set(`google:${dbSourceText}`, {
-      translated,
-      expiresAt: Date.now() + MEMORY_CACHE_TTL_MS,
-    });
+    memoryCache.set(`${PROVIDER}:${cacheKey}`, { translated, expiresAt: Date.now() + MEMORY_CACHE_TTL_MS });
     if (translated !== missingOriginals[i]) {
       rowsToPersist.push({
-        source_text: dbSourceText,
+        source_text: cacheKey,
         translated_text: translated,
-        provider: 'google',
+        provider: PROVIDER,
       });
     }
   }
@@ -308,18 +260,14 @@ async function translateManyWithCache(params: {
     await prisma.productTitleTranslation.createMany({
       data: rowsToPersist,
       skipDuplicates: true,
-    }).catch(async (error: any) => {
-      console.warn('[Google Translate] createMany failed, falling back to upsert:', error.message);
+    }).catch(async () => {
       await Promise.all(rowsToPersist.map((row) =>
         prisma.productTitleTranslation.upsert({
           where: { source_text: row.source_text },
           create: row,
-          update: {
-            translated_text: row.translated_text,
-            provider: row.provider,
-          },
-        }).catch((upsertError: any) => {
-          console.warn('[Google Translate] Failed to save translation row:', upsertError.message);
+          update: { translated_text: row.translated_text, provider: row.provider },
+        }).catch((error: any) => {
+          console.warn('[Azure Translator] Failed to save translation row:', error.message);
         })
       ));
     });
@@ -329,73 +277,31 @@ async function translateManyWithCache(params: {
 }
 
 /**
- * Translate keyword from English to Chinese with caching.
- * Returns original text if translation fails or not needed.
+ * Azure is only used for Chinese -> English. This function intentionally
+ * does not spend translation characters on English -> Chinese search terms.
  */
 export async function translateKeywordToChinese(keyword: string): Promise<string> {
-  if (!needsTranslation(keyword)) {
-    console.log('[Google Translate] Keyword appears to be Chinese, skipping translation');
-    return keyword;
-  }
-
-  const [translated] = await translateManyWithCache({
-    texts: [keyword],
-    source: 'en',
-    target: 'zh-CN',
-    cachePrefix: 'en:zh',
-    shouldTranslate: needsTranslation,
-  });
-  return translated || keyword;
+  return String(keyword || '').trim();
 }
 
-/**
- * Translate Chinese product display text to English with caching.
- * Returns original text if translation fails or no Chinese characters are present.
- */
 export async function translateChineseTextToEnglish(text: string): Promise<string> {
   const source = String(text || '').trim();
   if (!source || !hasMeaningfulTranslatableChinese(source)) return source;
-
-  const [translated] = await translateManyWithCache({
-    texts: [source],
-    source: 'zh-CN',
-    target: 'en',
-    cachePrefix: 'zh:en',
-    shouldTranslate: hasMeaningfulTranslatableChinese,
-  });
+  const [translated] = await translateManyWithCache([source]);
   return translated || source;
 }
 
 export async function translateChineseTextsToEnglish(texts: string[]): Promise<string[]> {
-  const prepared = texts.map((text) => String(text || '').trim());
-  return translateManyWithCache({
-    texts: prepared,
-    source: 'zh-CN',
-    target: 'en',
-    cachePrefix: 'zh:en',
-    shouldTranslate: hasMeaningfulTranslatableChinese,
-  });
+  return translateManyWithCache(texts);
 }
 
-/**
- * Clean up expired memory cache entries (can be called periodically)
- */
 export function cleanupMemoryCache(): void {
   const now = Date.now();
-  let cleaned = 0;
   for (const [key, entry] of memoryCache.entries()) {
-    if (entry.expiresAt <= now) {
-      memoryCache.delete(key);
-      cleaned++;
-    }
-  }
-  if (cleaned > 0) {
-    console.log(`[Google Translate] Cleaned up ${cleaned} expired memory cache entries`);
+    if (entry.expiresAt <= now) memoryCache.delete(key);
   }
 }
 
-// Clean up memory cache every hour
 if (typeof setInterval !== 'undefined') {
   setInterval(cleanupMemoryCache, 60 * 60 * 1000);
 }
-

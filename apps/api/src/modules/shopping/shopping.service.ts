@@ -354,6 +354,123 @@ function filterPricedCards(cards: ProductCard[]): ProductCard[] {
   return cards.filter((card) => hasDisplayablePrice(card));
 }
 
+function cloneJson(value: any) {
+  return JSON.parse(JSON.stringify(value ?? null));
+}
+
+async function loadSearchResultTitleCache(searchKey: string, externalIds: string[]): Promise<Map<string, string>> {
+  const ids = Array.from(new Set(externalIds.filter(Boolean)));
+  if (!ids.length) return new Map();
+
+  try {
+    const rows = await prisma.$queryRaw(Prisma.sql`
+      SELECT external_id, title_en
+      FROM "external_search_result_items"
+      WHERE source = ${SOURCE}
+        AND search_key = ${searchKey}
+        AND external_id IN (${Prisma.join(ids)})
+        AND expires_at > now()
+        AND title_en IS NOT NULL
+    `) as Array<{ external_id: string; title_en: string | null }>;
+    return new Map(rows.filter((row) => row.title_en).map((row) => [String(row.external_id), String(row.title_en)]));
+  } catch (error: any) {
+    console.warn('[Shopping Service] Search title cache lookup failed:', error.message);
+    return new Map();
+  }
+}
+
+async function persistSearchResultItems(params: {
+  searchKind: 'keyword' | 'image' | 'vendor';
+  searchKey: string;
+  searchPhrase?: string;
+  page: number;
+  rawItems: any[];
+  cards: ProductCard[];
+  ttlMinutes?: number;
+}) {
+  const byId = new Map(params.cards.map((card) => [card.externalId, card]));
+  const expiresAt = new Date(Date.now() + (params.ttlMinutes || MENU_CACHE_TTL_MINUTES) * 60 * 1000);
+
+  await Promise.all((params.rawItems || []).map(async (rawItem) => {
+    const externalId = String(rawItem?.item_id || rawItem?.id || '').trim();
+    if (!externalId) return;
+    const card = byId.get(externalId);
+    const titleOriginal = String(rawItem?.title || card?.titleOrigin || card?.title || '').trim() || null;
+    const titleEn = card?.title && card.title !== titleOriginal ? card.title : card?.title || null;
+
+    try {
+      await prisma.$executeRaw(Prisma.sql`
+        INSERT INTO "external_search_result_items"
+          (id, source, search_kind, search_key, search_phrase, page, external_id, title_original, title_en, item_json, expires_at, created_at, updated_at)
+        VALUES
+          (gen_random_uuid(), ${SOURCE}, ${params.searchKind}, ${params.searchKey}, ${params.searchPhrase || null}, ${params.page}, ${externalId}, ${titleOriginal}, ${titleEn}, ${cloneJson(rawItem)}, ${expiresAt}, now(), now())
+        ON CONFLICT (source, search_key, external_id)
+        DO UPDATE SET
+          search_kind = EXCLUDED.search_kind,
+          search_phrase = EXCLUDED.search_phrase,
+          page = EXCLUDED.page,
+          title_original = EXCLUDED.title_original,
+          title_en = COALESCE(EXCLUDED.title_en, "external_search_result_items".title_en),
+          item_json = EXCLUDED.item_json,
+          expires_at = EXCLUDED.expires_at,
+          updated_at = now()
+      `);
+    } catch (error: any) {
+      console.warn('[Shopping Service] Failed to persist search result item:', {
+        externalId,
+        searchKey: params.searchKey,
+        error: error.message,
+      });
+    }
+  }));
+}
+
+async function applyFirstPageSearchTranslations(params: {
+  cards: ProductCard[];
+  rawItems: any[];
+  searchKind: 'keyword' | 'image' | 'vendor';
+  searchKey: string;
+  searchPhrase?: string;
+  language: string;
+  page: number;
+  ttlMinutes?: number;
+}): Promise<ProductCard[]> {
+  if (params.language === 'en' || params.page !== 1 || params.cards.length === 0) {
+    return params.cards;
+  }
+
+  const titleCache = await loadSearchResultTitleCache(params.searchKey, params.cards.map((card) => card.externalId));
+  const cardsWithCachedTitles = params.cards.map((card) => {
+    const cachedTitle = titleCache.get(card.externalId);
+    if (!cachedTitle || cachedTitle === card.title) return card;
+    return { ...card, titleOrigin: card.titleOrigin || card.title, title: cachedTitle };
+  });
+
+  const translated = await translateProductCardTitles(cardsWithCachedTitles);
+  persistSearchResultItems({
+    searchKind: params.searchKind,
+    searchKey: params.searchKey,
+    searchPhrase: params.searchPhrase,
+    page: params.page,
+    rawItems: params.rawItems,
+    cards: translated,
+    ttlMinutes: params.ttlMinutes,
+  }).catch((error: any) => {
+    console.warn('[Shopping Service] Failed to persist translated search results:', error.message);
+  });
+
+  translated.forEach((item) => {
+    cacheProductItem(item).catch((error: any) => {
+      console.warn('[Shopping Service] Failed to cache translated search card:', {
+        externalId: item.externalId,
+        error: error.message,
+      });
+    });
+  });
+
+  return translated;
+}
+
 function buildFallbackCardFromCatalogItem(c: any): ProductCard | null {
   if (!c?.external_id) return null;
   const mainImages = Array.isArray(c.main_images) ? c.main_images.filter((img): img is string => typeof img === 'string' && img.trim().length > 0) : [];
@@ -573,7 +690,16 @@ export async function searchByKeyword(
     // getCachedSearch returns cached.results_json, which is the full TMAPI response
     // Structure: { code: 200, msg: "success", data: { items: [...], total_count: ... } }
     const items = cached?.data?.items || cached?.items || [];
-    const normalized = await applyMarkupToCards(normalizeProductCards(items));
+    const normalized = await applyFirstPageSearchTranslations({
+      cards: await applyMarkupToCards(normalizeProductCards(items)),
+      rawItems: items,
+      searchKind: 'keyword',
+      searchKey: cacheKey,
+      searchPhrase: searchKeyword,
+      language,
+      page,
+      ttlMinutes: opts?.category ? MENU_CACHE_TTL_MINUTES : undefined,
+    });
     const totalCount = cached?.data?.total_count || normalized.length;
     const totalPages = Math.ceil(totalCount / pageSize);
     const hasNextPage = page < totalPages;
@@ -625,7 +751,16 @@ export async function searchByKeyword(
     // So we need response.data.items (not response.data.data.items)
     const items = response.data?.items || response.items || response.result || [];
     console.log('[Shopping Service] Extracted items count:', items.length);
-    const normalized = await applyMarkupToCards(normalizeProductCards(items));
+    const normalized = await applyFirstPageSearchTranslations({
+      cards: await applyMarkupToCards(normalizeProductCards(items)),
+      rawItems: items,
+      searchKind: 'keyword',
+      searchKey: cacheKey,
+      searchPhrase: searchKeyword,
+      language,
+      page,
+      ttlMinutes: opts?.category ? MENU_CACHE_TTL_MINUTES : undefined,
+    });
     const totalCount = response.data?.total_count || normalized.length;
     const totalPages = Math.ceil(totalCount / pageSize);
 
@@ -732,7 +867,7 @@ export async function searchByKeyword(
  */
 async function cacheProductItem(item: ProductCard): Promise<void> {
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 1); // 24 hour TTL
+  expiresAt.setDate(expiresAt.getDate() + 7);
 
   try {
     // Try upsert first (if unique constraint exists)
@@ -991,7 +1126,16 @@ export async function searchByImage(
     // Cached response structure: { code: 200, msg: "success", data: { items: [...] } }
     // The cached response is the full TMAPI response, so we need cached.results_json.data.items
     const items = cached?.data?.items || cached?.items || [];
-    const normalized = normalizeProductCards(items);
+    const normalized = await applyFirstPageSearchTranslations({
+      cards: await applyMarkupToCards(normalizeProductCards(items)),
+      rawItems: items,
+      searchKind: 'image',
+      searchKey: cacheKey,
+      searchPhrase: convertedUrl,
+      language,
+      page,
+      ttlMinutes: opts?.category ? MENU_CACHE_TTL_MINUTES : undefined,
+    });
     const totalCount = cached?.data?.total_count || normalized.length;
     const totalPages = Math.ceil(totalCount / pageSize);
     const hasNextPage = page < totalPages;
@@ -1045,7 +1189,16 @@ export async function searchByImage(
     console.warn('[Shopping Service] Image search returned 0 results. This may be legitimate (no matching products found) or could indicate an API issue.');
   }
   
-  const normalized = normalizeProductCards(items);
+  const normalized = await applyFirstPageSearchTranslations({
+    cards: await applyMarkupToCards(normalizeProductCards(items)),
+    rawItems: items,
+    searchKind: 'image',
+    searchKey: cacheKey,
+    searchPhrase: convertedUrl,
+    language,
+    page,
+    ttlMinutes: opts?.category ? MENU_CACHE_TTL_MINUTES : undefined,
+  });
   const totalCount = response.data?.total_count || normalized.length;
   const totalPages = Math.ceil(totalCount / pageSize);
   const hasNextPage = page < totalPages;
@@ -1417,7 +1570,7 @@ async function _getItemDetail(externalId: string, language: string = 'zh'): Prom
   // Save to ExternalCatalogItem cache — embed description & ratings so cache-hits need zero TMAPI calls
   const rawJsonToCache = { ...itemData, _bc_description: description ?? null, _bc_ratings: ratings ?? null };
   const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 1); // 24 hour TTL
+  expiresAt.setDate(expiresAt.getDate() + 7);
 
   try {
     await prisma.externalCatalogItem.upsert({

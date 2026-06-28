@@ -6,7 +6,7 @@ import { prisma } from '../../lib/prisma.js';
 import crypto from 'node:crypto';
 
 const SEARCH_CACHE_TTL_MINUTES = 15;
-const ITEM_CACHE_TTL_HOURS = 24;
+const ITEM_CACHE_TTL_HOURS = 24 * 7;
 
 /**
  * Generate deterministic cache key from search parameters

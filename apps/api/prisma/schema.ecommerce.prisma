@@ -647,6 +647,28 @@ model ExternalCatalogItem {
   @@map("external_catalog_items")
 }
 
+model ExternalSearchResultItem {
+  id              String   @id @default(uuid())
+  source          String
+  search_kind     String
+  search_key      String
+  search_phrase   String?
+  page            Int      @default(1)
+  external_id     String
+  title_original  String?
+  title_en        String?
+  item_json       Json?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  expires_at      DateTime
+
+  @@unique([source, search_key, external_id])
+  @@index([source, external_id])
+  @@index([search_key])
+  @@index([expires_at])
+  @@map("external_search_result_items")
+}
+
 model ExternalHotItem {
   id            String   @id @default(uuid())
   source        String

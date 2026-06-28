@@ -81,7 +81,7 @@ fastify.get('/health', async () => ({
   status: 'ok',
   timestamp: new Date().toISOString(),
   mailer: mailerConfigStatus(),
-  googleTranslate: googleTranslateConfigStatus(),
+  azureTranslate: googleTranslateConfigStatus(),
 }));
 
 await fastify.register(publicRoutes, { prefix: '/api/public' });
