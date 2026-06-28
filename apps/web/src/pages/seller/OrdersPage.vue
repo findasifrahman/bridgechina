@@ -120,6 +120,7 @@
                   </td>
                   <td class="border-b border-slate-100 px-2 py-2 text-right">
                     <div class="flex justify-end gap-2">
+                      <Button size="sm" variant="ghost" class="h-6 px-2 text-[10px]" @click="openOrderDetails(item)">Details</Button>
                       <Button size="sm" variant="ghost" class="h-6 px-2 text-[10px]" @click="archiveOrder(item.order_id)">Archive</Button>
                     </div>
                   </td>
@@ -158,6 +159,107 @@
         </div>
       </div>
     </Modal>
+
+    <Teleport to="body">
+      <div v-if="orderDetailsOpen && selectedDetailItem" class="fixed inset-0 z-50 bg-white">
+        <div class="flex h-full flex-col">
+          <div class="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 md:px-6">
+            <div>
+              <div class="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">Order details</div>
+              <h2 class="text-xl font-semibold text-slate-950">#{{ selectedDetailItem.order?.order_number || selectedDetailItem.order_id }}</h2>
+              <p class="text-sm text-slate-500">{{ formatDateTime(selectedDetailItem.order?.created_at || selectedDetailItem.created_at) }} - {{ selectedDetailItem.order?.status || 'pending_payment' }}</p>
+            </div>
+            <Button variant="ghost" size="sm" @click="orderDetailsOpen = false">Close</Button>
+          </div>
+
+          <div class="flex-1 overflow-y-auto bg-slate-50 px-4 py-4 md:px-6">
+            <div class="grid gap-3 lg:grid-cols-4">
+              <div class="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+                <div class="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Customer</div>
+                <div class="mt-2 font-semibold text-slate-900">{{ customerName(selectedDetailItem) }}</div>
+                <div class="text-slate-600">{{ customerPhone(selectedDetailItem) }}</div>
+                <div class="text-slate-600">{{ selectedDetailItem.order?.user?.email || 'No email' }}</div>
+              </div>
+              <div class="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+                <div class="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Delivery</div>
+                <div class="mt-2 font-semibold text-slate-900">{{ selectedDetailItem.order?.shippingAddress?.name || 'N/A' }}</div>
+                <div class="text-slate-600">{{ selectedDetailItem.order?.shippingAddress?.phone || 'No phone' }}</div>
+                <div class="text-slate-600">{{ selectedDetailItem.order?.shippingAddress?.address_line || selectedDetailItem.order?.shippingAddress?.line1 || 'No address' }}</div>
+                <div class="text-slate-600">{{ selectedDetailItem.order?.shippingAddress?.city || 'No city' }}</div>
+              </div>
+              <div class="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+                <div class="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Payment slips</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <Badge :variant="badgeVariant(selectedDetailItem.order?.payment_status || '')">{{ selectedDetailItem.order?.payment_status || 'unsubmitted' }}</Badge>
+                  <Badge v-if="latestProof(selectedDetailItem.order)" :variant="badgeVariant(latestProof(selectedDetailItem.order).status)">{{ latestProof(selectedDetailItem.order).status }}</Badge>
+                </div>
+                <div class="mt-2 space-y-1">
+                  <a
+                    v-for="proof in proofList(selectedDetailItem.order)"
+                    :key="proof.id"
+                    :href="proof.asset?.public_url"
+                    target="_blank"
+                    rel="noreferrer"
+                    class="block font-medium text-teal-700 hover:underline"
+                  >
+                    Open slip {{ proof.status }}
+                  </a>
+                  <div v-if="proofList(selectedDetailItem.order).length === 0" class="text-slate-500">No slip uploaded</div>
+                </div>
+              </div>
+              <div class="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+                <div class="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Amount</div>
+                <div class="mt-2 font-semibold text-slate-900">{{ formatCurrency(selectedDetailItem.price_snapshot * selectedDetailItem.qty, selectedDetailItem.currency_snapshot) }}</div>
+                <div class="text-slate-600">Unit {{ formatCurrency(selectedDetailItem.price_snapshot, selectedDetailItem.currency_snapshot) }}</div>
+                <div class="text-slate-600">Qty {{ selectedDetailItem.qty }}</div>
+              </div>
+            </div>
+
+            <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+              <table class="min-w-full text-left text-xs">
+                <thead class="bg-slate-50 text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                  <tr>
+                    <th class="px-3 py-3">Product</th>
+                    <th class="px-3 py-3">Supplier</th>
+                    <th class="px-3 py-3">Qty</th>
+                    <th class="px-3 py-3">Status</th>
+                    <th class="px-3 py-3">PO / Tracking</th>
+                    <th class="px-3 py-3 text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  <tr v-for="detailItem in detailItems(selectedDetailItem)" :key="detailItem.id" class="align-top">
+                    <td class="px-3 py-3">
+                      <div class="max-w-md font-semibold text-slate-900">{{ detailItem.title_snapshot || detailItem.product?.title }}</div>
+                      <div class="mt-1 text-slate-500">{{ skuDetails(detailItem) }}</div>
+                      <div class="mt-2 flex flex-wrap gap-2">
+                        <a v-if="productUrl(detailItem)" :href="productUrl(detailItem)" target="_blank" rel="noreferrer" class="font-medium text-teal-700 hover:underline">Product URL</a>
+                        <a v-if="shopUrl(detailItem)" :href="shopUrl(detailItem)" target="_blank" rel="noreferrer" class="font-medium text-teal-700 hover:underline">Shop URL</a>
+                      </div>
+                    </td>
+                    <td class="px-3 py-3">
+                      <div class="font-medium text-slate-900">{{ sellerLabel(detailItem) }}</div>
+                      <div class="text-slate-500">Vendor {{ vendorId(detailItem) || 'N/A' }}</div>
+                    </td>
+                    <td class="px-3 py-3">{{ detailItem.qty }}</td>
+                    <td class="px-3 py-3">
+                      <Badge :variant="badgeVariant(detailItem.seller_status)" class="text-[11px]">{{ detailItem.seller_status }}</Badge>
+                    </td>
+                    <td class="px-3 py-3 text-slate-600">
+                      <div>PO: {{ detailItem.purchase_order_no || 'N/A' }}</div>
+                      <div>Tracking: {{ detailItem.tracking_no || 'N/A' }}</div>
+                    </td>
+                    <td class="px-3 py-3 text-right font-semibold text-slate-900">
+                      {{ formatCurrency(detailItem.price_snapshot * detailItem.qty, detailItem.currency_snapshot) }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -184,6 +286,8 @@ const filters = reactive({
 
 const customerModalOpen = ref(false);
 const selectedOrderItem = ref<any>(null);
+const orderDetailsOpen = ref(false);
+const selectedDetailItem = ref<any>(null);
 const customerReview = reactive({ rating: 10, note: '' });
 
 const statusOptions = [
@@ -230,7 +334,31 @@ function formatDateTime(value: string) {
 }
 
 function latestProof(order: any) {
-  return order?.paymentProofs?.[0] || null;
+  return proofList(order)[0] || null;
+}
+
+function proofList(order: any) {
+  return [...(order?.paymentProofs || [])]
+    .filter((proof: any) => proof?.asset?.public_url)
+    .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+}
+
+function skuDetails(item: any) {
+  const details = item?.sku_details_snapshot;
+  if (!details) return 'No SKU details';
+  if (typeof details === 'string') return details;
+  if (Array.isArray(details)) {
+    return details
+      .map((entry) => (typeof entry === 'string' ? entry : entry?.label || entry?.name || entry?.value))
+      .filter(Boolean)
+      .join(', ') || 'No SKU details';
+  }
+  if (typeof details === 'object') {
+    return Object.entries(details)
+      .map(([key, value]) => `${key}: ${value}`)
+      .join(', ');
+  }
+  return 'No SKU details';
 }
 
 function customerName(item: any) {
@@ -261,6 +389,15 @@ function productUrl(item: any) {
 
 function shopUrl(item: any) {
   return item?.shop_url_snapshot || item?.product?.shop_url || '';
+}
+
+function openOrderDetails(item: any) {
+  selectedDetailItem.value = item;
+  orderDetailsOpen.value = true;
+}
+
+function detailItems(item: any) {
+  return item?.order?.items?.length ? item.order.items : [item].filter(Boolean);
 }
 
 async function loadOrders() {

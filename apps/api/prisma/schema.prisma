@@ -933,6 +933,8 @@ model OrderItem {
   seller_id      String
   qty            Int
   price_snapshot Float
+  purchase_order_no String?
+  tracking_no      String?
   created_at     DateTime @default(now())
   order          Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
   product        Product  @relation(fields: [product_id], references: [id])

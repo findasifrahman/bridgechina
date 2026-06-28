@@ -457,6 +457,27 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     return updated;
   });
 
+  fastify.patch('/order-items/:id/fulfillment', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const body = z.object({
+      purchase_order_no: z.string().trim().max(120).nullable().optional(),
+      tracking_no: z.string().trim().max(120).nullable().optional(),
+    }).parse(request.body);
+
+    const item = await prisma.orderItem.findUnique({ where: { id } });
+    if (!item) {
+      return reply.status(404).send({ error: 'Order item not found' });
+    }
+
+    return prisma.orderItem.update({
+      where: { id },
+      data: {
+        purchase_order_no: body.purchase_order_no === undefined ? undefined : body.purchase_order_no || null,
+        tracking_no: body.tracking_no === undefined ? undefined : body.tracking_no || null,
+      },
+    });
+  });
+
   fastify.get('/payment-proofs', { preHandler: auth }, async (request: FastifyRequest) => {
     const query = request.query as { status?: string };
     return prisma.paymentProof.findMany({
@@ -624,8 +645,12 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     if (status) {
       where.status = status;
     }
-    if (sourceKind) {
+    if (sourceKind === 'all') {
+      // Explicitly include every source kind.
+    } else if (sourceKind) {
       where.source_kind = sourceKind;
+    } else {
+      where.source_kind = 'manual';
     }
     if (search) {
       where.OR = [
@@ -681,7 +706,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       brand: z.string().optional(),
       source_kind: z.string().optional(),
       source_url: z.string().optional(),
+      product_url: z.string().optional(),
       external_id: z.string().optional(),
+      vendor_id: z.string().optional(),
+      vendor_name: z.string().optional(),
+      shop_url: z.string().optional(),
       weight_kg: z.number().optional(),
       cover_asset_id: z.string().optional(),
       gallery_asset_ids: z.any().optional(),
@@ -704,7 +733,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         brand: body.seller_name || body.brand || null,
         source_kind: body.source_kind || 'manual',
         source_url: body.source_url || null,
+        product_url: body.product_url || body.source_url || null,
         external_id: body.external_id || null,
+        vendor_id: body.vendor_id || null,
+        vendor_name: body.vendor_name || body.seller_name || body.brand || null,
+        shop_url: body.shop_url || null,
         weight_kg: body.weight_kg ?? null,
         cover_asset_id: body.cover_asset_id || null,
         gallery_asset_ids: parseStringArray(body.gallery_asset_ids),
@@ -738,7 +771,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         brand: body.seller_name ?? body.brand ?? undefined,
         source_kind: body.source_kind ?? undefined,
         source_url: body.source_url ?? undefined,
+        product_url: body.product_url ?? undefined,
         external_id: body.external_id ?? undefined,
+        vendor_id: body.vendor_id ?? undefined,
+        vendor_name: body.vendor_name ?? undefined,
+        shop_url: body.shop_url ?? undefined,
         sku: body.sku ?? undefined,
         weight_kg: body.weight_kg ?? undefined,
         cover_asset_id: body.cover_asset_id ?? undefined,

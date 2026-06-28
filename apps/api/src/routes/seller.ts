@@ -235,6 +235,17 @@ export default async function sellerRoutes(fastify: FastifyInstance) {
                   reviewer: true,
                 },
               },
+              items: {
+                where: { seller_id: req.user.id },
+                include: {
+                  product: {
+                    include: {
+                      coverAsset: true,
+                      category: true,
+                    },
+                  },
+                },
+              },
               statusEvents: true,
             },
           },

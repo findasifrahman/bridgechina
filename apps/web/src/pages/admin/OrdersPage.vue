@@ -217,7 +217,7 @@
       </div>
     </Modal>
 
-    <Modal v-model="orderModalOpen" title="Order details" size="xl">
+    <Modal v-if="false" v-model="orderModalOpen" title="Order details" size="xl">
       <div v-if="selectedOrder" class="space-y-4">
         <div class="grid gap-3 md:grid-cols-3">
           <div class="rounded-2xl border border-slate-200 p-3 text-sm">
@@ -261,6 +261,111 @@
         </div>
       </div>
     </Modal>
+
+    <Teleport to="body">
+      <div v-if="orderModalOpen && selectedOrder" class="fixed inset-0 z-50 bg-white">
+        <div class="flex h-full flex-col">
+          <div class="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 md:px-6">
+            <div>
+              <div class="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">Order details</div>
+              <h2 class="text-xl font-semibold text-slate-950">#{{ selectedOrder.order_number }}</h2>
+              <p class="text-sm text-slate-500">{{ formatDateTime(selectedOrder.created_at) }} - {{ selectedOrder.status }}</p>
+            </div>
+            <Button variant="ghost" size="sm" @click="orderModalOpen = false">Close</Button>
+          </div>
+
+          <div class="flex-1 overflow-y-auto bg-slate-50 px-4 py-4 md:px-6">
+            <div class="grid gap-3 lg:grid-cols-4">
+              <div class="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+                <div class="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Customer</div>
+                <div class="mt-2 font-semibold text-slate-900">{{ customerName(selectedOrder) }}</div>
+                <div class="text-slate-600">{{ customerEmail(selectedOrder) }}</div>
+                <div class="text-slate-600">{{ selectedOrder.user?.phone || 'No phone' }}</div>
+              </div>
+              <div class="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+                <div class="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Delivery</div>
+                <div class="mt-2 font-semibold text-slate-900">{{ selectedOrder.shippingAddress?.name || 'N/A' }}</div>
+                <div class="text-slate-600">{{ selectedOrder.shippingAddress?.phone || 'No phone' }}</div>
+                <div class="text-slate-600">{{ selectedOrder.shippingAddress?.address_line || selectedOrder.shippingAddress?.line1 || 'No address' }}</div>
+                <div class="text-slate-600">{{ selectedOrder.shippingAddress?.city || 'No city' }}</div>
+              </div>
+              <div class="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+                <div class="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Payment</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                  <Badge :variant="badgeVariant(selectedOrder.payment_status)">{{ selectedOrder.payment_status }}</Badge>
+                  <Badge v-if="latestProof(selectedOrder)" :variant="badgeVariant(latestProof(selectedOrder).status)">{{ latestProof(selectedOrder).status }}</Badge>
+                </div>
+                <div class="mt-2 space-y-1">
+                  <a
+                    v-for="proof in proofList(selectedOrder)"
+                    :key="proof.id"
+                    :href="proof.asset?.public_url"
+                    target="_blank"
+                    rel="noreferrer"
+                    class="block font-medium text-teal-700 hover:underline"
+                  >
+                    Open slip {{ proof.status }}
+                  </a>
+                  <div v-if="proofList(selectedOrder).length === 0" class="text-slate-500">No slip uploaded</div>
+                </div>
+              </div>
+              <div class="rounded-xl border border-slate-200 bg-white p-4 text-sm">
+                <div class="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Totals</div>
+                <div class="mt-2 font-semibold text-slate-900">{{ money(selectedOrder.total, selectedOrder.currency) }}</div>
+                <div class="text-slate-600">Subtotal {{ money(selectedOrder.subtotal, selectedOrder.currency) }}</div>
+                <div class="text-slate-600">Shipping {{ money(selectedOrder.shipping_fee, selectedOrder.currency) }}</div>
+              </div>
+            </div>
+
+            <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+              <table class="min-w-full text-left text-xs">
+                <thead class="bg-slate-50 text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                  <tr>
+                    <th class="px-3 py-3">Product</th>
+                    <th class="px-3 py-3">Supplier</th>
+                    <th class="px-3 py-3">Qty</th>
+                    <th class="px-3 py-3">State</th>
+                    <th class="px-3 py-3">Purchase order</th>
+                    <th class="px-3 py-3">Tracking</th>
+                    <th class="px-3 py-3 text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  <tr v-for="item in selectedOrder.items" :key="item.id" class="align-top">
+                    <td class="px-3 py-3">
+                      <div class="max-w-md font-semibold text-slate-900">{{ item.title_snapshot || item.product?.title }}</div>
+                      <div class="mt-1 text-slate-500">{{ skuDetails(item) }}</div>
+                      <div class="mt-2 flex flex-wrap gap-2">
+                        <a v-if="productUrl(item)" :href="productUrl(item)" target="_blank" rel="noreferrer" class="font-medium text-teal-700 hover:underline">Product URL</a>
+                        <a v-if="shopUrl(item)" :href="shopUrl(item)" target="_blank" rel="noreferrer" class="font-medium text-teal-700 hover:underline">Shop URL</a>
+                      </div>
+                    </td>
+                    <td class="px-3 py-3 text-slate-600">
+                      <div class="font-medium text-slate-900">{{ sellerLabel(item) }}</div>
+                      <div>Vendor {{ vendorId(item) || 'N/A' }}</div>
+                    </td>
+                    <td class="px-3 py-3 text-slate-700">{{ item.qty }}</td>
+                    <td class="px-3 py-3">
+                      <Badge :variant="badgeVariant(item.seller_status)" class="text-[11px]">{{ item.seller_status }}</Badge>
+                    </td>
+                    <td class="px-3 py-3">
+                      <Input :model-value="item.purchase_order_no || ''" placeholder="PO number" @blur="updateItemFulfillment(item, 'purchase_order_no', inputValue($event))" />
+                    </td>
+                    <td class="px-3 py-3">
+                      <Input :model-value="item.tracking_no || ''" placeholder="Tracking number" @blur="updateItemFulfillment(item, 'tracking_no', inputValue($event))" />
+                    </td>
+                    <td class="px-3 py-3 text-right">
+                      <div class="font-semibold text-slate-900">{{ money(item.price_snapshot * item.qty, item.currency_snapshot) }}</div>
+                      <div class="text-slate-500">Unit {{ money(item.price_snapshot, item.currency_snapshot) }}</div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -375,7 +480,35 @@ function sellerStateSummary(order: any) {
 }
 
 function latestProof(order: any) {
-  return order?.paymentProofs?.[0] || null;
+  return proofList(order)[0] || null;
+}
+
+function proofList(order: any) {
+  return [...(order?.paymentProofs || [])]
+    .filter((proof: any) => proof?.asset?.public_url)
+    .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+}
+
+function inputValue(event: Event) {
+  return (event.target as HTMLInputElement)?.value || '';
+}
+
+function skuDetails(item: any) {
+  const details = item?.sku_details_snapshot;
+  if (!details) return 'No SKU details';
+  if (typeof details === 'string') return details;
+  if (Array.isArray(details)) {
+    return details
+      .map((entry) => (typeof entry === 'string' ? entry : entry?.label || entry?.name || entry?.value))
+      .filter(Boolean)
+      .join(', ') || 'No SKU details';
+  }
+  if (typeof details === 'object') {
+    return Object.entries(details)
+      .map(([key, value]) => `${key}: ${value}`)
+      .join(', ');
+  }
+  return 'No SKU details';
 }
 
 function sellerLabel(item: any) {
@@ -442,6 +575,20 @@ async function updateStatus(orderId: string, status: string | number) {
     await loadOrders();
   } catch (error: any) {
     toast.error(error.response?.data?.error || 'Failed to update status');
+  }
+}
+
+async function updateItemFulfillment(item: any, field: 'purchase_order_no' | 'tracking_no', value: string) {
+  const nextValue = value.trim();
+  if ((item[field] || '') === nextValue) return;
+  try {
+    const response = await axios.patch(`/api/admin/order-items/${item.id}/fulfillment`, {
+      [field]: nextValue || null,
+    });
+    item[field] = response.data?.[field] || '';
+    toast.success(field === 'purchase_order_no' ? 'Purchase order saved' : 'Tracking number saved');
+  } catch (error: any) {
+    toast.error(error.response?.data?.error || 'Failed to save fulfillment field');
   }
 }
 

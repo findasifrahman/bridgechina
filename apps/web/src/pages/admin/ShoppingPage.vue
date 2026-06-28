@@ -190,6 +190,13 @@
           <Input v-model="productForm.external_id" label="External ID" placeholder="Supplier product ID" />
         </div>
 
+        <div class="grid gap-4 xl:grid-cols-4">
+          <Input v-model="productForm.product_url" label="Product URL" placeholder="1688 or supplier product URL" />
+          <Input v-model="productForm.vendor_id" label="Vendor ID" placeholder="Supplier/vendor identifier" />
+          <Input v-model="productForm.vendor_name" label="Vendor name" placeholder="Factory or shop name" />
+          <Input v-model="productForm.shop_url" label="Shop URL" placeholder="Supplier shop URL" />
+        </div>
+
         <div class="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
           <Input v-model.number="productForm.weight_kg" type="number" step="0.01" label="Weight (kg)" />
           <div class="rounded-2xl border border-dashed border-teal-200 bg-teal-50/50 px-4 py-3">
@@ -377,7 +384,11 @@ const productForm = reactive({
   stock_qty: 0,
   sku: '',
   source_url: '',
+  product_url: '',
   external_id: '',
+  vendor_id: '',
+  vendor_name: '',
+  shop_url: '',
   weight_kg: '' as string | number,
   minimum_order_qty: 1,
   status: 'published',
@@ -476,7 +487,11 @@ function resetProductForm() {
   productForm.stock_qty = 0;
   productForm.sku = '';
   productForm.source_url = '';
+  productForm.product_url = '';
   productForm.external_id = '';
+  productForm.vendor_id = '';
+  productForm.vendor_name = '';
+  productForm.shop_url = '';
   productForm.weight_kg = '';
   productForm.minimum_order_qty = 1;
   productForm.status = 'published';
@@ -552,7 +567,11 @@ function openProductModal(product?: any) {
       stock_qty: product.stock_qty ?? 0,
       sku: product.sku || '',
       source_url: product.source_url || '',
+      product_url: product.product_url || '',
       external_id: product.external_id || '',
+      vendor_id: product.vendor_id || '',
+      vendor_name: product.vendor_name || '',
+      shop_url: product.shop_url || '',
       weight_kg: product.weight_kg ?? '',
       minimum_order_qty: product.minimum_order_qty ?? 1,
       status: product.status || 'published',
@@ -734,7 +753,11 @@ async function saveProduct() {
       stock_qty: Number(productForm.stock_qty || 0),
       sku: productForm.sku || undefined,
       source_url: productForm.source_url || undefined,
+      product_url: productForm.product_url || productForm.source_url || undefined,
       external_id: productForm.external_id || undefined,
+      vendor_id: productForm.vendor_id || undefined,
+      vendor_name: productForm.vendor_name || productForm.seller_name || undefined,
+      shop_url: productForm.shop_url || undefined,
       weight_kg: productForm.weight_kg !== undefined && productForm.weight_kg !== null && productForm.weight_kg !== '' ? Number(productForm.weight_kg) : undefined,
       minimum_order_qty: Number(productForm.minimum_order_qty || 1),
       status: productForm.status,

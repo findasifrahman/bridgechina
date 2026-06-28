@@ -137,7 +137,7 @@
 
             <div class="mt-2.5 grid gap-2">
               <div v-if="hasWeightInfo" class="rounded-[16px] border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
-                <span class="font-semibold text-slate-800">Weight:</span>
+                <span class="font-semibold text-[14px] text-slate-800">Weight:</span>
                 {{ estimatedWeightLabel }}
                 <div v-if="estimatedAirShippingRangeLabel" class="mt-1 text-[10px] font-semibold text-teal-700">
                   {{ estimatedAirShippingRangeLabel }}
