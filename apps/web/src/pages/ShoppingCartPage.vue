@@ -593,6 +593,16 @@ const orderWarnings = computed(() => {
       warnings.push(`${item.title} MOQ is ${itemMin}.`);
     }
   }
+  if (authStore.isAuthenticated && !authStore.user?.phone) {
+    warnings.push('Add your Bangladesh mobile number before placing the order.');
+  }
+  if (authStore.isAuthenticated && addresses.value.length === 0) {
+    warnings.push('Add your delivery address before placing the order.');
+  }
+  const selectedAddress = addresses.value.find((address) => address.id === selectedAddressId.value) || null;
+  if (authStore.isAuthenticated && selectedAddressId.value && !isValidBangladeshPhone(selectedAddress?.phone || '')) {
+    warnings.push('The selected delivery address needs a valid Bangladesh mobile number.');
+  }
   return warnings;
 });
 
@@ -605,6 +615,7 @@ const addressOptions = computed(() =>
 
 const checkoutPrimaryLabel = computed(() => {
   if (!authStore.isAuthenticated) return 'Sign in to checkout';
+  if (!authStore.user?.phone) return 'Add phone to continue';
   if (addresses.value.length === 0) return 'Add address to continue';
   if (!selectedAddressId.value) return 'Select address to continue';
   return 'Place order';
@@ -888,9 +899,21 @@ async function ensureCheckoutPhone() {
 }
 
 async function ensureCheckoutAddress() {
-  if (selectedAddressId.value) return true;
+  if (selectedAddressId.value) {
+    const selectedAddress = addresses.value.find((address) => address.id === selectedAddressId.value) || null;
+    if (!isValidBangladeshPhone(selectedAddress?.phone || '')) {
+      toast.error('Please update the selected delivery address with a valid Bangladesh mobile number');
+      return false;
+    }
+    return true;
+  }
   if (addresses.value.length > 0) {
     selectedAddressId.value = addresses.value[0].id;
+    const selectedAddress = addresses.value[0];
+    if (!isValidBangladeshPhone(selectedAddress?.phone || '')) {
+      toast.error('Please update the delivery address with a valid Bangladesh mobile number');
+      return false;
+    }
     return true;
   }
   await handleAddAddress();

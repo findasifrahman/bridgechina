@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 
 type MailPayload = {
   to: string;
@@ -13,6 +14,7 @@ type SmtpConfig = {
   user?: string;
   password?: string;
   from?: string;
+  family?: number;
 };
 
 function envValue(...keys: string[]) {
@@ -32,6 +34,7 @@ function smtpConfig(): SmtpConfig {
     user: envValue('SMTP_USER', 'SMTP_USERNAME', 'MAIL_USER', 'MAIL_USERNAME', 'EMAIL_USER', 'GMAIL_USER'),
     password: envValue('SMTP_PASSWORD', 'SMTP_PASS', 'MAIL_PASSWORD', 'MAIL_PASS', 'EMAIL_PASSWORD', 'GMAIL_APP_PASSWORD'),
     from: envValue('SMTP_FROM', 'MAIL_FROM', 'EMAIL_FROM'),
+    family: Number(envValue('SMTP_IP_FAMILY') || 4),
   };
 }
 
@@ -63,19 +66,25 @@ function createTransport() {
   if (!smtpConfigured()) {
     throw new Error('SMTP is not configured');
   }
+  const host = config.host as string;
 
   return nodemailer.createTransport({
-    host: config.host,
+    host,
     port: config.port,
     secure: config.port === 465,
+    name: host,
+    family: config.family,
     connectionTimeout: Number(envValue('SMTP_CONNECTION_TIMEOUT_MS') || 10000),
     greetingTimeout: Number(envValue('SMTP_GREETING_TIMEOUT_MS') || 10000),
     socketTimeout: Number(envValue('SMTP_SOCKET_TIMEOUT_MS') || 15000),
+    tls: {
+      servername: host,
+    },
     auth: {
       user: config.user,
       pass: config.password,
     },
-  });
+  } as SMTPTransport.Options);
 }
 
 export async function sendMail(payload: MailPayload) {

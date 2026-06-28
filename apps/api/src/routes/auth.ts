@@ -262,6 +262,18 @@ async function createAndSendOtp(email: string, purpose: 'auth' | 'password_reset
   await sendOtpEmail(email, code, purpose);
 }
 
+function emailCodeRequestErrorMessage(error: any) {
+  const code = String(error?.code || '');
+  const message = String(error?.message || '');
+  if (code === 'ENETUNREACH' || message.includes('ENETUNREACH')) {
+    return 'Email service is temporarily unavailable. Please try again in a moment.';
+  }
+  if (code === 'ETIMEDOUT' || message.includes('timed out')) {
+    return 'Email service timed out. Please try again in a moment.';
+  }
+  return 'Failed to send email code';
+}
+
 async function consumeValidOtp(email: string, purpose: 'auth' | 'password_reset', code: string) {
   const rows = await prisma.$queryRaw`
     SELECT id, code_hash
@@ -594,7 +606,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       await createAndSendOtp(email, body.purpose);
     } catch (error: any) {
       request.log.error({ err: error }, '[Auth] Failed to send email code');
-      return reply.status(500).send({ error: error.message || 'Failed to send email code' });
+      return reply.status(500).send({ error: emailCodeRequestErrorMessage(error) });
     }
 
     return { message: 'Verification code sent' };

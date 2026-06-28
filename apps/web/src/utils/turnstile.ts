@@ -11,8 +11,11 @@ type TurnstileRenderOptions = {
 type TurnstileApi = {
   render: (container: HTMLElement, options: TurnstileRenderOptions) => string;
   execute: (widgetId: string) => void;
+  reset?: (widgetId: string) => void;
   remove: (widgetId: string) => void;
 };
+
+const pendingTurnstileTokens = new Map<string, Promise<string | undefined>>();
 
 declare global {
   interface Window {
@@ -61,58 +64,72 @@ function loadTurnstileScript(): Promise<TurnstileApi> {
 export async function getTurnstileToken(action = 'shopping_search'): Promise<string | undefined> {
   const siteKey = getTurnstileSiteKey();
   if (!siteKey || typeof window === 'undefined' || typeof document === 'undefined') return undefined;
+  if (pendingTurnstileTokens.has(action)) {
+    return pendingTurnstileTokens.get(action)!;
+  }
 
-  const turnstile = await loadTurnstileScript();
-  const container = document.createElement('div');
-  container.className = 'cf-turnstile';
-  container.style.position = 'fixed';
-  container.style.left = '-9999px';
-  container.style.width = '1px';
-  container.style.height = '1px';
-  container.style.overflow = 'hidden';
-  document.body.appendChild(container);
+  const tokenPromise = (async () => {
+    const turnstile = await loadTurnstileScript();
+    const container = document.createElement('div');
+    container.className = 'cf-turnstile';
+    container.style.position = 'fixed';
+    container.style.left = '-9999px';
+    container.style.width = '1px';
+    container.style.height = '1px';
+    container.style.overflow = 'hidden';
+    document.body.appendChild(container);
 
-  let widgetId = '';
+    let widgetId = '';
 
-  return new Promise((resolve, reject) => {
-    const cleanup = () => {
-      if (widgetId) {
-        try {
-          turnstile.remove(widgetId);
-        } catch {
-          // Non-critical: the detached container will still be removed below.
+    return new Promise<string>((resolve, reject) => {
+      const cleanup = () => {
+        if (widgetId) {
+          try {
+            turnstile.remove(widgetId);
+          } catch {
+            // Non-critical: the detached container will still be removed below.
+          }
         }
+        container.remove();
+        pendingTurnstileTokens.delete(action);
+      };
+
+      const timeout = window.setTimeout(() => {
+        cleanup();
+        reject(new Error('Cloudflare Turnstile timed out'));
+      }, 10000);
+
+      widgetId = turnstile.render(container, {
+        sitekey: siteKey,
+        theme: 'light',
+        size: 'invisible',
+        action,
+        callback: (token) => {
+          window.clearTimeout(timeout);
+          cleanup();
+          resolve(token);
+        },
+        'error-callback': () => {
+          window.clearTimeout(timeout);
+          cleanup();
+          reject(new Error('Cloudflare Turnstile verification failed'));
+        },
+        'expired-callback': () => {
+          window.clearTimeout(timeout);
+          cleanup();
+          reject(new Error('Cloudflare Turnstile token expired'));
+        },
+      });
+
+      try {
+        turnstile.reset?.(widgetId);
+      } catch {
+        // Some environments do not expose reset for invisible widgets.
       }
-      container.remove();
-    };
-
-    const timeout = window.setTimeout(() => {
-      cleanup();
-      reject(new Error('Cloudflare Turnstile timed out'));
-    }, 10000);
-
-    widgetId = turnstile.render(container, {
-      sitekey: siteKey,
-      theme: 'light',
-      size: 'invisible',
-      action,
-      callback: (token) => {
-        window.clearTimeout(timeout);
-        cleanup();
-        resolve(token);
-      },
-      'error-callback': () => {
-        window.clearTimeout(timeout);
-        cleanup();
-        reject(new Error('Cloudflare Turnstile verification failed'));
-      },
-      'expired-callback': () => {
-        window.clearTimeout(timeout);
-        cleanup();
-        reject(new Error('Cloudflare Turnstile token expired'));
-      },
+      turnstile.execute(widgetId);
     });
+  })();
 
-    turnstile.execute(widgetId);
-  });
+  pendingTurnstileTokens.set(action, tokenPromise);
+  return tokenPromise;
 }
