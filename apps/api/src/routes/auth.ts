@@ -269,7 +269,7 @@ function emailCodeRequestErrorMessage(error: any) {
     return 'Email service is temporarily unavailable. Please try again in a moment.';
   }
   if (code === 'ETIMEDOUT' || message.includes('timed out')) {
-    return 'Email service timed out. Please try again in a moment.';
+    return 'Email service timed out. Please log in with mobile OTP or google mail above';
   }
   return 'Failed to send email code';
 }

@@ -566,6 +566,14 @@ const activeShippingRate = computed(() => {
   return rates.find((rate) => rate.method === shippingMethod.value) || null;
 });
 
+const effectiveCheckoutPhone = computed(() => {
+  const profilePhone = authStore.user?.phone?.trim() || '';
+  if (isValidBangladeshPhone(profilePhone)) return normalizeBangladeshPhone(profilePhone);
+  const typedPhone = checkoutPhone.value.trim();
+  if (isValidBangladeshPhone(typedPhone)) return normalizeBangladeshPhone(typedPhone);
+  return '';
+});
+
 const shippingMethodLabel = computed(() => {
   return shippingMethod.value === 'sea' ? 'Sea shipping' : 'Air shipping';
 });
@@ -593,7 +601,7 @@ const orderWarnings = computed(() => {
       warnings.push(`${item.title} MOQ is ${itemMin}.`);
     }
   }
-  if (authStore.isAuthenticated && !authStore.user?.phone) {
+  if (authStore.isAuthenticated && !effectiveCheckoutPhone.value) {
     warnings.push('Add your Bangladesh mobile number before placing the order.');
   }
   if (authStore.isAuthenticated && addresses.value.length === 0) {
@@ -615,7 +623,7 @@ const addressOptions = computed(() =>
 
 const checkoutPrimaryLabel = computed(() => {
   if (!authStore.isAuthenticated) return 'Sign in to checkout';
-  if (!authStore.user?.phone) return 'Add phone to continue';
+  if (!effectiveCheckoutPhone.value) return 'Add phone to continue';
   if (addresses.value.length === 0) return 'Add address to continue';
   if (!selectedAddressId.value) return 'Select address to continue';
   return 'Place order';
