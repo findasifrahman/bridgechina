@@ -199,6 +199,15 @@
         </div>
       </form>
     </Modal>
+
+    <ConfirmDialog
+      v-model="deleteConfirmOpen"
+      title="Delete banner"
+      :message="deleteConfirmMessage"
+      confirm-text="Delete"
+      confirm-variant="danger"
+      @confirm="handleConfirmDelete"
+    />
   </div>
 </template>
 
@@ -216,6 +225,7 @@ import {
   Modal,
   SkeletonLoader,
   EmptyState,
+  ConfirmDialog,
   MediaPickerModal,
 } from '@bridgechina/ui';
 import axios from '@/utils/axios';
@@ -224,6 +234,8 @@ import { useToast } from '@bridgechina/ui';
 const toast = useToast();
 
 const banners = ref<any[]>([]);
+const deleteConfirmOpen = ref(false);
+const deleteTarget = ref<any>(null);
 const loading = ref(true);
 const showModal = ref(false);
 const showImagePicker = ref(false);
@@ -330,13 +342,19 @@ async function saveBanner() {
 }
 
 async function confirmDelete(banner: any) {
-  if (!confirm(`Are you sure you want to delete "${banner.title}"?`)) {
-    return;
-  }
+  deleteTarget.value = banner;
+  deleteConfirmOpen.value = true;
+}
 
+const deleteConfirmMessage = computed(() => `Are you sure you want to delete "${deleteTarget.value?.title || 'this banner'}"?`);
+
+async function handleConfirmDelete() {
+  if (!deleteTarget.value?.id) return;
   try {
-    await axios.delete(`/api/admin/homepage-banners/${banner.id}`);
+    await axios.delete(`/api/admin/homepage-banners/${deleteTarget.value.id}`);
     toast.success('Banner deleted successfully');
+    deleteConfirmOpen.value = false;
+    deleteTarget.value = null;
     loadBanners();
   } catch (error: any) {
     console.error('Failed to delete banner:', error);

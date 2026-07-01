@@ -138,6 +138,15 @@
         </div>
       </form>
     </Modal>
+
+    <ConfirmDialog
+      v-model="deleteConfirmOpen"
+      title="Delete tile"
+      :message="deleteConfirmMessage"
+      confirm-text="Delete"
+      confirm-variant="danger"
+      @confirm="handleConfirmDelete"
+    />
   </div>
 </template>
 
@@ -153,6 +162,7 @@ import {
   Card,
   CardBody,
   Checkbox,
+  ConfirmDialog,
   EmptyState,
   Input,
   Modal,
@@ -162,6 +172,8 @@ import { Edit, ImageIcon, Plus, Search, Trash2 } from 'lucide-vue-next';
 
 const router = useRouter();
 const toast = useToast();
+const deleteConfirmOpen = ref(false);
+const deleteTarget = ref<any>(null);
 
 const items = ref<any[]>([]);
 const loading = ref(true);
@@ -323,10 +335,19 @@ async function saveItem() {
 }
 
 async function confirmDelete(item: any) {
-  if (!confirm(`Delete "${item.title}" from ${item.sectionLabel}?`)) return;
+  deleteTarget.value = item;
+  deleteConfirmOpen.value = true;
+}
+
+const deleteConfirmMessage = computed(() => `Delete "${deleteTarget.value?.title || 'this tile'}" from ${deleteTarget.value?.sectionLabel || 'this section'}?`);
+
+async function handleConfirmDelete() {
+  if (!deleteTarget.value?.id) return;
   try {
-    await axios.delete(`/api/admin/homepage/visual-menu/${item.id}`);
+    await axios.delete(`/api/admin/homepage/visual-menu/${deleteTarget.value.id}`);
     toast.success('Tile deleted');
+    deleteConfirmOpen.value = false;
+    deleteTarget.value = null;
     await loadItems();
   } catch (error: any) {
     console.error('Failed to delete visual menu tile:', error);

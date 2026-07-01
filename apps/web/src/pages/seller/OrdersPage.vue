@@ -260,6 +260,15 @@
         </div>
       </div>
     </Teleport>
+
+    <ConfirmDialog
+      v-model="archiveConfirmOpen"
+      title="Archive order"
+      :message="archiveConfirmMessage"
+      confirm-text="Archive"
+      confirm-variant="danger"
+      @confirm="confirmArchiveOrder"
+    />
   </div>
 </template>
 
@@ -267,7 +276,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
-import { Button, Card, CardBody, Badge, Input, Modal, Pagination, PageHeader, Select, Textarea } from '@bridgechina/ui';
+import { Button, Card, CardBody, Badge, ConfirmDialog, Input, Modal, Pagination, PageHeader, Select, Textarea } from '@bridgechina/ui';
 import { RefreshCw } from 'lucide-vue-next';
 
 const toast = useToast();
@@ -289,6 +298,8 @@ const selectedOrderItem = ref<any>(null);
 const orderDetailsOpen = ref(false);
 const selectedDetailItem = ref<any>(null);
 const customerReview = reactive({ rating: 10, note: '' });
+const archiveConfirmOpen = ref(false);
+const archiveTarget = ref<any>(null);
 
 const statusOptions = [
   { value: '', label: 'All statuses' },
@@ -445,9 +456,24 @@ async function reviewItem(id: string, status: 'approved' | 'rejected') {
 }
 
 async function archiveOrder(orderId: string) {
+  const target = orders.value.find((item: any) => item.order_id === orderId || item.order?.id === orderId) || null;
+  archiveTarget.value = target;
+  archiveConfirmOpen.value = true;
+}
+
+const archiveConfirmMessage = computed(() => {
+  const orderNumber = archiveTarget.value?.order?.order_number || archiveTarget.value?.order_id || 'this order';
+  return `Archive ${orderNumber}? You can still find it later in archived records.`;
+});
+
+async function confirmArchiveOrder() {
+  const orderId = archiveTarget.value?.order_id || archiveTarget.value?.order?.id;
+  if (!orderId) return;
   try {
     await axios.patch(`/api/seller/orders/${orderId}/archive`);
     toast.success('Order archived');
+    archiveConfirmOpen.value = false;
+    archiveTarget.value = null;
     await loadOrders();
   } catch (error: any) {
     toast.error(error.response?.data?.error || 'Failed to archive order');

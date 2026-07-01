@@ -183,14 +183,22 @@
         </div>
       </CardBody>
     </Card>
+    <ConfirmDialog
+      v-model="deleteConfirmOpen"
+      title="Delete coupon"
+      :message="deleteConfirmMessage"
+      confirm-text="Delete"
+      confirm-variant="danger"
+      @confirm="confirmDeleteCoupon"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
-import { PageHeader, Card, CardBody, Button, Input } from '@bridgechina/ui';
+import { PageHeader, Card, CardBody, Button, ConfirmDialog, Input } from '@bridgechina/ui';
 import { RefreshCw } from 'lucide-vue-next';
 
 const toast = useToast();
@@ -200,6 +208,8 @@ const savingMarkup = ref(false);
 const savingMoq = ref(false);
 const savingCoupon = ref(false);
 const savingAppSettings = ref(false);
+const deleteConfirmOpen = ref(false);
+const deleteTarget = ref<any>(null);
 const coupons = ref<any[]>([]);
 const editingCouponId = ref('');
 const markupPercent = ref(0);
@@ -380,10 +390,19 @@ async function saveCoupon() {
 }
 
 async function deleteCoupon(coupon: any) {
-  if (!confirm(`Delete coupon ${coupon.code}? Used coupons will be deactivated instead.`)) return;
+  deleteTarget.value = coupon;
+  deleteConfirmOpen.value = true;
+}
+
+const deleteConfirmMessage = computed(() => `Delete coupon ${deleteTarget.value?.code || ''}? Used coupons will be deactivated instead.`);
+
+async function confirmDeleteCoupon() {
+  if (!deleteTarget.value?.id) return;
   try {
-    await axios.delete(`/api/admin/coupons/${coupon.id}`);
+    await axios.delete(`/api/admin/coupons/${deleteTarget.value.id}`);
     toast.success('Coupon removed');
+    deleteConfirmOpen.value = false;
+    deleteTarget.value = null;
     await loadSettings();
   } catch (error: any) {
     toast.error(error.response?.data?.error || 'Failed to delete coupon');

@@ -98,6 +98,15 @@
         </div>
       </form>
     </Modal>
+
+    <ConfirmDialog
+      v-model="deleteConfirmOpen"
+      title="Delete product"
+      :message="deleteConfirmMessage"
+      confirm-text="Delete"
+      confirm-variant="danger"
+      @confirm="confirmRemoveProduct"
+    />
   </div>
 </template>
 
@@ -105,7 +114,7 @@
 import { computed, onMounted, ref } from 'vue';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
-import { Button, Card, CardBody, EmptyState, Input, Modal, PageHeader, Select, StatusChip, Textarea } from '@bridgechina/ui';
+import { Button, Card, CardBody, ConfirmDialog, EmptyState, Input, Modal, PageHeader, Select, StatusChip, Textarea } from '@bridgechina/ui';
 import { Plus, RefreshCw } from 'lucide-vue-next';
 
 const toast = useToast();
@@ -127,6 +136,8 @@ const flatCategories = computed(() => {
 const searchQuery = ref('');
 const showModal = ref(false);
 const editingProduct = ref<any>(null);
+const deleteConfirmOpen = ref(false);
+const deleteTarget = ref<any>(null);
 
 const productForm = ref({
   category_id: '',
@@ -272,10 +283,21 @@ async function handleSubmit() {
 }
 
 async function removeProduct(product: any) {
-  if (!confirm(`Delete ${product.title}?`)) return;
+  deleteTarget.value = product;
+  deleteConfirmOpen.value = true;
+}
+
+const deleteConfirmMessage = computed(() => {
+  return `Delete "${deleteTarget.value?.title || 'this product'}"? This action cannot be undone.`;
+});
+
+async function confirmRemoveProduct() {
+  if (!deleteTarget.value?.id) return;
   try {
-    await axios.delete(`/api/seller/products/${product.id}`);
+    await axios.delete(`/api/seller/products/${deleteTarget.value.id}`);
     toast.success('Product deleted');
+    deleteConfirmOpen.value = false;
+    deleteTarget.value = null;
     await loadData();
   } catch (error: any) {
     toast.error(error.response?.data?.error || 'Failed to delete product');

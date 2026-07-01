@@ -141,6 +141,15 @@
         </div>
       </form>
     </Modal>
+
+    <ConfirmDialog
+      v-model="cancelConfirmOpen"
+      title="Cancel order"
+      :message="cancelConfirmMessage"
+      confirm-text="Cancel order"
+      confirm-variant="danger"
+      @confirm="confirmCancelOrder"
+    />
   </div>
 </template>
 
@@ -149,7 +158,7 @@ import { computed, onMounted, ref, reactive } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
-import { Button, Card, CardBody, EmptyState, Input, Modal, PageHeader, Pagination, StatusChip, Badge } from '@bridgechina/ui';
+import { Button, Card, CardBody, EmptyState, Input, Modal, PageHeader, Pagination, StatusChip, Badge, ConfirmDialog } from '@bridgechina/ui';
 import { RefreshCw } from 'lucide-vue-next';
 
 const toast = useToast();
@@ -166,6 +175,8 @@ const limit = ref(25);
 const proofModalOpen = ref(false);
 const selectedOrder = ref<any>(null);
 const proofFile = ref<File | null>(null);
+const cancelConfirmOpen = ref(false);
+const cancelTarget = ref<any>(null);
 const filters = reactive({ search: '' });
 const proofForm = ref({ amount: '', notes: '' });
 
@@ -279,13 +290,26 @@ function openRequestedUpload() {
 
 async function cancelOrder(order: any) {
   if (!canCancelOrder(order)) return;
-  const confirmed = window.confirm(`Cancel order #${order.order_number || order.id.slice(0, 8)}?`);
-  if (!confirmed) return;
+  cancelTarget.value = order;
+  cancelConfirmOpen.value = true;
+}
+
+const cancelConfirmMessage = computed(() => {
+  const order = cancelTarget.value;
+  const orderNumber = order?.order_number || order?.id?.slice(0, 8) || 'this order';
+  return `Cancel order #${orderNumber}? This cannot be undone from your side.`;
+});
+
+async function confirmCancelOrder() {
+  const order = cancelTarget.value;
+  if (!order?.id || !canCancelOrder(order)) return;
 
   cancellingOrderId.value = order.id;
   try {
     await axios.patch(`/api/user/orders/${order.id}/cancel`, {});
     toast.success('Order cancelled');
+    cancelConfirmOpen.value = false;
+    cancelTarget.value = null;
     await loadOrders();
   } catch (error: any) {
     toast.error(error.response?.data?.error || 'Failed to cancel order');

@@ -176,14 +176,23 @@
         </div>
       </div>
     </Modal>
+
+    <ConfirmDialog
+      v-model="deleteConfirmOpen"
+      title="Delete customer"
+      :message="deleteConfirmMessage"
+      confirm-text="Delete"
+      confirm-variant="danger"
+      @confirm="confirmDeleteCustomer"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
-import { PageHeader, Card, CardBody, Badge, Button, Modal, Checkbox, Input, Select, Pagination, Textarea } from '@bridgechina/ui';
+import { PageHeader, Card, CardBody, Badge, Button, Checkbox, ConfirmDialog, Modal, Input, Select, Pagination, Textarea } from '@bridgechina/ui';
 import { RefreshCw } from 'lucide-vue-next';
 
 const users = ref<any[]>([]);
@@ -208,6 +217,8 @@ const updating = ref(false);
 const reviewing = ref(false);
 const deleting = ref(false);
 const customerDetail = ref<any>(null);
+const deleteConfirmOpen = ref(false);
+const deleteTarget = ref<any>(null);
 const toast = useToast();
 const reviewForm = ref({
   rating: 10,
@@ -313,15 +324,25 @@ async function saveReview() {
 }
 
 async function deleteCustomer(user: any) {
-  if (!confirm(`Delete customer ${user.email || user.phone || user.id}? This will also delete their related orders.`)) {
-    return;
-  }
+  deleteTarget.value = user;
+  deleteConfirmOpen.value = true;
+}
+
+const deleteConfirmMessage = computed(() => {
+  const label = deleteTarget.value?.email || deleteTarget.value?.phone || deleteTarget.value?.id || 'this customer';
+  return `Delete customer ${label}? This will also delete related orders.`;
+});
+
+async function confirmDeleteCustomer() {
+  if (!deleteTarget.value?.id) return;
   deleting.value = true;
   try {
-    await axios.delete(`/api/admin/users/${user.id}`);
+    await axios.delete(`/api/admin/users/${deleteTarget.value.id}`);
     toast.success('Customer deleted');
     showDetailModal.value = false;
     showReviewModal.value = false;
+    deleteConfirmOpen.value = false;
+    deleteTarget.value = null;
     await loadUsers();
   } catch (error: any) {
     toast.error(error.response?.data?.error || 'Failed to delete customer');

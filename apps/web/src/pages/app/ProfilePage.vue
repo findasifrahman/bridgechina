@@ -142,6 +142,15 @@
         </div>
       </form>
     </Modal>
+
+    <ConfirmDialog
+      v-model="deleteConfirmOpen"
+      title="Delete address"
+      :message="deleteConfirmMessage"
+      confirm-text="Delete"
+      confirm-variant="danger"
+      @confirm="confirmDeleteAddress"
+    />
   </div>
 </template>
 
@@ -149,7 +158,7 @@
 import { computed, onMounted, ref } from 'vue';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
-import { Button, Card, CardBody, CardHeader, Input, Modal, PageHeader } from '@bridgechina/ui';
+import { Button, Card, CardBody, CardHeader, ConfirmDialog, Input, Modal, PageHeader } from '@bridgechina/ui';
 import { Lock, MapPin, Plus, User } from 'lucide-vue-next';
 
 const toast = useToast();
@@ -187,6 +196,8 @@ const savingProfile = ref(false);
 const changingPassword = ref(false);
 const savingAddress = ref(false);
 const showAddAddressModal = ref(false);
+const deleteConfirmOpen = ref(false);
+const deleteAddressTarget = ref<any>(null);
 
 const isPasswordFormValid = computed(() => {
   return (
@@ -303,10 +314,23 @@ async function addAddress() {
 }
 
 async function deleteAddress(id: string) {
-  if (!confirm('Delete this address?')) return;
+  deleteAddressTarget.value = addresses.value.find((address) => address.id === id) || { id };
+  deleteConfirmOpen.value = true;
+}
+
+const deleteConfirmMessage = computed(() => {
+  const address = deleteAddressTarget.value;
+  const label = address?.name || address?.city || 'this address';
+  return `Delete ${label}? This saved delivery address will be removed from your account.`;
+});
+
+async function confirmDeleteAddress() {
+  if (!deleteAddressTarget.value?.id) return;
   try {
-    await axios.delete(`/api/user/addresses/${id}`);
+    await axios.delete(`/api/user/addresses/${deleteAddressTarget.value.id}`);
     toast.success('Address deleted');
+    deleteConfirmOpen.value = false;
+    deleteAddressTarget.value = null;
     await loadAddresses();
   } catch (error: any) {
     toast.error(error.response?.data?.error || 'Failed to delete address');

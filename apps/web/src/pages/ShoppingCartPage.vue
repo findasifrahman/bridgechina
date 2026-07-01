@@ -73,7 +73,7 @@
                     <button
                       type="button"
                       class="text-sm font-semibold text-rose-600 hover:text-rose-700"
-                      @click="removeFromCart(item.externalId)"
+                      @click="requestRemoveCartItem(item)"
                     >
                       Remove
                     </button>
@@ -451,6 +451,15 @@
         </div>
       </div>
     </div>
+
+    <ConfirmDialog
+      v-model="removeItemConfirmOpen"
+      title="Remove item"
+      :message="removeItemConfirmMessage"
+      confirm-text="Remove"
+      confirm-variant="danger"
+      @confirm="confirmRemoveCartItem"
+    />
   </div>
 
 </template>
@@ -460,7 +469,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useToast } from '@bridgechina/ui';
 import { ChevronLeft, Minus, Package, Plus, ShoppingCart } from 'lucide-vue-next';
-import { Button, Input, Select } from '@bridgechina/ui';
+import { Button, ConfirmDialog, Input, Select } from '@bridgechina/ui';
 import { useShoppingCart } from '@/composables/useShoppingCart';
 import { useAuthStore } from '@/stores/auth';
 import axios from '@/utils/axios';
@@ -492,6 +501,8 @@ const couponCode = ref('');
 const appliedCoupon = ref<any>(null);
 const checkoutPhone = ref(authStore.user?.phone || '');
 const checkoutPhoneError = ref('');
+const removeItemConfirmOpen = ref(false);
+const removeCartItemTarget = ref<any>(null);
 const addressErrors = ref({
   name: '',
   phone: '',
@@ -647,6 +658,25 @@ function removeCoupon() {
   appliedCoupon.value = null;
 }
 
+function requestRemoveCartItem(item: any) {
+  removeCartItemTarget.value = item;
+  removeItemConfirmOpen.value = true;
+}
+
+const removeItemConfirmMessage = computed(() => {
+  const title = removeCartItemTarget.value?.title || 'this item';
+  return `Remove "${title}" from your cart?`;
+});
+
+function confirmRemoveCartItem() {
+  const item = removeCartItemTarget.value;
+  if (!item?.externalId) return;
+  removeFromCart(item.externalId);
+  removeItemConfirmOpen.value = false;
+  removeCartItemTarget.value = null;
+  toast.success('Item removed from cart');
+}
+
 async function applyCoupon() {
   if (!couponCode.value.trim()) {
     toast.error('Enter a coupon code');
@@ -713,8 +743,7 @@ function changeCartSkuQty(item: any, skuIndex: number, delta: number) {
   const normalizedRows = rows.filter((sku: any) => sku.qty > 0);
 
   if (!normalizedRows.length) {
-    removeFromCart(item.externalId);
-    toast.success('Item removed from cart');
+    requestRemoveCartItem(item);
     return;
   }
 
@@ -743,7 +772,7 @@ function setCartSkuQty(item: any, skuIndex: number, value: string) {
   const normalizedRows = rows.filter((sku: any) => sku.qty > 0);
 
   if (!normalizedRows.length) {
-    removeFromCart(item.externalId);
+    requestRemoveCartItem(item);
     return;
   }
 

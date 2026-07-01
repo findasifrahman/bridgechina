@@ -329,8 +329,17 @@
       title="Delete Selected Media"
       :message="`Are you sure you want to delete ${selectedMedia.length} media item(s)? This action cannot be undone.`"
       confirm-text="Delete"
-      variant="danger"
+      confirm-variant="danger"
       @confirm="handleBulkDelete"
+    />
+
+    <ConfirmDialog
+      v-model="showSingleDeleteConfirm"
+      title="Delete media"
+      message="Are you sure you want to delete this media? This action cannot be undone."
+      confirm-text="Delete"
+      confirm-variant="danger"
+      @confirm="handleSingleDelete"
     />
   </div>
 </template>
@@ -374,6 +383,8 @@ const uploadCategory = ref('');
 const uploadTags = ref('');
 const selectedMedia = ref<string[]>([]);
 const showBulkDeleteConfirm = ref(false);
+const showSingleDeleteConfirm = ref(false);
+const deleteMediaId = ref('');
 const categories = ref<any[]>([]);
 const showEditModal = ref(false);
 const editingMedia = ref<any>(null);
@@ -560,19 +571,23 @@ function toggleSelect(id: string) {
 }
 
 async function deleteMedia(id: string) {
-  if (!confirm('Are you sure you want to delete this media? This action cannot be undone.')) {
-    return;
-  }
-  
+  deleteMediaId.value = id;
+  showSingleDeleteConfirm.value = true;
+}
+
+async function handleSingleDelete() {
+  if (!deleteMediaId.value) return;
   try {
-    await axios.delete(`/api/admin/media/${id}`);
+    await axios.delete(`/api/admin/media/${deleteMediaId.value}`);
     toast.success('Media deleted successfully');
     await loadMedia();
     // Remove from selection if selected
-    const index = selectedMedia.value.indexOf(id);
+    const index = selectedMedia.value.indexOf(deleteMediaId.value);
     if (index > -1) {
       selectedMedia.value.splice(index, 1);
     }
+    showSingleDeleteConfirm.value = false;
+    deleteMediaId.value = '';
   } catch (error: any) {
     toast.error(error.response?.data?.error || 'Failed to delete media');
   }

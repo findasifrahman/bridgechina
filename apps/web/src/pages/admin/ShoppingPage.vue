@@ -329,6 +329,15 @@
         </div>
       </form>
     </Modal>
+
+    <ConfirmDialog
+      v-model="deleteConfirmOpen"
+      :title="deleteConfirmTitle"
+      :message="deleteConfirmMessage"
+      confirm-text="Delete"
+      confirm-variant="danger"
+      @confirm="confirmDeleteAction"
+    />
   </div>
 </template>
 
@@ -337,7 +346,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
-import { PageHeader, Card, CardHeader, CardBody, Button, Modal, Input, Select, Textarea, Badge, Pagination } from '@bridgechina/ui';
+import { PageHeader, Card, CardHeader, CardBody, Button, ConfirmDialog, Modal, Input, Select, Textarea, Badge, Pagination } from '@bridgechina/ui';
 
 type SkuRow = {
   label: string;
@@ -369,6 +378,10 @@ const mediaLoading = ref(false);
 const productMediaInput = ref<HTMLInputElement | null>(null);
 const productMediaFiles = ref<File[]>([]);
 const productMediaUploading = ref(false);
+const deleteConfirmOpen = ref(false);
+const deleteConfirmTitle = ref('Delete item');
+const deleteConfirmMessage = ref('');
+const deleteAction = ref<null | (() => Promise<void>)>(null);
 
 const placeholderImage = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="100%25" height="100%25" fill="%23f1f5f9"/><path d="M70 125l25-28 20 22 18-20 27 26H70z" fill="%2394a3b8"/><circle cx="84" cy="84" r="12" fill="%2394a3b8"/></svg>';
 
@@ -785,14 +798,14 @@ async function saveProduct() {
 }
 
 async function deleteProduct(id: string) {
-  if (!confirm('Delete this product?')) return;
-  try {
+  deleteConfirmTitle.value = 'Delete product';
+  deleteConfirmMessage.value = 'Delete this product? This action cannot be undone.';
+  deleteAction.value = async () => {
     await axios.delete(`/api/admin/products/${id}`);
     toast.success('Product deleted');
     await loadProducts();
-  } catch (error: any) {
-    toast.error(error.response?.data?.error || 'Failed to delete product');
-  }
+  };
+  deleteConfirmOpen.value = true;
 }
 
 async function saveCategory() {
@@ -817,14 +830,25 @@ async function saveCategory() {
 }
 
 async function deleteCategory(id: string) {
-  if (!confirm('Delete this category?')) return;
-  try {
+  deleteConfirmTitle.value = 'Delete category';
+  deleteConfirmMessage.value = 'Delete this category? Products linked to it may need follow-up changes.';
+  deleteAction.value = async () => {
     await axios.delete(`/api/admin/categories/${id}`);
     toast.success('Category deleted');
     await loadCategories();
     await loadProducts();
+  };
+  deleteConfirmOpen.value = true;
+}
+
+async function confirmDeleteAction() {
+  if (!deleteAction.value) return;
+  try {
+    await deleteAction.value();
+    deleteConfirmOpen.value = false;
+    deleteAction.value = null;
   } catch (error: any) {
-    toast.error(error.response?.data?.error || 'Failed to delete category');
+    toast.error(error.response?.data?.error || 'Failed to delete item');
   }
 }
 

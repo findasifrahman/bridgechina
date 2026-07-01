@@ -366,6 +366,15 @@
         </div>
       </div>
     </Teleport>
+
+    <ConfirmDialog
+      v-model="deleteCustomerConfirmOpen"
+      title="Delete customer"
+      message="Delete this customer and all related orders? This action cannot be undone."
+      confirm-text="Delete"
+      confirm-variant="danger"
+      @confirm="confirmDeleteSelectedCustomer"
+    />
   </div>
 </template>
 
@@ -373,7 +382,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import axios from '@/utils/axios';
 import { useToast } from '@bridgechina/ui';
-import { Button, Card, CardBody, Badge, Input, Modal, Pagination, PageHeader, Select, Textarea } from '@bridgechina/ui';
+import { Button, Card, CardBody, Badge, ConfirmDialog, Input, Modal, Pagination, PageHeader, Select, Textarea } from '@bridgechina/ui';
 import { RefreshCw } from 'lucide-vue-next';
 
 const toast = useToast();
@@ -401,6 +410,7 @@ const customerReview = reactive({
 });
 const savingCustomerReview = ref(false);
 const deletingCustomer = ref(false);
+const deleteCustomerConfirmOpen = ref(false);
 
 const orderModalOpen = ref(false);
 const selectedOrder = ref<any>(null);
@@ -633,12 +643,17 @@ async function saveCustomerReview() {
 
 async function deleteSelectedCustomer() {
   if (!selectedCustomer.value?.id) return;
-  if (!confirm('Delete this customer and all related orders? This cannot be undone.')) return;
+  deleteCustomerConfirmOpen.value = true;
+}
+
+async function confirmDeleteSelectedCustomer() {
+  if (!selectedCustomer.value?.id) return;
   deletingCustomer.value = true;
   try {
     await axios.delete(`/api/admin/users/${selectedCustomer.value.id}`);
     toast.success('Customer deleted');
     customerModalOpen.value = false;
+    deleteCustomerConfirmOpen.value = false;
     await loadOrders();
   } catch (error: any) {
     toast.error(error.response?.data?.error || 'Failed to delete customer');

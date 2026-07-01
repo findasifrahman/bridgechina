@@ -146,6 +146,15 @@
         </div>
       </form>
     </Modal>
+
+    <ConfirmDialog
+      v-model="deleteConfirmOpen"
+      title="Delete featured deal"
+      :message="deleteConfirmMessage"
+      confirm-text="Delete"
+      confirm-variant="danger"
+      @confirm="handleConfirmDelete"
+    />
   </div>
 </template>
 
@@ -160,6 +169,7 @@ import {
   Card,
   CardBody,
   Checkbox,
+  ConfirmDialog,
   EmptyState,
   Input,
   MediaPickerModal,
@@ -172,6 +182,8 @@ import { Edit, ImageIcon, Plus, Trash2, X } from 'lucide-vue-next';
 
 const router = useRouter();
 const toast = useToast();
+const deleteConfirmOpen = ref(false);
+const deleteTarget = ref<any>(null);
 
 const offers = ref<any[]>([]);
 const mediaAssets = ref<any[]>([]);
@@ -334,10 +346,19 @@ async function saveOffer() {
 }
 
 async function confirmDelete(offer: any) {
-  if (!confirm(`Are you sure you want to delete "${offer.title}"?`)) return;
+  deleteTarget.value = offer;
+  deleteConfirmOpen.value = true;
+}
+
+const deleteConfirmMessage = computed(() => `Are you sure you want to delete "${deleteTarget.value?.title || 'this featured deal'}"?`);
+
+async function handleConfirmDelete() {
+  if (!deleteTarget.value?.id) return;
   try {
-    await axios.delete(`/api/admin/homepage/offers/${offer.id}`);
+    await axios.delete(`/api/admin/homepage/offers/${deleteTarget.value.id}`);
     toast.success('Featured deal deleted');
+    deleteConfirmOpen.value = false;
+    deleteTarget.value = null;
     await loadOffers();
   } catch (error: any) {
     console.error('Failed to delete featured deal:', error);
