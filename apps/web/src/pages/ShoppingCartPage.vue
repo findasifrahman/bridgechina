@@ -51,7 +51,7 @@
                 class="flex flex-col gap-4 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 sm:flex-row"
               >
                 <div class="h-28 w-full overflow-hidden rounded-2xl bg-white sm:h-24 sm:w-24 sm:flex-shrink-0">
-                  <img v-if="item.imageUrl" :src="item.imageUrl" :alt="item.title" class="h-full w-full object-cover" />
+                  <img v-if="getCartItemThumbnail(item)" :src="getCartItemThumbnail(item)" :alt="item.title" class="h-full w-full object-cover" />
                   <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
                     <Package class="h-8 w-8" />
                   </div>
@@ -164,7 +164,7 @@
             <div class="flex items-start justify-between gap-4">
               <div>
                 <h2 class="text-2xl font-black text-slate-950">Contact</h2>
-                <p class="mt-1 text-sm text-slate-500">Use email code now. SMS code can be enabled later from the shared auth module.</p>
+                <p class="mt-1 text-sm text-slate-500">Use Email authentication or mobile OTP to register/login.</p>
               </div>
               <button
                 v-if="!authStore.isAuthenticated"
@@ -557,6 +557,18 @@ function getItemWeight(item: any): number {
   return weight > 0 && qty > 0 ? weight * qty : 0;
 }
 
+function getCartItemThumbnail(item: any): string {
+  const skuRows = Array.isArray(item?.skuDetails) ? item.skuDetails : [];
+  for (const row of skuRows) {
+    const candidate = row?.imageUrl
+      || row?.sku?.imageUrl
+      || row?.sku?.image_url
+      || (Array.isArray(row?.sku?.images) ? row.sku.images[0] : '');
+    if (typeof candidate === 'string' && candidate.trim()) return candidate;
+  }
+  return item?.imageUrl || '';
+}
+
 const subtotal = computed(() => {
   return cartItems.value.reduce((sum, item) => sum + getItemLineTotal(item), 0);
 });
@@ -800,7 +812,7 @@ function buildCheckoutItems() {
       qty,
       priceMin: unitPrice,
       priceMax: unitPrice,
-      imageUrl: item.imageUrl,
+      imageUrl: getCartItemThumbnail(item),
       sourceUrl: item.sourceUrl,
       productUrl: item.productUrl || item.sourceUrl,
       sellerName: item.sellerName,

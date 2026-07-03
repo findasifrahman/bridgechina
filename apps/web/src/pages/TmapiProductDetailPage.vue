@@ -244,11 +244,11 @@
             </div>
 
             <div class="mt-3 grid gap-2">
-              <Button variant="primary" @click="buyNow" class="h-11 w-full text-[12px] font-semibold shadow-none">
+              <Button variant="primary" @click="buyNow" class="h-11 w-full text-[12px] font-semibold shadow-none" :disabled="selectionActionDisabled" :class="selectionActionDisabled ? 'cursor-not-allowed opacity-60' : ''">
                 <Truck class="mr-2 h-4 w-4" />
                 Buy Now
               </Button>
-              <Button variant="accent" style="color: white;" @click="addToCart" class="h-11 w-full text-[12px] font-semibold shadow-none" :disabled="totalQuantity <= 0" :class="totalQuantity <= 0 ? 'cursor-not-allowed opacity-60' : ''">
+              <Button variant="accent" style="color: white;" @click="addToCart" class="h-11 w-full text-[12px] font-semibold shadow-none" :disabled="selectionActionDisabled" :class="selectionActionDisabled ? 'cursor-not-allowed opacity-60' : ''">
                 <ShoppingCart class="mr-2 h-4 w-4" />
                 Add to Cart
               </Button>
@@ -645,11 +645,11 @@
 
               <div class="mt-3.5">
                 <div class="grid gap-2 lg:grid-cols-3">
-                  <Button variant="primary" @click="buyNow" class="h-11 w-full text-[12px] font-semibold shadow-none">
+                  <Button variant="primary" @click="buyNow" class="h-11 w-full text-[12px] font-semibold shadow-none" :disabled="selectionActionDisabled" :class="selectionActionDisabled ? 'cursor-not-allowed opacity-60' : ''">
                     <Truck class="mr-2 h-4 w-4" />
                     Buy Now
                   </Button>
-                  <Button variant="accent" style="color: white;" @click="addToCart" class="h-11 w-full text-[12px] font-semibold shadow-none" :disabled="totalQuantity <= 0" :class="totalQuantity <= 0 ? 'cursor-not-allowed opacity-60' : ''">
+                  <Button variant="accent" style="color: white;" @click="addToCart" class="h-11 w-full text-[12px] font-semibold shadow-none" :disabled="selectionActionDisabled" :class="selectionActionDisabled ? 'cursor-not-allowed opacity-60' : ''">
                     <ShoppingCart class="mr-2 h-4 w-4" />
                     Add to Cart
                   </Button>
@@ -1527,11 +1527,20 @@ const estimatedAirShippingRangeLabel = computed(() => {
 });
 
 const totalQuantity = computed(() => {
-  if (hasVariantRows.value && Object.keys(selectedSkus.value).length > 0) {
-    const total = Object.values(selectedSkus.value).reduce((sum, qty) => sum + qty, 0);
-    return total > 0 ? total : quantity.value;
+  if (hasVariantRows.value) {
+    return Object.values(selectedSkus.value).reduce((sum, qty) => sum + Number(qty || 0), 0);
   }
   return quantity.value;
+});
+
+const hasSelectedVariantQuantity = computed(() => {
+  if (!hasVariantRows.value) return true;
+  return totalQuantity.value > 0;
+});
+
+const selectionActionDisabled = computed(() => {
+  if (hasVariantRows.value) return !hasSelectedVariantQuantity.value;
+  return totalQuantity.value <= 0;
 });
 
 const specRows = computed(() => {
@@ -1956,15 +1965,33 @@ function buildSkuDetails() {
     qty: entry.qty,
     sku: entry.sku,
     label: entry.label,
+    imageUrl: entry.sku?.imageUrl || entry.sku?.image_url || (Array.isArray(entry.sku?.images) ? entry.sku.images[0] : undefined),
     sourceUnitPrice: entry.sourceUnitPrice,
     displayUnitPrice: convertPriceFromCny(entry.sourceUnitPrice),
   }));
   return skuDetails.length > 0 ? skuDetails : undefined;
 }
 
+function validateVariantSelection() {
+  if (hasVariantRows.value && !hasSelectedVariantQuantity.value) {
+    toast.error('Please select a color, size, or other SKU option before continuing.');
+    return false;
+  }
+  return true;
+}
+
 function buyNow() {
   try {
-    if (!product.value || totalQuantity.value <= 0) {
+    if (!product.value) {
+      toast.error('Product is not available');
+      return;
+    }
+
+    if (!validateVariantSelection()) {
+      return;
+    }
+
+    if (totalQuantity.value <= 0) {
       toast.error('Please select a quantity');
       return;
     }
@@ -1979,7 +2006,16 @@ function buyNow() {
 }
 
 function addToCart() {
-  if (!product.value || totalQuantity.value <= 0) {
+  if (!product.value) {
+    toast.error('Product is not available');
+    return;
+  }
+
+  if (!validateVariantSelection()) {
+    return;
+  }
+
+  if (totalQuantity.value <= 0) {
     toast.error('Please select a quantity');
     return;
   }

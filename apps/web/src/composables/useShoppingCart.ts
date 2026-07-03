@@ -29,6 +29,7 @@ export interface CartItem {
     qty: number;
     sku: any;
     label?: string;
+    imageUrl?: string;
     sourceUnitPrice?: number;
     displayUnitPrice?: number;
   }>;
@@ -38,6 +39,21 @@ export interface CartItem {
 
 const CART_STORAGE_KEY = 'bridgechina_shopping_cart';
 const cartItems = ref<CartItem[]>([]);
+
+function getPreferredSkuImage(
+  skuDetails?: CartItem['skuDetails'],
+  fallback?: string,
+): string | undefined {
+  const rows = Array.isArray(skuDetails) ? skuDetails : [];
+  for (const row of rows) {
+    const candidate = row?.imageUrl
+      || row?.sku?.imageUrl
+      || row?.sku?.image_url
+      || (Array.isArray(row?.sku?.images) ? row.sku.images[0] : undefined);
+    if (typeof candidate === 'string' && candidate.trim()) return candidate;
+  }
+  return fallback;
+}
 
 function mergeSkuDetails(
   current: CartItem['skuDetails'],
@@ -74,6 +90,7 @@ function normalizeCartItem(item: any): CartItem {
   const skuDetails = Array.isArray(item?.skuDetails)
     ? item.skuDetails
     : (Array.isArray(item?.sku_details_snapshot) ? item.sku_details_snapshot : undefined);
+  const fallbackImage = item?.imageUrl || item?.image_url_snapshot || product.coverAsset?.public_url;
 
   return {
     externalId: String(item?.externalId || item?.external_id || item?.product_id || product.external_id || product.id || ''),
@@ -86,7 +103,7 @@ function normalizeCartItem(item: any): CartItem {
     displayPriceMax,
     displayCurrency: item?.displayCurrency || item?.currency_snapshot || product.currency,
     sourceCurrency: item?.sourceCurrency || product.currency,
-    imageUrl: item?.imageUrl || item?.image_url_snapshot || product.coverAsset?.public_url,
+    imageUrl: getPreferredSkuImage(skuDetails, fallbackImage),
     sourceUrl: item?.sourceUrl || item?.source_url_snapshot || product.source_url,
     productUrl: item?.productUrl || item?.product_url_snapshot || product.product_url || item?.sourceUrl || item?.source_url_snapshot || product.source_url,
     sellerName: item?.sellerName || item?.seller_name_snapshot || product.vendor_name || item?.shopName || item?.shop?.name,
@@ -154,6 +171,10 @@ export function useShoppingCart() {
       if (skuDetails) {
         cartItems.value[existingIndex].skuDetails = mergeSkuDetails(cartItems.value[existingIndex].skuDetails, skuDetails);
         cartItems.value[existingIndex].quantity = cartItems.value[existingIndex].skuDetails?.reduce((sum, row) => sum + Number(row.qty || 0), 0) || cartItems.value[existingIndex].quantity;
+        cartItems.value[existingIndex].imageUrl = getPreferredSkuImage(
+          cartItems.value[existingIndex].skuDetails,
+          cartItems.value[existingIndex].imageUrl || product.imageUrl,
+        );
       }
     } else {
       const normalizedProduct = normalizeCartItem({
@@ -207,6 +228,7 @@ export function useShoppingCart() {
 
     item.skuDetails = normalizedRows;
     item.quantity = normalizedRows.reduce((sum, row) => sum + Number(row.qty || 0), 0);
+    item.imageUrl = getPreferredSkuImage(normalizedRows, item.imageUrl);
   };
 
   const clearCart = () => {
