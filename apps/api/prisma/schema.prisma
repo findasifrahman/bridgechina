@@ -927,17 +927,17 @@ model Order {
 }
 
 model OrderItem {
-  id             String   @id @default(uuid())
-  order_id       String
-  product_id     String
-  seller_id      String
-  qty            Int
-  price_snapshot Float
+  id                String   @id @default(uuid())
+  order_id          String
+  product_id        String
+  seller_id         String
+  qty               Int
+  price_snapshot    Float
   purchase_order_no String?
-  tracking_no      String?
-  created_at     DateTime @default(now())
-  order          Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
-  product        Product  @relation(fields: [product_id], references: [id])
+  tracking_no       String?
+  created_at        DateTime @default(now())
+  order             Order    @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  product           Product  @relation(fields: [product_id], references: [id])
 
   @@index([order_id])
   @@index([seller_id])
@@ -1138,7 +1138,7 @@ model PaymentProof {
   id          String         @id @default(uuid())
   request_id  String
   asset_id    String
-  amount      Float?         // Amount for this payment proof (for partial payments)
+  amount      Float? // Amount for this payment proof (for partial payments)
   status      String         @default("submitted") // submitted, approved, rejected
   notes       String?
   reviewed_by String?
@@ -1428,25 +1428,47 @@ model ExternalCatalogItem {
 }
 
 model ExternalSearchResultItem {
-  id              String   @id @default(uuid())
-  source          String
-  search_kind     String
-  search_key      String
-  search_phrase   String?
-  page            Int      @default(1)
-  external_id     String
-  title_original  String?
-  title_en        String?
-  item_json       Json?
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
-  expires_at      DateTime
+  id             String   @id @default(uuid())
+  source         String
+  search_kind    String
+  search_key     String
+  search_phrase  String?
+  page           Int      @default(1)
+  external_id    String
+  title_original String?
+  title_en       String?
+  item_json      Json?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  expires_at     DateTime
 
   @@unique([source, search_key, external_id])
   @@index([source, external_id])
   @@index([search_key])
   @@index([expires_at])
   @@map("external_search_result_items")
+}
+
+model ShoppingSearchIntent {
+  id                String   @id @default(uuid())
+  source            String
+  intent_type       String
+  query_text        String
+  normalized_key    String
+  category_slug     String?
+  language          String   @default("zh")
+  search_count      Int      @default(1)
+  result_count      Int      @default(0)
+  first_searched_at DateTime @default(now())
+  last_searched_at  DateTime @default(now())
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@unique([source, intent_type, normalized_key, language])
+  @@index([source, search_count])
+  @@index([last_searched_at])
+  @@index([category_slug])
+  @@map("shopping_search_intents")
 }
 
 model ExternalHotItem {

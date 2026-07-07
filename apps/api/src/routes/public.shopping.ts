@@ -44,11 +44,15 @@ async function verifyTurnstile(token: string | undefined, ip: string): Promise<b
 
   if (!res.ok) return false;
 
-  const data = await res.json() as { success?: boolean };
+  const data = (await res.json()) as { success?: boolean };
   return data.success === true;
 }
 
-async function requireTurnstile(request: FastifyRequest, reply: FastifyReply, token: string | undefined): Promise<boolean> {
+async function requireTurnstile(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  token: string | undefined
+): Promise<boolean> {
   const verified = await verifyTurnstile(token, getClientIp(request));
   if (!verified) {
     reply.status(403).send({ error: 'Human verification failed. Please refresh and try again.' });
@@ -97,10 +101,18 @@ function normalizeLocalSkuRows(product: any, coverImageUrl?: string) {
   return rows
     .map((row: any, index: number) => {
       if (!row || typeof row !== 'object') return null;
-      const label = String(row.label || row.name || row.option || row.title || `Option ${index + 1}`).trim();
+      const label = String(
+        row.label || row.name || row.option || row.title || `Option ${index + 1}`
+      ).trim();
       const sku = String(row.sku || row.spec || row.code || '').trim();
-      const price = row.price !== undefined && row.price !== null && row.price !== '' ? Number(row.price) : product.price;
-      const stock = row.stock_qty !== undefined && row.stock_qty !== null && row.stock_qty !== '' ? Number(row.stock_qty) : product.stock_qty;
+      const price =
+        row.price !== undefined && row.price !== null && row.price !== ''
+          ? Number(row.price)
+          : product.price;
+      const stock =
+        row.stock_qty !== undefined && row.stock_qty !== null && row.stock_qty !== ''
+          ? Number(row.stock_qty)
+          : product.stock_qty;
       return {
         specid: row.specid || sku || `${product.id}-sku-${index + 1}`,
         skuid: row.skuid || sku || `${product.id}-sku-${index + 1}`,
@@ -119,11 +131,17 @@ function normalizeLocalProductProps(product: any) {
   const props = rows
     .map((row: any, index: number) => {
       if (!row || typeof row !== 'object') return null;
-      const label = String(row.label || row.name || row.option || row.title || `Option ${index + 1}`).trim();
+      const label = String(
+        row.label || row.name || row.option || row.title || `Option ${index + 1}`
+      ).trim();
       const valueParts = [
         row.sku ? `SKU ${row.sku}` : '',
-        row.price !== undefined && row.price !== null && row.price !== '' ? `Price ${row.price}` : '',
-        row.stock_qty !== undefined && row.stock_qty !== null && row.stock_qty !== '' ? `Stock ${row.stock_qty}` : '',
+        row.price !== undefined && row.price !== null && row.price !== ''
+          ? `Price ${row.price}`
+          : '',
+        row.stock_qty !== undefined && row.stock_qty !== null && row.stock_qty !== ''
+          ? `Stock ${row.stock_qty}`
+          : '',
       ].filter(Boolean);
       return { [label]: valueParts.join(' · ') || '-' };
     })
@@ -178,12 +196,16 @@ function buildCategoryTree(rows: any[]) {
       roots.push(node);
     }
   }
-  const sortNodes = (items: any[]) => items
-    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || String(a.name).localeCompare(String(b.name)))
-    .map((item) => ({
-      ...item,
-      children: sortNodes(item.children || []),
-    }));
+  const sortNodes = (items: any[]) =>
+    items
+      .sort(
+        (a, b) =>
+          (a.sort_order ?? 0) - (b.sort_order ?? 0) || String(a.name).localeCompare(String(b.name))
+      )
+      .map((item) => ({
+        ...item,
+        children: sortNodes(item.children || []),
+      }));
   return sortNodes(roots);
 }
 
@@ -210,24 +232,92 @@ function buildHomepageVisualMenuSections(rows: any[]) {
     });
   }
 
-    return Array.from(sections.values())
-    .sort((a, b) => a.sectionSortOrder - b.sectionSortOrder || String(a.sectionLabel).localeCompare(String(b.sectionLabel)))
+  return Array.from(sections.values())
+    .sort(
+      (a, b) =>
+        a.sectionSortOrder - b.sectionSortOrder ||
+        String(a.sectionLabel).localeCompare(String(b.sectionLabel))
+    )
     .map((section) => ({
       ...section,
       items: section.items
-        .sort((a: any, b: any) => a.sortOrder - b.sortOrder || String(a.title).localeCompare(String(b.title)))
+        .sort(
+          (a: any, b: any) =>
+            a.sortOrder - b.sortOrder || String(a.title).localeCompare(String(b.title))
+        )
         .slice(0, 5),
     }));
 }
 
-function hasDisplayablePrice(card: { priceMin?: number | null; priceMax?: number | null }): boolean {
-  const values = [card.priceMin, card.priceMax].filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+function hasDisplayablePrice(card: {
+  priceMin?: number | null;
+  priceMax?: number | null;
+}): boolean {
+  const values = [card.priceMin, card.priceMax].filter(
+    (value): value is number => typeof value === 'number' && Number.isFinite(value)
+  );
   return values.some((value) => value > 0);
 }
 
 function hasDisplayableImage(card: any): boolean {
   if (String(card?.imageUrl || card?.image_url || '').trim()) return true;
-  return Array.isArray(card?.images) && card.images.some((image: unknown) => String(image || '').trim());
+  return (
+    Array.isArray(card?.images) && card.images.some((image: unknown) => String(image || '').trim())
+  );
+}
+
+function normalizeSearchIntentKey(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 200);
+}
+
+async function recordShoppingSearchIntent(
+  fastify: FastifyInstance,
+  data: {
+    source: string;
+    intentType: string;
+    queryText: string;
+    categorySlug?: string | null;
+    language?: string | null;
+    resultCount?: number;
+  }
+) {
+  const normalizedKey = normalizeSearchIntentKey(data.queryText);
+  if (!normalizedKey) return;
+
+  try {
+    await (prisma as any).shoppingSearchIntent.upsert({
+      where: {
+        source_intent_type_normalized_key_language: {
+          source: data.source,
+          intent_type: data.intentType,
+          normalized_key: normalizedKey,
+          language: data.language || 'zh',
+        },
+      },
+      create: {
+        source: data.source,
+        intent_type: data.intentType,
+        query_text: data.queryText.trim().slice(0, 200),
+        normalized_key: normalizedKey,
+        category_slug: data.categorySlug || null,
+        language: data.language || 'zh',
+        result_count: data.resultCount || 0,
+        search_count: 1,
+      },
+      update: {
+        query_text: data.queryText.trim().slice(0, 200),
+        category_slug: data.categorySlug || null,
+        result_count: data.resultCount || 0,
+        search_count: { increment: 1 },
+        last_searched_at: new Date(),
+      },
+    });
+  } catch (error: any) {
+    fastify.log.warn(
+      { error: error?.message || error },
+      '[Public Shopping Route] failed to record shopping search intent'
+    );
+  }
 }
 
 export default async function publicShoppingRoutes(fastify: FastifyInstance) {
@@ -251,12 +341,10 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
     translateProductCardTitles,
   } = shoppingModule as any;
 
-  const {
-    searchByKeywordSchema,
-    searchByImageSchema,
-    getHotItemsSchema,
-  } = await import('../modules/shopping/shopping.schemas.js');
-  const recentSearchSource = shoppingProvider === 'shopping_otapi' ? 'shopping_otapi' : 'tmapi_1688';
+  const { searchByKeywordSchema, searchByImageSchema, getHotItemsSchema } =
+    await import('../modules/shopping/shopping.schemas.js');
+  const recentSearchSource =
+    shoppingProvider === 'shopping_otapi' ? 'shopping_otapi' : 'tmapi_1688';
 
   fastify.post(
     '/shopping/upload-image',
@@ -299,11 +387,12 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
         }
 
         const sanitizedFilename = data.filename?.replace(/[^a-zA-Z0-9.-]/g, '_') || 'image';
-        const extension = optimized.contentType === 'image/webp'
-          ? 'webp'
-          : optimized.contentType === 'image/jpeg'
-            ? 'jpg'
-            : sanitizedFilename.split('.').pop() || 'img';
+        const extension =
+          optimized.contentType === 'image/webp'
+            ? 'webp'
+            : optimized.contentType === 'image/jpeg'
+              ? 'jpg'
+              : sanitizedFilename.split('.').pop() || 'img';
         const baseFilename = sanitizedFilename.replace(/\.[^.]+$/, '');
         const key = `shopping/search/${Date.now()}-${baseFilename}.${extension}`;
 
@@ -315,7 +404,7 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
             optimizedType: optimized.contentType,
             key,
           },
-          '[Public Shopping Route] optimized shopping image upload',
+          '[Public Shopping Route] optimized shopping image upload'
         );
 
         await uploadToR2(key, optimized.buffer, optimized.contentType);
@@ -330,80 +419,99 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
           },
         };
       } catch (error: any) {
-        fastify.log.error({ error, stack: error.stack }, '[Public Shopping Route] /shopping/upload-image error');
+        fastify.log.error(
+          { error, stack: error.stack },
+          '[Public Shopping Route] /shopping/upload-image error'
+        );
         reply.status(500).send({ error: error.message || 'Failed to upload image' });
       }
     }
   );
 
-  fastify.get('/image-proxy', {
-    config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { url: urlParam } = request.query as { url?: string };
+  fastify.get(
+    '/image-proxy',
+    {
+      config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { url: urlParam } = request.query as { url?: string };
 
-    if (!urlParam) {
-      reply.status(400).send({ error: 'Missing url parameter' });
-      return;
-    }
-
-    try {
-      const decodedUrl = decodeURIComponent(urlParam);
-      let imageUrl: URL;
-
-      try {
-        imageUrl = new URL(decodedUrl);
-      } catch (error) {
-        reply.status(400).send({ error: 'Invalid URL' });
+      if (!urlParam) {
+        reply.status(400).send({ error: 'Missing url parameter' });
         return;
       }
 
-      const allowedDomains = ['cbu01.alicdn.com', 'img.alicdn.com', 'detail.1688.com', 'alicdn.com', '1688.com'];
-      const hostname = imageUrl.hostname.toLowerCase();
-      const isAllowed = allowedDomains.some((domain) => {
-        const normalized = domain.toLowerCase();
-        return hostname === normalized || hostname.endsWith(`.${normalized}`);
-      });
-
-      if (!isAllowed) {
-        reply.status(403).send({ error: `Domain not allowed: ${hostname}` });
-        return;
-      }
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-      let response: Response;
       try {
-        response = await fetch(decodedUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            Accept: 'image/webp,image/apng,image/*,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9',
-            Referer: 'https://detail.1688.com/',
-          },
-          signal: controller.signal,
+        const decodedUrl = decodeURIComponent(urlParam);
+        let imageUrl: URL;
+
+        try {
+          imageUrl = new URL(decodedUrl);
+        } catch (error) {
+          reply.status(400).send({ error: 'Invalid URL' });
+          return;
+        }
+
+        const allowedDomains = [
+          'cbu01.alicdn.com',
+          'img.alicdn.com',
+          'detail.1688.com',
+          'alicdn.com',
+          '1688.com',
+        ];
+        const hostname = imageUrl.hostname.toLowerCase();
+        const isAllowed = allowedDomains.some((domain) => {
+          const normalized = domain.toLowerCase();
+          return hostname === normalized || hostname.endsWith(`.${normalized}`);
         });
-      } finally {
-        clearTimeout(timeoutId);
+
+        if (!isAllowed) {
+          reply.status(403).send({ error: `Domain not allowed: ${hostname}` });
+          return;
+        }
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+        let response: Response;
+        try {
+          response = await fetch(decodedUrl, {
+            headers: {
+              'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              Accept: 'image/webp,image/apng,image/*,*/*;q=0.8',
+              'Accept-Language': 'en-US,en;q=0.9',
+              Referer: 'https://detail.1688.com/',
+            },
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
+
+        if (!response.ok) {
+          reply
+            .status(response.status)
+            .send({ error: `Failed to fetch image: ${response.statusText}` });
+          return;
+        }
+
+        const contentType = response.headers.get('content-type') || 'image/jpeg';
+        const buffer = Buffer.from(await response.arrayBuffer());
+
+        reply.header('Content-Type', contentType);
+        reply.header('Cache-Control', 'public, max-age=31536000, immutable');
+        reply.header('Access-Control-Allow-Origin', '*');
+        reply.send(buffer);
+      } catch (error: any) {
+        fastify.log.error(
+          { error, stack: error.stack },
+          '[Public Shopping Route] /image-proxy error'
+        );
+        reply.status(500).send({ error: 'Failed to proxy image' });
       }
-
-      if (!response.ok) {
-        reply.status(response.status).send({ error: `Failed to fetch image: ${response.statusText}` });
-        return;
-      }
-
-      const contentType = response.headers.get('content-type') || 'image/jpeg';
-      const buffer = Buffer.from(await response.arrayBuffer());
-
-      reply.header('Content-Type', contentType);
-      reply.header('Cache-Control', 'public, max-age=31536000, immutable');
-      reply.header('Access-Control-Allow-Origin', '*');
-      reply.send(buffer);
-    } catch (error: any) {
-      fastify.log.error({ error, stack: error.stack }, '[Public Shopping Route] /image-proxy error');
-      reply.status(500).send({ error: 'Failed to proxy image' });
     }
-  });
+  );
 
   fastify.get('/shopping/categories', async () => {
     const categories = await prisma.productCategory.findMany({
@@ -429,7 +537,10 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
       const items = await getHotItems(query.category, page, Math.max(pageSize * 3, pageSize));
       return Array.isArray(items) ? items.filter(hasDisplayableImage).slice(0, pageSize) : [];
     } catch (error: any) {
-      fastify.log.error({ error, stack: error.stack, query: request.query }, '[Public Shopping Route] /shopping/hot error');
+      fastify.log.error(
+        { error, stack: error.stack, query: request.query },
+        '[Public Shopping Route] /shopping/hot error'
+      );
       reply.status(400).send({ error: error.message || 'Invalid query parameters' });
     }
   });
@@ -441,20 +552,35 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
       }
       // Cache the entire curated response for 6 hours to avoid firing 6-18 TMAPI search calls per request
       const CURATED_CACHE_KEY = 'system::home-curated-v1';
-      const cached = await prisma.externalSearchCache.findUnique({ where: { cache_key: CURATED_CACHE_KEY } });
+      const cached = await prisma.externalSearchCache.findUnique({
+        where: { cache_key: CURATED_CACHE_KEY },
+      });
       if (cached && cached.expires_at > new Date()) {
         return cached.results_json;
       }
       const result = await getCuratedHomeSections();
       const expiresAt = new Date(Date.now() + 6 * 60 * 60 * 1000); // 6 hours
-      await prisma.externalSearchCache.upsert({
-        where: { cache_key: CURATED_CACHE_KEY },
-        create: { source: 'system', cache_key: CURATED_CACHE_KEY, query_json: {}, results_json: result as any, expires_at: expiresAt },
-        update: { results_json: result as any, expires_at: expiresAt },
-      }).catch(() => { /* non-critical */ });
+      await prisma.externalSearchCache
+        .upsert({
+          where: { cache_key: CURATED_CACHE_KEY },
+          create: {
+            source: 'system',
+            cache_key: CURATED_CACHE_KEY,
+            query_json: {},
+            results_json: result as any,
+            expires_at: expiresAt,
+          },
+          update: { results_json: result as any, expires_at: expiresAt },
+        })
+        .catch(() => {
+          /* non-critical */
+        });
       return result;
     } catch (error: any) {
-      fastify.log.error({ error, stack: error.stack, query: request.query }, '[Public Shopping Route] /shopping/home-curated error');
+      fastify.log.error(
+        { error, stack: error.stack, query: request.query },
+        '[Public Shopping Route] /shopping/home-curated error'
+      );
       reply.status(400).send({ error: error.message || 'Invalid query parameters' });
     }
   });
@@ -470,25 +596,27 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
       let categoryTrailKeyword: string | undefined;
       let categoryLeafKeyword: string | undefined;
       if (query.category && !query.keyword) {
-        const categoryNode = await prisma.productCategory.findFirst({
-          where: { slug: query.category, is_active: true },
-          select: {
-            name: true,
-            slug: true,
-            parent: {
-              select: {
-                name: true,
-                slug: true,
-                parent: {
-                  select: {
-                    name: true,
-                    slug: true,
+        const categoryNode = await prisma.productCategory
+          .findFirst({
+            where: { slug: query.category, is_active: true },
+            select: {
+              name: true,
+              slug: true,
+              parent: {
+                select: {
+                  name: true,
+                  slug: true,
+                  parent: {
+                    select: {
+                      name: true,
+                      slug: true,
+                    },
                   },
                 },
               },
             },
-          },
-        }).catch(() => null);
+          })
+          .catch(() => null);
 
         const categoryTrail = [
           categoryNode?.parent?.parent?.name,
@@ -500,82 +628,113 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
         categoryTrailKeyword = Array.from(new Set(categoryTrail)).join(' ').trim() || undefined;
         categoryKeyword = categoryLeafKeyword || categoryTrailKeyword || undefined;
       }
-      const localProducts = query.vendorId ? [] : await prisma.product.findMany({
-        where: (() => {
-          const localWhere: any = { status: 'published' };
-          if (query.category) {
-            localWhere.OR = [
-              { category: { slug: query.category } },
-              { category: { parent: { slug: query.category } } },
-            ];
-          }
-          if (query.keyword) {
-            const searchTerms = searchContext.searchTerms.length > 0
-              ? searchContext.searchTerms
-              : [query.keyword];
-            localWhere.OR = [
-              ...(localWhere.OR || []),
-              ...searchTerms.flatMap((term) => [
-                { title: { contains: term, mode: 'insensitive' } },
-                { description: { contains: term, mode: 'insensitive' } },
-                { brand: { contains: term, mode: 'insensitive' } },
-              ]),
-            ];
-          }
-          return localWhere;
-        })(),
-        include: {
-          coverAsset: true,
-          seller: {
-            include: { sellerProfile: true },
-          },
-          category: true,
-        },
-        orderBy: [{ is_featured: 'desc' }, { created_at: 'desc' }],
-        take: query.pageSize || 20,
-      });
+      const localProducts = query.vendorId
+        ? []
+        : await prisma.product.findMany({
+            where: (() => {
+              const localWhere: any = { status: 'published' };
+              if (query.category) {
+                localWhere.OR = [
+                  { category: { slug: query.category } },
+                  { category: { parent: { slug: query.category } } },
+                ];
+              }
+              if (query.keyword) {
+                const searchTerms =
+                  searchContext.searchTerms.length > 0
+                    ? searchContext.searchTerms
+                    : [query.keyword];
+                localWhere.OR = [
+                  ...(localWhere.OR || []),
+                  ...searchTerms.flatMap((term) => [
+                    { title: { contains: term, mode: 'insensitive' } },
+                    { description: { contains: term, mode: 'insensitive' } },
+                    { brand: { contains: term, mode: 'insensitive' } },
+                  ]),
+                ];
+              }
+              return localWhere;
+            })(),
+            include: {
+              coverAsset: true,
+              seller: {
+                include: { sellerProfile: true },
+              },
+              category: true,
+            },
+            orderBy: [{ is_featured: 'desc' }, { created_at: 'desc' }],
+            take: query.pageSize || 20,
+          });
 
       const otapiResults = await searchByKeyword(query.keyword || categoryKeyword, {
-            category: query.category,
-            vendorId: query.vendorId || undefined,
-            fallbackKeywords: [
-              categoryLeafKeyword,
-              categoryTrailKeyword,
-              query.category,
-            ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0),
-            page: query.page,
-            pageSize: query.pageSize,
-            minPrice: query.minPrice,
-            maxPrice: query.maxPrice,
-            minVolume: query.minVolume,
-            sort: query.sort,
-            language: query.language,
-            categoryOnly: !query.keyword && !!query.category,
-            synonymHints: searchContext.relevanceHints,
-            debugContext: query.keyword
-              ? `search:${query.keyword}:${query.category || 'no-category'}`
-              : query.vendorId
-                ? `vendor:${query.vendorId}${query.keyword ? ` keyword:${query.keyword}` : ''}`
-                : query.category
-                  ? `category:${query.category}${categoryLeafKeyword ? ` leaf:${categoryLeafKeyword}` : ''}${categoryTrailKeyword && categoryTrailKeyword !== categoryLeafKeyword ? ` trail:${categoryTrailKeyword}` : ''}`
-                  : 'search:empty',
-        });
+        category: query.category,
+        vendorId: query.vendorId || undefined,
+        fallbackKeywords: [categoryLeafKeyword, categoryTrailKeyword, query.category].filter(
+          (value): value is string => typeof value === 'string' && value.trim().length > 0
+        ),
+        page: query.page,
+        pageSize: query.pageSize,
+        minPrice: query.minPrice,
+        maxPrice: query.maxPrice,
+        minVolume: query.minVolume,
+        sort: query.sort,
+        language: query.language,
+        categoryOnly: !query.keyword && !!query.category,
+        synonymHints: searchContext.relevanceHints,
+        debugContext: query.keyword
+          ? `search:${query.keyword}:${query.category || 'no-category'}`
+          : query.vendorId
+            ? `vendor:${query.vendorId}${query.keyword ? ` keyword:${query.keyword}` : ''}`
+            : query.category
+              ? `category:${query.category}${categoryLeafKeyword ? ` leaf:${categoryLeafKeyword}` : ''}${categoryTrailKeyword && categoryTrailKeyword !== categoryLeafKeyword ? ` trail:${categoryTrailKeyword}` : ''}`
+              : 'search:empty',
+      });
 
-      const localAssetIds = Array.from(new Set(localProducts.flatMap((product: any) => [
-        ...(Array.isArray(product.gallery_asset_ids) ? product.gallery_asset_ids : []),
-        product.cover_asset_id,
-      ]).filter((id): id is string => typeof id === 'string' && id.length > 0)));
-      const localAssets = localAssetIds.length > 0
-        ? await prisma.mediaAsset.findMany({
-            where: { id: { in: localAssetIds } },
-            select: { id: true, public_url: true, thumbnail_url: true },
-          })
-        : [];
+      const localAssetIds = Array.from(
+        new Set(
+          localProducts
+            .flatMap((product: any) => [
+              ...(Array.isArray(product.gallery_asset_ids) ? product.gallery_asset_ids : []),
+              product.cover_asset_id,
+            ])
+            .filter((id): id is string => typeof id === 'string' && id.length > 0)
+        )
+      );
+      const localAssets =
+        localAssetIds.length > 0
+          ? await prisma.mediaAsset.findMany({
+              where: { id: { in: localAssetIds } },
+              select: { id: true, public_url: true, thumbnail_url: true },
+            })
+          : [];
       const mediaById = new Map<string, any>(localAssets.map((asset) => [asset.id, asset]));
-      const localCards = localProducts.map((product) => normalizeLocalProductCard(product, mediaById)).filter(hasDisplayablePrice);
+      const localCards = localProducts
+        .map((product) => normalizeLocalProductCard(product, mediaById))
+        .filter(hasDisplayablePrice);
       const otapiCards = (otapiResults.items || []).filter(hasDisplayablePrice);
       const merged = [...localCards, ...otapiCards];
       const pageSize = query.pageSize || 20;
+      const intentQueryText = String(
+        query.keyword || categoryKeyword || query.category || ''
+      ).trim();
+      if (query.page === 1 && intentQueryText && !query.vendorId) {
+        const intentType =
+          query.intentSource === 'menu'
+            ? 'menu'
+            : query.intentSource === 'recent'
+              ? 'recent'
+              : query.category && !query.keyword
+                ? 'category'
+                : 'text';
+        await recordShoppingSearchIntent(fastify, {
+          source: recentSearchSource,
+          intentType,
+          queryText: intentQueryText,
+          categorySlug: query.category || null,
+          language: query.language,
+          resultCount: merged.length,
+        });
+      }
       return {
         ...otapiResults,
         items: merged.slice(0, pageSize),
@@ -583,43 +742,60 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
         otapiItems: otapiCards,
       };
     } catch (error: any) {
-      fastify.log.error({ error, stack: error.stack, query: request.query }, '[Public Shopping Route] /shopping/search error');
+      fastify.log.error(
+        { error, stack: error.stack, query: request.query },
+        '[Public Shopping Route] /shopping/search error'
+      );
       reply.status(400).send({ error: error.message || 'Invalid query parameters' });
     }
   });
 
-  fastify.get('/shopping/vendor/:vendorId', async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const { vendorId } = request.params as { vendorId: string };
-      const query = request.query as { language?: string; page?: string; pageSize?: string; sort?: string; keyword?: string; q?: string; category?: string };
-      const language = query.language === 'en' ? 'en' : 'zh';
-      const page = parseInt(query.page || '1', 10);
-      const pageSize = parseInt(query.pageSize || '8', 10);
-      const sort = query.sort || 'sales';
-      const keyword = String(query.keyword || query.q || '').trim();
+  fastify.get(
+    '/shopping/vendor/:vendorId',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const { vendorId } = request.params as { vendorId: string };
+        const query = request.query as {
+          language?: string;
+          page?: string;
+          pageSize?: string;
+          sort?: string;
+          keyword?: string;
+          q?: string;
+          category?: string;
+        };
+        const language = query.language === 'en' ? 'en' : 'zh';
+        const page = parseInt(query.page || '1', 10);
+        const pageSize = parseInt(query.pageSize || '8', 10);
+        const sort = query.sort || 'sales';
+        const keyword = String(query.keyword || query.q || '').trim();
 
-      const [vendor, products] = await Promise.all([
-        typeof getVendorInfo === 'function' ? getVendorInfo(vendorId, language) : null,
-        searchByKeyword(keyword || undefined, {
-          vendorId,
-          page,
-          pageSize,
-          sort,
-          language,
-          category: query.category,
-          debugContext: keyword ? `vendor:${vendorId} keyword:${keyword}` : `vendor:${vendorId}`,
-        }),
-      ]);
+        const [vendor, products] = await Promise.all([
+          typeof getVendorInfo === 'function' ? getVendorInfo(vendorId, language) : null,
+          searchByKeyword(keyword || undefined, {
+            vendorId,
+            page,
+            pageSize,
+            sort,
+            language,
+            category: query.category,
+            debugContext: keyword ? `vendor:${vendorId} keyword:${keyword}` : `vendor:${vendorId}`,
+          }),
+        ]);
 
-      return {
-        vendor,
-        products,
-      };
-    } catch (error: any) {
-      fastify.log.error({ error, stack: error.stack }, '[Public Shopping Route] /shopping/vendor/:vendorId error');
-      reply.status(400).send({ error: error.message || 'Invalid query parameters' });
+        return {
+          vendor,
+          products,
+        };
+      } catch (error: any) {
+        fastify.log.error(
+          { error, stack: error.stack },
+          '[Public Shopping Route] /shopping/vendor/:vendorId error'
+        );
+        reply.status(400).send({ error: error.message || 'Invalid query parameters' });
+      }
     }
-  });
+  );
 
   fastify.get('/shopping/premium-products', async (request: FastifyRequest) => {
     const query = request.query as { category?: string; limit?: string };
@@ -644,47 +820,54 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
       take: limit,
     });
 
-    const assetIds = Array.from(new Set(items.flatMap((product: any) => [
-      ...(Array.isArray(product.gallery_asset_ids) ? product.gallery_asset_ids : []),
-      product.cover_asset_id,
-    ]).filter((id): id is string => typeof id === 'string' && id.length > 0)));
-    const assets = assetIds.length > 0
-      ? await prisma.mediaAsset.findMany({
-          where: { id: { in: assetIds } },
-          select: { id: true, public_url: true, thumbnail_url: true },
-        })
-      : [];
+    const assetIds = Array.from(
+      new Set(
+        items
+          .flatMap((product: any) => [
+            ...(Array.isArray(product.gallery_asset_ids) ? product.gallery_asset_ids : []),
+            product.cover_asset_id,
+          ])
+          .filter((id): id is string => typeof id === 'string' && id.length > 0)
+      )
+    );
+    const assets =
+      assetIds.length > 0
+        ? await prisma.mediaAsset.findMany({
+            where: { id: { in: assetIds } },
+            select: { id: true, public_url: true, thumbnail_url: true },
+          })
+        : [];
     const mediaById = new Map<string, any>(assets.map((asset) => [asset.id, asset]));
     return items.map((product) => normalizeLocalProductCard(product, mediaById));
   });
 
   fastify.get('/shopping/settings', async () => {
-      const [shippingRates, markupSetting, moqRule, appSettings] = await Promise.all([
-        prisma.shippingRateSetting.findMany({
-          where: { is_active: true },
-          orderBy: [{ method: 'asc' }, { currency: 'asc' }],
-        }),
-        prisma.sourceMarkupSetting.findUnique({
-          where: { source_kind: 'shopping_otapi' },
-        }),
-        prisma.moqShoppingOtapiRule.findUnique({
-          where: { scope: 'global' },
-        }),
-        getShoppingAppSettings(),
-      ]);
+    const [shippingRates, markupSetting, moqRule, appSettings] = await Promise.all([
+      prisma.shippingRateSetting.findMany({
+        where: { is_active: true },
+        orderBy: [{ method: 'asc' }, { currency: 'asc' }],
+      }),
+      prisma.sourceMarkupSetting.findUnique({
+        where: { source_kind: 'shopping_otapi' },
+      }),
+      prisma.moqShoppingOtapiRule.findUnique({
+        where: { scope: 'global' },
+      }),
+      getShoppingAppSettings(),
+    ]);
 
-      return {
-        shippingRates,
-        otapiMarkupPercent: markupSetting?.percent_rate ?? 0,
-        defaultCurrency: 'BDT',
-        searchLanguage: appSettings.searchLanguage,
-        conversionRates: {
-          CNY_TO_BDT: appSettings.cnyToBdt,
-          CNY_TO_USD: appSettings.cnyToUsd,
-        },
-        moqRule: moqRule || null,
-        shippingTimeText: '12-14 days',
-      };
+    return {
+      shippingRates,
+      otapiMarkupPercent: markupSetting?.percent_rate ?? 0,
+      defaultCurrency: 'BDT',
+      searchLanguage: appSettings.searchLanguage,
+      conversionRates: {
+        CNY_TO_BDT: appSettings.cnyToBdt,
+        CNY_TO_USD: appSettings.cnyToUsd,
+      },
+      moqRule: moqRule || null,
+      shippingTimeText: '12-14 days',
+    };
   });
 
   fastify.post('/shopping/search/image', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -700,56 +883,66 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
         language: body.language || 'zh',
       });
     } catch (error: any) {
-      fastify.log.error({ error, stack: error.stack }, '[Public Shopping Route] /shopping/search/image error');
+      fastify.log.error(
+        { error, stack: error.stack },
+        '[Public Shopping Route] /shopping/search/image error'
+      );
       reply.status(400).send({ error: error.message || 'Invalid request body' });
     }
   });
 
-  fastify.get('/shopping/item/:externalId', async (request: FastifyRequest, reply: FastifyReply) => {
-    reply.header('Cache-Control', 'public, max-age=900, stale-while-revalidate=86400');
-    const { externalId } = request.params as { externalId: string };
-    const query = request.query as { language?: string };
-    const language = query.language === 'en' ? 'en' : 'zh';
+  fastify.get(
+    '/shopping/item/:externalId',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      reply.header('Cache-Control', 'public, max-age=900, stale-while-revalidate=86400');
+      const { externalId } = request.params as { externalId: string };
+      const query = request.query as { language?: string };
+      const language = query.language === 'en' ? 'en' : 'zh';
 
-    const localProduct = await prisma.product.findFirst({
-      where: {
-        OR: [
-          { id: externalId },
-          { external_id: externalId },
-        ],
-        status: 'published',
-      },
-      include: {
-        coverAsset: true,
-        seller: {
-          include: { sellerProfile: true },
+      const localProduct = await prisma.product.findFirst({
+        where: {
+          OR: [{ id: externalId }, { external_id: externalId }],
+          status: 'published',
         },
-        category: true,
-      },
-    });
+        include: {
+          coverAsset: true,
+          seller: {
+            include: { sellerProfile: true },
+          },
+          category: true,
+        },
+      });
 
-    if (localProduct) {
-      const assetIds = Array.from(new Set([
-        ...(Array.isArray(localProduct.gallery_asset_ids) ? localProduct.gallery_asset_ids : []),
-        localProduct.cover_asset_id,
-      ].filter((id): id is string => typeof id === 'string' && id.length > 0)));
-      const assets = assetIds.length > 0
-        ? await prisma.mediaAsset.findMany({
-            where: { id: { in: assetIds } },
-            select: { id: true, public_url: true, thumbnail_url: true },
-          })
-        : [];
-      const mediaById = new Map<string, any>(assets.map((asset) => [asset.id, asset]));
-      return buildLocalProductDetail(localProduct, mediaById);
-    }
+      if (localProduct) {
+        const assetIds = Array.from(
+          new Set(
+            [
+              ...(Array.isArray(localProduct.gallery_asset_ids)
+                ? localProduct.gallery_asset_ids
+                : []),
+              localProduct.cover_asset_id,
+            ].filter((id): id is string => typeof id === 'string' && id.length > 0)
+          )
+        );
+        const assets =
+          assetIds.length > 0
+            ? await prisma.mediaAsset.findMany({
+                where: { id: { in: assetIds } },
+                select: { id: true, public_url: true, thumbnail_url: true },
+              })
+            : [];
+        const mediaById = new Map<string, any>(assets.map((asset) => [asset.id, asset]));
+        return buildLocalProductDetail(localProduct, mediaById);
+      }
 
-    const item = await getItemDetail(externalId, language);
-    if (!item) {
-      reply.status(404).send({ error: 'Item not found' });
-      return;
+      const item = await getItemDetail(externalId, language);
+      if (!item) {
+        reply.status(404).send({ error: 'Item not found' });
+        return;
+      }
+      return item;
     }
-    return item;
-  });
+  );
 
   fastify.get('/shopping/recent-searches', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -758,6 +951,30 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
       }
       const query = request.query as { limit?: string; language?: string };
       const limit = parseInt(query.limit || '8', 10);
+
+      try {
+        const where: any = {
+          source: recentSearchSource,
+        };
+        if (query.language === 'en' || query.language === 'zh') {
+          where.language = query.language;
+        }
+
+        const intentRows = await (prisma as any).shoppingSearchIntent.findMany({
+          where,
+          orderBy: [{ search_count: 'desc' }, { last_searched_at: 'desc' }],
+          take: limit,
+        });
+
+        if (Array.isArray(intentRows) && intentRows.length > 0) {
+          return intentRows.map((row: any) => row.query_text || row.normalized_key).filter(Boolean);
+        }
+      } catch (error: any) {
+        fastify.log.warn(
+          { error: error?.message || error },
+          '[Public Shopping Route] shopping_search_intents unavailable - falling back to cache'
+        );
+      }
 
       const recentSearches = await prisma.externalSearchCache.findMany({
         where: {
@@ -789,7 +1006,10 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
 
           if (keyword && typeof keyword === 'string' && keyword.trim()) {
             const normalized = keyword.trim().toLowerCase();
-            if (!keywords.has(normalized) || (search.created_at && search.created_at > (keywords.get(normalized) || new Date(0)))) {
+            if (
+              !keywords.has(normalized) ||
+              (search.created_at && search.created_at > (keywords.get(normalized) || new Date(0)))
+            ) {
               keywords.set(normalized, search.created_at || new Date());
             }
           }
@@ -805,10 +1025,15 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
     } catch (error: any) {
       if (isDatabaseUnavailable(error)) {
         shoppingDbAvailable = false;
-        fastify.log.warn('[Public Shopping Route] Database unavailable for recent searches - returning empty list');
+        fastify.log.warn(
+          '[Public Shopping Route] Database unavailable for recent searches - returning empty list'
+        );
         return [];
       }
-      fastify.log.error({ error, stack: error.stack }, '[Public Shopping Route] /shopping/recent-searches error');
+      fastify.log.error(
+        { error, stack: error.stack },
+        '[Public Shopping Route] /shopping/recent-searches error'
+      );
       reply.status(500).send({ error: error.message || 'Failed to get recent searches' });
     }
   });
@@ -851,10 +1076,7 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
             },
           },
         },
-        orderBy: [
-          { valid_from: 'asc' },
-          { updated_at: 'desc' },
-        ],
+        orderBy: [{ valid_from: 'asc' }, { updated_at: 'desc' }],
         take: 10,
       });
       return offers;
@@ -895,17 +1117,16 @@ export default async function publicShoppingRoutes(fastify: FastifyInstance) {
             },
           },
         },
-        orderBy: [
-          { sort_order: 'asc' },
-          { created_at: 'desc' },
-        ],
+        orderBy: [{ sort_order: 'asc' }, { created_at: 'desc' }],
         take: 12,
       });
       return banners;
     } catch (error: any) {
       if (isDatabaseUnavailable(error)) {
         shoppingDbAvailable = false;
-        fastify.log.warn('[Homepage Banners] Database connection unavailable - returning empty array');
+        fastify.log.warn(
+          '[Homepage Banners] Database connection unavailable - returning empty array'
+        );
         return [];
       }
       fastify.log.error({ error, stack: error.stack }, '[Homepage Banners] Database error');

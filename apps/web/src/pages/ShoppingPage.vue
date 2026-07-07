@@ -3,7 +3,9 @@
     <div :class="layoutClass" class="grid min-h-screen">
       <main class="min-w-0">
         <!-- Currency & language strip (right-aligned) -->
-        <div class="flex items-center justify-end gap-1.5 border-b border-slate-200/70 bg-white/60 px-4 py-1.5 backdrop-blur-sm">
+        <div
+          class="flex items-center justify-end gap-1.5 border-b border-slate-200/70 bg-white/60 px-4 py-1.5 backdrop-blur-sm"
+        >
           <button
             v-for="curr in ['BDT', 'CNY', 'USD'] as const"
             :key="curr"
@@ -13,9 +15,11 @@
               'rounded-full border px-3 py-1 text-[10px] font-semibold transition-all',
               selectedCurrency === curr
                 ? 'border-rose-600 bg-rose-600 text-white'
-                : 'border-slate-200 bg-white text-slate-700 hover:border-rose-200 hover:text-rose-600'
+                : 'border-slate-200 bg-white text-slate-700 hover:border-rose-200 hover:text-rose-600',
             ]"
-          >{{ curr }}</button>
+          >
+            {{ curr }}
+          </button>
           <span class="mx-1 h-3.5 w-px bg-slate-300" />
           <button
             type="button"
@@ -24,9 +28,11 @@
               'rounded-full border px-3 py-1 text-[10px] font-semibold transition-all',
               selectedLanguage === 'zh'
                 ? 'border-rose-600 bg-rose-600 text-white'
-                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300',
             ]"
-          >中文</button>
+          >
+            中文
+          </button>
           <button
             type="button"
             @click="selectedLanguage = 'en'"
@@ -34,9 +40,11 @@
               'rounded-full border px-3 py-1 text-[10px] font-semibold transition-all',
               selectedLanguage === 'en'
                 ? 'border-rose-600 bg-rose-600 text-white'
-                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300',
             ]"
-          >EN</button>
+          >
+            EN
+          </button>
         </div>
 
         <!-- Full-width hero carousel -->
@@ -52,7 +60,9 @@
               />
             </Transition>
             <!-- Gradient overlay -->
-            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+            <div
+              class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"
+            />
 
             <!-- Text overlay (bottom-left) -->
             <div class="absolute bottom-0 left-0 right-0 px-5 pb-5 pt-10 sm:px-8 sm:pb-7">
@@ -69,8 +79,7 @@
                 {{ currentHeroSlide.ctaText || 'View details' }}
                 <ArrowRight class="h-3.5 w-3.5" />
               </button>
-            -->
-            </div>
+            --></div>
 
             <!-- Prev / Next arrows -->
             <button
@@ -97,7 +106,11 @@
                 :key="slide.key"
                 type="button"
                 class="rounded-full transition-all"
-                :class="currentHeroSlideIndex === index ? 'h-2.5 w-8 bg-rose-500' : 'h-2.5 w-2.5 bg-white/45 hover:bg-white/70'"
+                :class="
+                  currentHeroSlideIndex === index
+                    ? 'h-2.5 w-8 bg-rose-500'
+                    : 'h-2.5 w-2.5 bg-white/45 hover:bg-white/70'
+                "
                 @click="currentHeroSlideIndex = index"
                 :aria-label="`Slide ${index + 1}`"
               />
@@ -106,55 +119,77 @@
         </section>
 
         <section class="px-3 pt-4 sm:px-4">
-              <div v-if="displayProducts.length > 0" class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5">
-                <div class="flex items-center justify-between gap-3">
-                  <div>
-                    <h3 class="mt-1 flex items-center gap-2 text-[18px] font-black tracking-tight text-slate-950">
-                      <Flame class="h-4 w-4 text-rose-500" />
-                      Hot products
-                    </h3>
-                  </div>
-                  <span class="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-semibold text-rose-700">
-                    {{ hasSearchResults ? `${displayProducts.length} matched` : 'Live feed' }}
-                  </span>
-                </div>
-                <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-                  <button
-                    v-for="item in displayProducts.slice(0, 6)"
-                    :key="`hero-${item.externalId}`"
-                    type="button"
-                    class="overflow-hidden rounded-[18px] border border-slate-200 bg-white text-left shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-transform hover:-translate-y-0.5"
-                    @click="handleProductClick(item)"
-                  >
-                    <div class="aspect-[4/3] bg-slate-100">
-                      <img
-                        v-if="primaryProductImage(item)"
-                        :src="proxyImageUrl(primaryProductImage(item))"
-                        :alt="item.title"
-                        class="h-full w-full object-cover"
-                      />
-                      <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
-                        <Package class="h-6 w-6" />
-                      </div>
-                    </div>
-                    <div class="p-2.5">
-                      <p class="line-clamp-2 text-[13px] font-semibold leading-4 text-slate-900">{{ item.title }}</p>
-                      <div class="mt-1 flex items-center justify-between gap-2">
-                        <span class="text-[14px] font-black text-rose-600">{{ formatPrice(item.priceMin ?? item.priceMax ?? 0) }}</span>
-                <span class="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-600">MOQ {{ item.minimumOrderQty || shoppingSettings.moqRule?.minimum_product || 3 }}</span>
-                      </div>
-                    </div>
-                  </button>
-                </div>
+          <div
+            v-if="displayProducts.length > 0"
+            class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5"
+          >
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h3
+                  class="mt-1 flex items-center gap-2 text-[18px] font-black tracking-tight text-slate-950"
+                >
+                  <Flame class="h-4 w-4 text-rose-500" />
+                  Hot products
+                </h3>
               </div>
-          </section>
+              <span
+                class="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-semibold text-rose-700"
+              >
+                {{ hasSearchResults ? `${displayProducts.length} matched` : 'Live feed' }}
+              </span>
+            </div>
+            <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+              <button
+                v-for="item in displayProducts.slice(0, 6)"
+                :key="`hero-${item.externalId}`"
+                type="button"
+                class="overflow-hidden rounded-[18px] border border-slate-200 bg-white text-left shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-transform hover:-translate-y-0.5"
+                @click="handleProductClick(item)"
+              >
+                <div class="aspect-[4/3] bg-slate-100">
+                  <img
+                    v-if="primaryProductImage(item)"
+                    :src="proxyImageUrl(primaryProductImage(item))"
+                    :alt="item.title"
+                    class="h-full w-full object-cover"
+                  />
+                  <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
+                    <Package class="h-6 w-6" />
+                  </div>
+                </div>
+                <div class="p-2.5">
+                  <p class="line-clamp-2 text-[13px] font-semibold leading-4 text-slate-900">
+                    {{ item.title }}
+                  </p>
+                  <div class="mt-1 flex items-center justify-between gap-2">
+                    <span class="text-[14px] font-black text-rose-600">{{
+                      formatPrice(item.priceMin ?? item.priceMax ?? 0)
+                    }}</span>
+                    <span
+                      class="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-600"
+                      >MOQ
+                      {{
+                        item.minimumOrderQty || shoppingSettings.moqRule?.minimum_product || 3
+                      }}</span
+                    >
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </section>
         <section v-if="youMayLikeProducts.length > 0" class="px-3 pt-4 sm:px-4">
-          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5">
+          <div
+            class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5"
+          >
             <div class="flex items-center justify-between gap-3">
               <div>
                 <h2 class="text-[17px] font-black tracking-tight text-slate-900">You may like</h2>
               </div>
-              <span class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">Based on your recent choices</span>
+              <span
+                class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700"
+                >Based on your recent choices</span
+              >
             </div>
             <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
               <button
@@ -165,26 +200,42 @@
                 @click="handleProductClick(item)"
               >
                 <div class="aspect-square bg-slate-100">
-                  <img v-if="item.imageUrl" :src="proxyImageUrl(item.imageUrl)" :alt="item.title" class="h-full w-full object-cover" />
+                  <img
+                    v-if="item.imageUrl"
+                    :src="proxyImageUrl(item.imageUrl)"
+                    :alt="item.title"
+                    class="h-full w-full object-cover"
+                  />
                   <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
                     <Package class="h-6 w-6" />
                   </div>
                 </div>
                 <div class="p-2.5">
-                  <p class="line-clamp-2 text-[13px] font-semibold leading-4 text-slate-900">{{ item.title }}</p>
-                  <p class="mt-1 text-[14px] font-black text-rose-600">{{ formatPrice(item.priceMin ?? item.priceMax ?? 0) }}</p>
+                  <p class="line-clamp-2 text-[13px] font-semibold leading-4 text-slate-900">
+                    {{ item.title }}
+                  </p>
+                  <p class="mt-1 text-[14px] font-black text-rose-600">
+                    {{ formatPrice(item.priceMin ?? item.priceMax ?? 0) }}
+                  </p>
                 </div>
               </button>
             </div>
           </div>
         </section>
         <section v-if="premiumProducts.length > 0" class="px-3 pt-4 sm:px-4">
-          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5">
+          <div
+            class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5"
+          >
             <div class="flex items-start justify-between gap-4">
               <div>
-                <h2 class="mt-1 text-[17px] font-black tracking-tight text-rose-700">Premium factory products (ChinaBuyBD Commitment)</h2>
+                <h2 class="mt-1 text-[17px] font-black tracking-tight text-rose-700">
+                  Premium factory products (ChinaBuyBD Commitment)
+                </h2>
               </div>
-              <span class="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-semibold text-rose-600">Top 4 highlighted</span>
+              <span
+                class="rounded-full bg-rose-50 px-3 py-1 text-[10px] font-semibold text-rose-600"
+                >Top 4 highlighted</span
+              >
             </div>
 
             <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -197,8 +248,16 @@
               >
                 <div class="aspect-[4/3] bg-slate-100">
                   <img
-                    v-if="collectImageCandidates(product.imageUrl).length > 0 || collectImageCandidates(product.images).length > 0"
-                    :src="proxyImageUrl(collectImageCandidates(product.imageUrl)[0] || collectImageCandidates(product.images)[0])"
+                    v-if="
+                      collectImageCandidates(product.imageUrl).length > 0 ||
+                      collectImageCandidates(product.images).length > 0
+                    "
+                    :src="
+                      proxyImageUrl(
+                        collectImageCandidates(product.imageUrl)[0] ||
+                          collectImageCandidates(product.images)[0]
+                      )
+                    "
                     :alt="product.title"
                     class="h-full w-full object-cover"
                   />
@@ -207,11 +266,20 @@
                   </div>
                 </div>
                 <div class="p-3">
-                  <p class="line-clamp-2 text-[15px] font-semibold leading-5 text-slate-900">{{ product.title }}</p>
+                  <p class="line-clamp-2 text-[15px] font-semibold leading-5 text-slate-900">
+                    {{ product.title }}
+                  </p>
                   <div class="mt-2 flex items-center justify-between gap-2">
-                    <span class="text-[14px] font-black text-rose-600">{{ formatPrice(product.priceMin ?? product.priceMax ?? 0) }}</span>
-                <span class="rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-600">
-                      MOQ {{ product.minimumOrderQty || shoppingSettings.moqRule?.minimum_product || 3 }}
+                    <span class="text-[14px] font-black text-rose-600">{{
+                      formatPrice(product.priceMin ?? product.priceMax ?? 0)
+                    }}</span>
+                    <span
+                      class="rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-600"
+                    >
+                      MOQ
+                      {{
+                        product.minimumOrderQty || shoppingSettings.moqRule?.minimum_product || 3
+                      }}
                     </span>
                   </div>
                 </div>
@@ -221,13 +289,21 @@
         </section>
 
         <section v-if="homepageVisualMenuSections.length > 0" class="px-3 pt-4 sm:px-4">
-          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5">
+          <div
+            class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5"
+          >
             <div class="mb-5">
-              <h2 class="mt-1 text-[17px] font-black tracking-tight text-slate-900">Top Categories</h2>
+              <h2 class="mt-1 text-[17px] font-black tracking-tight text-slate-900">
+                Top Categories
+              </h2>
             </div>
 
             <div class="grid grid-cols-2 gap-x-5 gap-y-6 md:grid-cols-4">
-              <div v-for="section in homepageVisualMenuSections" :key="section.sectionKey" class="flex flex-col">
+              <div
+                v-for="section in homepageVisualMenuSections"
+                :key="section.sectionKey"
+                class="flex flex-col"
+              >
                 <h2 class="text-[16px] font-bold text-slate-900">{{ section.sectionLabel }}</h2>
 
                 <!-- Hero: first item full width -->
@@ -244,11 +320,16 @@
                       :alt="section.items[0].imageAlt || section.items[0].title"
                       class="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
                     />
-                    <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
+                    <div
+                      v-else
+                      class="flex h-full w-full items-center justify-center text-slate-400"
+                    >
                       <Package class="h-8 w-8" />
                     </div>
                   </div>
-                  <p class="mt-1.5 text-[14px] font-semibold text-slate-900">{{ section.items[0].title }}</p>
+                  <p class="mt-1.5 text-[14px] font-semibold text-slate-900">
+                    {{ section.items[0].title }}
+                  </p>
                 </button>
 
                 <!-- Sub-items 2×2 -->
@@ -267,11 +348,18 @@
                         :alt="item.imageAlt || item.title"
                         class="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
                       />
-                      <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
+                      <div
+                        v-else
+                        class="flex h-full w-full items-center justify-center text-slate-400"
+                      >
                         <Package class="h-5 w-5" />
                       </div>
                     </div>
-                    <p class="mt-1 line-clamp-2 text-[15px] font-semibold leading-[1.3] text-slate-900">{{ item.title }}</p>
+                    <p
+                      class="mt-1 line-clamp-2 text-[15px] font-semibold leading-[1.3] text-slate-900"
+                    >
+                      {{ item.title }}
+                    </p>
                   </button>
                 </div>
 
@@ -333,11 +421,17 @@
         -->
 
         <section class="px-3 pt-4 sm:px-4">
-          <div class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5">
+          <div
+            class="rounded-[26px] border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,23,42,0.09)] sm:p-5"
+          >
             <div class="mb-5 flex items-start justify-between gap-4">
               <div>
-                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-600">Curated categories</p>
-                <h2 class="mt-1 text-[17px] font-black tracking-tight text-rose-600">Mobile accessories, jewellery, bags, and women hijab</h2>
+                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-600">
+                  Curated categories
+                </p>
+                <h2 class="mt-1 text-[17px] font-black tracking-tight text-rose-600">
+                  Mobile accessories, jewellery, bags, and women hijab
+                </h2>
               </div>
               <button
                 type="button"
@@ -350,7 +444,11 @@
             </div>
 
             <div class="grid grid-cols-2 gap-x-5 gap-y-6 md:grid-cols-4">
-              <div v-for="section in primaryCuratedSections" :key="section.slug" class="flex flex-col">
+              <div
+                v-for="section in primaryCuratedSections"
+                :key="section.slug"
+                class="flex flex-col"
+              >
                 <h3 class="text-[16px] font-bold text-slate-900">{{ section.label }}</h3>
                 <p class="text-[11px] font-semibold text-rose-600">Premium items</p>
 
@@ -365,20 +463,38 @@
                   >
                     <div class="aspect-square w-full overflow-hidden rounded-lg bg-slate-100">
                       <img
-                        v-if="collectImageCandidates(item.imageUrl).length > 0 || collectImageCandidates(item.images).length > 0"
-                        :src="proxyImageUrl(collectImageCandidates(item.imageUrl)[0] || collectImageCandidates(item.images)[0])"
+                        v-if="
+                          collectImageCandidates(item.imageUrl).length > 0 ||
+                          collectImageCandidates(item.images).length > 0
+                        "
+                        :src="
+                          proxyImageUrl(
+                            collectImageCandidates(item.imageUrl)[0] ||
+                              collectImageCandidates(item.images)[0]
+                          )
+                        "
                         :alt="item.title"
                         class="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
                       />
-                      <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
+                      <div
+                        v-else
+                        class="flex h-full w-full items-center justify-center text-slate-400"
+                      >
                         <Package class="h-5 w-5" />
                       </div>
                     </div>
-                    <p class="mt-1 line-clamp-2 text-[12px] font-semibold leading-[1.3] text-slate-900">{{ item.title }}</p>
+                    <p
+                      class="mt-1 line-clamp-2 text-[12px] font-semibold leading-[1.3] text-slate-900"
+                    >
+                      {{ item.title }}
+                    </p>
                   </button>
                 </div>
 
-                <div v-if="section.items.length === 0" class="mt-2 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 text-[11px] text-slate-600">
+                <div
+                  v-if="section.items.length === 0"
+                  class="mt-2 rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 text-[11px] text-slate-600"
+                >
                   Search {{ section.label }} to populate.
                 </div>
 
@@ -392,7 +508,11 @@
               </div>
             </div>
 
-            <div v-for="section in wideCuratedSections" :key="`${section.slug}-wide`" class="mt-5 rounded-[24px] border border-slate-200 bg-slate-50/60 p-4">
+            <div
+              v-for="section in wideCuratedSections"
+              :key="`${section.slug}-wide`"
+              class="mt-5 rounded-[24px] border border-slate-200 bg-slate-50/60 p-4"
+            >
               <div class="flex items-center justify-between gap-3">
                 <div>
                   <h3 class="text-[20px] font-bold text-slate-900">{{ section.label }}</h3>
@@ -417,25 +537,44 @@
                 >
                   <div class="aspect-square w-full overflow-hidden rounded-lg bg-slate-100">
                     <img
-                      v-if="collectImageCandidates(item.imageUrl).length > 0 || collectImageCandidates(item.images).length > 0"
-                      :src="proxyImageUrl(collectImageCandidates(item.imageUrl)[0] || collectImageCandidates(item.images)[0])"
+                      v-if="
+                        collectImageCandidates(item.imageUrl).length > 0 ||
+                        collectImageCandidates(item.images).length > 0
+                      "
+                      :src="
+                        proxyImageUrl(
+                          collectImageCandidates(item.imageUrl)[0] ||
+                            collectImageCandidates(item.images)[0]
+                        )
+                      "
                       :alt="item.title"
                       class="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
                     />
-                    <div v-else class="flex h-full w-full items-center justify-center text-slate-400">
+                    <div
+                      v-else
+                      class="flex h-full w-full items-center justify-center text-slate-400"
+                    >
                       <Package class="h-5 w-5" />
                     </div>
                   </div>
-                  <p class="mt-1 line-clamp-2 text-[12px] leading-[1.3] text-slate-800">{{ item.title }}</p>
+                  <p class="mt-1 line-clamp-2 text-[12px] leading-[1.3] text-slate-800">
+                    {{ item.title }}
+                  </p>
                 </button>
               </div>
 
-              <div v-if="section.items.length === 0" class="mt-3 rounded-lg border border-dashed border-slate-200 bg-white p-4 text-[11px] text-slate-600">
+              <div
+                v-if="section.items.length === 0"
+                class="mt-3 rounded-lg border border-dashed border-slate-200 bg-white p-4 text-[11px] text-slate-600"
+              >
                 Search {{ section.label }} to populate.
               </div>
             </div>
 
-            <div v-if="curatedSections.length === 0" class="mt-4 rounded-[22px] border border-slate-200 bg-slate-50 p-4 text-slate-600">
+            <div
+              v-if="curatedSections.length === 0"
+              class="mt-4 rounded-[22px] border border-slate-200 bg-slate-50 p-4 text-slate-600"
+            >
               We will show saved category picks once search results are stored in the database.
             </div>
           </div>
@@ -473,22 +612,34 @@
         -->
       </main>
 
-      <aside class="hidden h-full self-stretch border-l border-slate-200/60 bg-[#eef3f9] lg:flex lg:flex-col">
-        <div class="no-scrollbar sticky top-14 flex max-h-[calc(100vh-3.5rem)] flex-col gap-3 overflow-y-auto px-3 pb-3 pt-0">
-
+      <aside
+        class="hidden h-full self-stretch border-l border-slate-200/60 bg-[#eef3f9] lg:flex lg:flex-col"
+      >
+        <div
+          class="no-scrollbar sticky top-14 flex max-h-[calc(100vh-3.5rem)] flex-col gap-3 overflow-y-auto px-3 pb-3 pt-0"
+        >
           <!-- Featured deals -->
-          <div class="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_4px_16px_rgba(15,23,42,0.08)]">
+          <div
+            class="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_4px_16px_rgba(15,23,42,0.08)]"
+          >
             <div class="flex items-center justify-between">
               <div>
-                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-600">Offers</p>
+                <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-600">
+                  Offers
+                </p>
                 <h3 class="mt-0.5 text-[13px] font-black text-slate-950">Featured deals</h3>
               </div>
-              <span class="rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-600">
+              <span
+                class="rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-semibold text-rose-600"
+              >
                 {{ offers.length > 0 ? `${offers.length} live` : 'No offers' }}
               </span>
             </div>
 
-            <div v-if="displayOffers.length === 0" class="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-center text-[11px] text-slate-600">
+            <div
+              v-if="displayOffers.length === 0"
+              class="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-4 text-center text-[11px] text-slate-600"
+            >
               No live offers yet.
             </div>
 
@@ -500,27 +651,41 @@
                 @click="handleOfferClick(offer)"
                 class="group w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50 text-left transition-all hover:-translate-y-0.5 hover:border-rose-200 hover:bg-white hover:shadow-[0_8px_20px_rgba(15,23,42,0.07)]"
               >
-                <div v-if="offer.coverAsset?.public_url || offer.coverAsset?.thumbnail_url" class="h-[72px] bg-slate-100">
+                <div
+                  v-if="offer.coverAsset?.public_url || offer.coverAsset?.thumbnail_url"
+                  class="h-[72px] bg-slate-100"
+                >
                   <img
                     :src="offer.coverAsset?.public_url || offer.coverAsset?.thumbnail_url"
                     :alt="offer.title"
                     class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                 </div>
-                <div v-else class="flex h-14 items-center justify-center bg-gradient-to-br from-rose-50 to-rose-100">
+                <div
+                  v-else
+                  class="flex h-14 items-center justify-center bg-gradient-to-br from-rose-50 to-rose-100"
+                >
                   <Sparkles class="h-5 w-5 text-rose-400" />
                 </div>
                 <div class="px-2.5 py-2">
-                  <p class="truncate text-[11px] font-semibold text-slate-900">{{ offer.title || 'Special offer' }}</p>
-                  <p class="mt-0.5 line-clamp-1 text-[10px] text-slate-600">{{ offer.description || 'Tap to view details.' }}</p>
+                  <p class="truncate text-[11px] font-semibold text-slate-900">
+                    {{ offer.title || 'Special offer' }}
+                  </p>
+                  <p class="mt-0.5 line-clamp-1 text-[10px] text-slate-600">
+                    {{ offer.description || 'Tap to view details.' }}
+                  </p>
                 </div>
               </button>
             </div>
           </div>
 
           <!-- Shipping rates -->
-          <div class="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_4px_16px_rgba(15,23,42,0.08)]">
-            <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-600">Shipping rates</p>
+          <div
+            class="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_4px_16px_rgba(15,23,42,0.08)]"
+          >
+            <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-slate-600">
+              Shipping rates
+            </p>
             <div class="mt-2.5 space-y-2">
               <div class="rounded-xl border border-slate-200 bg-slate-50 p-2.5">
                 <div class="flex items-center justify-between">
@@ -539,49 +704,83 @@
               <div class="rounded-xl border border-dashed border-amber-200 bg-amber-50/70 p-2.5">
                 <div class="flex items-center justify-between">
                   <span class="text-[11px] font-semibold text-slate-900">MOQ rule</span>
-                  <span class="text-[10px] font-semibold text-slate-700">{{ shoppingSettings.moqRule?.minimum_product || 1 }} pcs</span>
+                  <span class="text-[10px] font-semibold text-slate-700"
+                    >{{ shoppingSettings.moqRule?.minimum_product || 1 }} pcs</span
+                  >
                 </div>
                 <p class="mt-1 text-[10px] text-slate-600">
-                  Min value {{ shoppingSettings.moqRule?.currency || 'BDT' }} {{ Number(shoppingSettings.moqRule?.minimum_price_threshold || 0).toLocaleString() }}
+                  Min value {{ shoppingSettings.moqRule?.currency || 'BDT' }}
+                  {{
+                    Number(shoppingSettings.moqRule?.minimum_price_threshold || 0).toLocaleString()
+                  }}
                 </p>
               </div>
             </div>
           </div>
 
           <!-- Order process -->
-          <div class="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_4px_16px_rgba(15,23,42,0.08)]">
-            <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-600">Order process</p>
+          <div
+            class="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_4px_16px_rgba(15,23,42,0.08)]"
+          >
+            <p class="text-[10px] font-bold uppercase tracking-[0.32em] text-rose-600">
+              Order process
+            </p>
             <div class="mt-2.5 space-y-1.5">
-              <div class="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
-                <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-rose-600 text-[9px] font-black text-white">1</span>
+              <div
+                class="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5"
+              >
+                <span
+                  class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-rose-600 text-[9px] font-black text-white"
+                  >1</span
+                >
                 <div>
                   <p class="text-[11px] font-semibold text-rose-600">Choose product</p>
                   <p class="text-[10px] text-slate-600">Search by keyword or image</p>
                 </div>
               </div>
-              <div class="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5">
-                <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-rose-600 text-[9px] font-black text-white">2</span>
+              <div
+                class="flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2.5"
+              >
+                <span
+                  class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-rose-600 text-[9px] font-black text-white"
+                  >2</span
+                >
                 <div>
                   <p class="text-[11px] font-semibold text-rose-600">Add to cart</p>
                   <p class="text-[10px] text-slate-600">Select MOQ and quantity</p>
                 </div>
               </div>
-              <div class="flex items-start gap-2 rounded-xl border border-dashed border-amber-200 bg-amber-50/70 p-2.5">
-                <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-white">3</span>
+              <div
+                class="flex items-start gap-2 rounded-xl border border-dashed border-amber-200 bg-amber-50/70 p-2.5"
+              >
+                <span
+                  class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-white"
+                  >3</span
+                >
                 <div>
                   <p class="text-[11px] font-semibold text-slate-800">Shipping address</p>
                   <p class="text-[10px] text-slate-600">From profile or add new</p>
                 </div>
               </div>
-              <div class="flex items-start gap-2 rounded-xl border border-dashed border-amber-200 bg-amber-50/70 p-2.5">
-                <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-white">4</span>
+              <div
+                class="flex items-start gap-2 rounded-xl border border-dashed border-amber-200 bg-amber-50/70 p-2.5"
+              >
+                <span
+                  class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-white"
+                  >4</span
+                >
                 <div>
                   <p class="text-[11px] font-semibold text-rose-600">Upload payment proof</p>
                   <p class="text-[10px] text-slate-600">Bkash · Rocket · Nagad · Bank</p>
                 </div>
               </div>
-              <div class="flex items-start gap-2 rounded-xl border border-dashed border-amber-200 bg-amber-50/70 p-2.5">
-                <span class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-white">5</span>
+              <div
+                class="flex items-start gap-2 rounded-xl border border-dashed border-amber-200 bg-amber-50/70 p-2.5"
+              >
+                <span
+                  class="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-amber-500 text-[9px] font-black text-white"
+                  >5</span
+                >
                 <div>
                   <p class="text-[11px] font-semibold text-rose-600">Receive in 12–14 days</p>
                   <p class="text-[10px] text-slate-600">Air shipping, door delivery</p>
@@ -597,7 +796,10 @@
             rel="noreferrer"
             class="flex items-center gap-2.5 rounded-2xl border border-green-200 bg-green-50 px-3 py-2.5 transition-colors hover:bg-green-100"
           >
-            <span class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-green-100 text-[14px] font-bold text-green-700">W</span>
+            <span
+              class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-green-100 text-[14px] font-bold text-green-700"
+              >W</span
+            >
             <div>
               <p class="text-[11px] font-semibold text-green-800">WhatsApp support</p>
               <p class="text-[10px] text-green-700">+86 189 8941 0063</p>
@@ -611,21 +813,39 @@
       <div v-if="selectedBanner" class="space-y-4">
         <div class="overflow-hidden rounded-[24px] border border-slate-200 bg-slate-100">
           <img
-            :src="selectedBanner.coverAsset?.public_url || selectedBanner.coverAsset?.thumbnail_url || selectedBanner.imageUrl || selectedBanner.image"
+            :src="
+              selectedBanner.coverAsset?.public_url ||
+              selectedBanner.coverAsset?.thumbnail_url ||
+              selectedBanner.imageUrl ||
+              selectedBanner.image
+            "
             :alt="selectedBanner.title"
             class="h-56 w-full object-cover"
           />
         </div>
         <div class="space-y-2">
-          <p class="text-[10px] font-bold uppercase tracking-[0.28em] text-slate-600">Homepage banner</p>
-          <h3 class="text-[18px] font-black tracking-tight text-slate-950">{{ selectedBanner.title }}</h3>
-          <p v-if="selectedBanner.subtitle" class="text-[12px] leading-6 text-slate-600">{{ selectedBanner.subtitle }}</p>
-          <div v-if="selectedBanner.link" class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+          <p class="text-[10px] font-bold uppercase tracking-[0.28em] text-slate-600">
+            Homepage banner
+          </p>
+          <h3 class="text-[18px] font-black tracking-tight text-slate-950">
+            {{ selectedBanner.title }}
+          </h3>
+          <p v-if="selectedBanner.subtitle" class="text-[12px] leading-6 text-slate-600">
+            {{ selectedBanner.subtitle }}
+          </p>
+          <div
+            v-if="selectedBanner.link"
+            class="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600"
+          >
             Link: {{ selectedBanner.link }}
           </div>
         </div>
         <div class="flex justify-end gap-2">
-          <Button v-if="selectedBanner.link" variant="primary" @click="handleOfferClick(selectedBanner)">
+          <Button
+            v-if="selectedBanner.link"
+            variant="primary"
+            @click="handleOfferClick(selectedBanner)"
+          >
             Open link
           </Button>
           <Button variant="ghost" @click="showBannerModal = false">Close</Button>
@@ -640,7 +860,9 @@
           @click="selectAllCategories"
           :class="[
             'shrink-0 rounded-full border px-4 py-2 text-[11px] font-semibold transition-all',
-            !selectedCategory ? 'border-rose-600 bg-rose-600 text-white' : 'border-slate-200 bg-white text-slate-700'
+            !selectedCategory
+              ? 'border-rose-600 bg-rose-600 text-white'
+              : 'border-slate-200 bg-white text-slate-700',
           ]"
         >
           All products
@@ -652,7 +874,9 @@
           @click="handleCategorySelect(cat.slug)"
           :class="[
             'shrink-0 rounded-full border px-4 py-2 text-[11px] font-semibold transition-all',
-            selectedCategory === cat.slug ? 'border-rose-600 bg-rose-600 text-white' : 'border-slate-200 bg-white text-slate-700'
+            selectedCategory === cat.slug
+              ? 'border-rose-600 bg-rose-600 text-white'
+              : 'border-slate-200 bg-white text-slate-700',
           ]"
         >
           {{ cat.name }}
@@ -802,7 +1026,9 @@ const selectedCurrency = ref<'BDT' | 'CNY' | 'USD'>('BDT');
 const recentSearches = ref<string[]>([]);
 const premiumProducts = ref<any[]>([]);
 const curatedSections = ref<Array<{ slug: string; label: string; items: any[] }>>([]);
-const homepageVisualMenuSections = ref<Array<{ sectionKey: string; sectionLabel: string; items: any[] }>>([]);
+const homepageVisualMenuSections = ref<
+  Array<{ sectionKey: string; sectionLabel: string; items: any[] }>
+>([]);
 const youMayLikeProducts = ref<any[]>([]);
 const showBannerModal = ref(false);
 const selectedBanner = ref<any>(null);
@@ -834,7 +1060,8 @@ const carouselItems = computed<CarouselItem[]>(() => {
       key: banner.id,
       title: banner.title || 'Homepage banner',
       subtitle: banner.subtitle || '',
-      image: banner.coverAsset?.public_url || banner.coverAsset?.thumbnail_url || heroSlides[0].image,
+      image:
+        banner.coverAsset?.public_url || banner.coverAsset?.thumbnail_url || heroSlides[0].image,
       link: banner.link || null,
       ctaText: banner.cta_text || 'Learn more',
       banner,
@@ -860,8 +1087,12 @@ const currentHeroSlide = computed<CarouselItem>(() => {
   return items[heroSlideIndex.value % items.length];
 });
 const hasSearchResults = computed(() => searchTriggered.value);
-const visibleProducts = computed(() => (hasSearchResults.value ? searchResults.value : hotItems.value));
-const displayProducts = computed(() => visibleProducts.value.filter((item: any) => hasProductImage(item)));
+const visibleProducts = computed(() =>
+  hasSearchResults.value ? searchResults.value : hotItems.value
+);
+const displayProducts = computed(() =>
+  visibleProducts.value.filter((item: any) => hasProductImage(item))
+);
 const displayOffers = computed(() => offers.value.slice(0, 3));
 const hasOfferRail = computed(() => displayOffers.value.length > 0);
 const shippingRateSummary = computed(() => {
@@ -874,32 +1105,49 @@ const shippingRateSummary = computed(() => {
   return parts.join(' • ');
 });
 const shippingRateItems = computed(() => {
-  const rates = Array.isArray(shoppingSettings.value.shippingRates) ? shoppingSettings.value.shippingRates : [];
+  const rates = Array.isArray(shoppingSettings.value.shippingRates)
+    ? shoppingSettings.value.shippingRates
+    : [];
   const air = rates.find((rate: any) => rate.method === 'air');
   const sea = rates.find((rate: any) => rate.method === 'sea');
   return {
-    air: air ? `${air.currency || 'BDT'} ${Number(air.min_rate_per_kg || 0).toLocaleString()} - ${Number(air.max_rate_per_kg || 0).toLocaleString()} /kg` : 'Not set',
-    sea: sea ? `${sea.currency || 'BDT'} ${Number(sea.min_rate_per_kg || 0).toLocaleString()} - ${Number(sea.max_rate_per_kg || 0).toLocaleString()} /kg` : 'Not set',
+    air: air
+      ? `${air.currency || 'BDT'} ${Number(air.min_rate_per_kg || 0).toLocaleString()} - ${Number(air.max_rate_per_kg || 0).toLocaleString()} /kg`
+      : 'Not set',
+    sea: sea
+      ? `${sea.currency || 'BDT'} ${Number(sea.min_rate_per_kg || 0).toLocaleString()} - ${Number(sea.max_rate_per_kg || 0).toLocaleString()} /kg`
+      : 'Not set',
   };
 });
 const currentSubcategories = computed(() => {
   if (!selectedCategory.value) return [];
   const cat = categories.value.find((item: any) => item.slug === selectedCategory.value);
-  return Array.isArray(cat?.children) ? cat.children.slice(0, 10).map((child: any) => child.name) : [];
+  return Array.isArray(cat?.children)
+    ? cat.children.slice(0, 10).map((child: any) => child.name)
+    : [];
 });
-const primaryCuratedSections = computed(() => curatedSections.value.filter((section) => !isWideCuratedSection(section.slug)));
-const wideCuratedSections = computed(() => curatedSections.value.filter((section) => isWideCuratedSection(section.slug)));
+const primaryCuratedSections = computed(() =>
+  curatedSections.value.filter((section) => !isWideCuratedSection(section.slug))
+);
+const wideCuratedSections = computed(() =>
+  curatedSections.value.filter((section) => isWideCuratedSection(section.slug))
+);
 
 function isWideCuratedSection(sectionSlug: string): boolean {
   return ['kitchenware', 'watches'].includes(String(sectionSlug || '').toLowerCase());
 }
 
 function buildSlotItems(items: any[], visibleCount = 4, slotCount = 6) {
-  const visible = Array.isArray(items) ? items.slice(0, visibleCount).map((item) => ({ type: 'item' as const, ...item })) : [];
-  const placeholders = Array.from({ length: Math.max(0, slotCount - visible.length) }, (_, index) => ({
-    type: 'empty' as const,
-    key: `placeholder-${index}`,
-  }));
+  const visible = Array.isArray(items)
+    ? items.slice(0, visibleCount).map((item) => ({ type: 'item' as const, ...item }))
+    : [];
+  const placeholders = Array.from(
+    { length: Math.max(0, slotCount - visible.length) },
+    (_, index) => ({
+      type: 'empty' as const,
+      key: `placeholder-${index}`,
+    })
+  );
   return [...visible, ...placeholders];
 }
 
@@ -985,7 +1233,18 @@ function collectImageCandidates(input: any): string[] {
   if (Array.isArray(input)) return input.flatMap((item) => collectImageCandidates(item));
   if (typeof input !== 'object') return [];
 
-  const keys = ['imageUrl', 'image_url', 'publicUrl', 'public_url', 'thumbnail_url', 'thumbnailUrl', 'url', 'src', 'mainImage', 'mainImageUrl'];
+  const keys = [
+    'imageUrl',
+    'image_url',
+    'publicUrl',
+    'public_url',
+    'thumbnail_url',
+    'thumbnailUrl',
+    'url',
+    'src',
+    'mainImage',
+    'mainImageUrl',
+  ];
   const values: string[] = [];
   for (const key of keys) {
     if (key in input) values.push(...collectImageCandidates(input[key]));
@@ -994,7 +1253,11 @@ function collectImageCandidates(input: any): string[] {
 }
 
 function primaryProductImage(product: any): string {
-  return collectImageCandidates(product?.imageUrl || product?.image_url)[0] || collectImageCandidates(product?.images)[0] || '';
+  return (
+    collectImageCandidates(product?.imageUrl || product?.image_url)[0] ||
+    collectImageCandidates(product?.images)[0] ||
+    ''
+  );
 }
 
 function hasProductImage(product: any): boolean {
@@ -1034,7 +1297,10 @@ function selectAllCategories() {
 function handleCategorySelect(slug: string) {
   recordCategoryIntent(slug);
   refreshYouMayLike();
-  router.push({ name: 'shopping-browse', query: { category: slug, language: selectedLanguage.value } });
+  router.push({
+    name: 'shopping-browse',
+    query: { category: slug, language: selectedLanguage.value, intentSource: 'category' },
+  });
 }
 
 function toggleSidebarCategory(slug: string) {
@@ -1046,16 +1312,18 @@ function handleRecentSearchClick(keyword: string) {
   currentPage.value = 1;
   recordSearchIntent(keyword);
   refreshYouMayLike();
-  handleKeywordSearch();
+  handleKeywordSearch('recent');
 }
 
-async function handleUnifiedSearch() {
+async function handleUnifiedSearch(intentSource: 'text' | 'menu' | 'category' | 'recent' = 'text') {
   const query: Record<string, string> = {};
   const keyword = searchQuery.value.trim();
   if (keyword) query.q = keyword;
   if (selectedCategory.value) query.category = selectedCategory.value;
+  if (keyword || selectedCategory.value) query.intentSource = intentSource;
   if (keyword) recordSearchIntent(keyword, displayProducts.value);
-  if (selectedCategory.value) recordCategoryIntent(selectedCategory.value, selectedCategory.value, displayProducts.value);
+  if (selectedCategory.value)
+    recordCategoryIntent(selectedCategory.value, selectedCategory.value, displayProducts.value);
   refreshYouMayLike();
   query.language = selectedLanguage.value;
   if (selectedImage.value) {
@@ -1071,11 +1339,11 @@ async function handleUnifiedSearch() {
 }
 
 async function handleImageSearch() {
-  await handleUnifiedSearch();
+  await handleUnifiedSearch('text');
 }
 
-async function handleKeywordSearch() {
-  await handleUnifiedSearch();
+async function handleKeywordSearch(intentSource: 'text' | 'menu' | 'category' | 'recent' = 'text') {
+  await handleUnifiedSearch(intentSource);
 }
 
 async function goToPage(page: number) {
@@ -1239,8 +1507,12 @@ async function loadShopSettings() {
     }
     if (response.data?.conversionRates) {
       conversionRates.value = {
-        CNY_TO_BDT: Number(response.data.conversionRates.CNY_TO_BDT || conversionRates.value.CNY_TO_BDT || 15),
-        CNY_TO_USD: Number(response.data.conversionRates.CNY_TO_USD || conversionRates.value.CNY_TO_USD || 0.14),
+        CNY_TO_BDT: Number(
+          response.data.conversionRates.CNY_TO_BDT || conversionRates.value.CNY_TO_BDT || 15
+        ),
+        CNY_TO_USD: Number(
+          response.data.conversionRates.CNY_TO_USD || conversionRates.value.CNY_TO_USD || 0.14
+        ),
       };
     }
   } catch (error) {
@@ -1276,7 +1548,7 @@ function handleVisualMenuClick(item: any) {
   refreshYouMayLike();
   router.push({
     path: '/shopping/browse',
-    query: { q: keyword, language: selectedLanguage.value },
+    query: { q: keyword, language: selectedLanguage.value, intentSource: 'menu' },
   });
 }
 

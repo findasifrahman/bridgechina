@@ -39,24 +39,39 @@
       </div>
     -->
 
-      <div v-if="topShops.length > 0" class="border-b border-slate-200 bg-white px-3 pb-3 sm:px-4 lg:px-5">
-        <div class="rounded-[24px] border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-white p-4 shadow-[0_14px_30px_rgba(15,23,42,0.04)]">
+      <div
+        v-if="topShops.length > 0"
+        class="border-b border-slate-200 bg-white px-3 pb-3 sm:px-4 lg:px-5"
+      >
+        <div
+          class="rounded-[24px] border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-white p-4 shadow-[0_14px_30px_rgba(15,23,42,0.04)]"
+        >
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Top shops</p>
+              <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">
+                Top shops
+              </p>
               <h2 class="mt-1 text-[15px] font-black tracking-tight text-slate-950">
                 {{ selectedVendorId ? 'Shop filtered results' : 'Top shops matching your search' }}
               </h2>
             </div>
             <div class="flex items-center gap-2">
-              <span v-if="selectedShop" class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">
+              <span
+                v-if="selectedShop"
+                class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700"
+              >
                 Selected: {{ selectedShop.name }}
               </span>
-              <span class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold text-slate-600">{{ topShops.length }} shops</span>
+              <span
+                class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold text-slate-600"
+                >{{ topShops.length }} shops</span
+              >
             </div>
           </div>
 
-          <div class="mt-4 flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div
+            class="mt-4 flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          >
             <button
               v-for="shop in topShops"
               :key="shop.key"
@@ -66,15 +81,20 @@
                 'min-w-[240px] shrink-0 rounded-[22px] border p-4 text-left transition-all',
                 selectedVendorId && shop.vendorId === selectedVendorId
                   ? 'border-teal-500 bg-teal-50 shadow-[0_12px_28px_rgba(13,148,136,0.12)]'
-                  : 'border-slate-200 bg-white hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-[0_12px_28px_rgba(15,23,42,0.06)]'
+                  : 'border-slate-200 bg-white hover:-translate-y-0.5 hover:border-teal-200 hover:shadow-[0_12px_28px_rgba(15,23,42,0.06)]',
               ]"
             >
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
-                  <p class="line-clamp-2 text-[13px] font-black leading-5 text-slate-900">{{ shop.name }}</p>
+                  <p class="line-clamp-2 text-[13px] font-black leading-5 text-slate-900">
+                    {{ shop.name }}
+                  </p>
                   <p class="mt-1 text-[10px] text-slate-500">{{ formatShopSubtitle(shop) }}</p>
                 </div>
-                <span v-if="shop.isOfficial || shop.isVerified || shop.isBrand" class="rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-semibold text-slate-700">
+                <span
+                  v-if="shop.isOfficial || shop.isVerified || shop.isBrand"
+                  class="rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-semibold text-slate-700"
+                >
                   {{ shop.badges[0] || 'Top shop' }}
                 </span>
               </div>
@@ -87,7 +107,10 @@
                 >
                   {{ badge }}
                 </span>
-                <span v-if="shop.matchedTerms.length > 0" class="rounded-full bg-rose-50 px-2.5 py-1 text-[9px] font-semibold text-rose-600">
+                <span
+                  v-if="shop.matchedTerms.length > 0"
+                  class="rounded-full bg-rose-50 px-2.5 py-1 text-[9px] font-semibold text-rose-600"
+                >
                   Search match
                 </span>
               </div>
@@ -99,16 +122,25 @@
       <div class="w-full px-3 py-4 sm:px-4 lg:px-5">
         <div class="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
           <span class="rounded-full bg-white px-3 py-1.5 shadow-sm">Shipping time: 12-14 days</span>
-          <span class="rounded-full bg-white px-3 py-1.5 shadow-sm">Order Now pay shipment fee after delivery</span>
+          <span class="rounded-full bg-white px-3 py-1.5 shadow-sm"
+            >Order Now pay shipment fee after delivery</span
+          >
           <span class="rounded-full bg-white px-3 py-1.5 shadow-sm">Premium products</span>
         </div>
 
-        <section v-if="localItems.length > 0" class="mb-6 rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)]">
+        <section
+          v-if="localItems.length > 0"
+          class="mb-6 rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)]"
+        >
           <div class="flex items-center justify-between gap-3">
             <div>
-              <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Premium factory products</p>
+              <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">
+                Premium factory products
+              </p>
             </div>
-            <span class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">MOQ required</span>
+            <span class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700"
+              >MOQ required</span
+            >
           </div>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5 2xl:grid-cols-6">
             <ProductCard
@@ -123,10 +155,14 @@
           </div>
         </section>
 
-        <section class="rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)]">
+        <section
+          class="rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_16px_38px_rgba(15,23,42,0.05)]"
+        >
           <div class="flex items-center justify-between gap-3">
             <div>
-              <h2 class="text-[16px] font-black tracking-tight text-slate-950">Marketplace results</h2>
+              <h2 class="text-[16px] font-black tracking-tight text-slate-950">
+                Marketplace results
+              </h2>
             </div>
             <span class="text-[11px] text-slate-500">{{ totalCount }} items</span>
           </div>
@@ -140,10 +176,16 @@
               <div>
                 <div class="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">{{ otapiResultSplit.primaryLabel }}</p>
-                    <h3 class="mt-1 text-[15px] font-black tracking-tight text-slate-950">Strongest matches for "{{ searchQuery.trim() }}"</h3>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">
+                      {{ otapiResultSplit.primaryLabel }}
+                    </p>
+                    <h3 class="mt-1 text-[15px] font-black tracking-tight text-slate-950">
+                      Strongest matches for "{{ searchQuery.trim() }}"
+                    </h3>
                   </div>
-                  <span class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700">
+                  <span
+                    class="rounded-full bg-teal-50 px-3 py-1 text-[10px] font-semibold text-teal-700"
+                  >
                     {{ otapiResultSplit.primary.length }} shown
                   </span>
                 </div>
@@ -163,10 +205,16 @@
               <div v-if="otapiResultSplit.hasSecondary" class="border-t border-slate-200 pt-5">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">{{ otapiResultSplit.secondaryLabel }}</p>
-                    <h3 class="mt-1 text-[15px] font-black tracking-tight text-slate-950">Broader marketplace results</h3>
+                    <p class="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">
+                      {{ otapiResultSplit.secondaryLabel }}
+                    </p>
+                    <h3 class="mt-1 text-[15px] font-black tracking-tight text-slate-950">
+                      Broader marketplace results
+                    </h3>
                   </div>
-                  <span class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold text-slate-600">
+                  <span
+                    class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold text-slate-600"
+                  >
                     {{ otapiResultSplit.secondary.length }} more
                   </span>
                 </div>
@@ -183,7 +231,10 @@
                 </div>
               </div>
 
-              <p v-if="searchTraceNote" class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-[11px] text-slate-500">
+              <p
+                v-if="searchTraceNote"
+                class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-[11px] text-slate-500"
+              >
                 {{ searchTraceNote }}
               </p>
             </div>
@@ -201,11 +252,17 @@
             </div>
           </template>
 
-          <div v-else class="mt-8 rounded-2xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
+          <div
+            v-else
+            class="mt-8 rounded-2xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500"
+          >
             No products found. Try another category or keyword.
           </div>
 
-          <div v-if="totalPages > 1" class="mt-5 flex items-center justify-between gap-3 border-t border-slate-200 pt-4">
+          <div
+            v-if="totalPages > 1"
+            class="mt-5 flex items-center justify-between gap-3 border-t border-slate-200 pt-4"
+          >
             <div class="text-[11px] text-slate-500">
               Showing page {{ currentPage }} of {{ totalPages }}
             </div>
@@ -221,7 +278,11 @@
                 v-for="page in paginationPages"
                 :key="page"
                 class="min-w-9 rounded-full px-3 py-1.5 text-[11px] font-semibold"
-                :class="page === currentPage ? 'bg-rose-600 text-white' : 'border border-slate-200 bg-white text-slate-700 hover:border-slate-300'"
+                :class="
+                  page === currentPage
+                    ? 'bg-rose-600 text-white'
+                    : 'border border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                "
                 @click="goToPage(page)"
               >
                 {{ page }}
@@ -268,21 +329,30 @@ const searchQuery = ref(String(route.query.q || ''));
 const selectedCategory = ref(String(route.query.category || ''));
 const imageSearchKey = ref(String(route.query.imageSearchKey || ''));
 const selectedVendorId = ref(String(route.query.vendorId || ''));
+const intentSource = ref(String(route.query.intentSource || ''));
 const currentPage = ref(Math.max(1, Number(route.query.page || 1)));
 const pageSize = ref(24);
 const totalPages = ref(1);
 const totalCount = ref(0);
 const searchTrace = ref<any>(null);
 const selectedCurrency = ref<'BDT' | 'CNY' | 'USD'>('BDT');
-const selectedLanguage = ref<'en' | 'zh'>(String(route.query.language || 'zh') === 'en' ? 'en' : 'zh');
+const selectedLanguage = ref<'en' | 'zh'>(
+  String(route.query.language || 'zh') === 'en' ? 'en' : 'zh'
+);
 const conversionRates = ref({ CNY_TO_BDT: 15, CNY_TO_USD: 0.14 });
 const localItems = ref<any[]>([]);
 const otapiItems = ref<any[]>([]);
 let searchRequestId = 0;
 let settingsLoaded = false;
 const allItems = computed(() => [...localItems.value, ...otapiItems.value]);
-const topShops = computed(() => aggregateTopShops(allItems.value, searchQuery.value || selectedCategory.value || '', 6).filter((shop) => !!shop.vendorId));
-const otapiResultSplit = computed(() => splitSearchResultsByFocus(otapiItems.value, searchQuery.value || selectedCategory.value || '', 4));
+const topShops = computed(() =>
+  aggregateTopShops(allItems.value, searchQuery.value || selectedCategory.value || '', 6).filter(
+    (shop) => !!shop.vendorId
+  )
+);
+const otapiResultSplit = computed(() =>
+  splitSearchResultsByFocus(otapiItems.value, searchQuery.value || selectedCategory.value || '', 4)
+);
 const searchTraceNote = computed(() => {
   const trace = searchTrace.value;
   if (!trace) return '';
@@ -312,7 +382,10 @@ const heading = computed(() => {
   return 'All shopping products';
 });
 
-const selectedShop = computed(() => topShops.value.find((shop) => shop.vendorId && shop.vendorId === selectedVendorId.value) || null);
+const selectedShop = computed(
+  () =>
+    topShops.value.find((shop) => shop.vendorId && shop.vendorId === selectedVendorId.value) || null
+);
 
 function handleProductClick(product: any) {
   recordProductIntent(product);
@@ -360,6 +433,7 @@ async function runSearch() {
         page: currentPage.value,
         pageSize: pageSize.value,
         language: selectedLanguage.value,
+        intentSource: intentSource.value || undefined,
         sort: 'sales',
         turnstileToken,
       },
@@ -375,8 +449,17 @@ async function runSearch() {
       recordCategoryIntent(selectedCategory.value, selectedCategory.value, allItems.value);
     }
     searchTrace.value = response.data?.searchTrace || null;
-    totalPages.value = Number(response.data?.totalPages || response.data?.pageSize ? Math.ceil(Number(response.data?.totalCount || otapiItems.value.length || 0) / pageSize.value) : 1) || 1;
-    totalCount.value = Number(response.data?.totalCount || localItems.value.length + otapiItems.value.length || 0);
+    totalPages.value =
+      Number(
+        response.data?.totalPages || response.data?.pageSize
+          ? Math.ceil(
+              Number(response.data?.totalCount || otapiItems.value.length || 0) / pageSize.value
+            )
+          : 1
+      ) || 1;
+    totalCount.value = Number(
+      response.data?.totalCount || localItems.value.length + otapiItems.value.length || 0
+    );
   } catch (error) {
     console.error('Search failed', error);
     searchTrace.value = null;
@@ -462,6 +545,7 @@ async function goToPage(page: number) {
       category: selectedCategory.value || undefined,
       imageSearchKey: imageSearchKey.value || undefined,
       vendorId: selectedVendorId.value || undefined,
+      intentSource: intentSource.value || undefined,
       language: selectedLanguage.value,
       page: String(page),
     },
@@ -470,14 +554,25 @@ async function goToPage(page: number) {
 }
 
 watch(
-  () => [route.query.q, route.query.category, route.query.imageSearchKey, route.query.vendorId, route.query.page, route.query.language].join('|'),
+  () =>
+    [
+      route.query.q,
+      route.query.category,
+      route.query.imageSearchKey,
+      route.query.vendorId,
+      route.query.intentSource,
+      route.query.page,
+      route.query.language,
+    ].join('|'),
   () => {
     const routeQuery = route.query as Record<string, string | undefined>;
     searchQuery.value = String(routeQuery.q || '');
     selectedCategory.value = String(routeQuery.category || '');
     imageSearchKey.value = String(routeQuery.imageSearchKey || '');
     selectedVendorId.value = String(routeQuery.vendorId || '');
-    selectedLanguage.value = String(routeQuery.language || selectedLanguage.value || 'zh') === 'en' ? 'en' : 'zh';
+    intentSource.value = String(routeQuery.intentSource || '');
+    selectedLanguage.value =
+      String(routeQuery.language || selectedLanguage.value || 'zh') === 'en' ? 'en' : 'zh';
     currentPage.value = Math.max(1, Number(routeQuery.page || 1));
     runSearch();
   },

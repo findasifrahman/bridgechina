@@ -34,7 +34,7 @@ model User {
   sellerOrderItems       OrderItem[]        @relation("SellerOrderItems")
   createdOrderEvents     OrderStatusEvent[] @relation("OrderStatusEventCreator")
   cartItemsAsSeller      CartItem[]         @relation("CartItemSeller")
-  customerProfileNotes    CustomerProfile[]   @relation("CustomerProfileInternalNoteAuthor")
+  customerProfileNotes   CustomerProfile[]  @relation("CustomerProfileInternalNoteAuthor")
 
   @@index([email])
   @@index([phone])
@@ -75,13 +75,13 @@ model RefreshToken {
 }
 
 model AuthEmailOtp {
-  id         String    @id @default(uuid())
-  email      String
-  purpose    String
-  code_hash  String
-  expires_at DateTime
+  id          String    @id @default(uuid())
+  email       String
+  purpose     String
+  code_hash   String
+  expires_at  DateTime
   consumed_at DateTime?
-  created_at DateTime  @default(now())
+  created_at  DateTime  @default(now())
 
   @@index([email, purpose])
   @@index([expires_at])
@@ -395,27 +395,27 @@ model Cart {
 }
 
 model CartItem {
-  id                String   @id @default(uuid())
-  cart_id           String
-  product_id        String
-  seller_id         String
-  qty               Int
-  price_snapshot    Float
-  currency_snapshot String   @default("BDT")
-  title_snapshot    String?
-  sku_details_snapshot Json?
-  image_url_snapshot String?
-  source_url_snapshot String?
-  product_url_snapshot String?
-  seller_name_snapshot String?
-  vendor_id_snapshot String?
-  shop_url_snapshot String?
+  id                       String   @id @default(uuid())
+  cart_id                  String
+  product_id               String
+  seller_id                String
+  qty                      Int
+  price_snapshot           Float
+  currency_snapshot        String   @default("BDT")
+  title_snapshot           String?
+  sku_details_snapshot     Json?
+  image_url_snapshot       String?
+  source_url_snapshot      String?
+  product_url_snapshot     String?
+  seller_name_snapshot     String?
+  vendor_id_snapshot       String?
+  shop_url_snapshot        String?
   selected_shipping_method String?
-  estimated_weight_kg Float?
-  created_at        DateTime @default(now())
-  cart              Cart     @relation(fields: [cart_id], references: [id], onDelete: Cascade)
-  product           Product  @relation(fields: [product_id], references: [id], onDelete: Restrict)
-  seller            User     @relation("CartItemSeller", fields: [seller_id], references: [id], onDelete: Restrict)
+  estimated_weight_kg      Float?
+  created_at               DateTime @default(now())
+  cart                     Cart     @relation(fields: [cart_id], references: [id], onDelete: Cascade)
+  product                  Product  @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  seller                   User     @relation("CartItemSeller", fields: [seller_id], references: [id], onDelete: Restrict)
 
   @@index([cart_id])
   @@index([seller_id])
@@ -461,32 +461,32 @@ model Order {
 }
 
 model OrderItem {
-  id                String    @id @default(uuid())
-  order_id          String
-  product_id        String
-  seller_id         String
-  qty               Int
-  price_snapshot    Float
-  currency_snapshot String    @default("BDT")
-  title_snapshot    String?
-  sku_details_snapshot Json?
-  image_url_snapshot String?
-  source_url_snapshot String?
-  product_url_snapshot String?
-  seller_name_snapshot String?
-  vendor_id_snapshot String?
-  shop_url_snapshot String?
+  id                       String    @id @default(uuid())
+  order_id                 String
+  product_id               String
+  seller_id                String
+  qty                      Int
+  price_snapshot           Float
+  currency_snapshot        String    @default("BDT")
+  title_snapshot           String?
+  sku_details_snapshot     Json?
+  image_url_snapshot       String?
+  source_url_snapshot      String?
+  product_url_snapshot     String?
+  seller_name_snapshot     String?
+  vendor_id_snapshot       String?
+  shop_url_snapshot        String?
   selected_shipping_method String?
-  estimated_weight_kg Float?
-  purchase_order_no String?
-  tracking_no      String?
-  seller_status     String    @default("pending_review")
-  seller_note       String?
-  reviewed_at       DateTime?
-  created_at        DateTime  @default(now())
-  order             Order     @relation(fields: [order_id], references: [id], onDelete: Cascade)
-  product           Product   @relation(fields: [product_id], references: [id], onDelete: Restrict)
-  seller            User      @relation("SellerOrderItems", fields: [seller_id], references: [id], onDelete: Restrict)
+  estimated_weight_kg      Float?
+  purchase_order_no        String?
+  tracking_no              String?
+  seller_status            String    @default("pending_review")
+  seller_note              String?
+  reviewed_at              DateTime?
+  created_at               DateTime  @default(now())
+  order                    Order     @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  product                  Product   @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  seller                   User      @relation("SellerOrderItems", fields: [seller_id], references: [id], onDelete: Restrict)
 
   @@index([order_id])
   @@index([seller_id])
@@ -650,25 +650,47 @@ model ExternalCatalogItem {
 }
 
 model ExternalSearchResultItem {
-  id              String   @id @default(uuid())
-  source          String
-  search_kind     String
-  search_key      String
-  search_phrase   String?
-  page            Int      @default(1)
-  external_id     String
-  title_original  String?
-  title_en        String?
-  item_json       Json?
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
-  expires_at      DateTime
+  id             String   @id @default(uuid())
+  source         String
+  search_kind    String
+  search_key     String
+  search_phrase  String?
+  page           Int      @default(1)
+  external_id    String
+  title_original String?
+  title_en       String?
+  item_json      Json?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  expires_at     DateTime
 
   @@unique([source, search_key, external_id])
   @@index([source, external_id])
   @@index([search_key])
   @@index([expires_at])
   @@map("external_search_result_items")
+}
+
+model ShoppingSearchIntent {
+  id                String   @id @default(uuid())
+  source            String
+  intent_type       String
+  query_text        String
+  normalized_key    String
+  category_slug     String?
+  language          String   @default("zh")
+  search_count      Int      @default(1)
+  result_count      Int      @default(0)
+  first_searched_at DateTime @default(now())
+  last_searched_at  DateTime @default(now())
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@unique([source, intent_type, normalized_key, language])
+  @@index([source, search_count])
+  @@index([last_searched_at])
+  @@index([category_slug])
+  @@map("shopping_search_intents")
 }
 
 model ExternalHotItem {
@@ -802,14 +824,14 @@ model SourceMarkupSetting {
 }
 
 model MoqShoppingOtapiRule {
-  id                    String   @id @default(uuid())
-  scope                 String   @unique @default("global")
-  minimum_product       Int      @default(1)
-  minimum_price_threshold Float   @default(0)
-  currency              String   @default("BDT")
-  updated_by            String?
-  created_at            DateTime @default(now())
-  updated_at            DateTime @updatedAt
+  id                      String   @id @default(uuid())
+  scope                   String   @unique @default("global")
+  minimum_product         Int      @default(1)
+  minimum_price_threshold Float    @default(0)
+  currency                String   @default("BDT")
+  updated_by              String?
+  created_at              DateTime @default(now())
+  updated_at              DateTime @updatedAt
 
   @@map("moq_shopping_otapi_rule")
 }
