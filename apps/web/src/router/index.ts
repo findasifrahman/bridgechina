@@ -154,6 +154,11 @@ const router = createRouter({
           component: () => import('@/pages/admin/PricingSettingsPage.vue'),
         },
         {
+          path: 'searches',
+          name: 'admin-searches',
+          component: () => import('@/pages/admin/SearchAnalyticsPage.vue'),
+        },
+        {
           path: 'shopping/products',
           redirect: '/admin/shopping',
         },
@@ -233,6 +238,7 @@ const router = createRouter({
         { path: 'service-providers', redirect: '/admin/sellers' },
         { path: 'shipping-rates', redirect: '/admin/pricing' },
         { path: 'markup', redirect: '/admin/pricing' },
+        { path: 'search-analytics', redirect: '/admin/searches' },
         { path: 'audit', redirect: '/admin/orders' },
       ],
     },
@@ -296,13 +302,28 @@ router.beforeEach(async (to, from, next) => {
     to.matched.some((record) => record.meta.requiresAuth === false) ||
     to.name === 'home' ||
     to.path === '/' ||
-    ['login', 'register', 'forgot-password', 'google-oauth-callback', 'google-oauth-callback-forward', 'contact', 'blog', 'terms', 'shopping', 'shopping-browse', 'shopping-shop', 'product-detail', 'shopping-cart', 'shopping-checkout'].includes(to.name as string);
-  
+    [
+      'login',
+      'register',
+      'forgot-password',
+      'google-oauth-callback',
+      'google-oauth-callback-forward',
+      'contact',
+      'blog',
+      'terms',
+      'shopping',
+      'shopping-browse',
+      'shopping-shop',
+      'product-detail',
+      'shopping-cart',
+      'shopping-checkout',
+    ].includes(to.name as string);
+
   if (isPublicRoute) {
     next();
     return;
   }
-  
+
   // Only fetch user if route requires auth - don't block public routes
   if (to.meta.requiresAuth || to.meta.requiresRole) {
     if (authStore.accessToken && !authStore.user) {
@@ -336,4 +357,3 @@ router.beforeEach(async (to, from, next) => {
 });
 
 export default router;
-

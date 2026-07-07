@@ -285,32 +285,46 @@ async function recordShoppingSearchIntent(
   if (!normalizedKey) return;
 
   try {
-    await (prisma as any).shoppingSearchIntent.upsert({
-      where: {
-        source_intent_type_normalized_key_language: {
+    await prisma.$transaction(async (tx) => {
+      await (tx as any).shoppingSearchIntent.upsert({
+        where: {
+          source_intent_type_normalized_key_language: {
+            source: data.source,
+            intent_type: data.intentType,
+            normalized_key: normalizedKey,
+            language: data.language || 'zh',
+          },
+        },
+        create: {
           source: data.source,
           intent_type: data.intentType,
+          query_text: data.queryText.trim().slice(0, 200),
           normalized_key: normalizedKey,
+          category_slug: data.categorySlug || null,
           language: data.language || 'zh',
+          result_count: data.resultCount || 0,
+          search_count: 1,
         },
-      },
-      create: {
-        source: data.source,
-        intent_type: data.intentType,
-        query_text: data.queryText.trim().slice(0, 200),
-        normalized_key: normalizedKey,
-        category_slug: data.categorySlug || null,
-        language: data.language || 'zh',
-        result_count: data.resultCount || 0,
-        search_count: 1,
-      },
-      update: {
-        query_text: data.queryText.trim().slice(0, 200),
-        category_slug: data.categorySlug || null,
-        result_count: data.resultCount || 0,
-        search_count: { increment: 1 },
-        last_searched_at: new Date(),
-      },
+        update: {
+          query_text: data.queryText.trim().slice(0, 200),
+          category_slug: data.categorySlug || null,
+          result_count: data.resultCount || 0,
+          search_count: { increment: 1 },
+          last_searched_at: new Date(),
+        },
+      });
+
+      await (tx as any).shoppingSearchEvent.create({
+        data: {
+          source: data.source,
+          intent_type: data.intentType,
+          query_text: data.queryText.trim().slice(0, 200),
+          normalized_key: normalizedKey,
+          category_slug: data.categorySlug || null,
+          language: data.language || 'zh',
+          result_count: data.resultCount || 0,
+        },
+      });
     });
   } catch (error: any) {
     fastify.log.warn(

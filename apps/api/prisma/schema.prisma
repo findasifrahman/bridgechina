@@ -1471,6 +1471,24 @@ model ShoppingSearchIntent {
   @@map("shopping_search_intents")
 }
 
+model ShoppingSearchEvent {
+  id             String   @id @default(uuid())
+  source         String
+  intent_type    String
+  query_text     String
+  normalized_key String
+  category_slug  String?
+  language       String   @default("zh")
+  result_count   Int      @default(0)
+  created_at     DateTime @default(now())
+
+  @@index([source, created_at])
+  @@index([normalized_key])
+  @@index([intent_type])
+  @@index([category_slug])
+  @@map("shopping_search_events")
+}
+
 model ExternalHotItem {
   id            String   @id @default(uuid())
   source        String

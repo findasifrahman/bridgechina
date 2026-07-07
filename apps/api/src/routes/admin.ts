@@ -2,23 +2,29 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { prisma } from '../lib/prisma.js';
-import { getShoppingAppSettings, updateShoppingAppSettings } from '../modules/shopping/app-settings.js';
+import {
+  getShoppingAppSettings,
+  updateShoppingAppSettings,
+} from '../modules/shopping/app-settings.js';
 import { deleteFromR2, getPublicUrl, uploadToR2 } from '../utils/r2.js';
 import { z } from 'zod';
 
-const auth = [async (request: FastifyRequest, reply: FastifyReply) => {
-  const fastify = request.server as FastifyInstance & { authenticate?: any };
-  if (!fastify.authenticate) {
-    reply.status(500).send({ error: 'Authentication not configured' });
-    return;
-  }
-  await fastify.authenticate(request, reply);
-}, async (request: FastifyRequest, reply: FastifyReply) => {
-  const req = request as any;
-  if (!req.user?.roles?.includes('ADMIN')) {
-    reply.status(403).send({ error: 'Forbidden' });
-  }
-}];
+const auth = [
+  async (request: FastifyRequest, reply: FastifyReply) => {
+    const fastify = request.server as FastifyInstance & { authenticate?: any };
+    if (!fastify.authenticate) {
+      reply.status(500).send({ error: 'Authentication not configured' });
+      return;
+    }
+    await fastify.authenticate(request, reply);
+  },
+  async (request: FastifyRequest, reply: FastifyReply) => {
+    const req = request as any;
+    if (!req.user?.roles?.includes('ADMIN')) {
+      reply.status(403).send({ error: 'Forbidden' });
+    }
+  },
+];
 
 const mediaUploadSchema = z.object({
   category: z.string().optional(),
@@ -27,8 +33,13 @@ const mediaUploadSchema = z.object({
 
 const parseList = (value: unknown) => {
   if (!value) return [];
-  if (Array.isArray(value)) return value.filter((item): item is string => typeof item === 'string' && item.length > 0);
-  if (typeof value === 'string') return value.split(',').map((item) => item.trim()).filter(Boolean);
+  if (Array.isArray(value))
+    return value.filter((item): item is string => typeof item === 'string' && item.length > 0);
+  if (typeof value === 'string')
+    return value
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
   return [];
 };
 
@@ -55,12 +66,13 @@ const normalizeSpecifications = (value: unknown) => {
   return [parsed];
 };
 
-const slugifySku = (value: string) => value
-  .toLowerCase()
-  .trim()
-  .replace(/[^a-z0-9]+/g, '-')
-  .replace(/^-+|-+$/g, '')
-  .slice(0, 40);
+const slugifySku = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40);
 
 async function generateUniqueProductSku(preferredSku: string | null | undefined, title: string) {
   const base = slugifySku(preferredSku?.trim() || title || 'product') || 'product';
@@ -117,9 +129,13 @@ function buildCategoryTree(rows: any[]) {
       roots.push(node);
     }
   }
-  const sortNodes = (items: any[]) => items
-    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0) || String(a.name).localeCompare(String(b.name)))
-    .map((item) => ({ ...item, children: sortNodes(item.children || []) }));
+  const sortNodes = (items: any[]) =>
+    items
+      .sort(
+        (a, b) =>
+          (a.sort_order ?? 0) - (b.sort_order ?? 0) || String(a.name).localeCompare(String(b.name))
+      )
+      .map((item) => ({ ...item, children: sortNodes(item.children || []) }));
   return sortNodes(roots);
 }
 
@@ -144,7 +160,17 @@ async function getDefaultSellerAndCategory() {
 
 export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.get('/dashboard', { preHandler: auth }, async () => {
-    const [users, products, orders, pendingProofs, pendingSellerItems, approvedSellerItems, recentOrders, weeklySales, monthlySales] = await Promise.all([
+    const [
+      users,
+      products,
+      orders,
+      pendingProofs,
+      pendingSellerItems,
+      approvedSellerItems,
+      recentOrders,
+      weeklySales,
+      monthlySales,
+    ] = await Promise.all([
       prisma.user.count(),
       prisma.product.count(),
       prisma.order.count(),
@@ -200,6 +226,94 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       monthlySales,
     };
   });
+
+  fastify.get(
+    '/shopping/search-intents',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const query = request.query as { limit?: string; latestLimit?: string; source?: string };
+      const limit = Math.max(1, Math.min(50, parseInt(query.limit || '10', 10)));
+      const latestLimit = Math.max(1, Math.min(100, parseInt(query.latestLimit || '20', 10)));
+      const source = String(query.source || '').trim();
+      const sourceSql = source ? Prisma.sql`AND source = ${source}` : Prisma.empty;
+
+      const now = new Date();
+      const today = new Date(now);
+      today.setHours(0, 0, 0, 0);
+      const week = new Date(now);
+      week.setDate(week.getDate() - 7);
+      const month = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      const topSince = (since: Date) =>
+        prisma.$queryRaw(Prisma.sql`
+        SELECT
+          normalized_key AS "normalizedKey",
+          MIN(query_text) AS "queryText",
+          COUNT(*)::int AS "searchCount",
+          COALESCE(SUM(result_count), 0)::int AS "resultCount",
+          MAX(created_at) AS "lastSearchedAt",
+          MIN(created_at) AS "firstSearchedAt",
+          MAX(intent_type) AS "intentType",
+          MAX(language) AS "language",
+          MAX(category_slug) AS "categorySlug"
+        FROM shopping_search_events
+        WHERE created_at >= ${since}
+        ${sourceSql}
+        GROUP BY normalized_key
+        ORDER BY COUNT(*) DESC, MAX(created_at) DESC
+        LIMIT ${limit}
+      `) as Promise<any[]>;
+
+      try {
+        const [todayRows, weekRows, monthRows, latestRows] = await Promise.all([
+          topSince(today),
+          topSince(week),
+          topSince(month),
+          prisma.$queryRaw(Prisma.sql`
+          SELECT
+            id,
+            source,
+            intent_type AS "intentType",
+            query_text AS "queryText",
+            normalized_key AS "normalizedKey",
+            category_slug AS "categorySlug",
+            language,
+            result_count AS "resultCount",
+            created_at AS "createdAt"
+          FROM shopping_search_events
+          WHERE 1 = 1
+          ${sourceSql}
+          ORDER BY created_at DESC
+          LIMIT ${latestLimit}
+        `) as Promise<any[]>,
+        ]);
+
+        return {
+          periods: {
+            today: todayRows,
+            week: weekRows,
+            month: monthRows,
+          },
+          latest: latestRows,
+        };
+      } catch (error: any) {
+        fastify.log.error(
+          { error, stack: error.stack },
+          '[Admin Route] /shopping/search-intents error'
+        );
+        if (String(error?.message || '').includes('shopping_search_events')) {
+          return {
+            periods: { today: [], week: [], month: [] },
+            latest: [],
+            warning: 'Search analytics table is not migrated yet.',
+          };
+        }
+        return reply
+          .status(500)
+          .send({ error: error.message || 'Failed to load search analytics' });
+      }
+    }
+  );
 
   fastify.get('/potential-leads', { preHandler: auth }, async (request: FastifyRequest) => {
     const query = request.query as { search?: string; page?: string; limit?: string };
@@ -364,7 +478,8 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     if (pendingFirst) {
       const clauses: any[] = [];
       if (query.status) clauses.push(Prisma.sql`o.status = ${query.status}`);
-      if (query.payment_status) clauses.push(Prisma.sql`o.payment_status = ${query.payment_status}`);
+      if (query.payment_status)
+        clauses.push(Prisma.sql`o.payment_status = ${query.payment_status}`);
       if (query.from) clauses.push(Prisma.sql`o.created_at >= ${new Date(query.from)}`);
       if (query.to) clauses.push(Prisma.sql`o.created_at <= ${new Date(query.to)}`);
       if (search) {
@@ -382,7 +497,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       const whereSql = clauses.length
         ? Prisma.sql`WHERE ${Prisma.join(clauses, ' AND ')}`
         : Prisma.empty;
-      const rows = await prisma.$queryRaw(Prisma.sql`
+      const rows = (await prisma.$queryRaw(Prisma.sql`
         SELECT o.id
         FROM orders o
         LEFT JOIN users u ON u.id = o.user_id
@@ -397,7 +512,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
           o.created_at DESC
         OFFSET ${(page - 1) * limit}
         LIMIT ${limit}
-      `) as Array<{ id: string }>;
+      `)) as Array<{ id: string }>;
       const ids = rows.map((row) => row.id);
       if (ids.length > 0) {
         const fetched = await prisma.order.findMany({
@@ -426,57 +541,77 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     };
   });
 
-  fastify.patch('/orders/:id/status', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const req = request as any;
-    const { id } = request.params as { id: string };
-    const body = z.object({
-      status: z.enum(['pending_purchase', 'purchased', 'in_warehouse', 'shipped', 'received', 'cancelled']),
-      note: z.string().optional(),
-    }).parse(request.body);
+  fastify.patch(
+    '/orders/:id/status',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const req = request as any;
+      const { id } = request.params as { id: string };
+      const body = z
+        .object({
+          status: z.enum([
+            'pending_purchase',
+            'purchased',
+            'in_warehouse',
+            'shipped',
+            'received',
+            'cancelled',
+          ]),
+          note: z.string().optional(),
+        })
+        .parse(request.body);
 
-    const order = await prisma.order.findUnique({ where: { id } });
-    if (!order) {
-      return reply.status(404).send({ error: 'Order not found' });
+      const order = await prisma.order.findUnique({ where: { id } });
+      if (!order) {
+        return reply.status(404).send({ error: 'Order not found' });
+      }
+
+      const updated = await prisma.order.update({
+        where: { id },
+        data: { status: body.status },
+      });
+
+      await prisma.orderStatusEvent.create({
+        data: {
+          order_id: id,
+          status_from: order.status,
+          status_to: body.status,
+          note: body.note || null,
+          created_by: req.user.id,
+        },
+      });
+
+      return updated;
     }
+  );
 
-    const updated = await prisma.order.update({
-      where: { id },
-      data: { status: body.status },
-    });
+  fastify.patch(
+    '/order-items/:id/fulfillment',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const body = z
+        .object({
+          purchase_order_no: z.string().trim().max(120).nullable().optional(),
+          tracking_no: z.string().trim().max(120).nullable().optional(),
+        })
+        .parse(request.body);
 
-    await prisma.orderStatusEvent.create({
-      data: {
-        order_id: id,
-        status_from: order.status,
-        status_to: body.status,
-        note: body.note || null,
-        created_by: req.user.id,
-      },
-    });
+      const item = await prisma.orderItem.findUnique({ where: { id } });
+      if (!item) {
+        return reply.status(404).send({ error: 'Order item not found' });
+      }
 
-    return updated;
-  });
-
-  fastify.patch('/order-items/:id/fulfillment', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const body = z.object({
-      purchase_order_no: z.string().trim().max(120).nullable().optional(),
-      tracking_no: z.string().trim().max(120).nullable().optional(),
-    }).parse(request.body);
-
-    const item = await prisma.orderItem.findUnique({ where: { id } });
-    if (!item) {
-      return reply.status(404).send({ error: 'Order item not found' });
+      return prisma.orderItem.update({
+        where: { id },
+        data: {
+          purchase_order_no:
+            body.purchase_order_no === undefined ? undefined : body.purchase_order_no || null,
+          tracking_no: body.tracking_no === undefined ? undefined : body.tracking_no || null,
+        },
+      });
     }
-
-    return prisma.orderItem.update({
-      where: { id },
-      data: {
-        purchase_order_no: body.purchase_order_no === undefined ? undefined : body.purchase_order_no || null,
-        tracking_no: body.tracking_no === undefined ? undefined : body.tracking_no || null,
-      },
-    });
-  });
+  );
 
   fastify.get('/payment-proofs', { preHandler: auth }, async (request: FastifyRequest) => {
     const query = request.query as { status?: string };
@@ -503,118 +638,131 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     });
   });
 
-  fastify.patch('/payment-proofs/:id/approve', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const req = request as any;
-    const { id } = request.params as { id: string };
-    const body = z.object({
-      note: z.string().optional(),
-    }).parse(request.body);
+  fastify.patch(
+    '/payment-proofs/:id/approve',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const req = request as any;
+      const { id } = request.params as { id: string };
+      const body = z
+        .object({
+          note: z.string().optional(),
+        })
+        .parse(request.body);
 
-    const proof = await prisma.paymentProof.findUnique({ where: { id } });
-    if (!proof) {
-      return reply.status(404).send({ error: 'Payment proof not found' });
-    }
-
-    return prisma.$transaction(async (tx) => {
-      const updatedProof = await tx.paymentProof.update({
-        where: { id },
-        data: {
-          status: 'approved',
-          reviewed_by: req.user.id,
-          reviewed_at: new Date(),
-          notes: body.note || proof.notes,
-        },
-      });
-
-      const order = await tx.order.findUnique({
-        where: { id: proof.order_id },
-        include: { items: true },
-      });
-
-      if (order) {
-        const nextStatus = order.status === 'pending_payment' || order.status === 'pending_review'
-          ? 'pending_purchase'
-          : order.status;
-        if (nextStatus !== order.status) {
-          await tx.order.update({
-            where: { id: order.id },
-            data: {
-              status: nextStatus,
-              payment_status: 'approved',
-            },
-          });
-          await tx.orderStatusEvent.create({
-            data: {
-              order_id: order.id,
-              status_from: order.status,
-              status_to: nextStatus,
-              note: 'Payment proof approved',
-              created_by: req.user.id,
-            },
-          });
-        } else if (order.payment_status !== 'approved') {
-          await tx.order.update({
-            where: { id: order.id },
-            data: { payment_status: 'approved' },
-          });
-        }
+      const proof = await prisma.paymentProof.findUnique({ where: { id } });
+      if (!proof) {
+        return reply.status(404).send({ error: 'Payment proof not found' });
       }
 
-      return updatedProof;
-    });
-  });
+      return prisma.$transaction(async (tx) => {
+        const updatedProof = await tx.paymentProof.update({
+          where: { id },
+          data: {
+            status: 'approved',
+            reviewed_by: req.user.id,
+            reviewed_at: new Date(),
+            notes: body.note || proof.notes,
+          },
+        });
 
-  fastify.patch('/payment-proofs/:id/reject', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const req = request as any;
-    const { id } = request.params as { id: string };
-    const body = z.object({
-      note: z.string().optional(),
-    }).parse(request.body);
+        const order = await tx.order.findUnique({
+          where: { id: proof.order_id },
+          include: { items: true },
+        });
 
-    const proof = await prisma.paymentProof.findUnique({ where: { id } });
-    if (!proof) {
-      return reply.status(404).send({ error: 'Payment proof not found' });
-    }
-    if (proof.status === 'approved') {
-      return reply.status(409).send({ error: 'Approved payment proof cannot be rejected' });
-    }
+        if (order) {
+          const nextStatus =
+            order.status === 'pending_payment' || order.status === 'pending_review'
+              ? 'pending_purchase'
+              : order.status;
+          if (nextStatus !== order.status) {
+            await tx.order.update({
+              where: { id: order.id },
+              data: {
+                status: nextStatus,
+                payment_status: 'approved',
+              },
+            });
+            await tx.orderStatusEvent.create({
+              data: {
+                order_id: order.id,
+                status_from: order.status,
+                status_to: nextStatus,
+                note: 'Payment proof approved',
+                created_by: req.user.id,
+              },
+            });
+          } else if (order.payment_status !== 'approved') {
+            await tx.order.update({
+              where: { id: order.id },
+              data: { payment_status: 'approved' },
+            });
+          }
+        }
 
-    return prisma.$transaction(async (tx) => {
-      const updatedProof = await tx.paymentProof.update({
-        where: { id },
-        data: {
-          status: 'rejected',
-          reviewed_by: req.user.id,
-          reviewed_at: new Date(),
-          notes: body.note || proof.notes,
-        },
+        return updatedProof;
       });
+    }
+  );
 
-      const approvedProof = await tx.paymentProof.findFirst({
-        where: {
-          order_id: proof.order_id,
-          status: 'approved',
-        },
-        select: { id: true },
-      });
+  fastify.patch(
+    '/payment-proofs/:id/reject',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const req = request as any;
+      const { id } = request.params as { id: string };
+      const body = z
+        .object({
+          note: z.string().optional(),
+        })
+        .parse(request.body);
 
-      if (!approvedProof) {
-        const submittedProof = await tx.paymentProof.findFirst({
+      const proof = await prisma.paymentProof.findUnique({ where: { id } });
+      if (!proof) {
+        return reply.status(404).send({ error: 'Payment proof not found' });
+      }
+      if (proof.status === 'approved') {
+        return reply.status(409).send({ error: 'Approved payment proof cannot be rejected' });
+      }
+
+      return prisma.$transaction(async (tx) => {
+        const updatedProof = await tx.paymentProof.update({
+          where: { id },
+          data: {
+            status: 'rejected',
+            reviewed_by: req.user.id,
+            reviewed_at: new Date(),
+            notes: body.note || proof.notes,
+          },
+        });
+
+        const approvedProof = await tx.paymentProof.findFirst({
           where: {
             order_id: proof.order_id,
-            status: 'submitted',
+            status: 'approved',
           },
           select: { id: true },
         });
-        await tx.order.update({
-          where: { id: proof.order_id },
-          data: { payment_status: submittedProof ? 'submitted' : 'rejected' },
-        });
-      }
 
-      return updatedProof;
-    });
-  });
+        if (!approvedProof) {
+          const submittedProof = await tx.paymentProof.findFirst({
+            where: {
+              order_id: proof.order_id,
+              status: 'submitted',
+            },
+            select: { id: true },
+          });
+          await tx.order.update({
+            where: { id: proof.order_id },
+            data: { payment_status: submittedProof ? 'submitted' : 'rejected' },
+          });
+        }
+
+        return updatedProof;
+      });
+    }
+  );
 
   fastify.get('/products', { preHandler: auth }, async (request: FastifyRequest) => {
     const query = request.query as {
@@ -692,110 +840,130 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     };
   });
 
-  fastify.post('/products', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const body = z.object({
-      category_id: z.string().min(1),
-      title: z.string().min(1),
-      description: z.string().optional(),
-      price: z.number().positive(),
-      currency: z.string().optional(),
-      stock_qty: z.number().int().min(0).optional(),
-      minimum_order_qty: z.number().int().min(1).optional(),
-      sku: z.string().optional(),
-      seller_name: z.string().optional(),
-      brand: z.string().optional(),
-      source_kind: z.string().optional(),
-      source_url: z.string().optional(),
-      product_url: z.string().optional(),
-      external_id: z.string().optional(),
-      vendor_id: z.string().optional(),
-      vendor_name: z.string().optional(),
-      shop_url: z.string().optional(),
-      weight_kg: z.number().optional(),
-      cover_asset_id: z.string().optional(),
-      gallery_asset_ids: z.any().optional(),
-      specifications: z.any().optional(),
-    }).parse(request.body);
-    const req = request as any;
-    const sku = await generateUniqueProductSku(body.sku, body.title);
+  fastify.post(
+    '/products',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const body = z
+        .object({
+          category_id: z.string().min(1),
+          title: z.string().min(1),
+          description: z.string().optional(),
+          price: z.number().positive(),
+          currency: z.string().optional(),
+          stock_qty: z.number().int().min(0).optional(),
+          minimum_order_qty: z.number().int().min(1).optional(),
+          sku: z.string().optional(),
+          seller_name: z.string().optional(),
+          brand: z.string().optional(),
+          source_kind: z.string().optional(),
+          source_url: z.string().optional(),
+          product_url: z.string().optional(),
+          external_id: z.string().optional(),
+          vendor_id: z.string().optional(),
+          vendor_name: z.string().optional(),
+          shop_url: z.string().optional(),
+          weight_kg: z.number().optional(),
+          cover_asset_id: z.string().optional(),
+          gallery_asset_ids: z.any().optional(),
+          specifications: z.any().optional(),
+        })
+        .parse(request.body);
+      const req = request as any;
+      const sku = await generateUniqueProductSku(body.sku, body.title);
 
-    const product = await prisma.product.create({
-      data: {
-        seller_id: req.user.id,
-        category_id: body.category_id,
-        title: body.title,
-        description: body.description || null,
-        price: body.price,
-        currency: body.currency || 'BDT',
-        stock_qty: body.stock_qty ?? 0,
-        minimum_order_qty: body.minimum_order_qty ?? 1,
-        sku,
-        brand: body.seller_name || body.brand || null,
-        source_kind: body.source_kind || 'manual',
-        source_url: body.source_url || null,
-        product_url: body.product_url || body.source_url || null,
-        external_id: body.external_id || null,
-        vendor_id: body.vendor_id || null,
-        vendor_name: body.vendor_name || body.seller_name || body.brand || null,
-        shop_url: body.shop_url || null,
-        weight_kg: body.weight_kg ?? null,
-        cover_asset_id: body.cover_asset_id || null,
-        gallery_asset_ids: parseStringArray(body.gallery_asset_ids),
-        specifications: normalizeSpecifications(body.specifications),
-        status: 'published',
-      },
-    });
+      const product = await prisma.product.create({
+        data: {
+          seller_id: req.user.id,
+          category_id: body.category_id,
+          title: body.title,
+          description: body.description || null,
+          price: body.price,
+          currency: body.currency || 'BDT',
+          stock_qty: body.stock_qty ?? 0,
+          minimum_order_qty: body.minimum_order_qty ?? 1,
+          sku,
+          brand: body.seller_name || body.brand || null,
+          source_kind: body.source_kind || 'manual',
+          source_url: body.source_url || null,
+          product_url: body.product_url || body.source_url || null,
+          external_id: body.external_id || null,
+          vendor_id: body.vendor_id || null,
+          vendor_name: body.vendor_name || body.seller_name || body.brand || null,
+          shop_url: body.shop_url || null,
+          weight_kg: body.weight_kg ?? null,
+          cover_asset_id: body.cover_asset_id || null,
+          gallery_asset_ids: parseStringArray(body.gallery_asset_ids),
+          specifications: normalizeSpecifications(body.specifications),
+          status: 'published',
+        },
+      });
 
-    return reply.status(201).send(product);
-  });
-
-  fastify.patch('/products/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const body = request.body as any;
-
-    const product = await prisma.product.findUnique({ where: { id } });
-    if (!product) {
-      return reply.status(404).send({ error: 'Product not found' });
+      return reply.status(201).send(product);
     }
+  );
 
-    return prisma.product.update({
-      where: { id },
-      data: {
-        title: body.title ?? undefined,
-        description: body.description ?? undefined,
-        price: body.price ?? undefined,
-        currency: body.currency ?? undefined,
-        stock_qty: body.stock_qty ?? undefined,
-        minimum_order_qty: body.minimum_order_qty ?? undefined,
-        status: body.status ?? undefined,
-        brand: body.seller_name ?? body.brand ?? undefined,
-        source_kind: body.source_kind ?? undefined,
-        source_url: body.source_url ?? undefined,
-        product_url: body.product_url ?? undefined,
-        external_id: body.external_id ?? undefined,
-        vendor_id: body.vendor_id ?? undefined,
-        vendor_name: body.vendor_name ?? undefined,
-        shop_url: body.shop_url ?? undefined,
-        sku: body.sku ?? undefined,
-        weight_kg: body.weight_kg ?? undefined,
-        cover_asset_id: body.cover_asset_id ?? undefined,
-        category_id: body.category_id ?? undefined,
-        gallery_asset_ids: body.gallery_asset_ids !== undefined ? parseStringArray(body.gallery_asset_ids) : undefined,
-        specifications: body.specifications !== undefined ? normalizeSpecifications(body.specifications) : undefined,
-      },
-    });
-  });
+  fastify.patch(
+    '/products/:id',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const body = request.body as any;
 
-  fastify.delete('/products/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const product = await prisma.product.findUnique({ where: { id } });
-    if (!product) {
-      return reply.status(404).send({ error: 'Product not found' });
+      const product = await prisma.product.findUnique({ where: { id } });
+      if (!product) {
+        return reply.status(404).send({ error: 'Product not found' });
+      }
+
+      return prisma.product.update({
+        where: { id },
+        data: {
+          title: body.title ?? undefined,
+          description: body.description ?? undefined,
+          price: body.price ?? undefined,
+          currency: body.currency ?? undefined,
+          stock_qty: body.stock_qty ?? undefined,
+          minimum_order_qty: body.minimum_order_qty ?? undefined,
+          status: body.status ?? undefined,
+          brand: body.seller_name ?? body.brand ?? undefined,
+          source_kind: body.source_kind ?? undefined,
+          source_url: body.source_url ?? undefined,
+          product_url: body.product_url ?? undefined,
+          external_id: body.external_id ?? undefined,
+          vendor_id: body.vendor_id ?? undefined,
+          vendor_name: body.vendor_name ?? undefined,
+          shop_url: body.shop_url ?? undefined,
+          sku: body.sku ?? undefined,
+          weight_kg: body.weight_kg ?? undefined,
+          cover_asset_id: body.cover_asset_id ?? undefined,
+          category_id: body.category_id ?? undefined,
+          gallery_asset_ids:
+            body.gallery_asset_ids !== undefined
+              ? parseStringArray(body.gallery_asset_ids)
+              : undefined,
+          specifications:
+            body.specifications !== undefined
+              ? normalizeSpecifications(body.specifications)
+              : undefined,
+        },
+      });
     }
+  );
 
-    await prisma.product.delete({ where: { id } });
-    return { message: 'Product deleted' };
-  });
+  fastify.delete(
+    '/products/:id',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const product = await prisma.product.findUnique({ where: { id } });
+      if (!product) {
+        return reply.status(404).send({ error: 'Product not found' });
+      }
+
+      await prisma.product.delete({ where: { id } });
+      return { message: 'Product deleted' };
+    }
+  );
 
   fastify.get('/users', { preHandler: auth }, async (request: FastifyRequest) => {
     const query = request.query as {
@@ -858,104 +1026,120 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     };
   });
 
-  fastify.get('/customers/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const customer = await prisma.user.findUnique({
-      where: { id },
-      include: {
-        roles: { include: { role: true } },
-        customerProfile: {
-          include: {
-            avatarAsset: true,
-            internalNoteUpdatedBy: true,
-          },
-        },
-        addresses: {
-          orderBy: { created_at: 'desc' },
-        },
-        orders: {
-          orderBy: { created_at: 'desc' },
-          take: 20,
-          include: {
-            items: {
-              include: {
-                product: true,
-              },
+  fastify.get(
+    '/customers/:id',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const customer = await prisma.user.findUnique({
+        where: { id },
+        include: {
+          roles: { include: { role: true } },
+          customerProfile: {
+            include: {
+              avatarAsset: true,
+              internalNoteUpdatedBy: true,
             },
-            shippingAddress: true,
+          },
+          addresses: {
+            orderBy: { created_at: 'desc' },
+          },
+          orders: {
+            orderBy: { created_at: 'desc' },
+            take: 20,
+            include: {
+              items: {
+                include: {
+                  product: true,
+                },
+              },
+              shippingAddress: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    if (!customer) {
-      return reply.status(404).send({ error: 'Customer not found' });
+      if (!customer) {
+        return reply.status(404).send({ error: 'Customer not found' });
+      }
+
+      return customer;
     }
+  );
 
-    return customer;
-  });
+  fastify.patch(
+    '/customers/:id/review',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const req = request as any;
+      const { id } = request.params as { id: string };
+      const body = z
+        .object({
+          rating: z.number().int().min(1).max(10).optional(),
+          note: z.string().optional(),
+        })
+        .parse(request.body);
 
-  fastify.patch('/customers/:id/review', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const req = request as any;
-    const { id } = request.params as { id: string };
-    const body = z.object({
-      rating: z.number().int().min(1).max(10).optional(),
-      note: z.string().optional(),
-    }).parse(request.body);
+      const customer = await prisma.user.findUnique({
+        where: { id },
+        include: { customerProfile: true },
+      });
 
-    const customer = await prisma.user.findUnique({
-      where: { id },
-      include: { customerProfile: true },
-    });
+      if (!customer) {
+        return reply.status(404).send({ error: 'Customer not found' });
+      }
 
-    if (!customer) {
-      return reply.status(404).send({ error: 'Customer not found' });
+      await prisma.customerProfile.upsert({
+        where: { user_id: id },
+        update: {
+          internal_rating: body.rating ?? undefined,
+          internal_note: body.note ?? undefined,
+          internal_note_updated_by: req.user.id,
+          internal_note_updated_at: new Date(),
+        },
+        create: {
+          user_id: id,
+          internal_rating: body.rating ?? null,
+          internal_note: body.note ?? null,
+          internal_note_updated_by: req.user.id,
+          internal_note_updated_at: new Date(),
+        },
+      });
+
+      return prisma.user.findUnique({
+        where: { id },
+        include: {
+          customerProfile: true,
+        },
+      });
     }
+  );
 
-    await prisma.customerProfile.upsert({
-      where: { user_id: id },
-      update: {
-        internal_rating: body.rating ?? undefined,
-        internal_note: body.note ?? undefined,
-        internal_note_updated_by: req.user.id,
-        internal_note_updated_at: new Date(),
-      },
-      create: {
-        user_id: id,
-        internal_rating: body.rating ?? null,
-        internal_note: body.note ?? null,
-        internal_note_updated_by: req.user.id,
-        internal_note_updated_at: new Date(),
-      },
-    });
+  fastify.delete(
+    '/users/:id',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const user = await prisma.user.findUnique({
+        where: { id },
+        include: { roles: { include: { role: true } } },
+      });
 
-    return prisma.user.findUnique({
-      where: { id },
-      include: {
-        customerProfile: true,
-      },
-    });
-  });
+      if (!user) {
+        return reply.status(404).send({ error: 'User not found' });
+      }
 
-  fastify.delete('/users/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const user = await prisma.user.findUnique({
-      where: { id },
-      include: { roles: { include: { role: true } } },
-    });
+      const roleNames = user.roles.map((entry) => entry.role.name);
+      if (!roleNames.includes('CUSTOMER')) {
+        return reply
+          .status(400)
+          .send({ error: 'Only customer users can be deleted from this screen' });
+      }
 
-    if (!user) {
-      return reply.status(404).send({ error: 'User not found' });
+      await prisma.user.delete({ where: { id } });
+      return { message: 'Customer deleted' };
     }
-
-    const roleNames = user.roles.map((entry) => entry.role.name);
-    if (!roleNames.includes('CUSTOMER')) {
-      return reply.status(400).send({ error: 'Only customer users can be deleted from this screen' });
-    }
-
-    await prisma.user.delete({ where: { id } });
-    return { message: 'Customer deleted' };
-  });
+  );
 
   fastify.get('/sellers', { preHandler: auth }, async (request: FastifyRequest) => {
     const query = request.query as {
@@ -1012,53 +1196,56 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     };
   });
 
-  fastify.get('/sellers/:id/report', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const query = request.query as {
-      from?: string;
-      to?: string;
-    };
+  fastify.get(
+    '/sellers/:id/report',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const query = request.query as {
+        from?: string;
+        to?: string;
+      };
 
-    const seller = await prisma.user.findUnique({
-      where: { id },
-      include: {
-        sellerProfile: true,
-      },
-    });
-    if (!seller) {
-      return reply.status(404).send({ error: 'Seller not found' });
-    }
-
-    const dateWhere: any = { seller_id: id };
-    if (query.from || query.to) {
-      dateWhere.created_at = {};
-      if (query.from) dateWhere.created_at.gte = new Date(query.from);
-      if (query.to) dateWhere.created_at.lte = new Date(query.to);
-    }
-
-    const [items, weeklySales, monthlySales] = await Promise.all([
-      prisma.orderItem.findMany({
-        where: dateWhere,
+      const seller = await prisma.user.findUnique({
+        where: { id },
         include: {
-          order: {
-            include: {
-              user: {
-                include: { customerProfile: true },
-              },
-              shippingAddress: true,
-              paymentProofs: {
-                include: { asset: true },
+          sellerProfile: true,
+        },
+      });
+      if (!seller) {
+        return reply.status(404).send({ error: 'Seller not found' });
+      }
+
+      const dateWhere: any = { seller_id: id };
+      if (query.from || query.to) {
+        dateWhere.created_at = {};
+        if (query.from) dateWhere.created_at.gte = new Date(query.from);
+        if (query.to) dateWhere.created_at.lte = new Date(query.to);
+      }
+
+      const [items, weeklySales, monthlySales] = await Promise.all([
+        prisma.orderItem.findMany({
+          where: dateWhere,
+          include: {
+            order: {
+              include: {
+                user: {
+                  include: { customerProfile: true },
+                },
+                shippingAddress: true,
+                paymentProofs: {
+                  include: { asset: true },
+                },
               },
             },
+            product: {
+              include: { category: true },
+            },
           },
-          product: {
-            include: { category: true },
-          },
-        },
-        orderBy: { created_at: 'desc' },
-        take: 200,
-      }),
-      prisma.$queryRaw(Prisma.sql`
+          orderBy: { created_at: 'desc' },
+          take: 200,
+        }),
+        prisma.$queryRaw(Prisma.sql`
         SELECT date_trunc('week', o.created_at) AS period,
                COUNT(*)::int AS items,
                COALESCE(SUM(oi.price_snapshot * oi.qty), 0)::float AS revenue
@@ -1068,7 +1255,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         GROUP BY 1
         ORDER BY 1 DESC
       `),
-      prisma.$queryRaw(Prisma.sql`
+        prisma.$queryRaw(Prisma.sql`
         SELECT date_trunc('month', o.created_at) AS period,
                COUNT(*)::int AS items,
                COALESCE(SUM(oi.price_snapshot * oi.qty), 0)::float AS revenue
@@ -1078,63 +1265,72 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         GROUP BY 1
         ORDER BY 1 DESC
       `),
-    ]);
+      ]);
 
-    return {
-      seller,
-      items,
-      weeklySales,
-      monthlySales,
-    };
-  });
-
-  fastify.patch('/users/:id/roles', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const rawBody = request.body as any;
-    const body = z.object({
-      roles: z.array(z.string().min(1)).min(1).optional(),
-      role_ids: z.array(z.string().min(1)).min(1).optional(),
-    }).parse(rawBody);
-    const roleNames = body.roles || body.role_ids || [];
-
-    const user = await prisma.user.findUnique({
-      where: { id },
-      include: { roles: true },
-    });
-    if (!user) {
-      return reply.status(404).send({ error: 'User not found' });
+      return {
+        seller,
+        items,
+        weeklySales,
+        monthlySales,
+      };
     }
+  );
 
-    await prisma.userRole.deleteMany({ where: { user_id: id } });
-    for (const roleName of roleNames) {
-      const role = await prisma.role.upsert({
-        where: { name: roleName },
-        update: {},
-        create: { name: roleName },
+  fastify.patch(
+    '/users/:id/roles',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const rawBody = request.body as any;
+      const body = z
+        .object({
+          roles: z.array(z.string().min(1)).min(1).optional(),
+          role_ids: z.array(z.string().min(1)).min(1).optional(),
+        })
+        .parse(rawBody);
+      const roleNames = body.roles || body.role_ids || [];
+
+      const user = await prisma.user.findUnique({
+        where: { id },
+        include: { roles: true },
       });
-      await prisma.userRole.create({
-        data: {
-          user_id: id,
-          role_id: role.id,
+      if (!user) {
+        return reply.status(404).send({ error: 'User not found' });
+      }
+
+      await prisma.userRole.deleteMany({ where: { user_id: id } });
+      for (const roleName of roleNames) {
+        const role = await prisma.role.upsert({
+          where: { name: roleName },
+          update: {},
+          create: { name: roleName },
+        });
+        await prisma.userRole.create({
+          data: {
+            user_id: id,
+            role_id: role.id,
+          },
+        });
+      }
+
+      return prisma.user.findUnique({
+        where: { id },
+        include: {
+          roles: { include: { role: true } },
         },
       });
     }
-
-    return prisma.user.findUnique({
-      where: { id },
-      include: {
-        roles: { include: { role: true } },
-      },
-    });
-  });
+  );
 
   fastify.put('/users/:id/roles', { preHandler: auth }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const rawBody = request.body as any;
-    const body = z.object({
-      roles: z.array(z.string().min(1)).min(1).optional(),
-      role_ids: z.array(z.string().min(1)).min(1).optional(),
-    }).parse(rawBody);
+    const body = z
+      .object({
+        roles: z.array(z.string().min(1)).min(1).optional(),
+        role_ids: z.array(z.string().min(1)).min(1).optional(),
+      })
+      .parse(rawBody);
     const roleNames = body.roles || body.role_ids || [];
 
     const user = await prisma.user.findUnique({
@@ -1187,64 +1383,78 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     });
   });
 
-  fastify.post('/categories', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const body = z.object({
-      name: z.string().min(1),
-      slug: z.string().min(1),
-      parent_id: z.string().optional(),
-      description: z.string().optional(),
-      icon: z.string().optional(),
-      sort_order: z.number().int().optional(),
-      is_active: z.boolean().optional(),
-    }).parse(request.body);
+  fastify.post(
+    '/categories',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const body = z
+        .object({
+          name: z.string().min(1),
+          slug: z.string().min(1),
+          parent_id: z.string().optional(),
+          description: z.string().optional(),
+          icon: z.string().optional(),
+          sort_order: z.number().int().optional(),
+          is_active: z.boolean().optional(),
+        })
+        .parse(request.body);
 
-    const category = await prisma.productCategory.create({
-      data: {
-        name: body.name,
-        slug: body.slug,
-        parent_id: body.parent_id || null,
-        description: body.description || null,
-        icon: body.icon || null,
-        sort_order: body.sort_order ?? 0,
-        is_active: body.is_active ?? true,
-      },
-    });
+      const category = await prisma.productCategory.create({
+        data: {
+          name: body.name,
+          slug: body.slug,
+          parent_id: body.parent_id || null,
+          description: body.description || null,
+          icon: body.icon || null,
+          sort_order: body.sort_order ?? 0,
+          is_active: body.is_active ?? true,
+        },
+      });
 
-    return reply.status(201).send(category);
-  });
-
-  fastify.patch('/categories/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const body = request.body as any;
-    const category = await prisma.productCategory.findUnique({ where: { id } });
-    if (!category) {
-      return reply.status(404).send({ error: 'Category not found' });
+      return reply.status(201).send(category);
     }
+  );
 
-    return prisma.productCategory.update({
-      where: { id },
-      data: {
-        name: body.name ?? undefined,
-        slug: body.slug ?? undefined,
-        parent_id: body.parent_id ?? undefined,
-        description: body.description ?? undefined,
-        icon: body.icon ?? undefined,
-        sort_order: body.sort_order ?? undefined,
-        is_active: body.is_active ?? undefined,
-      },
-    });
-  });
+  fastify.patch(
+    '/categories/:id',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const body = request.body as any;
+      const category = await prisma.productCategory.findUnique({ where: { id } });
+      if (!category) {
+        return reply.status(404).send({ error: 'Category not found' });
+      }
 
-  fastify.delete('/categories/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const category = await prisma.productCategory.findUnique({ where: { id } });
-    if (!category) {
-      return reply.status(404).send({ error: 'Category not found' });
+      return prisma.productCategory.update({
+        where: { id },
+        data: {
+          name: body.name ?? undefined,
+          slug: body.slug ?? undefined,
+          parent_id: body.parent_id ?? undefined,
+          description: body.description ?? undefined,
+          icon: body.icon ?? undefined,
+          sort_order: body.sort_order ?? undefined,
+          is_active: body.is_active ?? undefined,
+        },
+      });
     }
+  );
 
-    await prisma.productCategory.delete({ where: { id } });
-    return { message: 'Category deleted' };
-  });
+  fastify.delete(
+    '/categories/:id',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const category = await prisma.productCategory.findUnique({ where: { id } });
+      if (!category) {
+        return reply.status(404).send({ error: 'Category not found' });
+      }
+
+      await prisma.productCategory.delete({ where: { id } });
+      return { message: 'Category deleted' };
+    }
+  );
 
   fastify.get('/profit-markup', { preHandler: auth }, async () => {
     const [tmapiSetting, otapiSetting] = await Promise.all([
@@ -1266,11 +1476,13 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   fastify.put('/moq-rule', { preHandler: auth }, async (request: FastifyRequest) => {
     const req = request as any;
-    const body = z.object({
-      minimum_product: z.number().int().min(1),
-      minimum_price_threshold: z.number().min(0),
-      currency: z.string().min(1).default('BDT'),
-    }).parse(request.body);
+    const body = z
+      .object({
+        minimum_product: z.number().int().min(1),
+        minimum_price_threshold: z.number().min(0),
+        currency: z.string().min(1).default('BDT'),
+      })
+      .parse(request.body);
 
     return prisma.moqShoppingOtapiRule.upsert({
       where: { scope: 'global' },
@@ -1301,11 +1513,13 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   });
 
   fastify.put('/shopping-app-settings', { preHandler: auth }, async (request: FastifyRequest) => {
-    const body = z.object({
-      searchLanguage: z.enum(['zh', 'en']),
-      cnyToBdt: z.number().min(0.0001),
-      cnyToUsd: z.number().min(0.0001),
-    }).parse(request.body);
+    const body = z
+      .object({
+        searchLanguage: z.enum(['zh', 'en']),
+        cnyToBdt: z.number().min(0.0001),
+        cnyToUsd: z.number().min(0.0001),
+      })
+      .parse(request.body);
 
     return updateShoppingAppSettings(body);
   });
@@ -1313,12 +1527,14 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.put('/shipping-rates/:method', { preHandler: auth }, async (request: FastifyRequest) => {
     const req = request as any;
     const { method } = request.params as { method: string };
-    const body = z.object({
-      currency: z.string().min(1).default('BDT'),
-      min_rate_per_kg: z.number().min(0),
-      max_rate_per_kg: z.number().min(0),
-      is_active: z.boolean().optional(),
-    }).parse(request.body);
+    const body = z
+      .object({
+        currency: z.string().min(1).default('BDT'),
+        min_rate_per_kg: z.number().min(0),
+        max_rate_per_kg: z.number().min(0),
+        is_active: z.boolean().optional(),
+      })
+      .parse(request.body);
 
     return prisma.shippingRateSetting.upsert({
       where: {
@@ -1346,9 +1562,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
   fastify.put('/profit-markup', { preHandler: auth }, async (request: FastifyRequest) => {
     const req = request as any;
-    const body = z.object({
-      percent_rate: z.number().min(0),
-    }).parse(request.body);
+    const body = z
+      .object({
+        percent_rate: z.number().min(0),
+      })
+      .parse(request.body);
 
     await prisma.$transaction([
       prisma.sourceMarkupSetting.upsert({
@@ -1391,7 +1609,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     }
     if (query.active === '1') filters.push(Prisma.sql`"is_active" = true`);
     if (query.active === '0') filters.push(Prisma.sql`"is_active" = false`);
-    const whereSql = filters.length ? Prisma.sql`WHERE ${Prisma.join(filters, ' AND ')}` : Prisma.empty;
+    const whereSql = filters.length
+      ? Prisma.sql`WHERE ${Prisma.join(filters, ' AND ')}`
+      : Prisma.empty;
 
     return prisma.$queryRaw(Prisma.sql`
       SELECT *
@@ -1402,17 +1622,20 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     `);
   });
 
-  fastify.post('/coupons', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const req = request as any;
-    const body = couponSchema.parse(request.body);
-    const startsAt = parseCouponDate(body.starts_at);
-    const endsAt = parseCouponDate(body.ends_at);
-    if (startsAt && endsAt && startsAt > endsAt) {
-      return reply.status(400).send({ error: 'Coupon start date must be before end date' });
-    }
+  fastify.post(
+    '/coupons',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const req = request as any;
+      const body = couponSchema.parse(request.body);
+      const startsAt = parseCouponDate(body.starts_at);
+      const endsAt = parseCouponDate(body.ends_at);
+      if (startsAt && endsAt && startsAt > endsAt) {
+        return reply.status(400).send({ error: 'Coupon start date must be before end date' });
+      }
 
-    try {
-      const [coupon] = await prisma.$queryRaw(Prisma.sql`
+      try {
+        const [coupon] = (await prisma.$queryRaw(Prisma.sql`
         INSERT INTO "coupons" (
           "id", "code", "title", "description", "discount_type", "discount_value",
           "max_discount_amount", "min_order_amount", "currency", "starts_at", "ends_at",
@@ -1425,26 +1648,30 @@ export default async function adminRoutes(fastify: FastifyInstance) {
           ${body.usage_limit ?? null}, ${body.per_user_limit}, ${body.is_active}, ${req.user.id}
         )
         RETURNING *
-      `) as any[];
-      return reply.status(201).send(coupon);
-    } catch (error: any) {
-      if (String(error?.message || '').includes('coupons_code_key')) {
-        return reply.status(409).send({ error: 'Coupon code already exists' });
+      `)) as any[];
+        return reply.status(201).send(coupon);
+      } catch (error: any) {
+        if (String(error?.message || '').includes('coupons_code_key')) {
+          return reply.status(409).send({ error: 'Coupon code already exists' });
+        }
+        throw error;
       }
-      throw error;
     }
-  });
+  );
 
-  fastify.put('/coupons/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const body = couponSchema.partial({ code: true }).parse(request.body);
-    const startsAt = parseCouponDate(body.starts_at);
-    const endsAt = parseCouponDate(body.ends_at);
-    if (startsAt && endsAt && startsAt > endsAt) {
-      return reply.status(400).send({ error: 'Coupon start date must be before end date' });
-    }
+  fastify.put(
+    '/coupons/:id',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const body = couponSchema.partial({ code: true }).parse(request.body);
+      const startsAt = parseCouponDate(body.starts_at);
+      const endsAt = parseCouponDate(body.ends_at);
+      if (startsAt && endsAt && startsAt > endsAt) {
+        return reply.status(400).send({ error: 'Coupon start date must be before end date' });
+      }
 
-    const [coupon] = await prisma.$queryRaw(Prisma.sql`
+      const [coupon] = (await prisma.$queryRaw(Prisma.sql`
       UPDATE "coupons"
       SET
         "code" = COALESCE(${body.code ?? null}, "code"),
@@ -1463,28 +1690,35 @@ export default async function adminRoutes(fastify: FastifyInstance) {
         "updated_at" = NOW()
       WHERE "id" = ${id}
       RETURNING *
-    `) as any[];
+    `)) as any[];
 
-    if (!coupon) return reply.status(404).send({ error: 'Coupon not found' });
-    return coupon;
-  });
-
-  fastify.delete('/coupons/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const redemptions = await prisma.$queryRaw(Prisma.sql`
-      SELECT "id" FROM "coupon_redemptions" WHERE "coupon_id" = ${id} LIMIT 1
-    `) as any[];
-    if (redemptions.length > 0) {
-      const [coupon] = await prisma.$queryRaw(Prisma.sql`
-        UPDATE "coupons" SET "is_active" = false, "updated_at" = NOW() WHERE "id" = ${id} RETURNING *
-      `) as any[];
-      return coupon || reply.status(404).send({ error: 'Coupon not found' });
+      if (!coupon) return reply.status(404).send({ error: 'Coupon not found' });
+      return coupon;
     }
+  );
 
-    const deleted = await prisma.$executeRaw(Prisma.sql`DELETE FROM "coupons" WHERE "id" = ${id}`);
-    if (!deleted) return reply.status(404).send({ error: 'Coupon not found' });
-    return { message: 'Coupon deleted' };
-  });
+  fastify.delete(
+    '/coupons/:id',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const redemptions = (await prisma.$queryRaw(Prisma.sql`
+      SELECT "id" FROM "coupon_redemptions" WHERE "coupon_id" = ${id} LIMIT 1
+    `)) as any[];
+      if (redemptions.length > 0) {
+        const [coupon] = (await prisma.$queryRaw(Prisma.sql`
+        UPDATE "coupons" SET "is_active" = false, "updated_at" = NOW() WHERE "id" = ${id} RETURNING *
+      `)) as any[];
+        return coupon || reply.status(404).send({ error: 'Coupon not found' });
+      }
+
+      const deleted = await prisma.$executeRaw(
+        Prisma.sql`DELETE FROM "coupons" WHERE "id" = ${id}`
+      );
+      if (!deleted) return reply.status(404).send({ error: 'Coupon not found' });
+      return { message: 'Coupon deleted' };
+    }
+  );
 
   fastify.get('/blog-posts', { preHandler: auth }, async () => {
     return prisma.blogPost.findMany({
@@ -1496,31 +1730,37 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     });
   });
 
-  fastify.post('/blog-posts', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const req = request as any;
-    const body = z.object({
-      slug: z.string().min(1),
-      title: z.string().min(1),
-      excerpt: z.string().optional(),
-      content_md: z.string().min(1),
-      cover_asset_id: z.string().optional(),
-      status: z.string().optional(),
-    }).parse(request.body);
+  fastify.post(
+    '/blog-posts',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const req = request as any;
+      const body = z
+        .object({
+          slug: z.string().min(1),
+          title: z.string().min(1),
+          excerpt: z.string().optional(),
+          content_md: z.string().min(1),
+          cover_asset_id: z.string().optional(),
+          status: z.string().optional(),
+        })
+        .parse(request.body);
 
-    const post = await prisma.blogPost.create({
-      data: {
-        slug: body.slug,
-        title: body.title,
-        excerpt: body.excerpt || null,
-        content_md: body.content_md,
-        cover_asset_id: body.cover_asset_id || null,
-        status: body.status || 'draft',
-        created_by: req.user.id,
-      },
-    });
+      const post = await prisma.blogPost.create({
+        data: {
+          slug: body.slug,
+          title: body.title,
+          excerpt: body.excerpt || null,
+          content_md: body.content_md,
+          cover_asset_id: body.cover_asset_id || null,
+          status: body.status || 'draft',
+          created_by: req.user.id,
+        },
+      });
 
-    return reply.status(201).send(post);
-  });
+      return reply.status(201).send(post);
+    }
+  );
 
   fastify.get('/homepage/offers', { preHandler: auth }, async () => {
     return prisma.homepageOffer.findMany({
@@ -1531,85 +1771,109 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     });
   });
 
-  fastify.post('/homepage/offers', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const body = z.object({
-      title: z.string().min(1),
-      subtitle: z.string().optional(),
-      description: z.string().optional(),
-      offer_type: z.string().optional(),
-      value: z.number().optional(),
-      currency: z.string().optional(),
-      link: z.string().optional(),
-      cover_asset_id: z.string().optional(),
-      is_active: z.boolean().optional(),
-      sort_order: z.number().int().optional(),
-      valid_from: z.string().optional(),
-      valid_until: z.string().optional(),
-    }).parse(request.body);
+  fastify.post(
+    '/homepage/offers',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const body = z
+        .object({
+          title: z.string().min(1),
+          subtitle: z.string().optional(),
+          description: z.string().optional(),
+          offer_type: z.string().optional(),
+          value: z.number().optional(),
+          currency: z.string().optional(),
+          link: z.string().optional(),
+          cover_asset_id: z.string().optional(),
+          is_active: z.boolean().optional(),
+          sort_order: z.number().int().optional(),
+          valid_from: z.string().optional(),
+          valid_until: z.string().optional(),
+        })
+        .parse(request.body);
 
-    const offer = await prisma.homepageOffer.create({
-      data: {
-        title: body.title,
-        subtitle: body.subtitle || null,
-        description: body.description || null,
-        offer_type: body.offer_type || 'promotion',
-        value: body.value ?? null,
-        currency: body.currency || 'BDT',
-        link: body.link || null,
-        cover_asset_id: body.cover_asset_id || null,
-        is_active: body.is_active ?? true,
-        sort_order: body.sort_order ?? 0,
-        valid_from: body.valid_from ? new Date(body.valid_from) : null,
-        valid_until: body.valid_until ? new Date(body.valid_until) : null,
-      },
-      include: {
-        coverAsset: true,
-      },
-    });
+      const offer = await prisma.homepageOffer.create({
+        data: {
+          title: body.title,
+          subtitle: body.subtitle || null,
+          description: body.description || null,
+          offer_type: body.offer_type || 'promotion',
+          value: body.value ?? null,
+          currency: body.currency || 'BDT',
+          link: body.link || null,
+          cover_asset_id: body.cover_asset_id || null,
+          is_active: body.is_active ?? true,
+          sort_order: body.sort_order ?? 0,
+          valid_from: body.valid_from ? new Date(body.valid_from) : null,
+          valid_until: body.valid_until ? new Date(body.valid_until) : null,
+        },
+        include: {
+          coverAsset: true,
+        },
+      });
 
-    return reply.status(201).send(offer);
-  });
-
-  fastify.put('/homepage/offers/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const existing = await prisma.homepageOffer.findUnique({ where: { id } });
-    if (!existing) {
-      return reply.status(404).send({ error: 'Homepage offer not found' });
+      return reply.status(201).send(offer);
     }
+  );
 
-    const body = request.body as any;
-    return prisma.homepageOffer.update({
-      where: { id },
-      data: {
-        title: body.title ?? undefined,
-        subtitle: body.subtitle ?? undefined,
-        description: body.description ?? undefined,
-        offer_type: body.offer_type ?? undefined,
-        value: body.value !== undefined ? Number(body.value) : undefined,
-        currency: body.currency ?? undefined,
-        link: body.link ?? undefined,
-        cover_asset_id: body.cover_asset_id ?? undefined,
-        is_active: body.is_active ?? undefined,
-        sort_order: body.sort_order !== undefined ? Number(body.sort_order) : undefined,
-        valid_from: body.valid_from !== undefined ? (body.valid_from ? new Date(body.valid_from) : null) : undefined,
-        valid_until: body.valid_until !== undefined ? (body.valid_until ? new Date(body.valid_until) : null) : undefined,
-      },
-      include: {
-        coverAsset: true,
-      },
-    });
-  });
+  fastify.put(
+    '/homepage/offers/:id',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const existing = await prisma.homepageOffer.findUnique({ where: { id } });
+      if (!existing) {
+        return reply.status(404).send({ error: 'Homepage offer not found' });
+      }
 
-  fastify.delete('/homepage/offers/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const existing = await prisma.homepageOffer.findUnique({ where: { id } });
-    if (!existing) {
-      return reply.status(404).send({ error: 'Homepage offer not found' });
+      const body = request.body as any;
+      return prisma.homepageOffer.update({
+        where: { id },
+        data: {
+          title: body.title ?? undefined,
+          subtitle: body.subtitle ?? undefined,
+          description: body.description ?? undefined,
+          offer_type: body.offer_type ?? undefined,
+          value: body.value !== undefined ? Number(body.value) : undefined,
+          currency: body.currency ?? undefined,
+          link: body.link ?? undefined,
+          cover_asset_id: body.cover_asset_id ?? undefined,
+          is_active: body.is_active ?? undefined,
+          sort_order: body.sort_order !== undefined ? Number(body.sort_order) : undefined,
+          valid_from:
+            body.valid_from !== undefined
+              ? body.valid_from
+                ? new Date(body.valid_from)
+                : null
+              : undefined,
+          valid_until:
+            body.valid_until !== undefined
+              ? body.valid_until
+                ? new Date(body.valid_until)
+                : null
+              : undefined,
+        },
+        include: {
+          coverAsset: true,
+        },
+      });
     }
+  );
 
-    await prisma.homepageOffer.delete({ where: { id } });
-    return { message: 'Homepage offer deleted' };
-  });
+  fastify.delete(
+    '/homepage/offers/:id',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const existing = await prisma.homepageOffer.findUnique({ where: { id } });
+      if (!existing) {
+        return reply.status(404).send({ error: 'Homepage offer not found' });
+      }
+
+      await prisma.homepageOffer.delete({ where: { id } });
+      return { message: 'Homepage offer deleted' };
+    }
+  );
 
   fastify.get('/homepage/visual-menu', { preHandler: auth }, async () => {
     return prisma.homepageVisualMenuItem.findMany({
@@ -1617,70 +1881,85 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     });
   });
 
-  fastify.post('/homepage/visual-menu', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const body = z.object({
-      section_key: z.string().min(1),
-      section_label: z.string().min(1),
-      section_sort_order: z.number().int().optional(),
-      title: z.string().min(1),
-      search_keyword: z.string().min(1),
-      image_url: z.string().url(),
-      image_alt: z.string().optional(),
-      sort_order: z.number().int().optional(),
-      is_active: z.boolean().optional(),
-    }).parse(request.body);
+  fastify.post(
+    '/homepage/visual-menu',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const body = z
+        .object({
+          section_key: z.string().min(1),
+          section_label: z.string().min(1),
+          section_sort_order: z.number().int().optional(),
+          title: z.string().min(1),
+          search_keyword: z.string().min(1),
+          image_url: z.string().url(),
+          image_alt: z.string().optional(),
+          sort_order: z.number().int().optional(),
+          is_active: z.boolean().optional(),
+        })
+        .parse(request.body);
 
-    const item = await prisma.homepageVisualMenuItem.create({
-      data: {
-        section_key: body.section_key,
-        section_label: body.section_label,
-        section_sort_order: body.section_sort_order ?? 0,
-        title: body.title,
-        search_keyword: body.search_keyword,
-        image_url: body.image_url,
-        image_alt: body.image_alt || null,
-        sort_order: body.sort_order ?? 0,
-        is_active: body.is_active ?? true,
-      },
-    });
+      const item = await prisma.homepageVisualMenuItem.create({
+        data: {
+          section_key: body.section_key,
+          section_label: body.section_label,
+          section_sort_order: body.section_sort_order ?? 0,
+          title: body.title,
+          search_keyword: body.search_keyword,
+          image_url: body.image_url,
+          image_alt: body.image_alt || null,
+          sort_order: body.sort_order ?? 0,
+          is_active: body.is_active ?? true,
+        },
+      });
 
-    return reply.status(201).send(item);
-  });
-
-  fastify.put('/homepage/visual-menu/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const existing = await prisma.homepageVisualMenuItem.findUnique({ where: { id } });
-    if (!existing) {
-      return reply.status(404).send({ error: 'Homepage visual menu item not found' });
+      return reply.status(201).send(item);
     }
+  );
 
-    const body = request.body as any;
-    return prisma.homepageVisualMenuItem.update({
-      where: { id },
-      data: {
-        section_key: body.section_key ?? undefined,
-        section_label: body.section_label ?? undefined,
-        section_sort_order: body.section_sort_order !== undefined ? Number(body.section_sort_order) : undefined,
-        title: body.title ?? undefined,
-        search_keyword: body.search_keyword ?? undefined,
-        image_url: body.image_url ?? undefined,
-        image_alt: body.image_alt ?? undefined,
-        sort_order: body.sort_order !== undefined ? Number(body.sort_order) : undefined,
-        is_active: body.is_active ?? undefined,
-      },
-    });
-  });
+  fastify.put(
+    '/homepage/visual-menu/:id',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const existing = await prisma.homepageVisualMenuItem.findUnique({ where: { id } });
+      if (!existing) {
+        return reply.status(404).send({ error: 'Homepage visual menu item not found' });
+      }
 
-  fastify.delete('/homepage/visual-menu/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const existing = await prisma.homepageVisualMenuItem.findUnique({ where: { id } });
-    if (!existing) {
-      return reply.status(404).send({ error: 'Homepage visual menu item not found' });
+      const body = request.body as any;
+      return prisma.homepageVisualMenuItem.update({
+        where: { id },
+        data: {
+          section_key: body.section_key ?? undefined,
+          section_label: body.section_label ?? undefined,
+          section_sort_order:
+            body.section_sort_order !== undefined ? Number(body.section_sort_order) : undefined,
+          title: body.title ?? undefined,
+          search_keyword: body.search_keyword ?? undefined,
+          image_url: body.image_url ?? undefined,
+          image_alt: body.image_alt ?? undefined,
+          sort_order: body.sort_order !== undefined ? Number(body.sort_order) : undefined,
+          is_active: body.is_active ?? undefined,
+        },
+      });
     }
+  );
 
-    await prisma.homepageVisualMenuItem.delete({ where: { id } });
-    return { message: 'Homepage visual menu item deleted' };
-  });
+  fastify.delete(
+    '/homepage/visual-menu/:id',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const existing = await prisma.homepageVisualMenuItem.findUnique({ where: { id } });
+      if (!existing) {
+        return reply.status(404).send({ error: 'Homepage visual menu item not found' });
+      }
+
+      await prisma.homepageVisualMenuItem.delete({ where: { id } });
+      return { message: 'Homepage visual menu item deleted' };
+    }
+  );
 
   fastify.get('/roles', { preHandler: auth }, async () => {
     return prisma.role.findMany({
@@ -1698,63 +1977,77 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     });
   });
 
-  fastify.post('/blog', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const req = request as any;
-    const body = z.object({
-      slug: z.string().min(1),
-      title: z.string().min(1),
-      excerpt: z.string().optional(),
-      content_md: z.string().min(1),
-      cover_asset_id: z.string().optional(),
-      status: z.string().optional(),
-    }).parse(request.body);
+  fastify.post(
+    '/blog',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const req = request as any;
+      const body = z
+        .object({
+          slug: z.string().min(1),
+          title: z.string().min(1),
+          excerpt: z.string().optional(),
+          content_md: z.string().min(1),
+          cover_asset_id: z.string().optional(),
+          status: z.string().optional(),
+        })
+        .parse(request.body);
 
-    const post = await prisma.blogPost.create({
-      data: {
-        slug: body.slug,
-        title: body.title,
-        excerpt: body.excerpt || null,
-        content_md: body.content_md,
-        cover_asset_id: body.cover_asset_id || null,
-        status: body.status || 'draft',
-        created_by: req.user.id,
-      },
-    });
+      const post = await prisma.blogPost.create({
+        data: {
+          slug: body.slug,
+          title: body.title,
+          excerpt: body.excerpt || null,
+          content_md: body.content_md,
+          cover_asset_id: body.cover_asset_id || null,
+          status: body.status || 'draft',
+          created_by: req.user.id,
+        },
+      });
 
-    return reply.status(201).send(post);
-  });
-
-  fastify.patch('/blog/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const body = request.body as any;
-    const post = await prisma.blogPost.findUnique({ where: { id } });
-    if (!post) {
-      return reply.status(404).send({ error: 'Blog post not found' });
+      return reply.status(201).send(post);
     }
+  );
 
-    return prisma.blogPost.update({
-      where: { id },
-      data: {
-        slug: body.slug ?? undefined,
-        title: body.title ?? undefined,
-        excerpt: body.excerpt ?? undefined,
-        content_md: body.content_md ?? undefined,
-        cover_asset_id: body.cover_asset_id ?? undefined,
-        status: body.status ?? undefined,
-      },
-    });
-  });
+  fastify.patch(
+    '/blog/:id',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const body = request.body as any;
+      const post = await prisma.blogPost.findUnique({ where: { id } });
+      if (!post) {
+        return reply.status(404).send({ error: 'Blog post not found' });
+      }
 
-  fastify.delete('/blog/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const post = await prisma.blogPost.findUnique({ where: { id } });
-    if (!post) {
-      return reply.status(404).send({ error: 'Blog post not found' });
+      return prisma.blogPost.update({
+        where: { id },
+        data: {
+          slug: body.slug ?? undefined,
+          title: body.title ?? undefined,
+          excerpt: body.excerpt ?? undefined,
+          content_md: body.content_md ?? undefined,
+          cover_asset_id: body.cover_asset_id ?? undefined,
+          status: body.status ?? undefined,
+        },
+      });
     }
+  );
 
-    await prisma.blogPost.delete({ where: { id } });
-    return { message: 'Blog post deleted' };
-  });
+  fastify.delete(
+    '/blog/:id',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const post = await prisma.blogPost.findUnique({ where: { id } });
+      if (!post) {
+        return reply.status(404).send({ error: 'Blog post not found' });
+      }
+
+      await prisma.blogPost.delete({ where: { id } });
+      return { message: 'Blog post deleted' };
+    }
+  );
 
   fastify.get('/homepage-banners', { preHandler: auth }, async () => {
     return prisma.homepageBanner.findMany({
@@ -1763,67 +2056,86 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     });
   });
 
-  fastify.post('/homepage-banners', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const body = z.object({
-      title: z.string().min(1),
-      subtitle: z.string().optional(),
-      link: z.string().optional(),
-      cta_text: z.string().optional(),
-      cover_asset_id: z.string().optional(),
-      is_active: z.boolean().optional(),
-      sort_order: z.number().int().optional(),
-    }).parse(request.body);
+  fastify.post(
+    '/homepage-banners',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const body = z
+        .object({
+          title: z.string().min(1),
+          subtitle: z.string().optional(),
+          link: z.string().optional(),
+          cta_text: z.string().optional(),
+          cover_asset_id: z.string().optional(),
+          is_active: z.boolean().optional(),
+          sort_order: z.number().int().optional(),
+        })
+        .parse(request.body);
 
-    const banner = await prisma.homepageBanner.create({
-      data: {
-        title: body.title,
-        subtitle: body.subtitle || null,
-        link: body.link || null,
-        cta_text: body.cta_text || 'Learn More',
-        cover_asset_id: body.cover_asset_id || null,
-        is_active: body.is_active ?? true,
-        sort_order: body.sort_order ?? 0,
-      },
-    });
+      const banner = await prisma.homepageBanner.create({
+        data: {
+          title: body.title,
+          subtitle: body.subtitle || null,
+          link: body.link || null,
+          cta_text: body.cta_text || 'Learn More',
+          cover_asset_id: body.cover_asset_id || null,
+          is_active: body.is_active ?? true,
+          sort_order: body.sort_order ?? 0,
+        },
+      });
 
-    return reply.status(201).send(banner);
-  });
-
-  fastify.put('/homepage-banners/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const body = request.body as any;
-    const banner = await prisma.homepageBanner.findUnique({ where: { id } });
-    if (!banner) {
-      return reply.status(404).send({ error: 'Homepage banner not found' });
+      return reply.status(201).send(banner);
     }
+  );
 
-    return prisma.homepageBanner.update({
-      where: { id },
-      data: {
-        title: body.title ?? undefined,
-        subtitle: body.subtitle ?? undefined,
-        link: body.link ?? undefined,
-        cta_text: body.cta_text ?? undefined,
-        cover_asset_id: body.cover_asset_id ?? undefined,
-        is_active: body.is_active ?? undefined,
-        sort_order: body.sort_order ?? undefined,
-      },
-    });
-  });
+  fastify.put(
+    '/homepage-banners/:id',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const body = request.body as any;
+      const banner = await prisma.homepageBanner.findUnique({ where: { id } });
+      if (!banner) {
+        return reply.status(404).send({ error: 'Homepage banner not found' });
+      }
 
-  fastify.delete('/homepage-banners/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const banner = await prisma.homepageBanner.findUnique({ where: { id } });
-    if (!banner) {
-      return reply.status(404).send({ error: 'Homepage banner not found' });
+      return prisma.homepageBanner.update({
+        where: { id },
+        data: {
+          title: body.title ?? undefined,
+          subtitle: body.subtitle ?? undefined,
+          link: body.link ?? undefined,
+          cta_text: body.cta_text ?? undefined,
+          cover_asset_id: body.cover_asset_id ?? undefined,
+          is_active: body.is_active ?? undefined,
+          sort_order: body.sort_order ?? undefined,
+        },
+      });
     }
+  );
 
-    await prisma.homepageBanner.delete({ where: { id } });
-    return { message: 'Homepage banner deleted' };
-  });
+  fastify.delete(
+    '/homepage-banners/:id',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const banner = await prisma.homepageBanner.findUnique({ where: { id } });
+      if (!banner) {
+        return reply.status(404).send({ error: 'Homepage banner not found' });
+      }
+
+      await prisma.homepageBanner.delete({ where: { id } });
+      return { message: 'Homepage banner deleted' };
+    }
+  );
 
   fastify.get('/media', { preHandler: auth }, async (request: FastifyRequest) => {
-    const query = request.query as { page?: string; limit?: string; search?: string; category?: string };
+    const query = request.query as {
+      page?: string;
+      limit?: string;
+      search?: string;
+      category?: string;
+    };
     const page = Math.max(1, parseInt(query.page || '1', 10));
     const limit = Math.max(1, Math.min(100, parseInt(query.limit || '24', 10)));
     const search = query.search?.trim();
@@ -1862,7 +2174,9 @@ export default async function adminRoutes(fastify: FastifyInstance) {
 
     const mediaWithTitles = media.map((item) => {
       const titleTag = Array.isArray(item.tags)
-        ? item.tags.find((tag): tag is string => typeof tag === 'string' && tag.startsWith('title:'))
+        ? item.tags.find(
+            (tag): tag is string => typeof tag === 'string' && tag.startsWith('title:')
+          )
         : null;
       return {
         ...item,
@@ -1879,184 +2193,241 @@ export default async function adminRoutes(fastify: FastifyInstance) {
     };
   });
 
-  fastify.get('/media/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const item = await prisma.mediaAsset.findUnique({
-      where: { id },
-      include: {
-        uploader: {
-          select: {
-            id: true,
-            email: true,
-            phone: true,
+  fastify.get(
+    '/media/:id',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const item = await prisma.mediaAsset.findUnique({
+        where: { id },
+        include: {
+          uploader: {
+            select: {
+              id: true,
+              email: true,
+              phone: true,
+            },
           },
-        },
-      },
-    });
-
-    if (!item) {
-      return reply.status(404).send({ error: 'Media item not found' });
-    }
-
-    const titleTag = Array.isArray(item.tags)
-      ? item.tags.find((tag): tag is string => typeof tag === 'string' && tag.startsWith('title:'))
-      : null;
-
-    return {
-      ...item,
-      title: titleTag ? titleTag.replace('title:', '') : undefined,
-    };
-  });
-
-  fastify.post('/media/upload', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const req = request as any;
-
-    try {
-      fastify.log.info({
-        userId: req.user?.id,
-        contentType: request.headers['content-type'],
-      }, '[Admin Route] /media/upload started');
-
-      if (!process.env.R2_ACCOUNT_ID || !process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY || !process.env.R2_BUCKET) {
-        return reply.status(500).send({ error: 'R2 not configured' });
-      }
-
-      const parts = request.parts();
-      let fileData: any = null;
-      let fileBuffer: Buffer | null = null;
-      const meta: Record<string, string> = {};
-
-      for await (const part of parts) {
-        if (part.type === 'file') {
-          fileData = part;
-          fastify.log.info({
-            filename: part.filename,
-            mimetype: part.mimetype,
-          }, '[Admin Route] /media/upload file part received');
-          fastify.log.info('[Admin Route] /media/upload buffering file data');
-          const chunks: Buffer[] = [];
-          for await (const chunk of part.file as AsyncIterable<Buffer | string>) {
-            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-          }
-          fileBuffer = Buffer.concat(chunks);
-          fastify.log.info({
-            size: fileBuffer.length,
-          }, '[Admin Route] /media/upload file buffered');
-        } else if (part.type === 'field') {
-          meta[String(part.fieldname)] = String(part.value);
-        }
-      }
-
-      if (!fileData) {
-        return reply.status(400).send({ error: 'No file provided' });
-      }
-
-      if (!fileBuffer) {
-        return reply.status(400).send({ error: 'No file provided' });
-      }
-      const maxSize = 10 * 1024 * 1024;
-      if (fileBuffer.length > maxSize) {
-        return reply.status(400).send({ error: 'File size exceeds 10MB' });
-      }
-
-      const timestamp = Date.now();
-      const sanitizedFilename = String(fileData.filename || 'upload').replace(/[^a-zA-Z0-9.-]/g, '_');
-      const key = `uploads/${timestamp}-${sanitizedFilename}`;
-      fastify.log.info({
-        key,
-        size: fileBuffer.length,
-      }, '[Admin Route] /media/upload uploading to R2');
-      await uploadToR2(key, fileBuffer, fileData.mimetype);
-      const publicUrl = getPublicUrl(key);
-
-      const tags = parseList(meta.tags);
-      if (meta.title) {
-        tags.unshift(`title:${meta.title}`);
-      }
-
-      const asset = await prisma.mediaAsset.create({
-        data: {
-          r2_key: key,
-          public_url: publicUrl,
-          mime_type: fileData.mimetype,
-          size: fileBuffer.length,
-          category: meta.category || 'admin',
-          tags,
-          uploaded_by: req.user.id,
         },
       });
 
-      fastify.log.info({
-        id: asset.id,
-        key,
-      }, '[Admin Route] /media/upload completed');
+      if (!item) {
+        return reply.status(404).send({ error: 'Media item not found' });
+      }
+
+      const titleTag = Array.isArray(item.tags)
+        ? item.tags.find(
+            (tag): tag is string => typeof tag === 'string' && tag.startsWith('title:')
+          )
+        : null;
 
       return {
-        ...asset,
-        title: meta.title || undefined,
+        ...item,
+        title: titleTag ? titleTag.replace('title:', '') : undefined,
       };
-    } catch (error: any) {
-      fastify.log.error({
-        message: error?.message,
-        stack: error?.stack,
-      }, '[Admin Route] /media/upload error');
-      return reply.status(500).send({ error: error.message || 'Failed to upload media' });
     }
-  });
+  );
 
-  fastify.put('/media/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const body = request.body as any;
-    const item = await prisma.mediaAsset.findUnique({ where: { id } });
-    if (!item) {
-      return reply.status(404).send({ error: 'Media item not found' });
+  fastify.post(
+    '/media/upload',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const req = request as any;
+
+      try {
+        fastify.log.info(
+          {
+            userId: req.user?.id,
+            contentType: request.headers['content-type'],
+          },
+          '[Admin Route] /media/upload started'
+        );
+
+        if (
+          !process.env.R2_ACCOUNT_ID ||
+          !process.env.R2_ACCESS_KEY_ID ||
+          !process.env.R2_SECRET_ACCESS_KEY ||
+          !process.env.R2_BUCKET
+        ) {
+          return reply.status(500).send({ error: 'R2 not configured' });
+        }
+
+        const parts = request.parts();
+        let fileData: any = null;
+        let fileBuffer: Buffer | null = null;
+        const meta: Record<string, string> = {};
+
+        for await (const part of parts) {
+          if (part.type === 'file') {
+            fileData = part;
+            fastify.log.info(
+              {
+                filename: part.filename,
+                mimetype: part.mimetype,
+              },
+              '[Admin Route] /media/upload file part received'
+            );
+            fastify.log.info('[Admin Route] /media/upload buffering file data');
+            const chunks: Buffer[] = [];
+            for await (const chunk of part.file as AsyncIterable<Buffer | string>) {
+              chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            }
+            fileBuffer = Buffer.concat(chunks);
+            fastify.log.info(
+              {
+                size: fileBuffer.length,
+              },
+              '[Admin Route] /media/upload file buffered'
+            );
+          } else if (part.type === 'field') {
+            meta[String(part.fieldname)] = String(part.value);
+          }
+        }
+
+        if (!fileData) {
+          return reply.status(400).send({ error: 'No file provided' });
+        }
+
+        if (!fileBuffer) {
+          return reply.status(400).send({ error: 'No file provided' });
+        }
+        const maxSize = 10 * 1024 * 1024;
+        if (fileBuffer.length > maxSize) {
+          return reply.status(400).send({ error: 'File size exceeds 10MB' });
+        }
+
+        const timestamp = Date.now();
+        const sanitizedFilename = String(fileData.filename || 'upload').replace(
+          /[^a-zA-Z0-9.-]/g,
+          '_'
+        );
+        const key = `uploads/${timestamp}-${sanitizedFilename}`;
+        fastify.log.info(
+          {
+            key,
+            size: fileBuffer.length,
+          },
+          '[Admin Route] /media/upload uploading to R2'
+        );
+        await uploadToR2(key, fileBuffer, fileData.mimetype);
+        const publicUrl = getPublicUrl(key);
+
+        const tags = parseList(meta.tags);
+        if (meta.title) {
+          tags.unshift(`title:${meta.title}`);
+        }
+
+        const asset = await prisma.mediaAsset.create({
+          data: {
+            r2_key: key,
+            public_url: publicUrl,
+            mime_type: fileData.mimetype,
+            size: fileBuffer.length,
+            category: meta.category || 'admin',
+            tags,
+            uploaded_by: req.user.id,
+          },
+        });
+
+        fastify.log.info(
+          {
+            id: asset.id,
+            key,
+          },
+          '[Admin Route] /media/upload completed'
+        );
+
+        return {
+          ...asset,
+          title: meta.title || undefined,
+        };
+      } catch (error: any) {
+        fastify.log.error(
+          {
+            message: error?.message,
+            stack: error?.stack,
+          },
+          '[Admin Route] /media/upload error'
+        );
+        return reply.status(500).send({ error: error.message || 'Failed to upload media' });
+      }
     }
+  );
 
-    const existingTags = Array.isArray(item.tags) ? item.tags.filter((tag) => typeof tag === 'string' && !tag.startsWith('title:')) : [];
-    const nextTags = Array.isArray(body.tags)
-      ? body.tags
-      : body.tagsText
-        ? parseList(body.tagsText)
-        : existingTags;
-    if (body.title) {
-      nextTags.unshift(`title:${body.title}`);
+  fastify.put(
+    '/media/:id',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const body = request.body as any;
+      const item = await prisma.mediaAsset.findUnique({ where: { id } });
+      if (!item) {
+        return reply.status(404).send({ error: 'Media item not found' });
+      }
+
+      const existingTags = Array.isArray(item.tags)
+        ? item.tags.filter((tag) => typeof tag === 'string' && !tag.startsWith('title:'))
+        : [];
+      const nextTags = Array.isArray(body.tags)
+        ? body.tags
+        : body.tagsText
+          ? parseList(body.tagsText)
+          : existingTags;
+      if (body.title) {
+        nextTags.unshift(`title:${body.title}`);
+      }
+
+      const updated = await prisma.mediaAsset.update({
+        where: { id },
+        data: {
+          category: body.category ?? undefined,
+          tags: nextTags,
+        },
+      } as any);
+
+      return {
+        ...updated,
+        title:
+          body.title ||
+          (Array.isArray(updated.tags)
+            ? updated.tags
+                .find((tag) => typeof tag === 'string' && tag.startsWith('title:'))
+                ?.replace('title:', '')
+            : undefined),
+      };
     }
+  );
 
-    const updated = await prisma.mediaAsset.update({
-      where: { id },
-      data: {
-        category: body.category ?? undefined,
-        tags: nextTags,
-      },
-    } as any);
+  fastify.delete(
+    '/media/:id',
+    { preHandler: auth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const item = await prisma.mediaAsset.findUnique({ where: { id } });
+      if (!item) {
+        return reply.status(404).send({ error: 'Media item not found' });
+      }
 
-    return {
-      ...updated,
-      title: body.title || (Array.isArray(updated.tags) ? updated.tags.find((tag) => typeof tag === 'string' && tag.startsWith('title:'))?.replace('title:', '') : undefined),
-    };
-  });
+      try {
+        await deleteFromR2(item.r2_key);
+      } catch (error) {
+        fastify.log.warn(
+          { error },
+          '[Admin Route] Failed to delete media from R2, deleting DB row anyway'
+        );
+      }
 
-  fastify.delete('/media/:id', { preHandler: auth }, async (request: FastifyRequest, reply: FastifyReply) => {
-    const { id } = request.params as { id: string };
-    const item = await prisma.mediaAsset.findUnique({ where: { id } });
-    if (!item) {
-      return reply.status(404).send({ error: 'Media item not found' });
+      await prisma.mediaAsset.delete({ where: { id } });
+      return { message: 'Media deleted' };
     }
-
-    try {
-      await deleteFromR2(item.r2_key);
-    } catch (error) {
-      fastify.log.warn({ error }, '[Admin Route] Failed to delete media from R2, deleting DB row anyway');
-    }
-
-    await prisma.mediaAsset.delete({ where: { id } });
-    return { message: 'Media deleted' };
-  });
+  );
 
   fastify.delete('/media/bulk', { preHandler: auth }, async (request: FastifyRequest) => {
-    const body = z.object({
-      ids: z.array(z.string().min(1)).min(1),
-    }).parse(request.body);
+    const body = z
+      .object({
+        ids: z.array(z.string().min(1)).min(1),
+      })
+      .parse(request.body);
 
     const items = await prisma.mediaAsset.findMany({
       where: { id: { in: body.ids } },
